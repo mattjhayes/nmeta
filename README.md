@@ -46,9 +46,11 @@ As a prerequisite, install Git, Python and Ryu on a Linux system.
 2) Install nmeta:
 From the home directory on server that has Ryu installed:
 
-*    mkdir nmeta
-*    cd nmeta
-*    git clone https://github.com/mattjhayes/nmeta.git
+```
+mkdir nmeta
+cd nmeta
+git clone https://github.com/mattjhayes/nmeta.git
+```
 
 3) Fix LLDP bug (optional)
 The lldp.py packet library module supplied with Ryu has 
@@ -64,16 +66,23 @@ cp ryu/ryu/lib/packet/lldp.py ryu/ryu/lib/packet/lldp.py.original
 
 Now overwrite lldp.py with the modified file:
 
-* cp nmeta/lldp-fixed.py ryu/ryu/lib/packet/lldp.py
+```
+cp nmeta/lldp-fixed.py ryu/ryu/lib/packet/lldp.py
+```
     
 4) Run nmeta:
 Navigate to the Ryu root directory:
 
-*    cd
-*    cd ryu
+```
+cd
+cd ryu
+```
 
 Run nmeta:
-    PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
+
+```
+PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
+```
 
 Configuration files are in the config subdirectory and are written
 in YAML ("YAML Ain't Markup Language") format
@@ -84,12 +93,18 @@ in YAML ("YAML Ain't Markup Language") format
 ## General Configuration
 
 The general configuration parameters are stored in the file:
-    config.yaml
+
+```
+config/config.yaml
+```
 
 ## Traffic Classification Configuration
 
 Traffic Classification (TC) configuration parameters are stored in the file:
-    tc_policy.yaml
+
+```
+config/tc_policy.yaml
+```
 
 ### Static Classifiers
 
@@ -103,12 +118,16 @@ Traffic Classification (TC) configuration parameters are stored in the file:
     Example:
     -------
     To match system names of *.audit.example.com add this policy condition:
-        identity_lldp_systemname_re: '.*\.audit\.example\.com'
+    
+```
+identity_lldp_systemname_re: '.*\.audit\.example\.com'
+```
 
 ### Statistical Classifiers
 
   All statistical classifiers are prefixed with 'statistical_'
-  <more here>
+
+  <TBD - more here>
   
 ### Payload Classifiers
 
@@ -117,7 +136,10 @@ Traffic Classification (TC) configuration parameters are stored in the file:
 ## QoS Configuration
 
 Quality of Service (QoS) configuration parameters are stored in the file:
-    qos_policy.yaml
+
+```
+qos_policy.yaml
+```
 
 # Logging
 

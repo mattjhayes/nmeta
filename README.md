@@ -2,7 +2,7 @@
 
 ### Disclaimer
 
-This code carries not warrantee whatsoever. Use at your own risk.
+This code carries no warrantee whatsoever. Use at your own risk.
 
 ### Author
 

@@ -1,0 +1,20 @@
+#*** Quality of Service (QoS) Policy for nmeta
+#*** Written in YAML
+#*** Version 0.4
+#
+'PolicyRule 0':
+    comment: OpenFlow traffic
+    QoS_treatment: system_priority
+    output_queue: 0
+'PolicyRule 1':
+    comment: Default priority traffic
+    QoS_treatment: default_priority
+    output_queue: 1
+'PolicyRule 2':
+    comment: High priority traffic
+    QoS_treatment: high_priority
+    output_queue: 2
+'PolicyRule 3':
+    comment: Low priority bandwidth hungry traffic
+    QoS_treatment: low_priority
+    output_queue: 3

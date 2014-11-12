@@ -1,0 +1,34 @@
+#*** Traffic Classification Config for nmeta
+#*** Written in YAML
+#*** Version 0.6
+#
+#*** max bytes of new flow packets to send to controller:
+miss_send_len: 1500
+#
+#*** Tell switch how to handle fragments (see OpenFlow spec)
+ofpc_frag: 0
+#
+#
+#========== TABLE MAINTENANCE SETTINGS ==============
+#*** Flow Metadata Table entry maximum age in seconds
+#*** before being eligible for removal:
+fm_table_max_age: 600
+#
+#*** Flow Metadata Table interval in seconds between
+#*** running the tidy-up process that removes old
+#*** entries:
+fm_table_tidyup_interval: 12
+#
+#*** Identity NIC Table entry maximum age in seconds
+#*** before being eligible for removal:
+identity_nic_table_max_age: 600
+#
+#*** Identity NIC System entry maximum age in seconds
+#*** before being eligible for removal:
+identity_system_table_max_age: 600
+#
+#*** Identity NIC and System Tables interval in seconds between
+#*** running the tidy-up process that removes old
+#*** entries:
+identity_table_tidyup_interval: 5
+

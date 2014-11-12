@@ -45,24 +45,30 @@ As a prerequisite, install Git, Python and Ryu on a Linux system.
 
 2) Install nmeta:
 From the home directory on server that has Ryu installed:
-    mkdir nmeta
-    cd nmeta
-    git clone https://github.com/mattjhayes/nmeta.git
+
+*    mkdir nmeta
+*    cd nmeta
+*    git clone https://github.com/mattjhayes/nmeta.git
 
 3) Fix LLDP bug (optional)
 The lldp.py packet library module supplied with Ryu has 
 (at the time of writing) a bug related to parsing system
 capabilities. A modified version of this file can be 
 copied over the original to fix this.
- - First back up the original lldp.py file:
-    cp ryu/ryu/lib/packet/lldp.py ryu/ryu/lib/packet/lldp.py.original
- - Now overwrite lldp.py with the modified file:
-    cp ryu/ryu/app/nmeta/lldp-fixed.py ryu/ryu/lib/packet/lldp.py
+
+First back up the original lldp.py file:
+
+* cp ryu/ryu/lib/packet/lldp.py ryu/ryu/lib/packet/lldp.py.original
+
+Now overwrite lldp.py with the modified file:
+
+* cp nmeta/lldp-fixed.py ryu/ryu/lib/packet/lldp.py
     
 4) Run nmeta:
 Navigate to the Ryu root directory:
-    cd
-    cd ryu
+
+*    cd
+*    cd ryu
 
 Run nmeta:
     PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py

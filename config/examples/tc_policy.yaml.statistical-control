@@ -1,0 +1,9 @@
+'PolicyRule 0':
+    comment: SSH traffic
+    match_type: any
+    policy_conditions:
+        tcp_src: 22
+        tcp_dst: 22
+    actions:
+        set_qos_tag: QoS_treatment=high_priority
+        set_desc_tag: description="High Priority SSH Traffic"

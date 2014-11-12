@@ -1,0 +1,32 @@
+#*** Traffic Classification Policy for nmeta
+#*** Written in YAML
+#*** Version 1.4
+#
+'PolicyRule 0':
+    comment: OpenFlow Protocol Traffic
+    match_type: any
+    policy_conditions:
+        tcp_src: 6633
+        tcp_dst: 6633
+    actions:
+        set_qos_tag: QoS_treatment=system_priority
+        set_desc_tag: description="OpenFlow Protocol Traffic"
+'PolicyRule 1':
+    comment: Use Case Static-1 - High Priority Business Traffic
+    match_type: any
+    policy_conditions:
+        tcp_src: 80 
+        tcp_dst: 80 
+    actions:
+        set_qos_tag: QoS_treatment=high_priority
+        set_desc_tag: description="High Priority Business Traffic"  
+'PolicyRule 2':
+    comment: SSH traffic
+    match_type: any
+    policy_conditions:
+        tcp_src: 22
+        tcp_dst: 22
+    actions:
+        set_qos_tag: QoS_treatment=high_priority
+        set_desc_tag: description="High Priority SSH Traffic"
+

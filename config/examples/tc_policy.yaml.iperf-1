@@ -1,0 +1,27 @@
+'PolicyRule 1':
+    comment: Iperf High Priority
+    match_type: any
+    policy_conditions:
+        tcp_src: 5001
+        tcp_dst: 5001
+    actions:
+        set_qos_tag: QoS_treatment=default_priority
+        set_desc_tag: description="Default Priority Iperf Traffic"
+'PolicyRule 2':
+    comment: Iperf High Priority
+    match_type: any
+    policy_conditions:
+        tcp_src: 5002
+        tcp_dst: 5002
+    actions:
+        set_qos_tag: QoS_treatment=high_priority
+        set_desc_tag: description="High Priority Iperf Traffic"
+'PolicyRule 3':
+    comment: Iperf Low Priority
+    match_type: any
+    policy_conditions:
+        tcp_src: 5003
+        tcp_dst: 5003
+    actions:
+        set_qos_tag: QoS_treatment=low_priority
+        set_desc_tag: description="Low Priority Iperf Traffic"  

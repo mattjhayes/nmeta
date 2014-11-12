@@ -1,0 +1,40 @@
+#*** Traffic Classification Policy for nmeta
+#*** Written in YAML
+#*** Version 1.4
+#
+'PolicyRule 0':
+    comment: OpenFlow Protocol Traffic
+    match_type: any
+    policy_conditions:
+        tcp_src: 6633
+        tcp_dst: 6633
+    actions:
+        set_qos_tag: QoS_treatment=system_priority
+        set_desc_tag: description="OpenFlow Protocol Traffic"
+'PolicyRule 1':
+    comment: Explicitly set Iperf traffic to default class
+    match_type: any
+    policy_conditions:
+        tcp_src: 5001
+        tcp_dst: 5001
+    actions:
+        set_qos_tag: QoS_treatment=default_priority
+        set_desc_tag: description="Default Priority Iperf Traffic"  
+'PolicyRule 2':
+    comment: SSH traffic
+    match_type: any
+    policy_conditions:
+        tcp_src: 22
+        tcp_dst: 22
+    actions:
+        set_qos_tag: QoS_treatment=high_priority
+        set_desc_tag: description="High Priority SSH Traffic"
+'PolicyRule 3':
+    comment: Use Case Identity-1 - High Priority Business Traffic
+    match_type: any
+    policy_conditions:
+        identity_lldp_systemname_re: '.*\.audit\.example\.com'
+    actions:
+        set_qos_tag: QoS_treatment=high_priority
+        set_desc_tag: description="High Priority Business Traffic" 
+

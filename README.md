@@ -58,7 +58,9 @@ copied over the original to fix this.
 
 First back up the original lldp.py file:
 
-* cp ryu/ryu/lib/packet/lldp.py ryu/ryu/lib/packet/lldp.py.original
+```
+cp ryu/ryu/lib/packet/lldp.py ryu/ryu/lib/packet/lldp.py.original
+```
 
 Now overwrite lldp.py with the modified file:
 
@@ -182,3 +184,4 @@ in the misc sub directory
 # Release Notes
 
 <TBD>
+

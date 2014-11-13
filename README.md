@@ -48,7 +48,6 @@ From the home directory on server that has Ryu installed:
 
 ```
 mkdir nmeta
-cd nmeta
 git clone https://github.com/mattjhayes/nmeta.git
 ```
 

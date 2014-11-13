@@ -40,8 +40,10 @@ the flow is still newly active.
 
 # Installation
 
+Note: see wiki page for full instructions for [Installing on Ubuntu](https://github.com/mattjhayes/nmeta/wiki/Installing-on-Ubuntu)
+
 1) Prerequisites:
-As a prerequisite, install Git, Python and Ryu on a Linux system.
+As a prerequisite, install Git, Python, python-yaml and Ryu on a Linux system.
 
 2) Install nmeta:
 From the home directory on server that has Ryu installed:
@@ -83,11 +85,11 @@ Run nmeta:
 PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
 ```
 
+# Configuration
+
 Configuration files are in the config subdirectory and are written
 in YAML ("YAML Ain't Markup Language") format
 (see: http://www.yaml.org/spec/1.2/spec.html)
-
-# Configuration
 
 ## General Configuration
 

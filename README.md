@@ -10,9 +10,11 @@ Matt Hayes (matthew_john_hayes@hotmail.com)
 
 # Purpose
 
-This prototype code is a framework that runs on top of the Ryu Software 
-Defined Networking (SDN) controller (see: http://osrg.github.io/ryu/) 
-to prove the viability of SDN as a platform for traffic classification. 
+Provide a research platform for traffic classification on Software 
+Defined Networking (SDN). 
+
+This prototype code is a framework running on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/) 
+to prove the viability of SDN as a platform for traffic classification.
 
 ## Additional Documentation
 

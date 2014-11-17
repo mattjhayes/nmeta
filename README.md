@@ -10,9 +10,11 @@ Matt Hayes (matthew_john_hayes@hotmail.com)
 
 # Purpose
 
-This is concept code is a framework that runs on top of the Ryu Software 
-Defined Networking (SDN) controller (see: http://osrg.github.io/ryu/) 
-to prove the viability of SDN as a platform for traffic classification. 
+Provide a research platform for traffic classification on Software 
+Defined Networking (SDN). 
+
+This prototype code is a framework running on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/) 
+to prove the viability of SDN as a platform for traffic classification.
 
 ## Additional Documentation
 
@@ -40,15 +42,16 @@ the flow is still newly active.
 
 # Installation
 
+Note: see wiki page for full instructions for [Installing on Ubuntu](https://github.com/mattjhayes/nmeta/wiki/Installing-on-Ubuntu)
+
 1) Prerequisites:
-As a prerequisite, install Git, Python and Ryu on a Linux system.
+As a prerequisite, install Git, Python, python-yaml and Ryu on a Linux system.
 
 2) Install nmeta:
 From the home directory on server that has Ryu installed:
 
 ```
 mkdir nmeta
-cd nmeta
 git clone https://github.com/mattjhayes/nmeta.git
 ```
 
@@ -84,11 +87,11 @@ Run nmeta:
 PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
 ```
 
+# Configuration
+
 Configuration files are in the config subdirectory and are written
 in YAML ("YAML Ain't Markup Language") format
 (see: http://www.yaml.org/spec/1.2/spec.html)
-
-# Configuration
 
 ## General Configuration
 
@@ -108,7 +111,7 @@ config/tc_policy.yaml
 
 ### Static Classifiers
 
-  <TBD>
+TBD
   
 ### Identity Classifiers
 
@@ -127,11 +130,11 @@ identity_lldp_systemname_re: '.*\.audit\.example\.com'
 
   All statistical classifiers are prefixed with 'statistical_'
 
-  <TBD - more here>
+TBD - more here
   
 ### Payload Classifiers
 
-  <TBD>
+TBD
 
 ## QoS Configuration
 
@@ -143,7 +146,7 @@ qos_policy.yaml
 
 # Logging
 
-<TBD>
+TBD
 
 # API
 
@@ -177,33 +180,48 @@ in the misc sub directory
 
 # Feature Enhancement Wishlist
 
- - Add a process that ensures that stale data is purged from tables
-   Consider event driven tidy-up too, i.e. port goes down, purge any port
-   related data from tables
+## Functional Enhancements
  - Improve TC policy functionality by adding nesting ability etc.
  - Add support in static module for IP address range and netmask matches
  - Add support for IPv6
  - Add support for IP multicast
  - Add support for IP fragments
  - Add support in identity module for IEEE 802.1x
- - Consider moving tables to a database
- - Improve API functionality
- - Add support for OpenFlow versions 1.2 and 1.3
  - Add support for VLANs and other similar network virtualisation features
- - Add support for distribution of controllers such that flow metadata 
-   maintains loose consistency across the distributed system
- - Add security features. Really this should be top of the list. How can DoS
-   of the system be prevented? As the system receives packets from the 
-   network, is it vulnerable to exploits sent in network packets not directly
-   to it? How can this be mitigated?
  - Make the routing/switching configurable (currently just a basic switch). 
    Leverage other systems that do this rather than writing something new.
+
+## Non-Functional Enhancements
+
+### Availability
+ - Improve measures to prevent table sizes from getting too large and impacting availability
+ - Consider event driven tidy-up too, i.e. port goes down, purge any port
+   related data from tables
+ - 
+### Security
+Add security features. Really this should be top of the list.
+ - How can DoS of the system be prevented or mitigated?
+ - Data packets are sent over the control plane so it is vulnerable to exploits in packet data. How can this be mitigated?
+
+### Scalability
+ - Add support for distribution of controllers such that flow metadata 
+   maintains loose consistency across the distributed system
+
+### Performance
+ - Consider moving tables to a database
+
+### Visibility
+ - Improve API functionality
+
+### Compatibility
+ - Add support for OpenFlow versions 1.2 and 1.3
+ - Consider decoupling from Ryu and building in support for other SDN controllers
+
+### Convenience
  - Make classifiers plug-ins so that they can be developed and added/removed
    without requiring changes to the main code.
- - Add distributed controller synchronisation to allow horizontal controller
-   scaling
  
 # Release Notes
 
-<TBD>
+TBD
 

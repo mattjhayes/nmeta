@@ -10,7 +10,9 @@ Matt Hayes (matthew_john_hayes@hotmail.com)
 
 # Purpose
 
-Provide a research platform for traffic classification on Software 
+This project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this network metadata requires policy-based control and ability to adapt to new purposes through extensibility. 
+
+This code is a research platform for traffic classification on Software 
 Defined Networking (SDN). 
 
 This prototype code is a framework running on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/) 

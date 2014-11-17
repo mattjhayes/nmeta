@@ -183,7 +183,7 @@ in the misc sub directory
  - Improve measures to prevent table sizes from getting too large and impacting availability
  - Consider event driven tidy-up too, i.e. port goes down, purge any port
    related data from tables
- - 
+
 ### Security
 Add security features. Really this should be top of the list.
  - How can DoS of the system be prevented or mitigated?

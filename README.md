@@ -2,16 +2,6 @@
 
 # nmeta - Network Metadata
 
-### Disclaimer
-
-This code carries no warrantee whatsoever. Use at your own risk.
-
-### Author
-
-Matt Hayes (matthew_john_hayes@hotmail.com)
-
-# Purpose
-
 This project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this network metadata requires policy-based control and ability to adapt to new purposes through extensibility. 
 
 Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/) 
@@ -220,4 +210,12 @@ Add security features. Really this should be top of the list.
 # Release Notes
 
 TBD
+
+# Disclaimer
+
+This code carries no warrantee whatsoever. Use at your own risk.
+
+# Contact
+
+Matt Hayes (matthew_john_hayes@hotmail.com)
 

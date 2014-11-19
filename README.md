@@ -6,7 +6,7 @@ The nmeta project is founded on the belief that innovation in enterprise network
 
 Enriched network metadata has a number of uses, including classifying flows for Quality of Service (QoS), traffic engineering and security.
 
-Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/). One day it may even be good enough to run in an enterprise network...
+Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/). One day it may even be good enough to run in a real enterprise network...
 
 # Design Philosophy
 
@@ -159,7 +159,11 @@ See ![Issues](https://github.com/mattjhayes/nmeta/issues) for list of enhancemen
 
 This code carries no warrantee whatsoever. Use at your own risk.
 
-# Contact
+# How to Contribute
+
+This is a new project so there are a number of areas where interesting and useful work can be carried out (see ![Issues](https://github.com/mattjhayes/nmeta/issues))
+
+Please contact me if you want to be added as a contributor to the project.
 
 Matt Hayes (matthew_john_hayes@hotmail.com)
 

@@ -6,6 +6,8 @@ The nmeta project is founded on the belief that innovation in enterprise network
 
 Enriched network metadata has a number of uses, including classifying flows for Quality of Service (QoS), traffic engineering and security.
 
+![](images/flow_metadata_screenshot2.png)
+
 Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/). One day it may even be good enough to run in a real enterprise network...
 
 # Design Philosophy
@@ -151,7 +153,7 @@ curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
 ```
 or using the supplied script to provide 'pretty' output:
 ```
-sudo python jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/
+sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/
 ```
 
 Return the Identity NIC Table:

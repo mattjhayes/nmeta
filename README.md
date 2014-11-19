@@ -2,7 +2,9 @@
 
 # nmeta - Network Metadata
 
-The nmeta project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this enriched network metadata requires policy-based control and ability to adapt to new purposes through extensibility. The metadata has a number of uses including classifying flows for Quality of Service (QoS), traffic engineering and security.
+The nmeta project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this enriched network metadata requires policy-based control and ability to adapt to new purposes through extensibility. 
+
+Enriched network metadata has a number of uses, including classifying flows for Quality of Service (QoS), traffic engineering and security.
 
 Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/). One day it may even be good enough to run in an enterprise network...
 
@@ -19,10 +21,7 @@ they can take.
 Flow metadata can be enriched by the policy-controlled classifiers - i.e.
 extra data can be added.
 
-Example uses for this enriched flow metadata include Quality of Service
-(QoS), security and traffic engineering.
-
-It is designed to work in an online mode such that classifications are
+The system is designed to work in an online mode such that classifications are
 made in a timely manner so that consuming systems may take actions while
 the flow is still newly active.
 

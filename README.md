@@ -152,18 +152,6 @@ curl -X GET http://127.0.0.1:8080/nmeta/identity/systemtable/
 A few scripts that may be useful for testing are included
 in the misc sub directory
 
-# Caveats
-
- - Some tables (FCIP) will grow and grow until the system falls over as there 
-   is no reaping of stale entries (BAD BAD BAD!!!). Maintenance for other
-   dynamic tables implemented as max age controls but need max size controls
-   too...
- - Only supports OpenFlow version 1.0
- - YAML creates an unordered dictionary, but we want strict order for 
-   policy... Seems to work regardless but results may vary
- - Written and tested on Python version 2.7.5. May not work as expected
-   on Python 3.x
-
 # Feature Enhancement Wishlist
 
 See ![Issues](https://github.com/mattjhayes/nmeta/issues) for list of enhancements and bugs

@@ -133,23 +133,38 @@ qos_policy.yaml
 
 TBD
 
+# Misc Scripts
+
+A few scripts that may be useful for testing are included
+in the misc sub directory. These include:
+ - htest.py An HTTP performance testing script
+ - jsonpretty.py Converts JSON API responses into human-readable format
+ - websvr.py A simple web server
+
 # API
 
 REST API Calls (examples to run on local host):
 
 Return the Flow Metadata Table:
+```
 curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
+```
+or using the supplied script to provide 'pretty' output:
+```
+sudo python jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/
+```
 
 Return the Identity NIC Table:
+```
 curl -X GET http://127.0.0.1:8080/nmeta/identity/nictable/
+```
 
 Return the Identity System Table:
+```
 curl -X GET http://127.0.0.1:8080/nmeta/identity/systemtable/
+```
 
-# Misc Scripts
 
-A few scripts that may be useful for testing are included
-in the misc sub directory
 
 # Feature Enhancement Wishlist
 

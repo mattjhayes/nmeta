@@ -2,27 +2,13 @@
 
 # nmeta - Network Metadata
 
-### Disclaimer
+The nmeta project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this enriched network metadata requires policy-based control and ability to adapt to new purposes through extensibility. 
 
-This code carries no warrantee whatsoever. Use at your own risk.
+Enriched network metadata has a number of uses, including classifying flows for Quality of Service (QoS), traffic engineering and security.
 
-### Author
+![](images/flow_metadata_screenshot2.png)
 
-Matt Hayes (matthew_john_hayes@hotmail.com)
-
-# Purpose
-
-This project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this network metadata requires policy-based control and ability to adapt to new purposes through extensibility. 
-
-This code is a research platform for traffic classification on Software 
-Defined Networking (SDN). 
-
-This prototype code is a framework running on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/) 
-to prove the viability of SDN as a platform for traffic classification.
-
-## Additional Documentation
-
-See the doc subdirectory for diagrams etc. that may be enlightening.
+Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/). One day it may even be good enough to run in a real enterprise network...
 
 # Design Philosophy
 
@@ -37,10 +23,7 @@ they can take.
 Flow metadata can be enriched by the policy-controlled classifiers - i.e.
 extra data can be added.
 
-Example uses for this enriched flow metadata include Quality of Service
-(QoS), security and traffic engineering.
-
-It is designed to work in an online mode such that classifications are
+The system is designed to work in an online mode such that classifications are
 made in a timely manner so that consuming systems may take actions while
 the flow is still newly active.
 
@@ -152,80 +135,52 @@ qos_policy.yaml
 
 TBD
 
+# Misc Scripts
+
+A few scripts that may be useful for testing are included
+in the misc sub directory. These include:
+ - htest.py An HTTP performance testing script
+ - jsonpretty.py Converts JSON API responses into human-readable format
+ - websvr.py A simple web server
+
 # API
 
 REST API Calls (examples to run on local host):
 
 Return the Flow Metadata Table:
+```
 curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
+```
+or using the supplied script to provide 'pretty' output:
+```
+sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/
+```
 
 Return the Identity NIC Table:
+```
 curl -X GET http://127.0.0.1:8080/nmeta/identity/nictable/
+```
 
 Return the Identity System Table:
+```
 curl -X GET http://127.0.0.1:8080/nmeta/identity/systemtable/
+```
 
-# Misc Scripts
 
-A few scripts that may be useful for testing are included
-in the misc sub directory
-
-# Caveats
-
- - Some tables (FCIP) will grow and grow until the system falls over as there 
-   is no reaping of stale entries (BAD BAD BAD!!!). Maintenance for other
-   dynamic tables implemented as max age controls but need max size controls
-   too...
- - Only supports OpenFlow version 1.0
- - YAML creates an unordered dictionary, but we want strict order for 
-   policy... Seems to work regardless but results may vary
- - Written and tested on Python version 2.7.5. May not work as expected
-   on Python 3.x
 
 # Feature Enhancement Wishlist
 
-## Functional Enhancements
- - Improve TC policy functionality by adding nesting ability etc.
- - Add support in static module for IP address range and netmask matches
- - Add support for IPv6
- - Add support for IP multicast
- - Add support for IP fragments
- - Add support in identity module for IEEE 802.1x
- - Add support for VLANs and other similar network virtualisation features
- - Make the routing/switching configurable (currently just a basic switch). 
-   Leverage other systems that do this rather than writing something new.
+See ![Issues](https://github.com/mattjhayes/nmeta/issues) for list of enhancements and bugs
 
-## Non-Functional Enhancements
+# Disclaimer
 
-### Availability
- - Improve measures to prevent table sizes from getting too large and impacting availability
- - Consider event driven tidy-up too, i.e. port goes down, purge any port
-   related data from tables
- - 
-### Security
-Add security features. Really this should be top of the list.
- - How can DoS of the system be prevented or mitigated?
- - Data packets are sent over the control plane so it is vulnerable to exploits in packet data. How can this be mitigated?
+This code carries no warrantee whatsoever. Use at your own risk.
 
-### Scalability
- - Add support for distribution of controllers such that flow metadata 
-   maintains loose consistency across the distributed system
+# How to Contribute
 
-### Performance
- - Consider moving tables to a database
+This is a new project so there are a number of areas where interesting and useful work can be carried out (see ![Issues](https://github.com/mattjhayes/nmeta/issues))
 
-### Visibility
- - Improve API functionality
+Please contact me if you want to be added as a contributor to the project.
 
-### Compatibility
- - Add support for OpenFlow versions 1.2 and 1.3
- - Consider decoupling from Ryu and building in support for other SDN controllers
-
-### Convenience
- - Make classifiers plug-ins so that they can be developed and added/removed
-   without requiring changes to the main code.
- 
-# Release Notes
-
-TBD
+Matt Hayes (matthew_john_hayes@hotmail.com)
 

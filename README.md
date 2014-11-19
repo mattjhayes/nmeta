@@ -166,50 +166,7 @@ in the misc sub directory
 
 # Feature Enhancement Wishlist
 
-## Functional Enhancements
- - Improve TC policy functionality by adding nesting ability etc.
- - Add support in static module for IP address range and netmask matches
- - Add support for IPv6
- - Add support for IP multicast
- - Add support for IP fragments
- - Add support in identity module for IEEE 802.1x
- - Add support for VLANs and other similar network virtualisation features
- - Make the routing/switching configurable (currently just a basic switch). 
-   Leverage other systems that do this rather than writing something new.
-
-## Non-Functional Enhancements
-
-### Availability
- - Improve measures to prevent table sizes from getting too large and impacting availability
- - Consider event driven tidy-up too, i.e. port goes down, purge any port
-   related data from tables
-
-### Security
-Add security features. Really this should be top of the list.
- - How can DoS of the system be prevented or mitigated?
- - Data packets are sent over the control plane so it is vulnerable to exploits in packet data. How can this be mitigated?
-
-### Scalability
- - Add support for distribution of controllers such that flow metadata 
-   maintains loose consistency across the distributed system
-
-### Performance
- - Consider moving tables to a database
-
-### Visibility
- - Improve API functionality
-
-### Compatibility
- - Add support for OpenFlow versions 1.2 and 1.3
- - Consider decoupling from Ryu and building in support for other SDN controllers
-
-### Convenience
- - Make classifiers plug-ins so that they can be developed and added/removed
-   without requiring changes to the main code.
- 
-# Release Notes
-
-TBD
+See ![Issues](https://github.com/mattjhayes/nmeta/issues) for list of enhancements and bugs
 
 # Disclaimer
 

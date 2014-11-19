@@ -2,9 +2,9 @@
 
 # nmeta - Network Metadata
 
-This project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this network metadata requires policy-based control and ability to adapt to new purposes through extensibility. 
+The nmeta project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this enriched network metadata requires policy-based control and ability to adapt to new purposes through extensibility. The metadata has a number of uses including classifying flows for Quality of Service (QoS), traffic engineering and security.
 
-Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/) 
+Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/). One day it may even be good enough to run in an enterprise network...
 
 # Design Philosophy
 

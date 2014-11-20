@@ -133,6 +133,7 @@ qos_policy.yaml
 
 # Logging
 
+nmeta is configured to log to
 TBD
 
 # Misc Scripts

@@ -164,7 +164,7 @@ Added by Matt Hayes for Horizontal Navigation Bar
 #navbar {
   width: 650px;
   height: 22px;
-  font-size: 12px;
+  font-size: 14px;
   font-family: 'Lucida Grande', 'Calibri', Helvetica, Arial, sans-serif;
   font-weight: bold;
   text-align: center;
@@ -181,7 +181,7 @@ Added by Matt Hayes for Horizontal Navigation Bar
 
 #navbar li {
 display: inline;
-padding: 20px;
+padding: 10px;
 }
 
 #navbar a {

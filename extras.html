@@ -62,7 +62,7 @@
   VM1 Server / Controller
 </h2>
 
-<p>Download a suitable supported Ubuntu desktop distribution. In VirtualBox, create a new Ubuntu guest with 1024MB of RAM and 12GB of storage:</p>
+<p>Download a suitable supported Ubuntu desktop distribution. In VirtualBox, create a new Ubuntu guest with 1024MB of RAM and 12GB of storage. Consider creating the hard disk as fixed size to improve performance.</p>
 
 <p><img src="images/lab/lab1.png" alt="Lab Pic 1"></p>
 <p><img src="images/lab/lab2.png" alt="Lab Pic 2"></p>
@@ -104,9 +104,41 @@
 <pre><code>sudo ./VBoxLinuxAdditions.run
 </code></pre>
 
-<p>Restart the guest to get the additions running. You may also want to change the copy/paste settings in VirtualBox to allow pasting to the guest:</p>
+<p>Restart the guest to bring the additions online. You may also want to change the copy/paste settings in VirtualBox to allow pasting to the guest:</p>
 
 <p><img src="images/lab/lab12.png" alt="Lab Pic 12"></p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Networking
+</h3>
+
+<p>Edit /etc/network/interfaces:</p>
+
+<pre><code>sudo vi /etc/network/interfaces
+</code></pre>
+
+<p>Add the following:</p>
+
+<pre><code>auto eth1
+iface eth1 inet static
+address 192.168.57.40
+netmask 255.255.255.0
+#
+up route add -net 192.168.56.0/24 gw 192.168.57.1 dev eth1
+</code></pre>
+
+<p>Restart networking:</p>
+
+<pre><code>sudo /etc/init.d/networking restart
+</code></pre>
+
+Install Ryu
+Install git:
+sudo apt-get install git
+
+Clone Ryu:
+
 
       </section>
     </div>

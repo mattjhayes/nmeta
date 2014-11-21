@@ -44,11 +44,40 @@
   Build Yourself a Virtual OpenFlow Lab
 </h2>
 <p>Under Construction!!!</p>
-<p>Want to experiment with nmeta and OpenFlow SDN, but don't have any switches? No problem, you can build a simple, but powerful, lab within a virtualised environment. These instructions should hopefully save you a lot of time figuring out the more obtuse features. We use VirtualBox as the hypervisor. Here is a logical diagram of the environment</p>
+<p>Want to experiment with nmeta and OpenFlow SDN, but don't have any switches? No problem. You can build a simple, but powerful, lab within a virtualised environment. These instructions should hopefully save you a lot of time figuring out the more obtuse features. We use VirtualBox as the hypervisor. Here is a logical diagram of the environment</p>
 
 <p><img src="images/lab/lab_overview.png" alt="Lab Overview"></p>
 
-<p>Note that these instructions are untested as they are based on build notes and have not been used for a fresh install, so some things may not work as advertised...
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Pre-Requisites
+</h3>
+
+<p>
+  <ul>
+    <li>Oracle VirtualBox installed on a suitable host machine</li>
+    <li>Host must have sufficient RAM (test PC was Windows 7 with 8GB RAM)</li>
+  </ul>
+</p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  VM1 – Server / Controller
+</h3>
+
+<p>Download a suitable supported Ubuntu desktop distribution. In VirtualBox, create a new Ubuntu guest with 1024MB of RAM and 12GB of storage:</p>
+
+<p><img src="images/lab/lab1.png" alt="Lab Pic 1"></p>
+<p><img src="images/lab/lab2.png" alt="Lab Pic 2"></p>
+<p><img src="images/lab/lab3.png" alt="Lab Pic 3"></p>
+<p><img src="images/lab/lab4.png" alt="Lab Pic 4"></p>
+<p><img src="images/lab/lab5.png" alt="Lab Pic 5"></p>
+<p><img src="images/lab/lab6.png" alt="Lab Pic 6"></p>
+
+<p>Go into the guest settings to configure it to boot off the ISO. Under Storage, click on the Controller: IDE row and then click on the Add CD/DVD Device Icon, "Choose disk" and browse to the ISO:</p>
+
+<p><img src="images/lab/lab7.png" alt="Lab Overview"></p>
+
 
       </section>
     </div>

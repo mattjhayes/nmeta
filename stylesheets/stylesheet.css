@@ -157,14 +157,11 @@ p img {
   border: none;
 }
 
-#navbar {
-  border: 0px;
-  border-style: none;
-  box-shadow: none;
-  box-image-width: 0;
-}
+/*******************************************************************************
+Added by Matt Hayes for Horizontal Navigation Bar
+*******************************************************************************/
 
-#menu {
+#navbar {
   width: 650px;
   height: 22px;
   font-size: 12px;
@@ -176,24 +173,24 @@ p img {
   border-radius: 8px;
 }
 
-#menu ul {
+#navbar ul {
     height: auto;
     padding: 4px 0px;
     margin: 0px;
 }
 
-#menu li {
+#navbar li {
 display: inline;
 padding: 20px;
 }
 
-#menu a {
+#navbar a {
     text-decoration: none;
     color: #00F;
     padding: 8px 8px 8px 8px;
 }
 
-#menu a:hover {
+#navbar a:hover {
     color: #F90;
     background-color: #FFF;
 }

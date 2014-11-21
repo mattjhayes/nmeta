@@ -161,6 +161,7 @@ p img {
   border: 0px;
   border-style: none;
   box-shadow: none;
+  box-image-width: 0;
 }
 
 pre, code {

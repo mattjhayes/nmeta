@@ -51,14 +51,12 @@
 
 <p>Clone Ryu</p>
 
-<pre><code>
-git clone git://github.com/osrg/ryu.git
+<pre><code>git clone git://github.com/osrg/ryu.git
 </code></pre>
 
 <p>Install Python bits n' pieces</p>
 
-<pre><code>
-sudo apt-get install python-setuptools
+<pre><code>sudo apt-get install python-setuptools
 sudo apt-get install python-pip
 sudo apt-get install libxml2-dev
 sudo apt-get install libxslt-dev
@@ -69,35 +67,30 @@ sudo apt-get install python-dev
 
 <p>Install YAML ("YAML Ain't Markup Language") for parsing config and policy files</p>
 
-<pre><code>
-sudo apt-get install python-yaml
+<pre><code>sudo apt-get install python-yaml
 </code></pre>
 
 <p>Install Ryu</p>
 
-<pre><code>
-cd ryu
+<pre><code>cd ryu
 sudo python ./setup.py install
 </code></pre>
 
 <p>Run Ryu (simple switch) to check that it works (from ryu directory)</p>
 
-<pre><code>
-PYTHONPATH=. ./bin/ryu-manager --verbose ryu/app/simple_switch.py
+<pre><code>PYTHONPATH=. ./bin/ryu-manager --verbose ryu/app/simple_switch.py
 </code></pre>
 
 <p>Install nmeta</p>
 
-<pre><code>
-cd
+<pre><code>cd
 mkdir nmeta
 git clone https://github.com/mattjhayes/nmeta.git
 </code></pre>
 
 <p>Run nmeta</p>
 
-<pre><code>
-cd
+<pre><code>cd
 cd ryu
 PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
 </code></pre>

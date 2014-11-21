@@ -37,21 +37,18 @@
       <section id="main_content" class="inner">
 
 <h1>
-<a id="nmeta---network-metadata" class="anchor" href="#nmeta---network-metadata" aria-hidden="true"><span class="octicon octicon-link"></span></a>Extras</h1>
-
-<h2>
   <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Build Yourself a Virtual OpenFlow Lab
-</h2>
-<p>Under Construction!!!</p>
+</h1>
+<p>*** Under Construction!!! ***</p>
 <p>Want to experiment with nmeta and OpenFlow SDN, but don't have any switches? No problem. You can build a simple, but powerful, lab within a virtualised environment. These instructions should hopefully save you a lot of time figuring out the more obtuse features. Oracle VirtualBox is used as the hypervisor. Here is a logical diagram of the environment</p>
 
 <p><img src="images/lab/lab_overview.png" alt="Lab Overview"></p>
 
-<h3>
+<h2>
   <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Pre-Requisites
-</h3>
+</h2>
 
 <p>
   <ul>
@@ -60,10 +57,10 @@
   </ul>
 </p>
 
-<h3>
+<h2>
   <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   VM1 Server / Controller
-</h3>
+</h2>
 
 <p>Download a suitable supported Ubuntu desktop distribution. In VirtualBox, create a new Ubuntu guest with 1024MB of RAM and 12GB of storage:</p>
 
@@ -87,6 +84,16 @@
 <p><img src="images/lab/lab10.png" alt="Lab Pic 10"></p>
 
 <p>Start the VM and install Ubuntu as per the defaults (or your own preferences!)</p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Install VirtualBox Additions
+</h3>
+
+<p>Once the build is completed and the guest is running, log in and start a terminal window (CTRL+ALT+T). Install the VirtualBox additions for improved host-guest integration:</p>
+
+<pre><code>cd /media
+</code></pre>
 
 
 

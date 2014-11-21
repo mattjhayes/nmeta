@@ -44,7 +44,7 @@
   Build Yourself a Virtual OpenFlow Lab
 </h2>
 <p>Under Construction!!!</p>
-<p>Want to experiment with nmeta and OpenFlow SDN, but don't have any switches? No problem. You can build a simple, but powerful, lab within a virtualised environment. These instructions should hopefully save you a lot of time figuring out the more obtuse features. We use VirtualBox as the hypervisor. Here is a logical diagram of the environment</p>
+<p>Want to experiment with nmeta and OpenFlow SDN, but don't have any switches? No problem. You can build a simple, but powerful, lab within a virtualised environment. These instructions should hopefully save you a lot of time figuring out the more obtuse features. Oracle VirtualBox is used as the hypervisor. Here is a logical diagram of the environment</p>
 
 <p><img src="images/lab/lab_overview.png" alt="Lab Overview"></p>
 
@@ -62,7 +62,7 @@
 
 <h3>
   <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
-  VM1 – Server / Controller
+  VM1 Server / Controller
 </h3>
 
 <p>Download a suitable supported Ubuntu desktop distribution. In VirtualBox, create a new Ubuntu guest with 1024MB of RAM and 12GB of storage:</p>
@@ -76,7 +76,19 @@
 
 <p>Go into the guest settings to configure it to boot off the ISO. Under Storage, click on the Controller: IDE row and then click on the Add CD/DVD Device Icon, "Choose disk" and browse to the ISO:</p>
 
-<p><img src="images/lab/lab7.png" alt="Lab Overview"></p>
+<p><img src="images/lab/lab7.png" alt="Lab Pic 7"></p>
+<p><img src="images/lab/lab8.png" alt="Lab Pic 8"></p>
+
+<p>Do the same process to add the ISO for the Guest Additions. On Windows it is located in C:\Program Files\Oracle\VirtualBox\VBoxGuestAdditions.iso<\p>
+
+<p><img src="images/lab/lab9.png" alt="Lab Pic 9"></p>
+
+<p>As above, there should now be two ISO files associated.<\p>
+
+<p>Go into the Network settings and leave Adapter 1 as per defaults to allow NAT access to the Internet (required for downloading software packages from the Internet). Configure Adapter 2 as per screenshot below to connect to Internal Network "WAN-1":</p>
+
+<p><img src="images/lab/lab10.png" alt="Lab Pic 10"></p>
+
 
 
       </section>

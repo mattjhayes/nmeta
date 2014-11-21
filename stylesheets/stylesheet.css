@@ -160,6 +160,7 @@ p img {
 #navbar {
   border: none;
   border-style: none;
+  box-shadow: none;
 }
 
 pre, code {

@@ -45,8 +45,8 @@ class VersionSafe(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = ('localhost', 514),
-            facility=19)
+        self.handler = logging.handlers.SysLogHandler(address = 
+                            ('localhost', 514), facility=19)
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
@@ -57,7 +57,6 @@ class VersionSafe(object):
         and return the port that the
         packet came in on (version specific)
         """
-        #self.logger.debug("DEBUG: testing,1,2,3...!!!")
         if ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
             inport = msg.match['in_port']
             return inport
@@ -65,5 +64,6 @@ class VersionSafe(object):
             inport = msg.in_port
             return inport
         else:
-            self.logger.error("ERROR: module=versionsafe Unsupported OpenFlow version %s", datapath.ofproto.OFP_VERSION)
+            self.logger.error("ERROR: module=versionsafe Unsupported OpenFlow "
+                              "version %s", datapath.ofproto.OFP_VERSION)
             return 0

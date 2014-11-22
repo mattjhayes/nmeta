@@ -56,8 +56,8 @@ class FlowMetadata(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = ('localhost', 514),
-            facility=19)
+        self.handler = logging.handlers.SysLogHandler(address = 
+                        ('localhost', 514), facility=19)
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
@@ -90,7 +90,8 @@ class FlowMetadata(object):
         #*** check if packet is part of a flow already in the FM table:
         _table_ref = self._fm_check(pkt)
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=flow table_ref match is %s", _table_ref)
+            self.logger.debug("DEBUG: module=flow table_ref match is %s", 
+                              _table_ref)
         if _table_ref:
             self._fm_add_to_existing(pkt, _table_ref, flow_actions)
         else:
@@ -110,6 +111,16 @@ class FlowMetadata(object):
             eth = pkt.get_protocol(ethernet.ethernet)
             pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
             pkt_tcp = pkt.get_protocol(tcp.tcp)
+
+        #if ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
+        #    
+        #elif ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
+        #    
+        #else:
+        #    self.logger.error("ERROR: module=flow Unsupported OpenFlow "
+        #                      "version %s", datapath.ofproto.OFP_VERSION)
+        #    return 0
+
             if pkt_tcp:
                 match = datapath.ofproto_parser.OFPMatch(in_port=inport,
                         dl_src=haddr_to_bin(eth.src),
@@ -137,7 +148,8 @@ class FlowMetadata(object):
                 match = 0
             return (match, output_queue)
         else:
-            self.logger.debug("DEBUG: module=flow Not installing flow to switch as continue_to_inspect is True")
+            self.logger.debug("DEBUG: module=flow Not installing flow to "
+                              "switch as continue_to_inspect is True")
             match = 0
             output_queue = 1
             return (match, output_queue)

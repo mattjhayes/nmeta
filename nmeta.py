@@ -15,8 +15,6 @@
 #
 # Matt Hayes
 # Victoria University, New Zealand
-# matthew_john_hayes@hotmail.com
-# October 2014
 #
 # Version 8.7
 

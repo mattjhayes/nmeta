@@ -64,50 +64,26 @@ made in a timely manner so that consuming systems may take actions while
 the flow is still newly active.</p>
 
 <h1>
-<a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>Installation</h1>
+  <a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Installation
+</h1>
 
-<p>See <a href="install.html">Installation Page</a> for full instructions</p>
+<p>See <a href="install.html">Installation Page</a> for full instructions on how to install nmeta</p>
 
-<p>1) Prerequisites:
-As a prerequisite, install Git, Python, python-yaml and Ryu on a Linux system.</p>
-
-<p>2) Install nmeta:
-From the home directory on server that has Ryu installed:</p>
-
-<pre><code>mkdir nmeta
-git clone https://github.com/mattjhayes/nmeta.git
-</code></pre>
-
-<p>3) Fix LLDP bug (optional)
-The lldp.py packet library module supplied with Ryu has
-(at the time of writing) a bug related to parsing system
-capabilities. A modified version of this file can be
-copied over the original to fix this.</p>
-
-<p>First back up the original lldp.py file:</p>
-
-<pre><code>cp ryu/ryu/lib/packet/lldp.py ryu/ryu/lib/packet/lldp.py.original
-</code></pre>
-
-<p>Now overwrite lldp.py with the modified file:</p>
-
-<pre><code>cp nmeta/lldp-fixed.py ryu/ryu/lib/packet/lldp.py
-</code></pre>
-
-<p>4) Run nmeta:
-Navigate to the Ryu root directory:</p>
+<h1>
+  <a id="installation" class="anchor" href="#installation" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Run nmeta
+</h1>
 
 <pre><code>cd
 cd ryu
-</code></pre>
-
-<p>Run nmeta:</p>
-
-<pre><code>PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
+PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
 </code></pre>
 
 <h1>
-<a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Configuration</h1>
+  <a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configuration
+</h1>
 
 <p>Configuration files are in the config subdirectory and are written
 in YAML ("YAML Ain't Markup Language") format

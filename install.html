@@ -91,6 +91,27 @@ cd ryu
 PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
 </code></pre>
 
+<h2>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Fix LLDP Bug (Optional)
+</h2>
+
+<p>The lldp.py packet library module supplied with Ryu has
+(at the time of writing) a bug related to parsing system
+capabilities. A modified version of this file can be
+copied over the original to fix this.</p>
+
+<p>First back up the original lldp.py file:</p>
+
+<pre><code>cp ryu/ryu/lib/packet/lldp.py ryu/ryu/lib/packet/lldp.py.original
+</code></pre>
+
+<p>Now overwrite lldp.py with the modified file:</p>
+
+<pre><code>cp nmeta/lldp-fixed.py ryu/ryu/lib/packet/lldp.py
+</code></pre>
+
+
       </section>
     </div>
 

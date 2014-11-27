@@ -50,10 +50,10 @@
 </h1>
 <p>*** Under Construction!!! ***</p>
 
-<h2>
+<h3>
   <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Contents:
-</h2>
+</h3>
 <p>
   <a href="#Pre-Requisites">Pre-Requisites</a>
   <br>
@@ -63,6 +63,11 @@
   <br>
   <a href="#vm2">VM2 Central Open vSwitch</a>
 </p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Introduction
+</h3>
 
 <p>Want to experiment with nmeta and OpenFlow SDN, but don't have any switches? No problem. You can build a simple, but powerful, lab within a virtualised environment. These instructions should hopefully save you a lot of time figuring out the more obtuse features. Oracle VirtualBox is used as the hypervisor. Here is a logical diagram of the environment</p>
 
@@ -229,6 +234,33 @@ up route add -net 192.168.56.0/24 gw 192.168.57.1 dev br0
 
 <p>Now, do a full restart of the guest.
 
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Open vSwitch
+</h3>
+
+<p>Check connectivity to the OpenFlow controller:</p>
+
+<pre><code>ping 192.168.57.40
+</code></pre>
+
+<p>On <strong>VM1</strong>, start Ryu OpenFlow Controller:</p>
+
+<pre><code>cd ryu
+PYTHONPATH=. ./bin/ryu-manager --verbose ryu/app/simple_switch.py
+</code></pre>
+
+<p>On <strong>VM2</strong>, set Open vSwitch to contact Controller:</p>
+
+<pre><code>sudo ovs-vsctl set-controller br0 tcp:192.168.57.40:6633
+</code></pre>
+
+<p>Check Open vSwitch connectivity to OpenFlow Controller:</p>
+
+<pre><code>sudo ovs-vsctl show
+</code></pre>
+
+<p>Here is output showing successful connection with the controller:</p>
 
 <p>*** Under Construction!!! ***</p>
 

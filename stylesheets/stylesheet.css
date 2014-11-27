@@ -160,41 +160,110 @@ p img {
 /*******************************************************************************
 Added by Matt Hayes for Horizontal Navigation Bar
 *******************************************************************************/
+#header {
+	margin: 0 0 4px;
+	height: 1px;
+	background: #212121;
+}
 
-#navbar {
-  width: 470px;
-  height: 28px;
-  font-size: 14px;
-  font-family: 'Lucida Grande', 'Calibri', Helvetica, Arial, sans-serif;
-  font-weight: bold;
+.navbar-box {
+  position: relative;
+  max-width: 680px;
+  margin: 0 auto;              /* the auto is important as allows box to be centred with padding as appropriate on either side */
+  font: bold 15px/28px Arial;
   text-align: center;
-  text-shadow: 3px 2px 3px #333333;
-  background-color: #92D050;
-  border-radius: 8px;
+  padding:0;
+  border:0;
 }
 
-#navbar ul {
-    height: auto;
-    padding: 4px 0px;
-    margin: 0px;
+#nav {
+	height: 28px;          /* set height to same length as the list not to be vertical overflowed */
+	font-weight: bold;
+	overflow: hidden;      /* hide the not allowed to wrap last list-item's odd pixels overflow */
+	background: #212121;
+        padding:0;
+        border:0;
+        margin:0;
 }
-
 #navbar li {
-display: inline;
-padding: 6px;
+	display:block;
+	height: 28px;
+	float: left;
+	width: 16.66%;          /* set width value to 100%/6li */
+	list-style: none;
+	color: #FFFF57;
+	background: #555;
+        padding:0;
+        border:0;
 }
-
-#navbar a {
-    text-decoration: none;
-    color: #7030A0;
-    padding: 8px 8px 8px 8px;
+#navbar li#contact {
+	margin-right: -10px;   /* safely stop the list from wrapping when computed odd pixels are added */
 }
-
-#navbar a:hover {
-    color: #F90;
-    background-color: #FFF;
+#navbar li a {
+	display:block;
+	height: 40px;          
+	width: auto;
+	border-right: 1px solid #999;
+	color: #7030A0;
+	background: #92D050;
+	text-decoration: none;
 }
-
+#navbar li#contact a {
+	border-right: 0;
+}
+#navbar li a:hover {
+        color: #FFFF57;
+	background: #212121;
+}
+#navbreak {
+	height: 2px;          /* set height to same length as the list not to be vertical overflowed */
+	font-weight: bold;
+	overflow: hidden;      /* hide the not allowed to wrap last list-item's odd pixels overflow */
+	background: #212121;
+}
+#nav2 {
+	height: 20px;          /* set height to same length as the list not to be vertical overflowed */
+	font-weight: bold;
+	overflow: hidden;      /* hide the not allowed to wrap last list-item's odd pixels overflow */
+	background: #212121;
+	font: bold 11px/20px Arial;
+}
+#navbar2 li {
+	float: left;
+	width: 16.66%;          /* set width value to 100%/6li */
+	list-style: none;
+	color: #FFFF57;
+	background: #555;
+}
+#navbar2 li#contact {
+	margin-right: -10px;   /* safely stop the list from wrapping when computed odd pixels are added */
+}
+#navbar2 li a {
+	display:block;
+	height: 40px;          
+	width: auto;
+	color: #AAA;
+	background: #212121;
+	text-decoration: none;
+}
+#navbar2 li a.black {         /* Use this to do black background blank cells */
+	display:block;
+	height: 40px;          
+	width: auto;
+	color: #7030A0;
+	background: #212121;
+	text-decoration: none;
+}
+#navbar2 li#contact a {
+	border-right: 0;
+}
+#navbar2 li a:hover {
+        color: #FFFF57;
+	background: #212121;
+}
+/*******************************************************************************
+Finish added by Matt Hayes for Horizontal Navigation Bar
+*******************************************************************************/
 pre, code {
   width: 100%;
   color: #222;
@@ -305,7 +374,7 @@ Full-Width Styles
 .inner {
   position: relative;
   max-width: 680px;
-  padding: 20px 10px;
+  padding: 1px 1px;
   margin: 0 auto;
 }
 

@@ -49,12 +49,27 @@
   Build Yourself a Virtual OpenFlow Lab
 </h1>
 <p>*** Under Construction!!! ***</p>
+
+<h2>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Contents:
+</h2>
+<p>
+  <a href="#Pre-Requisites">Pre-Requisites</a>
+  <br>
+  <a href="#base-ubuntu-vm-build">Base Ubuntu VM Build</a>
+  <br>
+  <a href="#vm1">VM1 Server / Controller</a>
+  <br>
+  <a href="#vm2">VM2 Central Open vSwitch</a>
+</p>
+
 <p>Want to experiment with nmeta and OpenFlow SDN, but don't have any switches? No problem. You can build a simple, but powerful, lab within a virtualised environment. These instructions should hopefully save you a lot of time figuring out the more obtuse features. Oracle VirtualBox is used as the hypervisor. Here is a logical diagram of the environment</p>
 
 <p><img src="images/lab/lab_overview.png" alt="Lab Overview"></p>
 
 <h2>
-  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  <a id="Pre-Requisites" class="anchor" href="#Pre-Requisites" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Pre-Requisites
 </h2>
 
@@ -66,11 +81,12 @@
 </p>
 
 <h2>
-  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
-  VM1 Server / Controller
+  <a id="base-ubuntu-vm-build" class="anchor" href="#base-ubuntu-vm-build" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Base Ubuntu VM Build
 </h2>
+<p>Here we build a base Ubuntu VM image which we can clone to make most of the other guests.</p>
 
-<p>Download a suitable supported Ubuntu desktop distribution. In VirtualBox, create a new Ubuntu guest with 1024MB of RAM and 12GB of storage. Consider creating the hard disk as fixed size to improve performance.</p>
+<p>First, download a suitable supported Ubuntu desktop distribution. In VirtualBox, create a new Ubuntu guest with 1024MB of RAM and 12GB of storage. Consider creating the hard disk as fixed size to improve performance.</p>
 
 <p><img src="images/lab/lab1.png" alt="Lab Pic 1"></p>
 <p><img src="images/lab/lab2.png" alt="Lab Pic 2"></p>
@@ -86,10 +102,6 @@
 <p><img src="images/lab/lab9.png" alt="Lab Pic 9"></p>
 
 <p>As above, there should now be two ISO files associated.</p>
-
-<p>Go into the Network settings and leave Adapter 1 as per defaults to allow NAT access to the Internet (required for downloading software packages from the Internet). Configure Adapter 2 as per screenshot below to connect to Internal Network "WAN-1":</p>
-
-<p><img src="images/lab/lab10.png" alt="Lab Pic 10"></p>
 
 <p>Start the VM and install Ubuntu as per the defaults (or your own preferences!)</p>
 
@@ -116,10 +128,22 @@
 
 <p><img src="images/lab/lab12.png" alt="Lab Pic 12"></p>
 
+<p>&nbsp;</p>
+
+<h2>
+  <a id="vm1" class="anchor" href="#vm1" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  VM1 Server / Controller
+</h2>
+
+<p>This will be the central server that runs the Ryu SDN controller and nmeta. Start by making a clone of the base Ubuntu VM and call it something suitable.</p>
+
 <h3>
   <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Configure Networking
 </h3>
+<p>Go into the Network settings and leave Adapter 1 as per defaults to allow NAT access to the Internet (required for downloading software packages from the Internet). Configure Adapter 2 as per screenshot below to connect to Internal Network "WAN-1":</p>
+
+<p><img src="images/lab/lab10.png" alt="Lab Pic 10"></p>
 
 <p>Edit /etc/network/interfaces:</p>
 
@@ -143,18 +167,67 @@ up route add -net 192.168.56.0/24 gw 192.168.57.1 dev eth1
 
 <p>Now, install Ryu, nmeta etc as per instructions on the <a href="install.html">Installation Page</a></p>
 
+<p>&nbsp;</p>
+
 <h2>
-  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  <a id="vm2" class="anchor" href="#vm2" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   VM2 Central Open vSwitch
 </h2>
 
-<p>Create a new Ubuntu guest (minimum version 14.04 due to additional of in-tree kernel support for Open vSwitch) with 512MB of RAM and 8GB of storage, as per instructions for VM1, but with the following differences:
-  <ul>
-    <li>Leave Adapter 1 as per defaults to allow NAT access to the Internet. Configure Adapter 2 and 3 as per screenshots below:
+<p>This will be the central Open vSwitch that connects the server to the WAN simulator. Start by making a clone of the base Ubuntu VM and call it something suitable.</p>
 
-    </li>
-  </li>
-</p>
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Guest Network Adapters
+</h3>
+<p>Go into the Network settings and leave Adapter 1 as per defaults to allow NAT access to the Internet (required for downloading software packages from the Internet). Configure Adapter 2 and 3 as per screenshots below, noting that promiscuous mode MUST be changed to "Allow VMs". This mode is required to allow the guest to function as a switch.</p>
+
+<p><img src="images/lab/lab14.png" alt="Lab Pic 14"></p>
+
+<p><img src="images/lab/lab15.png" alt="Lab Pic 15"></p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Install Open vSwitch
+</h3>
+
+<p>Install openvswitch-common and openvswitch-switch (both in same package):</p>
+
+<pre><code>sudo apt-get install openvswitch-switch
+</code></pre>
+
+<p>Check that it is running:</p>
+<pre><code>sudo ovs-vsctl show
+</code></pre>
+
+<p>Set up bridge 'br0':</p>
+<pre><code>sudo ovs-vsctl add-br br0
+</code></pre>
+
+<p>Add physical interfaces:</p>
+<pre><code>sudo ovs-vsctl add-port br0 eth1
+sudo ovs-vsctl add-port br0 eth2
+</code></pre>
+
+<p>Edit /etc/network/interfaces:</p>
+
+<pre><code>sudo vi /etc/network/interfaces
+</code></pre>
+
+<p>Add the following:</p>
+
+<pre><code>auto br0
+iface br0 inet static
+address 192.168.57.3
+network 192.168.57.0
+netmask 255.255.255.0
+broadcast 192.168.57.255
+gateway 192.168.57.1
+#
+up route add -net 192.168.56.0/24 gw 192.168.57.1 dev br0
+</code></pre>
+
+<p>Now, do a full restart of the guest.
 
 
 <p>*** Under Construction!!! ***</p>

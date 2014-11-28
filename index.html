@@ -33,6 +33,7 @@
         <li>Overview</li>
         <li><a href="quickstart.html">Quick Start</a></li>
         <li><a href="userguide.html">User Guide</a></li>
+        <li><a href="https://github.com/mattjhayes/nmeta" target="_blank">Github</a></li>
       </ul>
     </div>
   </div>
@@ -94,102 +95,7 @@ PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
 in YAML ("YAML Ain't Markup Language") format
 (see: <a href="http://www.yaml.org/spec/1.2/spec.html">http://www.yaml.org/spec/1.2/spec.html</a>)</p>
 
-<h2>
-<a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>General Configuration</h2>
-
-<p>The general configuration parameters are stored in the file:</p>
-
-<pre><code>config/config.yaml
-</code></pre>
-
-<h2>
-<a id="traffic-classification-configuration" class="anchor" href="#traffic-classification-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Traffic Classification Configuration</h2>
-
-<p>Traffic Classification (TC) configuration parameters are stored in the file:</p>
-
-<pre><code>config/tc_policy.yaml
-</code></pre>
-
-<h3>
-<a id="static-classifiers" class="anchor" href="#static-classifiers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Static Classifiers</h3>
-
-<p>TBD</p>
-
-<h3>
-<a id="identity-classifiers" class="anchor" href="#identity-classifiers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Identity Classifiers</h3>
-
-<p>All identity classifiers are prefixed with 'identity_'
-  LLDP systemname may be matched as a regular expression
-  The match pattern must be contained in single quotes
-    Example:
-    -------
-    To match system names of *.audit.example.com add this policy condition:</p>
-
-<pre><code>identity_lldp_systemname_re: '.*\.audit\.example\.com'
-</code></pre>
-
-<h3>
-<a id="statistical-classifiers" class="anchor" href="#statistical-classifiers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Statistical Classifiers</h3>
-
-<p>All statistical classifiers are prefixed with 'statistical_'</p>
-
-<p>TBD - more here</p>
-
-<h3>
-<a id="payload-classifiers" class="anchor" href="#payload-classifiers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Payload Classifiers</h3>
-
-<p>TBD</p>
-
-<h2>
-<a id="qos-configuration" class="anchor" href="#qos-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>QoS Configuration</h2>
-
-<p>Quality of Service (QoS) configuration parameters are stored in the file:</p>
-
-<pre><code>qos_policy.yaml
-</code></pre>
-
-<h1>
-<a id="logging" class="anchor" href="#logging" aria-hidden="true"><span class="octicon octicon-link"></span></a>Logging</h1>
-
-<p>nmeta is configured to log to
-TBD</p>
-
-<h1>
-<a id="misc-scripts" class="anchor" href="#misc-scripts" aria-hidden="true"><span class="octicon octicon-link"></span></a>Misc Scripts</h1>
-
-<p>A few scripts that may be useful for testing are included
-in the misc sub directory. These include:</p>
-
-<ul>
-<li>htest.py An HTTP performance testing script</li>
-<li>jsonpretty.py Converts JSON API responses into human-readable format</li>
-<li>websvr.py A simple web server</li>
-</ul>
-
-<h1>
-<a id="api" class="anchor" href="#api" aria-hidden="true"><span class="octicon octicon-link"></span></a>API</h1>
-
-<p>REST API Calls (examples to run on local host):</p>
-
-<p>Return the Flow Metadata Table:</p>
-
-<pre><code>curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
-</code></pre>
-
-<p>or using the supplied script to provide 'pretty' output:</p>
-
-<pre><code>sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/
-</code></pre>
-
-<p>Return the Identity NIC Table:</p>
-
-<pre><code>curl -X GET http://127.0.0.1:8080/nmeta/identity/nictable/
-</code></pre>
-
-<p>Return the Identity System Table:</p>
-
-<pre><code>curl -X GET http://127.0.0.1:8080/nmeta/identity/systemtable/
-</code></pre>
+<p>See <a href="userguide.html">User Guide</a> for information on how to configure nmeta</p>
 
 <h1>
 <a id="feature-enhancement-wishlist" class="anchor" href="#feature-enhancement-wishlist" aria-hidden="true"><span class="octicon octicon-link"></span></a>Feature Enhancement Wishlist</h1>

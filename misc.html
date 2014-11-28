@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <meta name="description" content="Nmeta : Extensible Traffic Classification on SDN">
+
+    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
+
+    <title>Nmeta</title>
+  </head>
+
+  <body>
+
+  <!-- NAVBAR -->
+  <div id="header"></div>
+  <div class="navbar-box">
+    <div id="nav">
+        <ul id="navbar">
+          <li><a href="index.html">Welcome</a></li>
+          <li><a href="motivation.html">Motivation</a></li>
+          <li><a href="install.html">Install</a></li>
+          <li><a href="develop.html">Develop</a></li>
+          <li><a href="faq.html">FAQ</a></li>
+          <li>Extras</li>
+        </ul>
+    </div>
+	<div id="navbreak">
+	</div>
+    <div id="nav2">
+      <ul id="navbar2">
+        <li><a href="#" class="black">&nbsp;</a></li>
+        <li><a href="#" class="black">&nbsp;</a></li>
+        <li><a href="#" class="black">&nbsp;</a></li>
+        <li><a href="#" class="black">&nbsp;</a></li>
+        <li>Misc Scripts</li>
+        <li><a href="extras.html">Build a Lab</a></li>
+      </ul>
+    </div>
+  </div>
+
+    <!-- MAIN CONTENT -->
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+
+<h1>
+  <a id="misc-scripts" class="anchor" href="#misc-scripts" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Misc Scripts
+</h1>
+
+<p>A few scripts that may be useful for testing are included
+in the <em>misc</em> sub directory. These include:</p>
+
+<h2>
+  <a id="misc-scripts" class="anchor" href="#misc-scripts" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  websvr.py
+</h2>
+
+<p>The <em>websvr.py</em> script implements a simple web server with HTTP/1.1 support, using the web python module. Not the sort of thing you'd want to use for a production site, but very useful for testing in a lab.</p>
+
+<p>You'll need to install the web framework for python:</p>
+
+<pre><code>sudo easy_install web.py
+</code></pre>
+
+<p>You'll need to update the websvr.py script with the URLs that you want it to serve and create a <em>static</em> subdirectory with the relevant HTML files in it.</p>
+
+<p>Start the web server with this command (can substitute port number):</p>
+
+<pre><code>sudo python nmeta/misc/websvr.py 80
+</code></pre>
+
+<p>Example usage, listening on port 80:</p>
+<p><img src="images/misc/web.png" alt="git flow init example"></p>
+
+<p>For more information, see documentation on <a href="http://webpy.readthedocs.org/en/latest/" target="_blank">web.py</a></p>
+
+<h2>
+  <a id="misc-scripts" class="anchor" href="#misc-scripts" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  htest.py
+</h2>
+
+<p>The <em>htest.py</em> script tests HTTP performance by sending repeated HTTP GET requests for an object over a persistent HTTP/1.1 connection</p>
+<p>It uses the Python Requests module<p>
+<p>Example usage:</p>
+
+<pre><code>TBD
+</code></pre>
+
+<h2>
+  <a id="misc-scripts" class="anchor" href="#misc-scripts" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  jsonpretty.py
+</h2>
+
+<p>The <em>jsonpretty.py</em> script converts JSON API responses into human-readable format</p>
+
+<p>&nbsp;</p>
+      </section>
+    </div>
+
+    <!-- FOOTER  -->
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Nmeta maintained by <a href="https://github.com/mattjhayes" target="_blank">mattjhayes</a></p>
+        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
+      </footer>
+    </div>
+
+  </body>
+</html>

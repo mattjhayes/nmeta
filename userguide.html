@@ -42,40 +42,80 @@
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
 
-<p>*** Under Construction ***</p>
-
 <h1>
   <a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
-  Configuration
+  User Guide
 </h1>
 
-<p>Configuration files are in the config subdirectory and are written
-in YAML ("YAML Ain't Markup Language") format
-(see: <a href="http://www.yaml.org/spec/1.2/spec.html">http://www.yaml.org/spec/1.2/spec.html</a>)</p>
-
 <h2>
-<a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>General Configuration</h2>
+  <a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configuration
+</h2>
+
+<p>Configuration files are in the <em>config</em> subdirectory and are written
+in YAML ("YAML Ain't Markup Language") format
+(see: <a href="http://www.yaml.org/spec/1.2/spec.html" target="_blank">http://www.yaml.org/spec/1.2/spec.html</a>)</p>
 
 <p>The general configuration parameters are stored in the file:</p>
 
 <pre><code>config/config.yaml
 </code></pre>
 
-<h2>
-<a id="traffic-classification-configuration" class="anchor" href="#traffic-classification-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>Traffic Classification Configuration</h2>
+<h3>
+  <a id="traffic-classification-configuration" class="anchor" href="#traffic-classification-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Traffic Classification Policy
+</h3>
 
-<p>Traffic Classification (TC) configuration parameters are stored in the file:</p>
+<p>The traffic classification policy is stored in the file:</p>
 
 <pre><code>config/tc_policy.yaml
 </code></pre>
 
+<p>It is used to control what classifiers are used, in what order and what actions are taken.</p>
+
+<p>The traffic classification policy is composed of one or more <em>policy rules</em>, each of which contain:</p>
+
+<ul>
+  <li>A comment to describe the purpose of the rule (optional)</li>
+  <li>A match type, consisting of <em>any</em> or <em>all</em></li>
+  <li>One or more <em>policy conditions</em></li>
+  <li>One or more <em>actions</em></li>
+</ul>
+
+<p>Here is an example policy rule:</p>
+
+<p><img src="images/userguide/policyrule.png" alt="Example Policy Rule"></p>
+
+<p>Policy conditions reference classifiers. There are four types of classifier supported:
+<ul>
+  <li>Static</li>
+  <li>Identity</li>
+  <li>Payload</li>
+  <li>Statistical</li>
+</ul>
+
 <h3>
 <a id="static-classifiers" class="anchor" href="#static-classifiers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Static Classifiers</h3>
 
-<p>TBD</p>
+<p>Static classifiers match on attributes in packet headers, or on environmental attributes</p>
+
+<p>Supported attributes are</p>
+<ul>
+  <li>eth_src</li>
+  <li>eth_dst</li>
+  <li>ip_src</li>
+  <li>ip_dst</li>
+  <li>tcp_src</li>
+  <li>tcp_dst</li>
+  <li>eth_type</li>
+</ul>
+
+<p>More attributes will be added over time.</p>
 
 <h3>
-<a id="identity-classifiers" class="anchor" href="#identity-classifiers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Identity Classifiers</h3>
+  <a id="identity-classifiers" class="anchor" href="#identity-classifiers" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Identity Classifiers
+</h3>
 
 <p>All identity classifiers are prefixed with 'identity_'
   LLDP systemname may be matched as a regular expression

@@ -120,6 +120,18 @@ class FlowMetadata(object):
         #    self.logger.error("ERROR: module=flow Unsupported OpenFlow "
         #                      "version %s", datapath.ofproto.OFP_VERSION)
         #    return 0
+           
+            #*** Attempt at VersionSafe match:
+            if pkt_tcp:
+                match = self.vs.get_flow_match(of_proto=ofproto, 
+                        in_port=inport,
+                        dl_src=haddr_to_bin(eth.src),
+                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
+                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
+                self.logger.debug("DEBUG: module=flow VersionSafe test result"
+                                  "is %s", match)
 
             if pkt_tcp:
                 match = datapath.ofproto_parser.OFPMatch(in_port=inport,

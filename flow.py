@@ -36,11 +36,13 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib import addrconv
+from ryu.ofproto import ofproto_v1_0
+from ryu.ofproto import ofproto_v1_3
 
 #*** nmeta imports:
 import qos
 import nmisc
-import versionsafe
+import controller_abstraction
 
 #============== For PEP8 this is 79 characters long... ========================
 #========== For PEP8 DocStrings this is 72 characters long... ==========
@@ -56,15 +58,16 @@ class FlowMetadata(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = ('localhost', 514),
-            facility=19)
+        self.handler = logging.handlers.SysLogHandler(address = 
+                        ('localhost', 514), facility=19)
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
         #*** Instantiate the Flow Metadata (FM) Table:
         self._fm_table = nmisc.AutoVivification()
-        #*** Instantiate the VersionSafe class for calls to OpenFlow Switches:
-        self.vs = versionsafe.VersionSafe()
+        #*** Instantiate the Controller Abstraction class for calls to 
+        #*** OpenFlow Switches:
+        self.ca = controller_abstraction.ControllerAbstract()
         #*** initialise Flow Metadata Table unique reference number:
         self._fm_ref = 1
         #*** Instantiate QoS class:
@@ -84,13 +87,14 @@ class FlowMetadata(object):
         datapath = msg.datapath
         ofproto = datapath.ofproto
         pkt = packet.Packet(msg.data)
-        inport = self.vs.get_in_port(msg, datapath, ofproto)
+        inport = self.ca.get_in_port(msg, datapath, ofproto)
         dpid = datapath.id
         
         #*** check if packet is part of a flow already in the FM table:
         _table_ref = self._fm_check(pkt)
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=flow table_ref match is %s", _table_ref)
+            self.logger.debug("DEBUG: module=flow table_ref match is %s", 
+                              _table_ref)
         if _table_ref:
             self._fm_add_to_existing(pkt, _table_ref, flow_actions)
         else:
@@ -110,37 +114,88 @@ class FlowMetadata(object):
             eth = pkt.get_protocol(ethernet.ethernet)
             pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
             pkt_tcp = pkt.get_protocol(tcp.tcp)
-            if pkt_tcp:
-                match = datapath.ofproto_parser.OFPMatch(in_port=inport,
+            #*** Use versionsafe to build match statements:
+            if (pkt_tcp and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=inport,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
-                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)                    
-            elif pkt_ip4:
-                match = datapath.ofproto_parser.OFPMatch(in_port=inport,
+                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
+                self.logger.debug("DEBUG: module=flow TCP VersionSafe match "
+                                  "is %s", match)
+            elif (pkt_tcp and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+                #*** Note OF1.3 needs eth src and dest in ascii not bin
+                #*** and tcp vs udp protocol specific attributes: 
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=inport,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst, 
+                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
+                        tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
+                self.logger.debug("DEBUG: module=flow TCP VersionSafe match "
+                                  "is %s", match)
+            elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=inport,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
-                        nw_proto=pkt_ip4.proto)
-            elif eth.ethertype != 0x0800:
-                match = datapath.ofproto_parser.OFPMatch(in_port=inport,
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst))
+                self.logger.debug("DEBUG: module=flow IPv4 VersionSafe match "
+                                  "is %s", match)
+            elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=inport,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst, 
+                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst))
+                self.logger.debug("DEBUG: module=flow IPv4 VersionSafe match "
+                                  "is %s", match)
+            elif (eth.ethertype != 0x0800 and 
+                   ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=inport,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
-                        dl_type=eth.ethertype)
+                        dl_dst=haddr_to_bin(eth.dst))
+                self.logger.debug("DEBUG: module=flow Non-IP VersionSafe match"
+                                  " is %s", match)
+            elif (eth.ethertype != 0x0800 and 
+                   ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=inport,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst)
+                self.logger.debug("DEBUG: module=flow Non-IP VersionSafe match"
+                                  " is %s", match)
             else:
                 #*** possibly strange weirdness happened so log this event as
                 #*** a warning and don't install flow match:
                 self.logger.warning("WARNING: module=flow Packet observed "
                                     "that is not IPv4 but has dl_type=0x0800")
                 match = 0
-            return (match, output_queue)
+            if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
+                actions = [datapath.ofproto_parser.OFPActionEnqueue(out_port, 
+                            output_queue)] 
+            elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
+                actions = [
+                    datapath.ofproto_parser.OFPActionOutput(out_port, 0), 
+                    datapath.ofproto_parser.OFPActionSetQueue(output_queue)]
+            else:
+                self.logger.error("ERROR: module=flow Unhandled OF version "
+                    "%s means no action will be installed", 
+                    ofproto.OFP_VERSION)
+                actions = 0
+            return (match, actions)
         else:
-            self.logger.debug("DEBUG: module=flow Not installing flow to switch as continue_to_inspect is True")
+            self.logger.debug("DEBUG: module=flow Not installing flow to "
+                              "switch as continue_to_inspect is True")
             match = 0
-            output_queue = 1
-            return (match, output_queue)
+            actions = 0
+            return (match, actions)
 
     def maintain_fm_table(self, max_age):
         """

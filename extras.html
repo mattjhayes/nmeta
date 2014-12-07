@@ -60,11 +60,19 @@
   <br>
   <a href="#base-ubuntu-vm-build">Base Ubuntu VM Build</a>
   <br>
+  <a href="#base-freebsd-vm-build">Base FreeBSD VM Build</a>
+  <br>
   <a href="#vm1">VM1 Server / Controller</a>
   <br>
   <a href="#vm2">VM2 Central Open vSwitch</a>
   <br>
   <a href="#vm3">VM3 WAN Simulation</a>
+  <br>
+  <a href="#vm4">VM4 Remote Open vSwitch</a>
+  <br>
+  <a href="#vm5">VM5 Client Host 1</a>
+  <br>
+  <a href="#vm6">VM6 Client Host 2</a>
 </p>
 
 <h3>
@@ -137,6 +145,29 @@
 <p><img src="images/lab/lab12.png" alt="Lab Pic 12"></p>
 
 <p>&nbsp;</p>
+
+<h2>
+  <a id="base-freebsd-vm-build" class="anchor" href="#base-freebsd-vm-build" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Base FreeBSD VM Build
+</h2>
+
+<p>Here we build a base FreeBSD VM image which we can clone to make a Dummynet WAN simulation guest. We use FreeBSD for this role over Ubuntu, as FreeBSD has Dummynet built into the distribution.</p>
+
+<p>First, download a suitable supported FreeBSD ISO (note: tested version was 10.0). Create a new BSD guest:</p>
+
+<p><img src="images/lab/lab17.png" alt="Lab Pic 17"></p>
+
+<p>Choose 256MB of RAM and the default storage options and a new VM will be created.</p>
+
+<p>Go into the guest settings to configure it to boot off the ISO. Under Storage, click on the Controller: IDE row and then click on the Add CD/DVD Device Icon (circled in orange in screenshot below):</p>
+
+<p><img src="images/lab/lab18.png" alt="Lab Pic 18"></p>
+
+<p>Browse to the location of the ISO:</p>
+
+<p><img src="images/lab/lab19.png" alt="Lab Pic 19"></p>
+
+<p>Start the VM and install OS. Once built, shut the VM down and remove the ISO from the Storage setting otherwise it will try and rebuilt when started.</p>
 
 <h2>
   <a id="vm1" class="anchor" href="#vm1" aria-hidden="true"><span class="octicon octicon-link"></span></a>
@@ -267,12 +298,261 @@ PYTHONPATH=. ./bin/ryu-manager --verbose ryu/app/simple_switch.py
 
 <p>Here is output showing successful connection with the controller:</p>
 
-<p>*** Under Construction!!! ***</p>
+<p><img src="images/lab/lab16.png" alt="Lab Pic 16"></p>
+
+<p>&nbsp;</p>
 
 <h2>
   <a id="vm3" class="anchor" href="#vm3" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   VM3 WAN Simulation
 </h2>
+
+<p>VM3 is used to simulate a WAN, with configurable bandwidth, delay and packet loss.</p>
+
+<p>Start by making a clone of the base FreeBSD (not Ubuntu) VM and call it something suitable.</p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Networking
+</h3>
+<p>Go into the Network settings and leave Adapter 1 as per defaults to allow NAT access to the Internet (required for downloading software packages from the Internet). Configure Adapter 2 as per screenshot below to connect to Internal Network "WAN-3":</p>
+
+<p><img src="images/lab/lab20.png" alt="Lab Pic 20"></p>
+
+<p>Configure Adapter 3 as per screenshot below to connect to Internal Network "WAN-2":</p>
+
+<p><img src="images/lab/lab21.png" alt="Lab Pic 21"></p>
+
+<p>Start the VM and configure networking by editing /etc/rc.conf and adding these lines:</p>
+
+<pre><code>ifconfig_em1="inet 192.168.56.1 netmask 255.255.255.0"
+ifconfig_em2="inet 192.168.57.1 netmask 255.255.255.0"
+#
+# Enable IP Routing:
+gateway_enable="YES"
+#
+# Enable IPFW (used for Dummynet):
+firewall_enable="YES"
+firewall_type="open"
+firewall_script="/etc/ipfw.rules"
+</code></pre>
+
+<p>Enable Kernel Support for Dummynet by modifying the /boot/loader.conf file:</p>
+
+<pre><code>dummynet_load="YES"
+</code></pre>
+
+<p>Configure Dummynet by creating a new file /etc/ipfw.rules:</p>
+
+<pre><code>ipfw -q flush
+ipfw add pipe 1 ip from any to any
+ipfw pipe 1 config delay 10ms bw 2Mbit/s plr 0
+</code></pre>
+
+<p>The bandwidth can be any of bit/s, Kbit/s, Mbits/s, Byte/s, KByte/s, MByte/s. A bandwidth of zero results in no bandwidth limitation.</p>
+
+<p>Note that the rule is applied 4 times as the request packet is received and sent out and the reply is received and sent out, i.e. 10ms configured is 40ms RTT.</p>
+
+<p>Make config live:</p>
+
+<pre><code>service ipfw restart
+</code></pre>
+
+<p>Check with:</p>
+<pre><code>ipfw pipe 1 show
+</code></pre>
+
+<p>&nbsp;</p>
+
+<h2>
+  <a id="vm4" class="anchor" href="#vm4" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  VM4 Remote Open vSwitch
+</h2>
+
+<p>This will be the remote Open vSwitch that connects client hosts to the WAN simulator.</p>
+<p>Start by making a clone of the base Ubuntu VM and call it something suitable.</p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Guest Network Adapters
+</h3>
+<p>Go into the Network settings and leave Adapter 1 as per defaults to allow NAT access to the Internet (required for downloading software packages from the Internet). Configure Adapters 2, 3 and 4 as per screenshots below, noting that promiscuous mode MUST be changed to "Allow VMs". This mode is required to allow the guest to function as a switch.</p>
+
+<p><img src="images/lab/lab22.png" alt="Lab Pic 22"></p>
+
+<p><img src="images/lab/lab23.png" alt="Lab Pic 23"></p>
+
+<p><img src="images/lab/lab24.png" alt="Lab Pic 24"></p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Install Open vSwitch
+</h3>
+
+<p>Install openvswitch-common and openvswitch-switch (both in same package):</p>
+
+<pre><code>sudo apt-get install openvswitch-switch
+</code></pre>
+
+<p>Check that it is running:</p>
+<pre><code>sudo ovs-vsctl show
+</code></pre>
+
+<p>Set up bridge 'br0':</p>
+<pre><code>sudo ovs-vsctl add-br br0
+</code></pre>
+
+<p>Add physical interfaces:</p>
+<pre><code>sudo ovs-vsctl add-port br0 eth1
+sudo ovs-vsctl add-port br0 eth2
+sudo ovs-vsctl add-port br0 eth3
+</code></pre>
+
+<p>Edit /etc/network/interfaces:</p>
+
+<pre><code>sudo vi /etc/network/interfaces
+</code></pre>
+
+<p>Add the following:</p>
+
+<pre><code>auto br0
+iface br0 inet static
+address 192.168.56.3
+network 192.168.56.0
+netmask 255.255.255.0
+broadcast 192.168.56.255
+gateway 192.168.56.1
+#
+up route add -net 192.168.57.0/24 gw 192.168.56.1 dev br0
+</code></pre>
+
+<p>Now, do a full restart of the guest.
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Open vSwitch
+</h3>
+
+<p>Check connectivity to the OpenFlow controller:</p>
+
+<pre><code>ping 192.168.57.40
+</code></pre>
+
+<p>On <strong>VM1</strong>, start Ryu OpenFlow Controller:</p>
+
+<pre><code>cd ryu
+PYTHONPATH=. ./bin/ryu-manager --verbose ryu/app/simple_switch.py
+</code></pre>
+
+<p>On <strong>VM4</strong>, set Open vSwitch to contact Controller:</p>
+
+<pre><code>sudo ovs-vsctl set-controller br0 tcp:192.168.57.40:6633
+</code></pre>
+
+<p>Check Open vSwitch connectivity to OpenFlow Controller:</p>
+
+<pre><code>sudo ovs-vsctl show
+</code></pre>
+
+<p>&nbsp;</p>
+
+<h2>
+  <a id="vm5" class="anchor" href="#vm5" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  VM5 Client Host 1
+</h2>
+
+<p>This will be the a remote PC called pc1 that belongs to the Dev division of example.com</p>
+<p>Start by making a clone of the base Ubuntu VM and call it something suitable.</p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Networking
+</h3>
+<p>Go into the Network settings and leave Adapter 1 as per defaults to allow NAT access to the Internet (required for downloading software packages from the Internet). Configure Adapter 2 as per screenshot below to connect to Internal Network "WAN-4":</p>
+
+<p><img src="images/lab/lab25.png" alt="Lab Pic 25"></p>
+
+<p>Edit /etc/network/interfaces:</p>
+
+<pre><code>sudo vi /etc/network/interfaces
+</code></pre>
+
+<p>Add the following:</p>
+
+<pre><code>auto eth1
+iface eth1 inet static
+address 192.168.56.11
+netmask 255.255.255.0
+#
+up route add -net 192.168.57.0/24 gw 192.168.56.1 dev eth1
+</code></pre>
+
+<p>Restart networking:</p>
+
+<pre><code>sudo /etc/init.d/networking restart
+</code></pre>
+
+<p>Edit the /etc/hostname file:</p>
+
+<pre><code>pc1
+</code></pre>
+
+<p>Update the entry in /etc/hosts file for 127.0.1.1 as follows:</p>
+
+<pre><code>127.0.1.1	pc1.dev.example.com pc1
+</code></pre>
+
+<p>&nbsp;</p>
+
+<h2>
+  <a id="vm6" class="anchor" href="#vm6" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  VM6 Client Host 2
+</h2>
+
+<p>This will be the a remote PC called pc2 that belongs to the Audit division of example.com</p>
+<p>Start by making a clone of the base Ubuntu VM and call it something suitable.</p>
+
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Networking
+</h3>
+<p>Go into the Network settings and leave Adapter 1 as per defaults to allow NAT access to the Internet (required for downloading software packages from the Internet). Configure Adapter 2 as per screenshot below to connect to Internal Network "WAN-5":</p>
+
+<p><img src="images/lab/lab26.png" alt="Lab Pic 26"></p>
+
+<p>Edit /etc/network/interfaces:</p>
+
+<pre><code>sudo vi /etc/network/interfaces
+</code></pre>
+
+<p>Add the following:</p>
+
+<pre><code>auto eth1
+iface eth1 inet static
+address 192.168.56.12
+netmask 255.255.255.0
+#
+up route add -net 192.168.57.0/24 gw 192.168.56.1 dev eth1
+</code></pre>
+
+<p>Restart networking:</p>
+
+<pre><code>sudo /etc/init.d/networking restart
+</code></pre>
+
+<p>Edit the /etc/hostname file:</p>
+
+<pre><code>pc2
+</code></pre>
+
+<p>Update the entry in /etc/hosts file for 127.0.1.1 as follows:</p>
+
+<pre><code>127.0.1.1	pc2.audit.example.com pc2
+</code></pre>
+
+<p>&nbsp;</p>
+
+<p>The lab build is finished!</p>
 
       </section>
     </div>

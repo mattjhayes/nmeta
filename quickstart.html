@@ -43,8 +43,57 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
+<h1>
+  <a id="installation" class="anchor" href="#quick_start_guide" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Quick Start Guide
+</h1>
+<p>
+  <img src="images/quickstart/number_1.png" alt="1.">
+</p>
+<p>
+  First, you'll need an <strong>OpenFlow Network</strong> with one or more switches. If you don't have a suitable one to hand then consider building the virtual lab in the <a href="extras.html" target="_blank">Extras section</a>.
+</p>
 
-<p>*** Under Construction ***</p>
+<p>
+  <img src="images/quickstart/number_2.png" alt="2.">
+</p>
+<p>
+  Next, you'll need an <strong>SDN Controller</strong> to run the control plane of the network and host the nmeta application. If you built the virtual lab then you've already got this covered.
+</p>
+<p>
+  If not, build a physical or virtual server. The preferred OS is Ubuntu. Now install Ryu and nmeta as per the <a href="install.html" target="_blank">Install Guide</a>.
+</p>
+
+<p>
+  <img src="images/quickstart/number_3.png" alt="3.">
+</p>
+<p>
+  You'll need some participants (hosts) on your network. Again, if you've built the virtual lab you're already covered for this.
+</p>
+<p>
+  If not, decide what types and numbers of hosts you want on your network, then connect them up.
+</p>
+
+<p>
+  <img src="images/quickstart/number_4.png" alt="4.">
+</p>
+<p>
+  Configure nmeta as per the <a href="userguide.html" target="_blank">User Guide</a>
+</p>
+
+<p>
+  <img src="images/quickstart/number_5.png" alt="5.">
+</p>
+<p>
+  Run nmeta:</a>
+</p>
+
+<pre><code>cd
+cd ryu
+PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
+</code></pre>
+
+<p>Now start experimenting...</p>
       </section>
     </div>
 

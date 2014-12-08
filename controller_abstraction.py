@@ -49,7 +49,7 @@ OF_MATCH_COMPAT = {'dl_dst': {'1': 'dl_dst', '4': 'eth_dst'},
                  'ipv4_dst': {'4': 'ipv4_dst'},
                  'ipv4_src': {'4': 'ipv4_src'},
                  'ipv6_dst': {'4': 'ipv6_dst'},
-                 'ipv6_src': {'4': 'ipv6_src'},                 
+                 'ipv6_src': {'4': 'ipv6_src'},
                  'nw_dst': {'1': 'nw_dst', '4': 'ipv4_dst'},
                  'nw_proto': {'1': 'nw_proto', '4': 'ip_proto'},
                  'nw_src': {'1': 'nw_src', '4': 'ipv4_src'},
@@ -78,12 +78,12 @@ class ControllerAbstract(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = 
+        self.handler = logging.handlers.SysLogHandler(address=
                             ('localhost', 514), facility=19)
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
-        
+
     def get_in_port(self, msg, datapath, ofproto):
         """
         Passed a msg, datapath and OF protocol version
@@ -103,13 +103,13 @@ class ControllerAbstract(object):
 
     def get_flow_match(self, datapath, ofproto, **kwargs):
         """
-        Passed a OF protocol version and a Flow Match keyword arguments dict 
+        Passed a OF protocol version and a Flow Match keyword arguments dict
         and return an OF match tailored for the OF version
         otherwise 0 (false) if compatibility not possible.
         TBD: validating values...
         """
-        #*** Iterate through all kwargs checking attribute validity and 
-        #*** substituting as appropriate or exiting with 0 if invalid 
+        #*** Iterate through all kwargs checking attribute validity and
+        #*** substituting as appropriate or exiting with 0 if invalid
         #*** or not not valid and not substitutable for current OF version:
         results = dict()
         for key, value in kwargs.iteritems():
@@ -122,14 +122,14 @@ class ControllerAbstract(object):
                     #*** Only log if changing the key:
                     if key != new_key:
                         self.logger.debug("DEBUG: module=CtrlAbs match "
-                                      "attr %s will be replaced with %s", 
+                                      "attr %s will be replaced with %s",
                                       key, new_key)
                     results[new_key] = value
                 else:
-                    #*** No valid attribute for this OF version so log the 
+                    #*** No valid attribute for this OF version so log the
                     #*** error and return 0:
                     self.logger.error("ERROR: module=CtrlAbs match failed."
-                                      " No OF %s match for attr %s in %s", 
+                                      " No OF %s match for attr %s in %s",
                                       ofproto, key, OF_MATCH_COMPAT[key])
                     return 0
             else:
@@ -142,15 +142,23 @@ class ControllerAbstract(object):
             match = datapath.ofproto_parser.OFPMatch(**results)
         except:
             #*** Log the error and return 0:
-            e = sys.exc_info()[0]
-            self.logger.error("ERROR: module=CtrlAbs OFPMatch error %s", e)
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("ERROR: module=CtrlAbs "
+                    "ofproto_parser.OFPMatch error %s, %s, %s",
+                            exc_type, exc_value, exc_traceback)
             return 0
         return match
-        
-    def add_flow(self, datapath, match, actions, priority=0, buffer_id=None):
+
+    def add_flow(self, datapath, match, actions, **kwargs):
         """
         Add a flow table entry to a switch.
         Returns 1 for success or 0 for any type of error
+
+        Required kwargs are:
+            priority (0)
+            buffer_id (None)
+            idle_timeout (5)
+            hard_timeout (0)
         """
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -166,12 +174,15 @@ class ControllerAbstract(object):
                     "parser.OFPInstructionActions v1.3 Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
-            
-            if buffer_id:
+
+            if kwargs['buffer_id']:
                 try:
                     mod = parser.OFPFlowMod(datapath=datapath, 
-                                    buffer_id=buffer_id,
-                                    priority=priority, match=match,
+                                    idle_timeout=kwargs['idle_timeout'],
+                                    hard_timeout=kwargs['hard_timeout'],
+                                    buffer_id=kwargs['buffer_id'],
+                                    priority=kwargs['priority'],
+                                    match=match,
                                     instructions=inst)
                 except:
                     #*** Log the error and return 0:
@@ -182,8 +193,10 @@ class ControllerAbstract(object):
                     return 0
             else:
                 try:
-                    mod = parser.OFPFlowMod(datapath=datapath, 
-                                    priority=priority,
+                    mod = parser.OFPFlowMod(datapath=datapath,
+                                    idle_timeout=kwargs['idle_timeout'],
+                                    hard_timeout=kwargs['hard_timeout'],
+                                    priority=kwargs['priority'],
                                     match=match, instructions=inst)
                 except:
                     #*** Log the error and return 0:
@@ -192,7 +205,7 @@ class ControllerAbstract(object):
                         "parser.OFPFlowMod v1.3 #2 Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                     return 0
-            try:                        
+            try:
                 #*** Send flow to switch:
                 datapath.send_msg(mod)
             except:
@@ -206,9 +219,12 @@ class ControllerAbstract(object):
         elif ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             try:
                 mod = datapath.ofproto_parser.OFPFlowMod(
-                    datapath=datapath, match=match, cookie=0,
-                    command=ofproto.OFPFC_ADD, idle_timeout=5, hard_timeout=0,
-                    priority=priority,
+                    datapath=datapath, 
+                    idle_timeout=kwargs['idle_timeout'],
+                    hard_timeout=kwargs['hard_timeout'],
+                    priority=kwargs['priority'],
+                    match=match, cookie=0,
+                    command=ofproto.OFPFC_ADD, 
                     flags=ofproto.OFPFF_SEND_FLOW_REM, actions=actions)
             except:
                 #*** Log the error and return 0:

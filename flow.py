@@ -114,7 +114,7 @@ class FlowMetadata(object):
             eth = pkt.get_protocol(ethernet.ethernet)
             pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
             pkt_tcp = pkt.get_protocol(tcp.tcp)
-            #*** Use versionsafe to build match statements:
+            #*** Use Controller Abstraction module to build match statements:
             if (pkt_tcp and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
                 match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
                         in_port=inport,
@@ -123,7 +123,7 @@ class FlowMetadata(object):
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
-                self.logger.debug("DEBUG: module=flow TCP VersionSafe match "
+                self.logger.debug("DEBUG: module=flow TCP match "
                                   "is %s", match)
             elif (pkt_tcp and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
                 #*** Note OF1.3 needs eth src and dest in ascii not bin
@@ -135,7 +135,7 @@ class FlowMetadata(object):
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
-                self.logger.debug("DEBUG: module=flow TCP VersionSafe match "
+                self.logger.debug("DEBUG: module=flow TCP match "
                                   "is %s", match)
             elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
                 match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
@@ -144,7 +144,7 @@ class FlowMetadata(object):
                         dl_dst=haddr_to_bin(eth.dst), 
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst))
-                self.logger.debug("DEBUG: module=flow IPv4 VersionSafe match "
+                self.logger.debug("DEBUG: module=flow IPv4 match "
                                   "is %s", match)
             elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
                 match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
@@ -153,7 +153,7 @@ class FlowMetadata(object):
                         dl_dst=eth.dst, 
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst))
-                self.logger.debug("DEBUG: module=flow IPv4 VersionSafe match "
+                self.logger.debug("DEBUG: module=flow IPv4 match "
                                   "is %s", match)
             elif (eth.ethertype != 0x0800 and 
                    ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
@@ -161,7 +161,7 @@ class FlowMetadata(object):
                         in_port=inport,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst))
-                self.logger.debug("DEBUG: module=flow Non-IP VersionSafe match"
+                self.logger.debug("DEBUG: module=flow Non-IP match"
                                   " is %s", match)
             elif (eth.ethertype != 0x0800 and 
                    ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
@@ -169,7 +169,7 @@ class FlowMetadata(object):
                         in_port=inport,
                         dl_src=eth.src,
                         dl_dst=eth.dst)
-                self.logger.debug("DEBUG: module=flow Non-IP VersionSafe match"
+                self.logger.debug("DEBUG: module=flow Non-IP match"
                                   " is %s", match)
             else:
                 #*** possibly strange weirdness happened so log this event as

@@ -15,8 +15,6 @@
 #
 # Matt Hayes
 # Victoria University, New Zealand
-#
-# Version 8.7
 
 """
 This is the main module of the nmeta suite running on top of Ryu SDN controller
@@ -277,7 +275,8 @@ class NMeta(app_manager.RyuApp):
             self.logger.debug("DEBUG: module=nmeta Installing actions "
                               "%s on datapath %s", actions, datapath.id)
             flow_add_result = self.ca.add_flow(datapath, match, actions, 
-                                            0, None)
+                                  priority=0, buffer_id=None, idle_timeout=5,
+                                  hard_timeout=0)
             self.logger.debug("DEBUG: module=nmeta add_flow result is %s",
                               flow_add_result)          
         else:

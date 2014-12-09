@@ -181,9 +181,10 @@ class FlowMetadata(object):
                 actions = [datapath.ofproto_parser.OFPActionEnqueue(out_port, 
                             output_queue)] 
             elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
+                #*** Note: out_port must come last!
                 actions = [
-                    datapath.ofproto_parser.OFPActionOutput(out_port, 0), 
-                    datapath.ofproto_parser.OFPActionSetQueue(output_queue)]
+                    datapath.ofproto_parser.OFPActionSetQueue(output_queue),
+                    datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
             else:
                 self.logger.error("ERROR: module=flow Unhandled OF version "
                     "%s means no action will be installed", 

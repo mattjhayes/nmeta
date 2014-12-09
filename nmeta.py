@@ -15,10 +15,6 @@
 #
 # Matt Hayes
 # Victoria University, New Zealand
-# matthew_john_hayes@hotmail.com
-# October 2014
-#
-# Version 8.7
 
 """
 This is the main module of the nmeta suite running on top of Ryu SDN controller
@@ -68,7 +64,7 @@ from ryu.exception import RyuException
 import flow
 import tc_policy
 import config
-import versionsafe
+import controller_abstraction
 
 #*** Web API REST imports:
 from webob import Response
@@ -170,7 +166,7 @@ class NMeta(app_manager.RyuApp):
         self.data = {nmeta_instance_name: self}        
         mapper = wsgi.mapper
         wsgi.register(RESTAPIController, {nmeta_instance_name : self})
-	requirements = {'ip': self.IP_PATTERN}
+        requirements = {'ip': self.IP_PATTERN}
         mapper.connect('flowtable', self.url_flowtable, 
                        controller=RESTAPIController,
                        requirements=requirements,
@@ -194,7 +190,7 @@ class NMeta(app_manager.RyuApp):
         #*** Instantiate Classes:
         self.flowmetadata = flow.FlowMetadata()
         self.tc_policy = tc_policy.TrafficClassificationPolicy()
-        self.vs = versionsafe.VersionSafe()
+        self.ca = controller_abstraction.ControllerAbstract()
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
@@ -212,24 +208,14 @@ class NMeta(app_manager.RyuApp):
         elif datapath.ofproto.OFP_VERSION == 4:
             _of_version = "1.3"
         else:
-            _of_version = "Unknown version " + str(datapath.ofproto.OFP_VERSION)
-        self.logger.debug("DEBUG:  module=nmeta Switch OpenFlow version is %s", _of_version)
+            _of_version = "Unknown version " + \
+                            str(datapath.ofproto.OFP_VERSION)
+        self.logger.info("INFO:  module=nmeta Switch OpenFlow version is %s", 
+                          _of_version)
         datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
                                      datapath,
                                      self.ofpc_frag,
                                      self.miss_send_len))   
-        
-    def add_flow(self, datapath, match, actions):
-        """ 
-        Add a flow match to a switch:
-        """
-        ofproto = datapath.ofproto
-        mod = datapath.ofproto_parser.OFPFlowMod(
-            datapath=datapath, match=match, cookie=0,
-            command=ofproto.OFPFC_ADD, idle_timeout=5, hard_timeout=0,
-            priority=ofproto.OFP_DEFAULT_PRIORITY,
-            flags=ofproto.OFPFF_SEND_FLOW_REM, actions=actions)
-        datapath.send_msg(mod)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -244,7 +230,7 @@ class NMeta(app_manager.RyuApp):
         dst = eth.dst
         src = eth.src
         
-        inport = self.vs.get_in_port(msg, datapath, ofproto)
+        inport = self.ca.get_in_port(msg, datapath, ofproto)
 
         dpid = datapath.id
         self.mac_to_port.setdefault(dpid, {})
@@ -280,18 +266,23 @@ class NMeta(app_manager.RyuApp):
         
         #*** Call Flow Metadata to get a match to install (if desired)
         #*** and output queue:
-        (match, output_queue) = self.flowmetadata.update_flowmetadata(msg, 
+        (match, actions) = self.flowmetadata.update_flowmetadata(msg, 
                                                           out_port, 
                                                           flow_actions)
         #*** Check to see if we have a flow to install:
-        if match:                                                          
-            #*** Build an action of output port(s) and QoS queueing treatment:
-            actions = [datapath.ofproto_parser.OFPActionEnqueue(out_port, 
-                       output_queue)]        
+        if (match and actions):
+            #*** Install flow match and actions to switch:
             self.logger.debug("DEBUG: module=nmeta Installing actions "
-                              "%s on datapath %s", actions, datapath.id)                
-            #*** Install flow match to switch:
-            self.add_flow(datapath, match, actions)         
+                              "%s on datapath %s", actions, datapath.id)
+            flow_add_result = self.ca.add_flow(datapath, match, actions, 
+                                  priority=0, buffer_id=None, idle_timeout=5,
+                                  hard_timeout=0)
+            self.logger.debug("DEBUG: module=nmeta add_flow result is %s",
+                              flow_add_result)          
+        else:
+            #*** Something went wrong so log it:
+            self.logger.error("ERROR: module=nmeta not installing flow,"
+                              "match is % and actions are %s", match, actions)  
         #*** Packet Out:
         action = [datapath.ofproto_parser.OFPActionOutput(out_port, )]
         out = datapath.ofproto_parser.OFPPacketOut(

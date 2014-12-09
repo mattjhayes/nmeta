@@ -177,7 +177,7 @@ class ControllerAbstract(object):
 
             if kwargs['buffer_id']:
                 try:
-                    mod = parser.OFPFlowMod(datapath=datapath, 
+                    mod = parser.OFPFlowMod(datapath=datapath,
                                     idle_timeout=kwargs['idle_timeout'],
                                     hard_timeout=kwargs['hard_timeout'],
                                     buffer_id=kwargs['buffer_id'],
@@ -219,12 +219,12 @@ class ControllerAbstract(object):
         elif ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             try:
                 mod = datapath.ofproto_parser.OFPFlowMod(
-                    datapath=datapath, 
+                    datapath=datapath,
                     idle_timeout=kwargs['idle_timeout'],
                     hard_timeout=kwargs['hard_timeout'],
                     priority=kwargs['priority'],
                     match=match, cookie=0,
-                    command=ofproto.OFPFC_ADD, 
+                    command=ofproto.OFPFC_ADD,
                     flags=ofproto.OFPFF_SEND_FLOW_REM, actions=actions)
             except:
                 #*** Log the error and return 0:

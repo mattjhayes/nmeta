@@ -109,7 +109,7 @@ class TrafficClassificationPolicy(object):
         """
         Check Traffic Classification (TC) policy to ensure that it is in
         correct format so that it won't cause unexpected errors during
-        packet checks. 
+        packet checks.
         """
         self.logger.debug("DEBUG: module=tc_policy Validating TC Policy...")
         for policy_rule in self._tc_policy.keys():
@@ -117,12 +117,13 @@ class TrafficClassificationPolicy(object):
                               "%s", policy_rule)
             #*** Test for unsupported PolicyRule attributes:
             for policy_rule_parameter in self._tc_policy[policy_rule].keys():
-                if not policy_rule_parameter in TC_CONFIG_POLICYRULE_ATTRIBUTES:
+                if not policy_rule_parameter in \
+                        TC_CONFIG_POLICYRULE_ATTRIBUTES:
                     self.logger.critical("CRITICAL: module=tc_policy The "
                                          "following PolicyRule attribute is "
                                          "invalid: %s ", policy_rule_parameter)
                     sys.exit("Exiting nmeta. Please fix error in "
-                             "tc_policy.yaml file")                
+                             "tc_policy.yaml file")
                 if policy_rule_parameter == 'policy_conditions':
                     #*** Check policy conditions are valid:
                     for policy_condition in self._tc_policy[policy_rule] \
@@ -134,36 +135,36 @@ class TrafficClassificationPolicy(object):
                             sys.exit("Exiting nmeta. Please fix error in "
                                      "tc_policy.yaml file")
                 if policy_rule_parameter == 'actions':
-                    #*** Check actions are valid:                    
+                    #*** Check actions are valid:
                     for action in self._tc_policy[policy_rule] \
                                   [policy_rule_parameter].keys():
                         if not action in TC_CONFIG_ACTIONS:
                             self.logger.critical("CRITICAL: module=tc_policy "
                                                  "The following action "
-                                                 "attribute is invalid: %s", 
+                                                 "attribute is invalid: %s",
                                                  action)
                             sys.exit("Exiting nmeta. Please fix error in "
-                                     "tc_policy.yaml file")  
+                                     "tc_policy.yaml file")
                 if policy_rule_parameter == 'match_type':
                     #*** Check match_type value is valid:
-                    if (not self._tc_policy[policy_rule]['match_type'] in 
+                    if (not self._tc_policy[policy_rule]['match_type'] in
                         TC_CONFIG_MATCH_TYPES):
                         self.logger.critical("CRITICAL: module=tc_policy The "
                                              "following match_type value is "
-                                             "invalid: %s", 
+                                             "invalid: %s",
                                              self._tc_policy[policy_rule] \
                                              ['match_type'])
                         sys.exit("Exiting nmeta. Please fix error in "
                                  "tc_policy.yaml file")
-    
+
     def check_policy(self, pkt, dpid, inport):
         """
-        Passed a packet-in packet, a Data Path ID (dpid) and an in port. 
+        Passed a packet-in packet, a Data Path ID (dpid) and an in port.
         Check if packet matches against any policy
         rules and if it does return the associated actions.
         This function is written for efficiency as it will be called for
         every packet-in event and delays will slow down the transmission
-        of these packets. For efficiency, it assumes that the TC policy 
+        of these packets. For efficiency, it assumes that the TC policy
         is valid as it has been checked after ingestion or update.
         It performs an additional function of sending any packets that
         contain identity information (i.e. LLDP) to the Identity module
@@ -172,16 +173,16 @@ class TrafficClassificationPolicy(object):
         #*** and if so pass to the identity module to process:
         pkt_eth = pkt.get_protocol(ethernet.ethernet)
         if pkt_eth.ethertype == 35020:
-            self.identity.lldp_in(pkt, dpid, inport) 
+            self.identity.lldp_in(pkt, dpid, inport)
         #*** Check to see if it is an IPv4 packet
         #*** and if so pass to the identity module to process:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         if pkt_ip4:
-            self.identity.ip4_in(pkt) 
+            self.identity.ip4_in(pkt)
         #*** Check against TC policy:
         for policy_rule in self._tc_policy.keys():
-            _result_dict = self._check_match(pkt, self._tc_policy[policy_rule] \
-                    ['policy_conditions'], 
+            _result_dict = self._check_match(pkt,
+                    self._tc_policy[policy_rule]['policy_conditions'],
                     self._tc_policy[policy_rule]['match_type'])
             if _result_dict["match"]:
                 self.logger.debug("DEBUG: module=tc_policy Matched policy "
@@ -189,10 +190,10 @@ class TrafficClassificationPolicy(object):
                                   "continue_to_inspect and actions...")
                 #*** Merge actions dictionaries. Do type inspection.
                 #*** There has to be a better way...!!!
-                if (isinstance(self._tc_policy[policy_rule]['actions'], dict) and
-                        isinstance(_result_dict['actions'], dict)):
-                    _merged_actions = dict(self._tc_policy[policy_rule]['actions'].items()
-                         + _result_dict['actions'].items())
+                if (isinstance(self._tc_policy[policy_rule]['actions'], dict)
+                         and isinstance(_result_dict['actions'], dict)):
+                    _merged_actions = dict(self._tc_policy[policy_rule] \
+                        ['actions'].items() + _result_dict['actions'].items())
                 elif isinstance(self._tc_policy[policy_rule]['actions'], dict):
                     _merged_actions = self._tc_policy[policy_rule]['actions']
                 elif isinstance(_result_dict['actions'], dict):
@@ -204,15 +205,15 @@ class TrafficClassificationPolicy(object):
                                   _result_dict)
                 return _result_dict
         #*** No hits so return false on everything:
-        _result_dict = {'match':False, 'continue_to_inspect':False, 
-                    'actions': False} 
+        _result_dict = {'match':False, 'continue_to_inspect':False,
+                    'actions': False}
         return _result_dict
-                
+
     def _check_match(self, pkt, policy_conditions, match_type):
         """
-        Passed a packet-in packet, a set of policy conditions and a 
+        Passed a packet-in packet, a set of policy conditions and a
         match type. Check to see if packet matches conditions as per the
-        match type and if so return in the dictionary attribute "match" 
+        match type and if so return in the dictionary attribute "match"
         the boolean value True otherwise boolean False.
         The returned dictionary can also contain values indicating
         whether or not a flow should be installed to the switch
@@ -220,11 +221,11 @@ class TrafficClassificationPolicy(object):
         (attribute "actions")
         A match_type of 'any' will return true as soon as a valid
         match is made and false if end of matching is reached.
-        A match_type of 'all' will return false as soon as an invalid 
+        A match_type of 'all' will return false as soon as an invalid
         match is made and true if end of matching is reached.
-        """         
+        """
         #*** initial settings for results dictionary:
-        _result_dict = {'match':True, 'continue_to_inspect':False, 
+        _result_dict = {'match':True, 'continue_to_inspect':False,
                     'actions': False}
         if match_type == 'any':
             for policy_attr in policy_conditions.keys():
@@ -234,20 +235,25 @@ class TrafficClassificationPolicy(object):
                 _match = False
                 if policy_attr_type == "identity":
                     #*** Identity Classification as part of 'any' match:
-                    _match = self.identity.check_identity(policy_attr, policy_value, pkt)
+                    _match = self.identity.check_identity(policy_attr, 
+                                policy_value, pkt)
                     if _match:
                         _result_dict["match"] = True
                         return _result_dict  
                 elif policy_attr_type == "payload":
                     #*** Payload Classification as part of 'any' match:
-                    _payload_dict = self.payload.check_payload(policy_attr, policy_value, pkt)
+                    _payload_dict = self.payload.check_payload(policy_attr, 
+                                         policy_value, pkt)
                     if _payload_dict["match"]:
                         _result_dict["match"] = True
-                        _result_dict["continue_to_inspect"] = _payload_dict["continue_to_inspect"]
+                        _result_dict["continue_to_inspect"] = \
+                                     _payload_dict["continue_to_inspect"]
                         return _result_dict                    
                 else:
-                    #*** default to doing a Static Classification as part of 'any' match:
-                    _match = self.static.check_static(policy_attr, policy_value, pkt)
+                    #*** default to doing a Static Classification as part of 
+                    #***  'any' match:
+                    _match = self.static.check_static(policy_attr, 
+                                                        policy_value, pkt)
                     if _match:
                         _result_dict["match"] = True
                         return _result_dict
@@ -262,16 +268,19 @@ class TrafficClassificationPolicy(object):
                 _match = False
                 if policy_attr_type == "identity":
                     #*** Identity Classification as part of 'all' match:
-                    _match = self.identity.check_identity(policy_attr, policy_value, pkt)
+                    _match = self.identity.check_identity(policy_attr,
+                                                            policy_value, pkt)
                     if not _match:
                         _result_dict["match"] = False
                         return _result_dict
                 elif policy_attr_type == "payload":
                     #*** Payload Classification as part of 'all' match:
-                    _payload_dict = self.payload.check_payload(policy_attr, policy_value, pkt)
+                    _payload_dict = self.payload.check_payload(policy_attr, 
+                                                     policy_value, pkt)
                     if not _payload_dict["match"]:
                         _result_dict["match"] = False
-                        _result_dict["continue_to_inspect"] = _payload_dict["continue_to_inspect"]
+                        _result_dict["continue_to_inspect"] = \
+                                          _payload_dict["continue_to_inspect"]
                         return _result_dict                     
                     if not _match:
                         _result_dict["match"] = False

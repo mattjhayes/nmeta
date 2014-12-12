@@ -11,12 +11,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#*** nmeta - Network Metadata - TC Statistical Class and Methods
-#
-# Matt Hayes
-# Victoria University, New Zealand
-#
-# Version 2.5
+#*** nmeta - Network Metadata - Traffic Classification Statistical 
+#***                                 Class and Methods
 
 """
 This module is part of the nmeta suite running on top of Ryu SDN controller
@@ -39,23 +35,20 @@ from ryu.lib.packet import tcp
 #*** nmeta imports:
 import nmisc
 
-#============== For PEP8 this is 79 characters long... ========================
-#========== For PEP8 DocStrings this is 72 characters long... ==========
-
 class StatisticalInspect(object):
     """
     This class is instantiated by tc_policy.py 
     (class: TrafficClassificationPolicy) and provides methods to 
     run statistical traffic classification matches
     """
-    def __init__(self):
+    def __init__(self, tc_statistical_logging_level):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(tc_statistical_logging_level)
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = ('localhost', 514),
-            facility=19)
+        self.handler = logging.handlers.SysLogHandler(address = \
+                            ('localhost', 514), facility=19)
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
@@ -72,15 +65,17 @@ class StatisticalInspect(object):
         return a dictionary containing attributes 'valid', 
         'continue_to_inspect' and 'actions' with appropriate values set.
         """
-        self.logger.debug("DEBUG: module=tc_statistical check_statistical was called")
+        self.logger.debug("DEBUG: module=tc_statistical check_statistical was "
+                           "called")
         if policy_attr == "statistical_qos_bandwidth_1":
             #*** call the function for this particular statistical classifier
             results_dict = self._statistical_qos_bandwidth_1(pkt)
             return results_dict
         else:
-            self.logger.error("ERROR: module=tc_statistical Policy attribute %s "
-                              "did not match", policy_attr)
-            return {'valid':False, 'continue_to_inspect':False, 'actions':'none'}        
+            self.logger.error("ERROR: module=tc_statistical Policy attribute "
+                              "%s did not match", policy_attr)
+            return {'valid':False, 'continue_to_inspect':False, 
+                     'actions':'none'}        
         return False
 
     def _statistical_qos_bandwidth_1(self, pkt):
@@ -92,7 +87,8 @@ class StatisticalInspect(object):
         This function is passed a packet and returns a dictionary of 
         results. Only works on TCP.
         """
-        #*** Maximum packets to accumulate in a flow before making a classification
+        #*** Maximum packets to accumulate in a flow before making a 
+        #***  classification:
         _max_packets = 5
         #*** Thresholds used in calculations:
         _max_packet_size_threshold = 1200

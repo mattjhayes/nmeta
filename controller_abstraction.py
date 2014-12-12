@@ -12,9 +12,6 @@
 # limitations under the License.
 
 #*** nmeta - Network Metadata - Abstractions of Controller for OpenFlow Calls
-#
-# Matt Hayes
-# Victoria University, New Zealand
 
 """
 This module is part of the nmeta suite running on top of Ryu SDN controller
@@ -72,11 +69,11 @@ class ControllerAbstract(object):
     program to know calls specific to the version of
     OpenFlow that the switch runs (where practical...)
     """
-    def __init__(self):
+    def __init__(self, ca_logging_level):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(ca_logging_level)
         #*** Log to syslog on localhost
         self.handler = logging.handlers.SysLogHandler(address=
                             ('localhost', 514), facility=19)
@@ -174,7 +171,6 @@ class ControllerAbstract(object):
                     "parser.OFPInstructionActions v1.3 Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
-
             if kwargs['buffer_id']:
                 try:
                     mod = parser.OFPFlowMod(datapath=datapath,
@@ -244,3 +240,32 @@ class ControllerAbstract(object):
                             exc_type, exc_value, exc_traceback)
                 return 0
             return 1
+
+    def packet_out(self, datapath, msg, inport, actions):
+        """
+        Sends a supplied packet out one or more switch ports, 
+        as per supplied actions
+        """
+        try:
+            #*** Assemble the switch/packet/actions ready to push:
+            out = datapath.ofproto_parser.OFPPacketOut(
+                datapath=datapath, buffer_id=msg.buffer_id, in_port=inport,
+                actions=actions)
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("ERROR: module=CtrlAbs "
+               "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                exc_type, exc_value, exc_traceback)
+            return 0 
+        try:
+            #*** Tell the switch to send the packet:
+            datapath.send_msg(out)
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("ERROR: module=CtrlAbs "
+               "datapath.send_msg Exception %s, %s, %s",
+                exc_type, exc_value, exc_traceback)
+            return 0 
+        return 1

@@ -12,10 +12,6 @@
 # limitations under the License.
 
 #*** nmeta - Network Metadata - TC Payload Class and Methods
-#
-# Matt Hayes
-# Victoria University, New Zealand
-# Version 1.8
 
 """
 This module is part of the nmeta suite running on top of Ryu SDN controller
@@ -39,23 +35,20 @@ from ryu.lib.packet import tcp
 #*** nmeta imports:
 import nmisc
 
-#============== For PEP8 this is 79 characters long... ========================
-#========== For PEP8 DocStrings this is 72 characters long... ==========
-
 class PayloadInspect(object):
     """
     This class is instantiated by tc_policy.py 
     (class: TrafficClassificationPolicy) and provides methods to 
     run payload traffic classification matches
     """
-    def __init__(self):
+    def __init__(self, tc_payload_logging_level):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(tc_payload_logging_level)
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = ('localhost', 514),
-            facility=19)
+        self.handler = logging.handlers.SysLogHandler(address = \
+                    ('localhost', 514), facility=19)
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
@@ -77,8 +70,9 @@ class PayloadInspect(object):
             results_dict = self._payload_ftp(pkt)
             return results_dict
         else:
-            self.logger.error("ERROR: module=tc_payload Policy attribute %s and value %s"
-                              " did not match", policy_attr, policy_value)
+            self.logger.error("ERROR: module=tc_payload Policy attribute %s "
+                              "and value %s did not match", policy_attr, 
+                              policy_value)
             return {'match':False, 'continue_to_inspect':False}        
             
     def _payload_ftp(self, pkt):
@@ -97,14 +91,17 @@ class PayloadInspect(object):
             return {'match':False, 'continue_to_inspect':False}
         #*** It is TCP, static classification check to see if it's FTP control:
         if ((int(_pkt_tcp.src_port) == 21) or (int(_pkt_tcp.dst_port) == 21)):
-            #*** Its FTP control, based on the above, ahem, static classification. But wait, there's more...
+            #*** Its FTP control, based on the above, ahem, static 
+            #***  classification. But wait, there's more...
             _match = True
             _continue_to_inspect = True
-            self.logger.debug("DEBUG: module=tc_payload matched FTP control packet") 
+            self.logger.debug("DEBUG: module=tc_payload matched FTP control "
+                              "packet") 
             #*** Do FCIP processing:
             _fcip_results = self._process_pkt_fcip(pkt, 'ftp')
             if _fcip_results['finalised']:
-                #*** Its finalised so set continue_to_inspect to false so flow installed to switch:
+                #*** Its finalised so set continue_to_inspect to false so flow
+                #***  installed to switch:
                 return {'match':_match, 'continue_to_inspect':False}
             if _fcip_results['viable']:
                 #*** Viable for payload inspection so check it out...

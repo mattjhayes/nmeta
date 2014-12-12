@@ -12,11 +12,6 @@
 # limitations under the License.
 
 #*** nmeta - Network Metadata - Flow Metadata Class and Methods
-#
-# Matt Hayes
-# Victoria University, New Zealand
-#
-# Version 5.1
 
 """
 This module is part of the nmeta suite running on top of Ryu SDN controller
@@ -44,19 +39,17 @@ import qos
 import nmisc
 import controller_abstraction
 
-#============== For PEP8 this is 79 characters long... ========================
-#========== For PEP8 DocStrings this is 72 characters long... ==========
-
 class FlowMetadata(object):
     """
     This class is instantiated by nmeta.py and provides methods to 
     add/remove/update/search flow metadata table entries
     """
-    def __init__(self):
+    def __init__(self, flow_logging_level, qos_logging_level, 
+                  ca_logging_level):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(flow_logging_level)
         #*** Log to syslog on localhost
         self.handler = logging.handlers.SysLogHandler(address = 
                         ('localhost', 514), facility=19)
@@ -67,11 +60,11 @@ class FlowMetadata(object):
         self._fm_table = nmisc.AutoVivification()
         #*** Instantiate the Controller Abstraction class for calls to 
         #*** OpenFlow Switches:
-        self.ca = controller_abstraction.ControllerAbstract()
+        self.ca = controller_abstraction.ControllerAbstract(ca_logging_level)
         #*** initialise Flow Metadata Table unique reference number:
         self._fm_ref = 1
         #*** Instantiate QoS class:
-        self.qos = qos.QoS()
+        self.qos = qos.QoS(qos_logging_level)
         #*** Do you want really verbose debugging?
         self.extra_debugging = 1
         
@@ -213,8 +206,10 @@ class FlowMetadata(object):
             if self._fm_table[_table_ref]["time_last"]:
                 _last = self._fm_table[_table_ref]["time_last"]
                 if (_time - _last > max_age):
-                    self.logger.debug("DEBUG: module=flow Deleting FM table ref %s", _table_ref)
-                    #*** Can't delete while iterating dictionary so just note the table ref:
+                    self.logger.debug("DEBUG: module=flow Deleting FM table "
+                                        "ref %s", _table_ref)
+                    #*** Can't delete while iterating dictionary so just note
+                    #***  the table ref:
                     _for_deletion.append(_table_ref)
         #*** Now iterate over the list of references to delete:
         for _del_ref in _for_deletion:

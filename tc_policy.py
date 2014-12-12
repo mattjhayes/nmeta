@@ -12,11 +12,6 @@
 # limitations under the License.
 
 #*** nmeta - Network Metadata - Policy Interpretation Class and Methods
-#
-# Matt Hayes
-# Victoria University, New Zealand
-#
-# Version 3.1
 
 """
 This module is part of the nmeta suite running on top of Ryu SDN controller
@@ -47,8 +42,6 @@ import tc_payload
 #*** YAML for config and policy file parsing:
 import yaml
 
-#============== For PEP8 this is 79 characters long... ========================
-
 #*** Describe supported syntax in tc_policy.yaml so that it can be tested
 #*** for validity:
 TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'match_type', 
@@ -69,11 +62,13 @@ class TrafficClassificationPolicy(object):
     to ingest the policy file tc_policy.yaml and check flows
     against policy to see if actions exist
     """
-    def __init__(self):
+    def __init__(self, tc_policy_logging_level, tc_static_logging_level,
+                   tc_identity_logging_level, tc_payload_logging_level,
+                   tc_statistical_logging_level):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(tc_policy_logging_level)
         #*** Log to syslog on localhost
         self.handler = logging.handlers.SysLogHandler(address = ('localhost', 
                                                       514), facility=19)
@@ -101,10 +96,11 @@ class TrafficClassificationPolicy(object):
             sys.exit("Exiting nmeta. Please create traffic classification "
                              "policy file") 
         #*** Instantiate Classes:
-        self.static = tc_static.StaticInspect()
-        self.identity = tc_identity.IdentityInspect()
-        self.payload = tc_payload.PayloadInspect()
-        self.statistical = tc_statistical.StatisticalInspect()
+        self.static = tc_static.StaticInspect(tc_static_logging_level)
+        self.identity = tc_identity.IdentityInspect(tc_identity_logging_level)
+        self.payload = tc_payload.PayloadInspect(tc_payload_logging_level)
+        self.statistical = tc_statistical.StatisticalInspect \
+                                (tc_statistical_logging_level)
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()

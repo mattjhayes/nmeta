@@ -16,7 +16,7 @@
 """
 This module is part of the nmeta suite running on top of Ryu SDN controller
 to provide network identity and flow (Traffic Classification - TC) metadata.
-It expects a file called "tc_policy.yaml" to be in the config subdirectory  
+It expects a file called "tc_policy.yaml" to be in the config subdirectory
 containing properly formed YAML that conforms the the particular specifications
 that this program expects. See constant tuples at start of program for valid
 attributes to use.
@@ -28,7 +28,7 @@ import logging.handlers
 import sys
 import os
 
-#*** Packet-related imports: 
+#*** Packet-related imports:
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
@@ -44,7 +44,7 @@ import yaml
 
 #*** Describe supported syntax in tc_policy.yaml so that it can be tested
 #*** for validity:
-TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'match_type', 
+TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'match_type',
                                    'policy_conditions', 'actions')
 TC_CONFIG_POLICY_CONDITIONS = ('eth_src', 'eth_dst', 'ip_src', 'ip_dst',
                                'tcp_src', 'tcp_dst', 'eth_type',
@@ -70,7 +70,7 @@ class TrafficClassificationPolicy(object):
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(tc_policy_logging_level)
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = ('localhost', 
+        self.handler = logging.handlers.SysLogHandler(address=('localhost',
                                                       514), facility=19)
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
@@ -94,7 +94,7 @@ class TrafficClassificationPolicy(object):
             self.logger.error("ERROR: module=tc_policy Failed to open policy "
                               "file %s %s", self.fullpathname, exception)
             sys.exit("Exiting nmeta. Please create traffic classification "
-                             "policy file") 
+                             "policy file")
         #*** Instantiate Classes:
         self.static = tc_static.StaticInspect(tc_static_logging_level)
         self.identity = tc_identity.IdentityInspect(tc_identity_logging_level)

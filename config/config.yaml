@@ -8,6 +8,17 @@ miss_send_len: 1500
 #*** Tell switch how to handle fragments (see OpenFlow spec)
 ofpc_frag: 0
 #
+#========== LOGGING LEVELS PER MODULE ===============
+#*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
+nmeta_logging_level: DEBUG
+flow_logging_level: INFO
+qos_logging_level: INFO
+tc_policy_logging_level: DEBUG
+tc_static_logging_level: DEBUG
+tc_identity_logging_level: INFO
+tc_payload_logging_level: INFO
+tc_statistical_logging_level: INFO
+ca_logging_level: DEBUG
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds
@@ -31,4 +42,6 @@ identity_system_table_max_age: 600
 #*** running the tidy-up process that removes old
 #*** entries:
 identity_table_tidyup_interval: 5
+#
+#
 

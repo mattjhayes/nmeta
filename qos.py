@@ -13,10 +13,6 @@
 
 #*** nmeta - Network Metadata
 #*** Quality of Service (QoS) Class and Methods
-#
-# Matt Hayes
-# Victoria University, New Zealand
-# Version 0.8
 
 """
 This module is part of the nmeta suite running on top of Ryu SDN
@@ -32,9 +28,6 @@ import os
 
 #*** YAML for config and policy file parsing:
 import yaml
-
-#============== For PEP8 this is 79 characters long... ========================
-#========== For PEP8 DocStrings this is 72 characters long... ==========
 
 #*** Describe supported syntax in qos_policy.yaml so that it can be tested
 #*** for validity:
@@ -53,14 +46,14 @@ class QoS(object):
     the QoS treatment policy, and uses this to determine appropriate
     treatment action(s)
     """
-    def __init__(self):
+    def __init__(self, qos_logging_level):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(qos_logging_level)
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = ('localhost', 514),
-            facility=19)
+        self.handler = logging.handlers.SysLogHandler(address = \
+                         ('localhost', 514), facility=19)
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
@@ -124,9 +117,6 @@ class QoS(object):
                                          " %s ", policy_rule, QOS_POLICY_TAG)
                     sys.exit("Exiting nmeta. Please fix error in "
                              "qos_policy.yaml file")                              
-                             
-#============== For PEP8 this is 79 characters long... ========================         
-#========== For PEP8 DocStrings this is 72 characters long... ==========
 
     def check_policy(self, flow_actions):
         """
@@ -145,8 +135,6 @@ class QoS(object):
         #*** No result, so return default queue value:
         return(1)
 
-#============== For PEP8 this is 79 characters long... ========================                     
-#========== For PEP8 DocStrings this is 72 characters long... ==========
     def _check_policy_rule(self, flow_actions, policy_rule):
         """
         Passed a set of Flow Actions and a QoS policy rule. Check if against
@@ -174,6 +162,4 @@ class QoS(object):
             #*** Matched QoS Treatment Type so return the Output Queue:
             return(qp_output_queue)
         else:
-            return(0)
-
-#============== For PEP8 this is 79 characters long... ======================== 
+            return(0) 

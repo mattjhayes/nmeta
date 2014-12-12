@@ -12,9 +12,6 @@
 # limitations under the License.
 
 #*** nmeta - Network Metadata
-#
-# Matt Hayes
-# Victoria University, New Zealand
 
 """
 This is the main module of the nmeta suite running on top of Ryu SDN controller
@@ -74,10 +71,6 @@ import json
 #*** YAML for config and policy file parsing:
 import yaml
 
-#*** Rulers for PEP8 line length compliance:
-#============== For PEP8 this is 79 characters long... ========================
-#========== For PEP8 DocStrings this is 72 characters long... ==========
-
 #*** Constants for REST API:
 REST_RESULT = 'result'
 REST_NG = 'failure'
@@ -90,117 +83,110 @@ class NMeta(app_manager.RyuApp):
     """
     #*** Supports OpenFlow versions 1.0 and 1.3:
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
-                    ofproto_v1_3.OFP_VERSION] 
-                    
+                    ofproto_v1_3.OFP_VERSION]
     #*** Constants for REST API:
-    url_flowtable =             '/nmeta/flowtable/'
-    url_flowtable_by_ip =       '/nmeta/flowtable/{ip}'
-    url_identity_nic_table =    '/nmeta/identity/nictable/'
+    url_flowtable = '/nmeta/flowtable/'
+    url_flowtable_by_ip = '/nmeta/flowtable/{ip}'
+    url_identity_nic_table = '/nmeta/identity/nictable/'
     url_identity_system_table = '/nmeta/identity/systemtable/'
     #
     IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
-    _CONTEXTS = { 'wsgi': WSGIApplication }
-    
+    _CONTEXTS = {'wsgi': WSGIApplication}
 
     def __init__(self, *args, **kwargs):
         super(NMeta, self).__init__(*args, **kwargs)
-        #*** Instantiate config class which imports configuration file 
+        #*** Instantiate config class which imports configuration file
         #*** config.yaml and provides access to keys/values:
         self.config = config.Config()
+
         #*** Set up logging to write to syslog:
-        logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s', 
+        logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s',
             level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(self.config.get_value("nmeta_logging_level"))
         #*** Log to syslog on localhost
         self.handler = logging.handlers.SysLogHandler(
-                        address = ('localhost', 514),
+                        address=('localhost', 514),
                         facility=19)
         self.logger.addHandler(self.handler)
-        #*** Set up variables:        
-        #*** Get max bytes of new flow packets to send to controller from 
+        #*** Set up variables:
+        #*** Get max bytes of new flow packets to send to controller from
         #*** config file:
         self.miss_send_len = self.config.get_value("miss_send_len")
-        if (self.miss_send_len < 1500):
+        if self.miss_send_len < 1500:
             self.logger.info("INFO:  module=nmeta Be aware that setting "
-                             "miss_send_len to less than a full size packet " 
+                             "miss_send_len to less than a full size packet "
                              "may result in errors due to truncation. "
                              "Configured value is %s bytes",
                              self.miss_send_len)
         #*** Tell switch how to handle fragments (see OpenFlow spec):
         self.ofpc_frag = self.config.get_value("ofpc_frag")
-        
+
         #*** Table maintenance settings from config.yaml file:
         self.fm_table_max_age = self.config.get_value('fm_table_max_age')
-        if not self.fm_table_max_age:
-            self.fm_table_max_age = 30
-            self.logger.warning("WARNING:  module=nmeta config.yaml did not have value for "
-                             "fm_table_max_age so setting value to %s", self.fm_table_max_age)
-        self.fm_table_tidyup_interval = self.config.get_value('fm_table_tidyup_interval')
-        if not self.fm_table_tidyup_interval:
-            self.fm_table_tidyup_interval = 10
-            self.logger.warning("WARNING:  module=nmeta config.yaml did not have value for "
-                             "fm_table_tidyup_interval so setting value to %s", self.fm_table_tidyup_interval) 
-        self.identity_nic_table_max_age = self.config.get_value('identity_nic_table_max_age')
-        if not self.identity_nic_table_max_age:
-            self.identity_nic_table_max_age = 600
-            self.logger.warning("WARNING:  module=nmeta config.yaml did not have value for "
-                             "identity_nic_table_max_age so setting value to %s", self.identity_nic_table_max_age)        
-        self.identity_system_table_max_age = self.config.get_value('identity_system_table_max_age')
-        if not self.identity_system_table_max_age:
-            self.identity_system_table_max_age = 600
-            self.logger.warning("WARNING:  module=nmeta config.yaml did not have value for "
-                             "identity_system_table_max_age so setting value to %s", self.identity_system_table_max_age)        
-        self.identity_table_tidyup_interval = self.config.get_value('identity_table_tidyup_interval')
-        if not self.identity_table_tidyup_interval:
-            self.identity_table_tidyup_interval = 5
-            self.logger.warning("WARNING:  module=nmeta config.yaml did not have value for "
-                             "identity_table_tidyup_interval so setting value to %s", self.identity_table_tidyup_interval) 
-        #*** Set initial value of the variable that holds last time for tidy-ups:
+        self.fm_table_tidyup_interval = self.config.\
+                                          get_value('fm_table_tidyup_interval')
+        self.identity_nic_table_max_age = self.config.\
+                                        get_value('identity_nic_table_max_age')
+        self.identity_system_table_max_age = self.config.\
+                                     get_value('identity_system_table_max_age')
+        self.identity_table_tidyup_interval = self.config.\
+                                    get_value('identity_table_tidyup_interval')
+        #*** Set initial value of the variable that holds last time
+        #*** for tidy-ups:
         self.fm_table_last_tidyup_time = time.time()
-        self.identity_table_last_tidyup_time = time.time()        
+        self.identity_table_last_tidyup_time = time.time()
         #*** Initiate the mac_to_port dictionary for switching:
         self.mac_to_port = {}
         #*** Set up REST API:
-        wsgi = kwargs['wsgi'] 
-        self.data = {nmeta_instance_name: self}        
+        wsgi = kwargs['wsgi']
+        self.data = {nmeta_instance_name: self}
         mapper = wsgi.mapper
         wsgi.register(RESTAPIController, {nmeta_instance_name : self})
         requirements = {'ip': self.IP_PATTERN}
-        mapper.connect('flowtable', self.url_flowtable, 
+        mapper.connect('flowtable', self.url_flowtable,
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='list_flow_table',
-                       conditions=dict(method=['GET']))	
-        mapper.connect('flowtable', self.url_flowtable_by_ip, 
+                       conditions=dict(method=['GET']))
+        mapper.connect('flowtable', self.url_flowtable_by_ip,
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='list_flow_table_by_ip',
-                       conditions=dict(method=['GET']))	
-        mapper.connect('flowtable', self.url_identity_nic_table, 
+                       conditions=dict(method=['GET']))
+        mapper.connect('flowtable', self.url_identity_nic_table,
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='list_identity_nic_table',
-                       conditions=dict(method=['GET']))	
-        mapper.connect('flowtable', self.url_identity_system_table, 
+                       conditions=dict(method=['GET']))
+        mapper.connect('flowtable', self.url_identity_system_table,
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='list_identity_system_table',
-                       conditions=dict(method=['GET']))	                        
+                       conditions=dict(method=['GET']))
         #*** Instantiate Classes:
-        self.flowmetadata = flow.FlowMetadata()
-        self.tc_policy = tc_policy.TrafficClassificationPolicy()
-        self.ca = controller_abstraction.ControllerAbstract()
+        self.flowmetadata = flow.FlowMetadata \
+                           (self.config.get_value("flow_logging_level"),
+                            self.config.get_value("qos_logging_level"),
+                            self.config.get_value("ca_logging_level"))
+        self.tc_policy = tc_policy.TrafficClassificationPolicy \
+                        (self.config.get_value("tc_policy_logging_level"),
+                         self.config.get_value("tc_static_logging_level"),
+                         self.config.get_value("tc_identity_logging_level"),
+                         self.config.get_value("tc_payload_logging_level"),
+                         self.config.get_value("tc_statistical_logging_level"))
+        self.ca = controller_abstraction.ControllerAbstract \
+                            (self.config.get_value("ca_logging_level"))
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
-        """ 
+        """
         Set switch miss_send_len parameter in bytes.
         A larger value can help avoid truncated packets
-        """            
+        """
         datapath = ev.msg.datapath
         self.logger.info("INFO:  module=nmeta Setting config on switch "
-                         "datapath %s to OFPC_FRAG flag %s and "
+                         "DPID=%s to OFPC_FRAG flag %s and "
                          "miss_send_len %s bytes",
                           datapath.id, self.ofpc_frag, self.miss_send_len)
         if datapath.ofproto.OFP_VERSION == 1:
@@ -210,12 +196,12 @@ class NMeta(app_manager.RyuApp):
         else:
             _of_version = "Unknown version " + \
                             str(datapath.ofproto.OFP_VERSION)
-        self.logger.info("INFO:  module=nmeta Switch OpenFlow version is %s", 
-                          _of_version)
+        self.logger.info("INFO:  module=nmeta Switch DPID=%s OpenFlow version "
+                         "is %s", datapath.id, _of_version)
         datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
                                      datapath,
                                      self.ofpc_frag,
-                                     self.miss_send_len))   
+                                     self.miss_send_len))
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -226,86 +212,95 @@ class NMeta(app_manager.RyuApp):
         datapath = msg.datapath
         ofproto = datapath.ofproto
         pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)  
+        eth = pkt.get_protocol(ethernet.ethernet)
         dst = eth.dst
         src = eth.src
-        
+
         inport = self.ca.get_in_port(msg, datapath, ofproto)
 
         dpid = datapath.id
         self.mac_to_port.setdefault(dpid, {})
-        
+
         #*** Some debug about the Packet In:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_udp = pkt.get_protocol(udp.udp)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
         if pkt_tcp:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                              "%s TCP %s %s %s %s", 
-                              dpid, inport, pkt_ip4.src, 
+                              "%s TCP %s %s %s %s",
+                              dpid, inport, pkt_ip4.src,
                               pkt_tcp.src_port, pkt_ip4.dst, pkt_tcp.dst_port)
         elif pkt_ip4:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                               "%s IP src %s dst %s proto %s",
-                              dpid, inport, 
+                              dpid, inport,
                               pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
         else:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                             "%s src:%s dst:%s", dpid, inport, src, dst) 
+                             "%s src:%s dst:%s", dpid, inport, src, dst)
         #*** Traffic Classification:
-        #*** Check traffic classification policy to see if packet matches  
+        #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does return a dictionary of actions:
-        flow_actions = self.tc_policy.check_policy(pkt, dpid, inport)       
+        flow_actions = self.tc_policy.check_policy(pkt, dpid, inport)
         #*** Forwarding Decision:
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = inport
         if dst in self.mac_to_port[dpid]:
             out_port = self.mac_to_port[dpid][dst]
         else:
-            out_port = ofproto.OFPP_FLOOD  
-        
+            out_port = ofproto.OFPP_FLOOD
+
+        #*** TBD: Build actions through ca module:
+        #actions = self.ca.actions(datapath, out_port=out_port,
+
         #*** Call Flow Metadata to get a match to install (if desired)
         #*** and output queue:
-        (match, actions) = self.flowmetadata.update_flowmetadata(msg, 
-                                                          out_port, 
+        (match, actions) = self.flowmetadata.update_flowmetadata(msg,
+                                                          out_port,
                                                           flow_actions)
         #*** Check to see if we have a flow to install:
-        if (match and actions):
+        if match and actions:
             #*** Install flow match and actions to switch:
             self.logger.debug("DEBUG: module=nmeta Installing actions "
                               "%s on datapath %s", actions, datapath.id)
-            flow_add_result = self.ca.add_flow(datapath, match, actions, 
+            flow_add_result = self.ca.add_flow(datapath, match, actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             self.logger.debug("DEBUG: module=nmeta add_flow result is %s",
-                              flow_add_result)          
+                              flow_add_result)
         else:
             #*** Something went wrong so log it:
             self.logger.error("ERROR: module=nmeta not installing flow,"
-                              "match is % and actions are %s", match, actions)  
-        #*** Packet Out:
+                              "match is % and actions are %s", match, actions)
+
+        #*** Send Packet Out:
         action = [datapath.ofproto_parser.OFPActionOutput(out_port, )]
-        out = datapath.ofproto_parser.OFPPacketOut(
-            datapath=datapath, buffer_id=msg.buffer_id, in_port=inport,
-            actions=action)
-        datapath.send_msg(out)
-        
+        packet_out_result = self.ca.packet_out(datapath, msg, inport, 
+                            actions=action)
+        self.logger.debug("DEBUG: module=nmeta Sent packet-out with result %s",
+                             packet_out_result)
+
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:
         _time = time.time()
-        if ((_time - self.fm_table_last_tidyup_time) > self.fm_table_tidyup_interval):
+        if (_time - self.fm_table_last_tidyup_time) > \
+                                 self.fm_table_tidyup_interval:
             #*** Call function to do tidy-up on the Flow Metadata (FM) table:
-            self.logger.debug("DEBUG: module=nmeta Calling function to do tidy-up on the Flow Metadata (FM) table")
+            self.logger.debug("DEBUG: module=nmeta Calling function to do "
+                               "tidy-up on the Flow Metadata (FM) table")
             self.flowmetadata.maintain_fm_table(self.fm_table_max_age)
         #*** Identity NIC and System table maintenance:
         _time = time.time()
-        if ((_time - self.identity_table_last_tidyup_time) > self.identity_table_tidyup_interval):
-            #*** Call function to do tidy-up on the Identity NIC and System tables:
-            self.logger.debug("DEBUG: module=nmeta Calling function to do tidy-up on the Identity NIC and System tables")
-            self.tc_policy.identity.maintain_identity_tables(self.identity_nic_table_max_age,
-                                                             self.identity_system_table_max_age)        
+        if (_time - self.identity_table_last_tidyup_time) \
+                              > self.identity_table_tidyup_interval:
+            #*** Call function to do tidy-up on the Identity NIC
+            #***  and System tables:
+            self.logger.debug("DEBUG: module=nmeta Calling function to do "
+                              "tidy-up on the Identity NIC and System tables")
+            self.tc_policy.identity.maintain_identity_tables(
+                               self.identity_nic_table_max_age,
+                               self.identity_system_table_max_age)
 
-    
 # REST command template
 #*** Copied from the Ryu rest_router.py example code:
 def rest_command(func):
@@ -343,17 +338,17 @@ class RESTAPIController(ControllerBase):
     @rest_command
     def list_flow_table(self, req, **kwargs):
         """
-        REST API function that returns contents of the 
+        REST API function that returns contents of the
         Flow Metadata (FM) table
         """
         nmeta = self.nmeta_parent_self
         _fm_table = nmeta.flowmetadata.get_fm_table()
         return _fm_table
-    
+
     @rest_command
     def list_flow_table_by_IP(self, req, **kwargs):
         """
-        REST API function that returns contents of the 
+        REST API function that returns contents of the
         Flow Metadata (FM) table filtered on an IP address
         (matches source or destination IP).
         .

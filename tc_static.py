@@ -12,10 +12,6 @@
 # limitations under the License.
 
 #*** nmeta - Network Metadata - TC Static Class and Methods
-#
-# Matt Hayes
-# Victoria University, New Zealand
-# Version 0.3
 
 """
 This module is part of the nmeta suite running on top of Ryu SDN controller
@@ -38,20 +34,17 @@ from ryu.lib.packet import tcp
 #*** nmeta imports:
 import nmisc
 
-#============== For PEP8 this is 79 characters long... ========================
-#========== For PEP8 DocStrings this is 72 characters long... ==========
-
 class StaticInspect(object):
     """
     This class is instantiated by tc_policy.py 
     (class: TrafficClassificationPolicy) and provides methods to 
     query static traffic classification matches
     """
-    def __init__(self):
+    def __init__(self, tc_static_logging_level):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(tc_static_logging_level)
         #*** Log to syslog on localhost
         self.handler = logging.handlers.SysLogHandler(address = ('localhost', 514),
             facility=19)

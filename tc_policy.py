@@ -235,24 +235,24 @@ class TrafficClassificationPolicy(object):
                 _match = False
                 if policy_attr_type == "identity":
                     #*** Identity Classification as part of 'any' match:
-                    _match = self.identity.check_identity(policy_attr, 
+                    _match = self.identity.check_identity(policy_attr,
                                 policy_value, pkt)
                     if _match:
                         _result_dict["match"] = True
-                        return _result_dict  
+                        return _result_dict
                 elif policy_attr_type == "payload":
                     #*** Payload Classification as part of 'any' match:
-                    _payload_dict = self.payload.check_payload(policy_attr, 
+                    _payload_dict = self.payload.check_payload(policy_attr,
                                          policy_value, pkt)
                     if _payload_dict["match"]:
                         _result_dict["match"] = True
                         _result_dict["continue_to_inspect"] = \
                                      _payload_dict["continue_to_inspect"]
-                        return _result_dict                    
+                        return _result_dict
                 else:
-                    #*** default to doing a Static Classification as part of 
+                    #*** default to doing a Static Classification as part of
                     #***  'any' match:
-                    _match = self.static.check_static(policy_attr, 
+                    _match = self.static.check_static(policy_attr,
                                                         policy_value, pkt)
                     if _match:
                         _result_dict["match"] = True
@@ -275,19 +275,21 @@ class TrafficClassificationPolicy(object):
                         return _result_dict
                 elif policy_attr_type == "payload":
                     #*** Payload Classification as part of 'all' match:
-                    _payload_dict = self.payload.check_payload(policy_attr, 
+                    _payload_dict = self.payload.check_payload(policy_attr,
                                                      policy_value, pkt)
                     if not _payload_dict["match"]:
                         _result_dict["match"] = False
                         _result_dict["continue_to_inspect"] = \
                                           _payload_dict["continue_to_inspect"]
-                        return _result_dict                     
+                        return _result_dict
                     if not _match:
                         _result_dict["match"] = False
-                        return _result_dict                  
+                        return _result_dict
                 else:
-                    #*** default to doing a Static Classification as part of 'all' match:
-                    _match = self.static.check_static(policy_attr, policy_value, pkt)
+                    #*** default to doing a Static Classification as part of
+                    #***  'all' match:
+                    _match = self.static.check_static(policy_attr,
+                                                        policy_value, pkt)
                     if not _match:
                         _result_dict["match"] = False
                         return _result_dict
@@ -297,26 +299,28 @@ class TrafficClassificationPolicy(object):
         elif match_type == 'statistical':
             for policy_attr in policy_conditions.keys():
                 policy_value = policy_conditions[policy_attr]
-                _result_statistical = self.statistical.check_statistical(policy_attr, policy_value, pkt)
-                self.logger.debug("DEBUG: module=tc_policy statistical continue_to_inspect is %s and actions are %s",
-                                      _result_statistical['continue_to_inspect'], _result_statistical['actions'])                    
+                _result_statistical = self.statistical.check_statistical \
+                                              (policy_attr, policy_value, pkt)
+                self.logger.debug("DEBUG: module=tc_policy statistical "
+                             "continue_to_inspect is %s and actions are %s",
+                             _result_statistical['continue_to_inspect'],
+                             _result_statistical['actions'])
                 if _result_statistical['valid']:
                     _result_dict["match"] = True
-                    _result_dict["continue_to_inspect"] = _result_statistical["continue_to_inspect"]
+                    _result_dict["continue_to_inspect"] = \
+                                     _result_statistical["continue_to_inspect"]
                     _result_dict["actions"] = _result_statistical["actions"]
                     return _result_dict
                 else:
                     #*** Strange condition, log an error:
-                    self.logger.error("ERROR: module=tc_policy Statistical classifier failed")
+                    self.logger.error("ERROR: module=tc_policy Statistical "
+                                        "classifier failed")
                     _result_dict["match"] = False
                     _result_dict["continue_to_inspect"] = False
                     return _result_dict
         else:
             self.logger.critical("CRITICAL: module=tc_policy The following "
-                                 "match_type value is invalid: %s", 
+                                 "match_type value is invalid: %s",
                                  match_type)
             sys.exit("Exiting nmeta. Please fix error in tc_policy.yaml file")
-
-      
-        
 

@@ -241,20 +241,57 @@ class ControllerAbstract(object):
                 return 0
             return 1
 
-    def packet_out(self, datapath, msg, inport, actions):
+    def packet_out(self, datapath, msg, in_port, out_port, out_queue):
         """
-        Sends a supplied packet out one or more switch ports, 
-        as per supplied actions
+        Sends a supplied packet out switch port(s) in specific queue 
         """
+        ofproto = datapath.ofproto
+        #*** First build OF version specific list of actions:
+        if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
+            try:
+                #*** Note that QoS seems broken for packet out on OF1.0 with
+                #*** OVS (or more probably the writer of this code failed to
+                #*** properly understand the standard). The OFPActionEnqueue
+                #*** action does not result in the packet being sent, i.e.:
+                #actions = [datapath.ofproto_parser.OFPActionEnqueue(out_port, 
+                #            out_queue)]
+                #*** This works, but doesn't specify a queue:
+                actions = [datapath.ofproto_parser.OFPActionOutput(out_port, )]
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("ERROR: module=CtrlAbs error=E1000001 "
+                   "actions v01 Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
+        elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
+            try:
+                #*** Note: out_port must come last!
+                actions = [
+                    datapath.ofproto_parser.OFPActionSetQueue(out_queue),
+                    datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("ERROR: module=CtrlAbs error=E1000002 "
+                   "actions v03 Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
+        else:
+            self.logger.error("ERROR: module=CtrlAbs error=E1000003 "
+                                "Unsupported OpenFlow version %s",
+                                ofproto.OFP_VERSION)
+            return 0
+        #*** Now have we have actions, build the packet out message:
         try:
             #*** Assemble the switch/packet/actions ready to push:
             out = datapath.ofproto_parser.OFPPacketOut(
-                datapath=datapath, buffer_id=msg.buffer_id, in_port=inport,
+                datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
                 actions=actions)
         except:
             #*** Log the error and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=CtrlAbs "
+            self.logger.error("ERROR: module=CtrlAbs error=E1000004 "
                "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
                 exc_type, exc_value, exc_traceback)
             return 0 
@@ -264,7 +301,7 @@ class ControllerAbstract(object):
         except:
             #*** Log the error and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=CtrlAbs "
+            self.logger.error("ERROR: module=CtrlAbs error=E1000005 "
                "datapath.send_msg Exception %s, %s, %s",
                 exc_type, exc_value, exc_traceback)
             return 0 

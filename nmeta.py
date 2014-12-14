@@ -216,7 +216,7 @@ class NMeta(app_manager.RyuApp):
         dst = eth.dst
         src = eth.src
 
-        inport = self.ca.get_in_port(msg, datapath, ofproto)
+        in_port = self.ca.get_in_port(msg, datapath, ofproto)
 
         dpid = datapath.id
         self.mac_to_port.setdefault(dpid, {})
@@ -228,23 +228,23 @@ class NMeta(app_manager.RyuApp):
         if pkt_tcp:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                               "%s TCP %s %s %s %s",
-                              dpid, inport, pkt_ip4.src,
+                              dpid, in_port, pkt_ip4.src,
                               pkt_tcp.src_port, pkt_ip4.dst, pkt_tcp.dst_port)
         elif pkt_ip4:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                               "%s IP src %s dst %s proto %s",
-                              dpid, inport,
+                              dpid, in_port,
                               pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
         else:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                             "%s src:%s dst:%s", dpid, inport, src, dst)
+                             "%s src:%s dst:%s", dpid, in_port, src, dst)
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does return a dictionary of actions:
-        flow_actions = self.tc_policy.check_policy(pkt, dpid, inport)
+        flow_actions = self.tc_policy.check_policy(pkt, dpid, in_port)
         #*** Forwarding Decision:
         # learn a mac address to avoid FLOOD next time.
-        self.mac_to_port[dpid][src] = inport
+        self.mac_to_port[dpid][src] = in_port
         if dst in self.mac_to_port[dpid]:
             out_port = self.mac_to_port[dpid][dst]
         else:
@@ -255,9 +255,8 @@ class NMeta(app_manager.RyuApp):
 
         #*** Call Flow Metadata to get a match to install (if desired)
         #*** and output queue:
-        (match, actions) = self.flowmetadata.update_flowmetadata(msg,
-                                                          out_port,
-                                                          flow_actions)
+        (match, actions, out_queue) = self.flowmetadata.update_flowmetadata \
+                                         (msg, out_port, flow_actions)
         #*** Check to see if we have a flow to install:
         if match and actions:
             #*** Install flow match and actions to switch:
@@ -270,13 +269,13 @@ class NMeta(app_manager.RyuApp):
                               flow_add_result)
         else:
             #*** Something went wrong so log it:
-            self.logger.error("ERROR: module=nmeta not installing flow,"
-                              "match is % and actions are %s", match, actions)
+            self.logger.error("ERROR: module=nmeta error=E1000007 Not "
+                              "installing flow, match is % and actions are %s",
+                              match, actions)
 
         #*** Send Packet Out:
-        action = [datapath.ofproto_parser.OFPActionOutput(out_port, )]
-        packet_out_result = self.ca.packet_out(datapath, msg, inport, 
-                            actions=action)
+        packet_out_result = self.ca.packet_out(datapath, msg, in_port,
+                                out_port, out_queue)
         self.logger.debug("DEBUG: module=nmeta Sent packet-out with result %s",
                              packet_out_result)
 

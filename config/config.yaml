@@ -1,6 +1,5 @@
 #*** Traffic Classification Config for nmeta
 #*** Written in YAML
-#*** Version 0.6
 #
 #*** max bytes of new flow packets to send to controller:
 miss_send_len: 1500

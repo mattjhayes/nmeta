@@ -1,6 +1,5 @@
 #*** Traffic Classification Policy for nmeta
 #*** Written in YAML
-#*** Version 1.4
 #
 'PolicyRule 0':
     comment: OpenFlow Protocol Traffic

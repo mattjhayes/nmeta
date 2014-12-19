@@ -42,17 +42,27 @@ import tc_payload
 #*** YAML for config and policy file parsing:
 import yaml
 
+#*** Import netaddr for IP address checking:
+from netaddr import IPAddress
+from netaddr import IPNetwork
+from netaddr import EUI
+
 #*** Describe supported syntax in tc_policy.yaml so that it can be tested
 #*** for validity:
 TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'match_type',
                                    'policy_conditions', 'actions')
-TC_CONFIG_POLICY_CONDITIONS = ('eth_src', 'eth_dst', 'ip_src', 'ip_dst',
-                               'tcp_src', 'tcp_dst', 'eth_type',
-                               'identity_lldp_chassisid',
-                               'identity_lldp_systemname',
-                               'identity_lldp_systemname_re',
-                               'payload_type',
-                               'statistical_qos_bandwidth_1')
+#*** Dictionary of valid policy condition attributes with type:
+TC_CONFIG_POLICY_CONDITIONS = {'eth_src': 'MACAddress',
+                               'eth_dst': 'MACAddress', 
+                               'ip_src': 'IPAddress', 
+                               'ip_dst': 'IPAddress',
+                               'tcp_src': 'PortNumber', 
+                               'tcp_dst': 'PortNumber', 
+                               'eth_type': 'EtherType',
+                               'identity_lldp_systemname': 'String',
+                               'identity_lldp_systemname_re': 'String',
+                               'payload_type': 'String',
+                               'statistical_qos_bandwidth_1': 'String'}
 TC_CONFIG_ACTIONS = ('set_qos_tag', 'set_desc_tag', 'pass_return_tags')
 TC_CONFIG_MATCH_TYPES = ('any', 'all', 'statistical')
 
@@ -128,12 +138,56 @@ class TrafficClassificationPolicy(object):
                     #*** Check policy conditions are valid:
                     for policy_condition in self._tc_policy[policy_rule] \
                                   [policy_rule_parameter].keys():
+                        #*** Check policy condition attribute is valid:
                         if not policy_condition in TC_CONFIG_POLICY_CONDITIONS:
                             self.logger.critical("CRITICAL: module=tc_policy "
                             "The following PolicyCondition attribute is "
                             "invalid: %s", policy_condition)
                             sys.exit("Exiting nmeta. Please fix error in "
                                      "tc_policy.yaml file")
+                        #*** Check policy condition value is valid:
+                        pc_value_type = TC_CONFIG_POLICY_CONDITIONS \
+                                           [policy_condition]
+                        pc_value = self._tc_policy[policy_rule] \
+                                  ['policy_conditions'][policy_condition]
+                        if pc_value_type == 'PortNumber':
+                            #*** Check is int 0 < x < 65536:
+                            if not self.is_valid_transport_port(pc_value):
+                                self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value is invalid: %s "
+                                      "as %s", policy_condition, pc_value)
+                                sys.exit("Exiting nmeta. Please fix error "
+                                                    "in tc_policy.yaml file")
+                        elif pc_value_type == 'MACAddress':
+                            #*** Check is valid MAC address:
+                            if not self.is_valid_MACAddress(pc_value):
+                                self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value is invalid: %s "
+                                      "as %s", policy_condition, pc_value)
+                                sys.exit("Exiting nmeta. Please fix error "
+                                                    "in tc_policy.yaml file")
+                        elif pc_value_type == 'IPAddress':
+                            #*** Check is valid IP address, IPv4 or IPv6, can
+                            #*** include range or CIDR mask:
+                            if not self.is_valid_IP_space(pc_value):
+                                self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value is invalid: %s "
+                                      "as %s", policy_condition, pc_value)
+                                sys.exit("Exiting nmeta. Please fix error "
+                                                    "in tc_policy.yaml file")
+                        else:
+                            #*** Whoops! We have a data type in the policy
+                            #*** that we've forgot to code a check for...
+                            self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value does not have "
+                                      "a check %s", policy_condition, pc_value)
+                            sys.exit("Exiting nmeta. Coding error "
+                                                    "in tc_policy.yaml file")
+
                 if policy_rule_parameter == 'actions':
                     #*** Check actions are valid:
                     for action in self._tc_policy[policy_rule] \
@@ -156,6 +210,113 @@ class TrafficClassificationPolicy(object):
                                              ['match_type'])
                         sys.exit("Exiting nmeta. Please fix error in "
                                  "tc_policy.yaml file")
+
+    def is_valid_transport_port(self, value_to_check):
+        """
+        Passed a prospective TCP or UDP port number and check that
+        it is an integer in the correct range.
+        Return 1 for is valid port number and 0 for not valid port
+        number
+        """
+        try:
+            if not (int(value_to_check)>0 and int(value_to_check)<65536):
+                self.logger.debug("DEBUG: module=tc_policy Check of "
+                    "is_valid_transport_port on %s returned false",
+                    value_to_check)
+                return 0
+        except:
+            self.logger.debug("DEBUG: module=tc_policy Check of "
+                "is_valid_transport_port on %s raised an exception", 
+                value_to_check)
+            return 0
+        return 1
+
+    def is_valid_MACAddress(self, value_to_check):
+        """
+        Passed a prospective MAC address and check that
+        it is valid.
+        Return 1 for is valid IP address and 0 for not valid
+        """
+        try:
+            if not EUI(value_to_check):
+                self.logger.debug("DEBUG: module=tc_policy Check of "
+                        "is_valid_MACAddress on %s returned false",
+                        value_to_check)
+                return 0
+        except:
+            self.logger.debug("DEBUG: module=tc_policy Check of "
+                    "is_valid_MACAddress on %s raised an exception", 
+                    value_to_check)
+            return 0
+        return 1
+
+    def is_valid_IP_space(self, value_to_check):
+        """
+        Passed a prospective IP address and check that
+        it is valid. Can be IPv4 or IPv6 and can be range or have CIDR mask
+        Return 1 for is valid IP address and 0 for not valid
+        """
+        #*** Does it look like a CIDR network?:
+        if "/" in value_to_check:
+            try:
+                if not IPNetwork(value_to_check):
+                    self.logger.debug("DEBUG: module=tc_policy Network check "
+                        "of is_valid_IP on %s returned false",
+                        value_to_check)
+                    return 0
+            except:
+                self.logger.debug("DEBUG: module=tc_policy Network check of "
+                    "is_valid_IP on %s raised an exception", 
+                    value_to_check)
+                return 0
+            return 1
+        #*** Does it look like an IP range?:
+        elif "-" in value_to_check:
+            ip_range = value_to_check.split("-")
+            if len(ip_range) != 2:
+                self.logger.debug("DEBUG: module=tc_policy Range check of "
+                    "is_valid_IP on %s failed as not 2 items in list", 
+                    value_to_check)
+                return 0
+            try:
+                if not (IPAddress(ip_range[0]) and IPAddress(ip_range[1])):
+                    self.logger.debug("DEBUG: module=tc_policy Range check "
+                        "of is_valid_IP on %s returned false",
+                        value_to_check)
+                    return 0
+            except:
+                self.logger.debug("DEBUG: module=tc_policy Range check of "
+                    "is_valid_IP on %s raised an exception", 
+                    value_to_check)
+                return 0
+            #*** Check second value in range greater than first value:
+            if IPAddress(ip_range[0]).value >= IPAddress(ip_range[1]).value:
+                self.logger.debug("DEBUG: module=tc_policy Range check of "
+                    "is_valid_IP on %s failed as range is negative", 
+                    value_to_check)
+                return 0
+            #*** Check both IP addresses are the same version:
+            if IPAddress(ip_range[0]).version != \
+                                 IPAddress(ip_range[1]).version:
+                self.logger.debug("DEBUG: module=tc_policy Range check of "
+                    "is_valid_IP on %s failed as IP versions are different", 
+                    value_to_check)
+                return 0
+            return 1
+        else:
+            #*** Or is it just a plain simple IP address?:
+            try:
+                if not IPAddress(value_to_check):
+                    self.logger.debug("DEBUG: module=tc_policy Check of "
+                        "is_valid_IP on %s returned false",
+                        value_to_check)
+                    return 0
+            except:
+                self.logger.debug("DEBUG: module=tc_policy Check of "
+                    "is_valid_IP on %s raised an exception", 
+                    value_to_check)
+                return 0
+        return 1
 
     def check_policy(self, pkt, dpid, inport):
         """

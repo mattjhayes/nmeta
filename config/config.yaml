@@ -17,7 +17,7 @@ tc_static_logging_level: DEBUG
 tc_identity_logging_level: INFO
 tc_payload_logging_level: INFO
 tc_statistical_logging_level: INFO
-ca_logging_level: DEBUG
+ca_logging_level: INFO
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds

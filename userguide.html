@@ -101,15 +101,118 @@ in YAML ("YAML Ain't Markup Language") format
 <p>Static classifiers match on attributes in packet headers, or on environmental attributes</p>
 
 <p>Supported attributes are</p>
-<ul>
-  <li>eth_src</li>
-  <li>eth_dst</li>
-  <li>ip_src</li>
-  <li>ip_dst</li>
-  <li>tcp_src</li>
-  <li>tcp_dst</li>
-  <li>eth_type</li>
-</ul>
+<table>
+  <tr>
+    <th>
+      Name
+    </th>
+    <th>
+      Description
+    </th>
+    <th>
+      Example(s)
+    </th>
+  </tr>
+  <tr>
+    <td>
+      eth_src
+    </td>
+    <td>
+      Ethernet source MAC address
+    </td>
+    <td>
+      eth_src: 08:00:27:4a:2d:41
+    </td>
+  </tr>
+  <tr>
+    <td>
+      eth_dst
+    </td>
+    <td>
+      Ethernet destination MAC address
+    </td>
+    <td>
+      eth_dst: 08:00:27:4a:2d:42
+    </td>
+  </tr>
+  <tr>
+    <td>
+      eth_type
+    </td>
+    <td>
+      Ethernet type
+      <br>
+      Can be in hex (starting with 0x) or decimal
+    </td>
+    <td>
+      eth_type: 0x0800
+      <br>
+      eth_type: 35020
+    </td>
+  </tr>
+  <tr>
+    <td>
+      ip_src
+    </td>
+    <td>
+      IP source address
+      <br>
+      Can be a single address, a network with a mask in CIDR notation or an IP range with two addresses separated by a hyphen
+      <br>
+	  Both addresses in a
+      range must be the same type and the second address must be higher than the first
+    </td>
+    <td>
+      ip_src: 192.168.56.12
+      <br>
+      ip_src: 192.168.56.0/24
+      <br>
+      ip_src: 192.168.56.12-192.168.56.31
+    </td>
+  </tr>
+  <tr>
+    <td>
+      ip_dst
+    </td>
+    <td>
+      IP destination address
+      <br>
+      Can be a single address, a network with a mask in CIDR notation or an IP range with two addresses separated by a hyphen
+      <br>
+      Both addresses in a
+      range must be the same type and the second address must be higher than the first
+    </td>
+    <td>
+      ip_dst: 192.168.57.40
+      <br>
+      ip_src: 192.168.57.0/24
+      <br>
+      ip_src: 192.168.57.36-192.168.78.31
+    </td>
+  </tr>
+  <tr>
+    <td>
+      tcp_src
+    </td>
+    <td>
+      TCP source address
+    </td>
+    <td>
+      tcp_src: 22
+    </td>
+  </tr>
+  <tr>
+    <td>
+      tcp_dst
+    </td>
+    <td>
+      TCP destination address
+    </td>
+    <td>
+      tcp_dst: 80
+    </td>
+  </tr>
+</table>
 
 <p>More attributes will be added over time.</p>
 

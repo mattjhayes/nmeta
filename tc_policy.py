@@ -46,13 +46,18 @@ import yaml
 #*** for validity:
 TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'match_type',
                                    'policy_conditions', 'actions')
-TC_CONFIG_POLICY_CONDITIONS = ('eth_src', 'eth_dst', 'ip_src', 'ip_dst',
-                               'tcp_src', 'tcp_dst', 'eth_type',
-                               'identity_lldp_chassisid',
-                               'identity_lldp_systemname',
-                               'identity_lldp_systemname_re',
-                               'payload_type',
-                               'statistical_qos_bandwidth_1')
+#*** Dictionary of valid policy condition attributes with type:
+TC_CONFIG_POLICY_CONDITIONS = {'eth_src': 'MACAddress',
+                               'eth_dst': 'MACAddress', 
+                               'ip_src': 'IPAddressSpace', 
+                               'ip_dst': 'IPAddressSpace',
+                               'tcp_src': 'PortNumber', 
+                               'tcp_dst': 'PortNumber', 
+                               'eth_type': 'EtherType',
+                               'identity_lldp_systemname': 'String',
+                               'identity_lldp_systemname_re': 'String',
+                               'payload_type': 'String',
+                               'statistical_qos_bandwidth_1': 'String'}
 TC_CONFIG_ACTIONS = ('set_qos_tag', 'set_desc_tag', 'pass_return_tags')
 TC_CONFIG_MATCH_TYPES = ('any', 'all', 'statistical')
 
@@ -128,12 +133,71 @@ class TrafficClassificationPolicy(object):
                     #*** Check policy conditions are valid:
                     for policy_condition in self._tc_policy[policy_rule] \
                                   [policy_rule_parameter].keys():
+                        #*** Check policy condition attribute is valid:
                         if not policy_condition in TC_CONFIG_POLICY_CONDITIONS:
                             self.logger.critical("CRITICAL: module=tc_policy "
                             "The following PolicyCondition attribute is "
                             "invalid: %s", policy_condition)
                             sys.exit("Exiting nmeta. Please fix error in "
                                      "tc_policy.yaml file")
+                        #*** Check policy condition value is valid:
+                        pc_value_type = TC_CONFIG_POLICY_CONDITIONS \
+                                           [policy_condition]
+                        pc_value = self._tc_policy[policy_rule] \
+                                  ['policy_conditions'][policy_condition]
+                        if pc_value_type == 'String':
+                            #*** Can't think of a way it couldn't be a valid
+                            #*** string???
+                            pass
+                        elif pc_value_type == 'PortNumber':
+                            #*** Check is int 0 < x < 65536:
+                            if not \
+                                 self.static.is_valid_transport_port(pc_value):
+                                self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value is invalid: %s "
+                                      "as %s", policy_condition, pc_value)
+                                sys.exit("Exiting nmeta. Please fix error "
+                                                    "in tc_policy.yaml file")
+                        elif pc_value_type == 'MACAddress':
+                            #*** Check is valid MAC address:
+                            if not self.static.is_valid_macaddress(pc_value):
+                                self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value is invalid: %s "
+                                      "as %s", policy_condition, pc_value)
+                                sys.exit("Exiting nmeta. Please fix error "
+                                                    "in tc_policy.yaml file")
+                        elif pc_value_type == 'EtherType':
+                            #*** Check is valid EtherType - must be two bytes
+                            #*** as Hex (i.e. 0x0800 is IPv4):
+                            if not self.static.is_valid_ethertype(pc_value):
+                                self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value is invalid: %s "
+                                      "as %s", policy_condition, pc_value)
+                                sys.exit("Exiting nmeta. Please fix error "
+                                                    "in tc_policy.yaml file")
+                        elif pc_value_type == 'IPAddressSpace':
+                            #*** Check is valid IP address, IPv4 or IPv6, can
+                            #*** include range or CIDR mask:
+                            if not self.static.is_valid_ip_space(pc_value):
+                                self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value is invalid: %s "
+                                      "as %s", policy_condition, pc_value)
+                                sys.exit("Exiting nmeta. Please fix error "
+                                                    "in tc_policy.yaml file")
+                        else:
+                            #*** Whoops! We have a data type in the policy
+                            #*** that we've forgot to code a check for...
+                            self.logger.critical("CRITICAL: "
+                                      "module=tc_policy The following "
+                                      "PolicyCondition value does not have "
+                                      "a check %s", policy_condition, pc_value)
+                            sys.exit("Exiting nmeta. Coding error "
+                                                    "in tc_policy.yaml file")
+
                 if policy_rule_parameter == 'actions':
                     #*** Check actions are valid:
                     for action in self._tc_policy[policy_rule] \
@@ -261,7 +325,7 @@ class TrafficClassificationPolicy(object):
             _result_dict["match"] = False
             return _result_dict
         elif match_type == 'all':
-            for policy_condition in policy_conditions.keys():
+            for policy_attr in policy_conditions.keys():
                 policy_value = policy_conditions[policy_attr]
                 policy_attr_type = policy_value.split("_")
                 policy_attr_type = policy_attr_type[0]

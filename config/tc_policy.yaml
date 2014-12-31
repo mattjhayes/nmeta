@@ -11,15 +11,24 @@
         set_qos_tag: QoS_treatment=system_priority
         set_desc_tag: description="OpenFlow Protocol Traffic"
 'PolicyRule 1':
-    comment: Use Case Static-1 - High Priority Business Traffic
-    match_type: any
+    comment: Test of IP ranges and netmasks - High Priority Business Traffic
+    match_type: all
     policy_conditions:
-        tcp_src: 1234
-        tcp_dst: 1234
+        ip_src: 192.168.56.10-192.168.56.18
+        ip_dst: 192.168.57.40
     actions:
         set_qos_tag: QoS_treatment=high_priority
-        set_desc_tag: description="High Priority Business Traffic"  
+        set_desc_tag: description="High Priority Business Traffic A->B"
 'PolicyRule 2':
+    comment: Test of IP ranges and netmasks - High Priority Business Traffic
+    match_type: all
+    policy_conditions:
+        ip_src: 192.168.57.40
+        ip_dst: 192.168.56.10-192.168.56.18
+    actions:
+        set_qos_tag: QoS_treatment=high_priority
+        set_desc_tag: description="High Priority Business Traffic A<-B"  
+'PolicyRule 3':
     comment: SSH traffic
     match_type: any
     policy_conditions:

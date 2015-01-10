@@ -132,10 +132,20 @@ class NMeta(app_manager.RyuApp):
                                      get_value('identity_system_table_max_age')
         self.identity_table_tidyup_interval = self.config.\
                                     get_value('identity_table_tidyup_interval')
+        self.statistical_fcip_table_max_age = self.config.\
+                            get_value('statistical_fcip_table_max_age')
+        self.statistical_fcip_table_tidyup_interval = self.config.\
+                            get_value('statistical_fcip_table_tidyup_interval')
+        self.payload_fcip_table_max_age = self.config.\
+                            get_value('payload_fcip_table_max_age')
+        self.payload_fcip_table_tidyup_interval = self.config.\
+                            get_value('payload_fcip_table_tidyup_interval')
         #*** Set initial value of the variable that holds last time
         #*** for tidy-ups:
         self.fm_table_last_tidyup_time = time.time()
         self.identity_table_last_tidyup_time = time.time()
+        self.statistical_fcip_table_last_tidyup_time = time.time()
+        self.payload_fcip_table_last_tidyup_time = time.time()
         #*** Initiate the mac_to_port dictionary for switching:
         self.mac_to_port = {}
         #*** Set up REST API:
@@ -299,6 +309,24 @@ class NMeta(app_manager.RyuApp):
             self.tc_policy.identity.maintain_identity_tables(
                                self.identity_nic_table_max_age,
                                self.identity_system_table_max_age)
+        #*** Statistical FCIP table maintenance:
+        _time = time.time()
+        if (_time - self.statistical_fcip_table_last_tidyup_time) > \
+                                 self.statistical_fcip_table_tidyup_interval:
+            #*** Call function to do tidy-up on the FCIP table:
+            self.logger.debug("DEBUG: module=nmeta Calling function to do "
+                               "tidy-up on the statistical FCIP table")
+            self.tc_policy.statistical.maintain_fcip_table(
+                                     self.statistical_fcip_table_max_age)
+        #*** Payload FCIP table maintenance:
+        _time = time.time()
+        if (_time - self.payload_fcip_table_last_tidyup_time) > \
+                                 self.payload_fcip_table_tidyup_interval:
+            #*** Call function to do tidy-up on the FCIP table:
+            self.logger.debug("DEBUG: module=nmeta Calling function to do "
+                               "tidy-up on the payload FCIP table")
+            self.tc_policy.payload.maintain_fcip_table(
+                                     self.payload_fcip_table_max_age)
 
 # REST command template
 #*** Copied from the Ryu rest_router.py example code:

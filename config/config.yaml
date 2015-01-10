@@ -42,5 +42,24 @@ identity_system_table_max_age: 600
 #*** entries:
 identity_table_tidyup_interval: 5
 #
+#*** Statistical Flow Classification in Progress (FCIP) table entry
+#*** maximum age in seconds before being eligible for removal:
+statistical_fcip_table_max_age: 600
 #
+#*** Statistical Flow Classification in Progress (FCIP) table interval
+#*** in seconds between running the tidy-up process that removes old
+#*** entries:
+statistical_fcip_table_tidyup_interval: 5
+#
+#*** Payload Flow Classification in Progress (FCIP) table entry
+#*** maximum age in seconds before being eligible for removal:
+payload_fcip_table_max_age: 600
+#
+#*** Payload Flow Classification in Progress (FCIP) table interval
+#*** in seconds between running the tidy-up process that removes old
+#*** entries:
+payload_fcip_table_tidyup_interval: 5
+#
+
+
 

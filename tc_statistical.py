@@ -359,7 +359,8 @@ class StatisticalInspect(object):
             _ip_match = self._fcip_check_ip(_table_ref, _ip_A, _ip_B)
             if _ip_match:
                 #*** Matched IP address pair in either direction
-                #*** Now check for TCP port match (with consideration to directionality):
+                #*** Now check for TCP port match (with consideration to
+                #*** directionality):
                 _tcp_match = self._fcip_check_tcp(_table_ref, _ip_match, _tcp_A, _tcp_B)
                 if _tcp_match:
                     #*** Matched IP and TCP parameters so return
@@ -423,17 +424,18 @@ class StatisticalInspect(object):
         self._fcip_table[self._fcip_ref]["tcp_A"] = _pkt_tcp.src_port
         self._fcip_table[self._fcip_ref]["tcp_B"] = _pkt_tcp.dst_port        
         #*** This could do with improvement - would be subject to variability
-        #*** due to time taken for packet to reach the controller and processing
-        #*** time on the controller. But, it'll do for the moment:
+        #*** due to time taken for packet to reach the controller and
+        #*** processing time on the controller. But, it'll do for the moment:
         self._fcip_table[self._fcip_ref]["arrival_time"][1] = time.time()
         #*** Add packet size:
         self._fcip_table[self._fcip_ref]["ip_total_length"][1] = _pkt_ip4.total_length
-        #*** Add TCP parameters like window size, ack number and bits (aka TCP flags):
+        #*** Add TCP parameters like window size, ack number and bits
+        #***  (aka TCP flags):
         if self._tcp_syn_flag(_pkt_tcp.bits):
             #*** Packet has TCP SYN flag set:
             self._fcip_table[self._fcip_ref]["TCP_SYN"][1] = "SYN"
-            #*** To calculate TCP Window size we need to know the TCP window scale shift
-            #*** count as per RFC1323. Parse this from the TCP SYN:
+            #*** To calculate TCP Window size we need to know the TCP window
+            #*** scale shift count as per RFC1323. Parse this from the TCP SYN:
             _tcp_window_shift =  self._tcp_window_scale(_pkt_tcp.option)
             self._fcip_table[self._fcip_ref]["window_scale"]["forward"] = _tcp_window_shift
         self._fcip_table[self._fcip_ref]["window_size"][1] = _pkt_tcp.window_size
@@ -442,7 +444,8 @@ class StatisticalInspect(object):
         #*** Number of packets is 1 as this is the first packet in the flow:
         self._fcip_table[self._fcip_ref]["number_of_packets"] = 1
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_statistical added new: %s", self._fcip_table[self._fcip_ref])
+            self.logger.debug("DEBUG: module=tc_statistical added new: %s", 
+                               self._fcip_table[self._fcip_ref])
         #*** increment table ref ready for next time we use it:
         self._fcip_ref += 1
 
@@ -553,7 +556,8 @@ class StatisticalInspect(object):
         find it otherwise 0
         """
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_statistical SCALE: TCP Option is %s", option)
+            self.logger.debug("DEBUG: module=tc_statistical SCALE: TCP Option "
+                              "is %s", option)
         byte_key = bytearray(option)
         _position = 0
         _max_position = len(byte_key)
@@ -566,16 +570,41 @@ class StatisticalInspect(object):
                 #*** 1 Byte No-Operation (NOP) so just increment position:
                 _position += 1
             elif _type == 3:
-                #*** Have matched the Window scale that we want, now get the value:
+                #*** Have matched the Window scale that we want, 
+                #***  now get the value:
                 _position += 2
                 if self.extra_debugging:
-                    self.logger.debug("DEBUG: module=tc_statistical SCALE: matched scale %s", byte_key[_position])
+                    self.logger.debug("DEBUG: module=tc_statistical SCALE: "
+                                       "matched scale %s", byte_key[_position])
                 return byte_key[_position]
             else:
-                #*** Matched another TLV type so get the len and then increment position
-                #*** to get start of next TLV:
+                #*** Matched another TLV type so get the len and then increment
+                #***  position to get start of next TLV:
                 _position += 1
                 _len = byte_key[_position]
                 _position += _len - 1
         return 0
-    
+
+    def maintain_fcip_table(self, max_age_fcip):
+        """
+        Deletes old entries from FCIP table
+        This function is passed maximum age value
+        and deletes any entries in the
+        table that have a time_last that is
+        older than that when compared to
+        current time
+        """
+        _time = time.time()
+        _for_deletion = []
+        for _table_ref in self._fcip_table:
+            if self._fcip_table[_table_ref]['time_last']:
+                _last = self._fcip_table[_table_ref]['time_last']
+                if (_time - _last > max_age_fcip):
+                    self.logger.debug("DEBUG: module=tc_statistical Deleting "
+                                      "FCIP table ref %s", _table_ref)
+                    #*** Can't delete while iterating dictionary so just note
+                    #***  the table ref:
+                    _for_deletion.append(_table_ref)
+        #*** Now iterate over the list of references to delete:
+        for _del_ref in _for_deletion:
+            del self._fcip_table[_del_ref]

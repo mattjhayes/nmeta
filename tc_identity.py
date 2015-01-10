@@ -169,13 +169,13 @@ class IdentityInspect(object):
         Return the Identity NIC table
         """
         return self._nic_identity_table
-        
+
     def get_identity_system_table(self):
         """
         Return the Identity System table
         """
         return self._sys_identity_table
-        
+
     def maintain_identity_tables(self, max_age_nic, max_age_sys):
         """
         Deletes old entries from Identity NIC and 
@@ -192,8 +192,10 @@ class IdentityInspect(object):
             if self._nic_identity_table[_table_ref]['time_last']:
                 _last = self._nic_identity_table[_table_ref]['time_last']
                 if (_time - _last > max_age_nic):
-                    self.logger.debug("DEBUG: module=tc_identity Deleting NIC table ref %s", _table_ref)
-                    #*** Can't delete while iterating dictionary so just note the table ref:
+                    self.logger.debug("DEBUG: module=tc_identity Deleting NIC"
+                                      " table ref %s", _table_ref)
+                    #*** Can't delete while iterating dictionary so just note
+                    #***  the table ref:
                     _for_deletion.append(_table_ref)
         #*** Now iterate over the list of references to delete:
         for _del_ref in _for_deletion:
@@ -204,13 +206,14 @@ class IdentityInspect(object):
             if self._sys_identity_table[_table_ref]['time_last']:
                 _last = self._sys_identity_table[_table_ref]['time_last']
                 if (_time - _last > max_age_sys):
-                    self.logger.debug("DEBUG: module=tc_identity Deleting System table ref %s", _table_ref)
-                    #*** Can't delete while iterating dictionary so just note the table ref:
+                    self.logger.debug("DEBUG: module=tc_identity Deleting "
+                                      "System table ref %s", _table_ref)
+                    #*** Can't delete while iterating dictionary so just note
+                    #***  the table ref:
                     _for_deletion.append(_table_ref)
         #*** Now iterate over the list of references to delete:
         for _del_ref in _for_deletion:
             del self._sys_identity_table[_del_ref]
-            
 
     def _get_sys_ref_by_chassisid(self, chassis_id_text):
         """

@@ -144,7 +144,8 @@ class PayloadInspect(object):
         _dynamic_port = 0
         if payload[:8] == '504f5254':
             self.logger.debug("DEBUG: module=tc_payload matched PORT command")
-            #*** Now decode to get the dynamic port. It's comma separated (Hex 2c) decimal characters in hex
+            #*** Now decode to get the dynamic port. It's comma separated 
+            #***  (Hex 2c) decimal characters in hex:
             _port_cmd_values_raw = payload[9:].split("2c")
             _higher_byte = _port_cmd_values_raw[4]
             _lower_byte = _port_cmd_values_raw[5]
@@ -155,7 +156,8 @@ class PayloadInspect(object):
             if ((_dynamic_port > 0) and (_dynamic_port < 65537)):
                 return _dynamic_port
             else:
-                self.logger.warning("WARNING: module=tc_payload function=_payload_ftp dynamic port not valid: %s", 
+                self.logger.warning("WARNING: module=tc_payload function="
+                                    "_payload_ftp dynamic port not valid: %s", 
                                             _dynamic_port)
                 return 0                           
         
@@ -306,7 +308,8 @@ class PayloadInspect(object):
         #*** Classifier Type:
         self._fcip_table[self._fcip_ref]['classifier_type'] = classifier_type
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_payload added new: %s", self._fcip_table[self._fcip_ref])
+            self.logger.debug("DEBUG: module=tc_payload added new: %s", 
+                                self._fcip_table[self._fcip_ref])
         #*** increment table ref ready for next time we use it:
         self._fcip_ref += 1
 
@@ -316,7 +319,8 @@ class PayloadInspect(object):
         Flow Classification In Progress (FCIP) table.
         """
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_payload add_new2: %s", flow_dict)
+            self.logger.debug("DEBUG: module=tc_payload add_new2: %s", 
+                                flow_dict)
         #*** Initial setting of variable allowing more packets being added:
         self._fcip_table[self._fcip_ref]['finalised'] = flow_dict['finalised']
         self._fcip_table[self._fcip_ref]['time_last_seen'] = time.time()
@@ -328,6 +332,31 @@ class PayloadInspect(object):
         #*** Classifier Type:
         self._fcip_table[self._fcip_ref]['classifier_type'] = flow_dict['classifier_type']
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_payload added new: %s", self._fcip_table[self._fcip_ref])
+            self.logger.debug("DEBUG: module=tc_payload added new: %s", 
+                               self._fcip_table[self._fcip_ref])
         #*** increment table ref ready for next time we use it:
         self._fcip_ref += 1
+
+    def maintain_fcip_table(self, max_age_fcip):
+        """
+        Deletes old entries from FCIP table
+        This function is passed maximum age value
+        and deletes any entries in the
+        table that have a time_last that is
+        older than that when compared to
+        current time
+        """
+        _time = time.time()
+        _for_deletion = []
+        for _table_ref in self._fcip_table:
+            if self._fcip_table[_table_ref]['time_last']:
+                _last = self._fcip_table[_table_ref]['time_last']
+                if (_time - _last > max_age_fcip):
+                    self.logger.debug("DEBUG: module=tc_payload Deleting "
+                                      "FCIP table ref %s", _table_ref)
+                    #*** Can't delete while iterating dictionary so just note
+                    #***  the table ref:
+                    _for_deletion.append(_table_ref)
+        #*** Now iterate over the list of references to delete:
+        for _del_ref in _for_deletion:
+            del self._fcip_table[_del_ref]

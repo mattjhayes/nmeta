@@ -50,6 +50,26 @@
   Contributing
 </h1>
 
+<h3>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Contents:
+</h3>
+<p>
+  <a href="#How-To-Contribute">How to Contribute</a>
+  <br>
+  <a href="#Using-Git-Flow">Using Git Flow</a>
+  <br>
+  <a href="#Testing">Learning to Love Automated Testing</a>
+  <br>
+  <a href="#Updating-the-Website">Updating the Website</a>
+  <br>
+</p>
+
+<h2>
+  <a id="How-To-Contribute" class="anchor" href="#How-To-Contribute" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  How To Contribute
+</h2>
+
 <p>Contributors are very welcome. There's certainly a lot of opportunity to make improvements! Here's how to contribute:
   <ul>
     <li>All development is done on the <a href="https://github.com/mattjhayes/nmeta" target="_blank">Github repo</a></li>
@@ -58,8 +78,8 @@
   </ul>
 </p>
 <h2>
-  <a id="nmeta---network-metadata" class="anchor" href="#nmeta---network-metadata" aria-hidden="true"><span class="octicon octicon-link"></span></a>
-  Using git flow
+  <a id="Using-Git-Flow" class="anchor" href="#Using-Git-Flow" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Using Git Flow
 </h2>
 
 <p>Git flow provides branching strategy and release management over the top of git. To set git flow up, go to the nmeta directory and run:</p>
@@ -70,6 +90,11 @@
 <p>Accept the defaults and it is now set up with develop branch selected:</p>
 
 <p><img src="images/develop/git-flow.png" alt="git flow init example"></p>
+
+<h3>
+  <a id="nmeta---network-metadata" class="anchor" href="#nmeta---network-metadata" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Start a Git Flow Feature
+</h3>
 
 <p>To start working on a new feature called FEATURE_NAME (substitute your own feature name) enter:</p>
 
@@ -84,15 +109,36 @@
 
 <p><img src="images/develop/git-flow3.png" alt="git flow init example 3"></p>
 
-<p>*** Under Construction!!! ***</p>
+<p>Use Git to commit code as per usual</p>
+
+<h3>
+  <a id="nmeta---network-metadata" class="anchor" href="#nmeta---network-metadata" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Finish a Git Flow Feature
+</h3>
+
+<p>When finished with a feature, wrap things up with Git Flow:</p>
+
+<pre><code>git flow feature finish FEATURE_NAME
+</code></pre>
 
 <h2>
-  <a id="nmeta---network-metadata" class="anchor" href="#nmeta---network-metadata" aria-hidden="true"><span class="octicon octicon-link"></span></a>
-  Updates to Website
+  <a id="Testing" class="anchor" href="#Testing" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Learning to Love Automated Testing
 </h2>
-<p>The website is in a separate orphan branch called <em>gh-pages</em></p>
+<p>Automated tests are slowly being added into the codebase to both improve reliability of the system, and to speed up acceptance of code updates.</p>
+<p>Tests use <a href="http://nose.readthedocs.org/en/latest/">nose</a></p>
+<p>Tests can be run by running this command in the nmeta directory:</p>
 
-<p>*** Under Construction!!! ***</p>
+<pre><code>nosetests -v
+</code></pre>
+
+
+<h2>
+  <a id="Updating-the-Website" class="anchor" href="#Updating-the-Website" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Updating the Website
+</h2>
+
+<p>The website is in a separate orphan branch called <em>gh-pages</em></p>
 
       </section>
     </div>

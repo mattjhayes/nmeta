@@ -1,7 +1,7 @@
 'PolicyRule 0':
     comment: SSH traffic
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         tcp_src: 22
         tcp_dst: 22
     actions:
@@ -9,8 +9,8 @@
         set_desc_tag: description="High Priority SSH Traffic"
 'PolicyRule 1':
     comment: Basic Statistical Classifier
-    match_type: statistical
-    policy_conditions:
+    conditions:
+        match_type: any
         statistical_qos_bandwidth_1: on
     actions:
         pass_return_tags: true

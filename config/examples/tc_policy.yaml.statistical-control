@@ -1,7 +1,7 @@
 'PolicyRule 0':
     comment: SSH traffic
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         tcp_src: 22
         tcp_dst: 22
     actions:

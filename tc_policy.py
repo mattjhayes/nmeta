@@ -43,11 +43,10 @@ import tc_payload
 import yaml
 
 #*** Describe supported syntax in tc_policy.yaml so that it can be tested
-#*** for validity:
-TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'match_type',
-                                   'policy_conditions', 'actions')
-#*** Dictionary of valid policy condition attributes with type:
-TC_CONFIG_POLICY_CONDITIONS = {'eth_src': 'MACAddress',
+#*** for validity. Here are valid policy rule attributes:
+TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'conditions', 'actions')
+#*** Dictionary of valid conditions stanza attributes with type:
+TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'eth_dst': 'MACAddress', 
                                'ip_src': 'IPAddressSpace', 
                                'ip_dst': 'IPAddressSpace',
@@ -57,7 +56,9 @@ TC_CONFIG_POLICY_CONDITIONS = {'eth_src': 'MACAddress',
                                'identity_lldp_systemname': 'String',
                                'identity_lldp_systemname_re': 'String',
                                'payload_type': 'String',
-                               'statistical_qos_bandwidth_1': 'String'}
+                               'statistical_qos_bandwidth_1': 'String',
+                               'match_type': 'MatchType',
+                               'conditions': 'PolicyConditions'}
 TC_CONFIG_ACTIONS = ('set_qos_tag', 'set_desc_tag', 'pass_return_tags')
 TC_CONFIG_MATCH_TYPES = ('any', 'all', 'statistical')
 
@@ -119,7 +120,8 @@ class TrafficClassificationPolicy(object):
         self.logger.debug("DEBUG: module=tc_policy Validating TC Policy...")
         for policy_rule in self._tc_policy.keys():
             self.logger.debug("DEBUG: module=tc_policy Validating PolicyRule "
-                              "%s", policy_rule)
+                              "%s %s", policy_rule, 
+                              self._tc_policy[policy_rule])
             #*** Test for unsupported PolicyRule attributes:
             for policy_rule_parameter in self._tc_policy[policy_rule].keys():
                 if not policy_rule_parameter in \
@@ -129,75 +131,12 @@ class TrafficClassificationPolicy(object):
                                          "invalid: %s ", policy_rule_parameter)
                     sys.exit("Exiting nmeta. Please fix error in "
                              "tc_policy.yaml file")
-                if policy_rule_parameter == 'policy_conditions':
-                    #*** Check policy conditions are valid:
-                    for policy_condition in self._tc_policy[policy_rule] \
-                                  [policy_rule_parameter].keys():
-                        #*** Check policy condition attribute is valid:
-                        if not policy_condition in TC_CONFIG_POLICY_CONDITIONS:
-                            self.logger.critical("CRITICAL: module=tc_policy "
-                            "The following PolicyCondition attribute is "
-                            "invalid: %s", policy_condition)
-                            sys.exit("Exiting nmeta. Please fix error in "
-                                     "tc_policy.yaml file")
-                        #*** Check policy condition value is valid:
-                        pc_value_type = TC_CONFIG_POLICY_CONDITIONS \
-                                           [policy_condition]
-                        pc_value = self._tc_policy[policy_rule] \
-                                  ['policy_conditions'][policy_condition]
-                        if pc_value_type == 'String':
-                            #*** Can't think of a way it couldn't be a valid
-                            #*** string???
-                            pass
-                        elif pc_value_type == 'PortNumber':
-                            #*** Check is int 0 < x < 65536:
-                            if not \
-                                 self.static.is_valid_transport_port(pc_value):
-                                self.logger.critical("CRITICAL: "
-                                      "module=tc_policy The following "
-                                      "PolicyCondition value is invalid: %s "
-                                      "as %s", policy_condition, pc_value)
-                                sys.exit("Exiting nmeta. Please fix error "
-                                                    "in tc_policy.yaml file")
-                        elif pc_value_type == 'MACAddress':
-                            #*** Check is valid MAC address:
-                            if not self.static.is_valid_macaddress(pc_value):
-                                self.logger.critical("CRITICAL: "
-                                      "module=tc_policy The following "
-                                      "PolicyCondition value is invalid: %s "
-                                      "as %s", policy_condition, pc_value)
-                                sys.exit("Exiting nmeta. Please fix error "
-                                                    "in tc_policy.yaml file")
-                        elif pc_value_type == 'EtherType':
-                            #*** Check is valid EtherType - must be two bytes
-                            #*** as Hex (i.e. 0x0800 is IPv4):
-                            if not self.static.is_valid_ethertype(pc_value):
-                                self.logger.critical("CRITICAL: "
-                                      "module=tc_policy The following "
-                                      "PolicyCondition value is invalid: %s "
-                                      "as %s", policy_condition, pc_value)
-                                sys.exit("Exiting nmeta. Please fix error "
-                                                    "in tc_policy.yaml file")
-                        elif pc_value_type == 'IPAddressSpace':
-                            #*** Check is valid IP address, IPv4 or IPv6, can
-                            #*** include range or CIDR mask:
-                            if not self.static.is_valid_ip_space(pc_value):
-                                self.logger.critical("CRITICAL: "
-                                      "module=tc_policy The following "
-                                      "PolicyCondition value is invalid: %s "
-                                      "as %s", policy_condition, pc_value)
-                                sys.exit("Exiting nmeta. Please fix error "
-                                                    "in tc_policy.yaml file")
-                        else:
-                            #*** Whoops! We have a data type in the policy
-                            #*** that we've forgot to code a check for...
-                            self.logger.critical("CRITICAL: "
-                                      "module=tc_policy The following "
-                                      "PolicyCondition value does not have "
-                                      "a check %s", policy_condition, pc_value)
-                            sys.exit("Exiting nmeta. Coding error "
-                                                    "in tc_policy.yaml file")
-
+                if policy_rule_parameter == 'conditions':
+                    #*** Call function to validate the policy condition and
+                    #*** any nested policy conditions that it may contain:
+                    self._validate_conditions(
+                                    self._tc_policy[policy_rule]
+                                    [policy_rule_parameter])
                 if policy_rule_parameter == 'actions':
                     #*** Check actions are valid:
                     for action in self._tc_policy[policy_rule] \
@@ -209,17 +148,122 @@ class TrafficClassificationPolicy(object):
                                                  action)
                             sys.exit("Exiting nmeta. Please fix error in "
                                      "tc_policy.yaml file")
-                if policy_rule_parameter == 'match_type':
-                    #*** Check match_type value is valid:
-                    if (not self._tc_policy[policy_rule]['match_type'] in
-                        TC_CONFIG_MATCH_TYPES):
-                        self.logger.critical("CRITICAL: module=tc_policy The "
-                                             "following match_type value is "
-                                             "invalid: %s",
-                                             self._tc_policy[policy_rule] \
-                                             ['match_type'])
-                        sys.exit("Exiting nmeta. Please fix error in "
-                                 "tc_policy.yaml file")
+
+    def _validate_conditions(self, policy_conditions):
+        """
+        Check Traffic Classification (TC) conditions stanza to ensure
+        that it is in the correct format so that it won't cause unexpected
+        errors during packet checks. Can recurse for nested policy conditions.
+        """
+        #*** Use this to check if there is a match_type in stanza. Note can't
+        #*** check for more than one occurrence as dictionary will just 
+        #*** keep attribute and overwrite value. Also note that recursive
+        #*** instances use same variable due to scoping:
+        self.has_match_type = 0
+        #*** Check conditions are valid:
+        for policy_condition in policy_conditions.keys():
+            #*** Check policy condition attribute is valid:
+            if not (policy_condition in TC_CONFIG_CONDITIONS or 
+                     policy_condition[0:10] == 'conditions'):
+                self.logger.critical("CRITICAL: module=tc_policy "
+                "The following PolicyCondition attribute is "
+                "invalid: %s", policy_condition)
+                sys.exit("Exiting nmeta. Please fix error in "
+                         "tc_policy.yaml file")
+            #*** Check policy condition value is valid:
+            if not policy_condition[0:10] == 'conditions':
+                pc_value_type = TC_CONFIG_CONDITIONS[policy_condition]
+            else:
+                pc_value_type = policy_condition
+            pc_value = policy_conditions[policy_condition]
+            if pc_value_type == 'String':
+                #*** Can't think of a way it couldn't be a valid
+                #*** string???
+                pass
+            elif pc_value_type == 'PortNumber':
+                #*** Check is int 0 < x < 65536:
+                if not \
+                     self.static.is_valid_transport_port(pc_value):
+                    self.logger.critical("CRITICAL: "
+                          "module=tc_policy The following "
+                          "PolicyCondition value is invalid: %s "
+                          "as %s", policy_condition, pc_value)
+                    sys.exit("Exiting nmeta. Please fix error "
+                                        "in tc_policy.yaml file")
+            elif pc_value_type == 'MACAddress':
+                #*** Check is valid MAC address:
+                if not self.static.is_valid_macaddress(pc_value):
+                    self.logger.critical("CRITICAL: "
+                          "module=tc_policy The following "
+                          "PolicyCondition value is invalid: %s "
+                          "as %s", policy_condition, pc_value)
+                    sys.exit("Exiting nmeta. Please fix error "
+                                        "in tc_policy.yaml file")
+            elif pc_value_type == 'EtherType':
+                #*** Check is valid EtherType - must be two bytes
+                #*** as Hex (i.e. 0x0800 is IPv4):
+                if not self.static.is_valid_ethertype(pc_value):
+                    self.logger.critical("CRITICAL: "
+                          "module=tc_policy The following "
+                          "PolicyCondition value is invalid: %s "
+                          "as %s", policy_condition, pc_value)
+                    sys.exit("Exiting nmeta. Please fix error "
+                                        "in tc_policy.yaml file")
+            elif pc_value_type == 'IPAddressSpace':
+                #*** Check is valid IP address, IPv4 or IPv6, can
+                #*** include range or CIDR mask:
+                if not self.static.is_valid_ip_space(pc_value):
+                    self.logger.critical("CRITICAL: "
+                          "module=tc_policy The following "
+                          "PolicyCondition value is invalid: %s "
+                          "as %s", policy_condition, pc_value)
+                    sys.exit("Exiting nmeta. Please fix error "
+                                        "in tc_policy.yaml file")
+            elif pc_value_type == 'MatchType':
+                #*** Check is valid match type:
+                if not pc_value in TC_CONFIG_MATCH_TYPES:
+                    self.logger.critical("CRITICAL: "
+                          "module=tc_policy The following "
+                          "PolicyCondition value is invalid: %s "
+                          "as %s", policy_condition, pc_value)
+                    sys.exit("Exiting nmeta. Please fix error "
+                                        "in tc_policy.yaml file")
+                else:
+                    #*** Flag that we've seen a match_type so all is good:
+                    self.has_match_type = 1
+            elif pc_value_type[0:10] == 'conditions':
+                #*** Check value is dictionary:
+                if not isinstance(pc_value, dict):
+                    self.logger.critical("CRITICAL: "
+                          "module=tc_policy A conditions clause"
+                          "specified but is invalid: %s "
+                          "as %s", policy_condition, pc_value)
+                    sys.exit("Exiting nmeta. Please fix error "
+                                        "in tc_policy.yaml file")
+                #*** Now, do recursive call to validate nested conditions:
+                self.logger.debug("DEBUG: module=tc_policy Recursing on "
+                                    "nested conditions %s", pc_value)
+                self._validate_conditions(pc_value)
+            else:
+                #*** Whoops! We have a data type in the policy
+                #*** that we've forgot to code a check for...
+                self.logger.critical("CRITICAL: "
+                          "module=tc_policy The following "
+                          "PolicyCondition value does not have "
+                          "a check: %s, %s", policy_condition, pc_value)
+                sys.exit("Exiting nmeta. Coding error "
+                                        "in tc_policy.yaml file")
+        #*** Check match_type attribute present:
+        if not self.has_match_type == 1:
+            #*** No match_type attribute in stanza:
+            self.logger.critical("CRITICAL: "
+                    "module=tc_policy Missing match_type attribute"
+                     " in stanza: %s ", policy_conditions)
+            sys.exit("Exiting nmeta. Please fix error "
+                                        "in tc_policy.yaml file")
+        else:
+            #*** Reset to zero as otherwise can break parent evaluations:
+            self.has_match_type = 0
 
     def check_policy(self, pkt, dpid, inport):
         """
@@ -245,9 +289,8 @@ class TrafficClassificationPolicy(object):
             self.identity.ip4_in(pkt)
         #*** Check against TC policy:
         for policy_rule in self._tc_policy.keys():
-            _result_dict = self._check_match(pkt,
-                    self._tc_policy[policy_rule]['policy_conditions'],
-                    self._tc_policy[policy_rule]['match_type'])
+            _result_dict = self._check_conditions(pkt,
+                    self._tc_policy[policy_rule]['conditions'])
             if _result_dict["match"]:
                 self.logger.debug("DEBUG: module=tc_policy Matched policy "
                                   "condition(s), returning "
@@ -273,11 +316,12 @@ class TrafficClassificationPolicy(object):
                     'actions': False}
         return _result_dict
 
-    def _check_match(self, pkt, policy_conditions, match_type):
+    def _check_conditions(self, pkt, conditions):
         """
-        Passed a packet-in packet, a set of policy conditions and a
-        match type. Check to see if packet matches conditions as per the
-        match type and if so return in the dictionary attribute "match"
+        Passed a packet-in packet and a conditions stanza (which may contain
+        nested conditions stanzas).
+        Check to see if packet matches conditions as per the
+        match type, and if so return in the dictionary attribute "match" with
         the boolean value True otherwise boolean False.
         The returned dictionary can also contain values indicating
         whether or not a flow should be installed to the switch
@@ -291,100 +335,68 @@ class TrafficClassificationPolicy(object):
         #*** initial settings for results dictionary:
         _result_dict = {'match':True, 'continue_to_inspect':False,
                     'actions': False}
-        if match_type == 'any':
-            for policy_attr in policy_conditions.keys():
-                policy_value = policy_conditions[policy_attr]
+        self.match_type = conditions['match_type']
+        #*** Loop through conditions checking match:
+        for policy_attr in conditions.keys():
+            policy_value = conditions[policy_attr]
+            #*** Policy Attribute Type is for non-static classifiers to
+            #*** hold the attribute prefix (i.e. identity).
+            #*** Exclude nested conditions dictionaries from this check:
+            if policy_attr[0:10] == 'conditions':
+                policy_attr_type = "conditions"
+            else:
                 policy_attr_type = policy_attr.split("_")
                 policy_attr_type = policy_attr_type[0]
-                _match = False
-                if policy_attr_type == "identity":
-                    #*** Identity Classification as part of 'any' match:
-                    _match = self.identity.check_identity(policy_attr,
-                                policy_value, pkt)
-                    if _match:
-                        _result_dict["match"] = True
-                        return _result_dict
-                elif policy_attr_type == "payload":
-                    #*** Payload Classification as part of 'any' match:
-                    _payload_dict = self.payload.check_payload(policy_attr,
+            _match = False
+            #*** Main if/elif/else check on condition attribute type:
+            if policy_attr_type == "identity":
+                _match = self.identity.check_identity(policy_attr, 
+                                             policy_value, pkt)
+            elif policy_attr_type == "payload":
+                _payload_dict = self.payload.check_payload(policy_attr,
                                          policy_value, pkt)
-                    if _payload_dict["match"]:
-                        _result_dict["match"] = True
+                if _payload_dict["match"]:
+                        _match = True
                         _result_dict["continue_to_inspect"] = \
                                      _payload_dict["continue_to_inspect"]
-                        return _result_dict
-                else:
-                    #*** default to doing a Static Classification as part of
-                    #***  'any' match:
-                    _match = self.static.check_static(policy_attr,
+            elif policy_attr_type == "conditions":
+                #*** Do a recursive call on nested conditions:
+                _nested_dict = self._check_conditions(pkt, policy_value)
+                _match = _nested_dict["match"]
+                #*** TBD: How do we deal with nested continue to inspect
+                #***  results that conflict?
+                _result_dict["continue_to_inspect"] = \
+                                    _nested_dict["continue_to_inspect"]
+            elif policy_attr == "match_type":
+                #*** Nothing to do:
+                pass
+            else:
+                #*** default to doing a Static Classification match:
+                _match = self.static.check_static(policy_attr,
                                                         policy_value, pkt)
-                    if _match:
-                        _result_dict["match"] = True
-                        return _result_dict
-            #*** Didn't match any so return false:
+            #*** Decide what to do based on match result and match type:
+            if _match and self.match_type == "any":
+                _result_dict["match"] = True
+                return _result_dict
+            elif not _match and self.match_type == "all":
+                _result_dict["match"] = False
+                return _result_dict
+            else:
+                #*** Not a condition that we take action on so keep going:
+                pass
+        #*** We've finished loop through all conditions and haven't returned.
+        #***  Work out what action to take:
+        if not _match and self.match_type == "any":
             _result_dict["match"] = False
             return _result_dict
-        elif match_type == 'all':
-            for policy_attr in policy_conditions.keys():
-                policy_value = policy_conditions[policy_attr]
-                policy_attr_type = policy_value.split("_")
-                policy_attr_type = policy_attr_type[0]
-                _match = False
-                if policy_attr_type == "identity":
-                    #*** Identity Classification as part of 'all' match:
-                    _match = self.identity.check_identity(policy_attr,
-                                                            policy_value, pkt)
-                    if not _match:
-                        _result_dict["match"] = False
-                        return _result_dict
-                elif policy_attr_type == "payload":
-                    #*** Payload Classification as part of 'all' match:
-                    _payload_dict = self.payload.check_payload(policy_attr,
-                                                     policy_value, pkt)
-                    if not _payload_dict["match"]:
-                        _result_dict["match"] = False
-                        _result_dict["continue_to_inspect"] = \
-                                          _payload_dict["continue_to_inspect"]
-                        return _result_dict
-                    if not _match:
-                        _result_dict["match"] = False
-                        return _result_dict
-                else:
-                    #*** default to doing a Static Classification as part of
-                    #***  'all' match:
-                    _match = self.static.check_static(policy_attr,
-                                                        policy_value, pkt)
-                    if not _match:
-                        _result_dict["match"] = False
-                        return _result_dict
-            #*** Didn't get any negatives so implied that matched all
+        elif _match and self.match_type == "all":
             _result_dict["match"] = True
             return _result_dict
-        elif match_type == 'statistical':
-            for policy_attr in policy_conditions.keys():
-                policy_value = policy_conditions[policy_attr]
-                _result_statistical = self.statistical.check_statistical \
-                                              (policy_attr, policy_value, pkt)
-                self.logger.debug("DEBUG: module=tc_policy statistical "
-                             "continue_to_inspect is %s and actions are %s",
-                             _result_statistical['continue_to_inspect'],
-                             _result_statistical['actions'])
-                if _result_statistical['valid']:
-                    _result_dict["match"] = True
-                    _result_dict["continue_to_inspect"] = \
-                                     _result_statistical["continue_to_inspect"]
-                    _result_dict["actions"] = _result_statistical["actions"]
-                    return _result_dict
-                else:
-                    #*** Strange condition, log an error:
-                    self.logger.error("ERROR: module=tc_policy Statistical "
-                                        "classifier failed")
-                    _result_dict["match"] = False
-                    _result_dict["continue_to_inspect"] = False
-                    return _result_dict
         else:
-            self.logger.critical("CRITICAL: module=tc_policy The following "
-                                 "match_type value is invalid: %s",
-                                 match_type)
-            sys.exit("Exiting nmeta. Please fix error in tc_policy.yaml file")
+            #*** Unexpected result:
+            self.logger.error("ERROR: module=tc_policy Unexpected result at "
+                "end of loop through attributes. policy_attr=%s, _match=%s, "
+                "self.match_type=%s", policy_attr, _match, self.match_type)
+            _result_dict["match"] = False
+            return _result_dict
 

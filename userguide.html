@@ -67,7 +67,7 @@ in YAML ("YAML Ain't Markup Language") format
   Traffic Classification Policy
 </h3>
 
-<p>The traffic classification policy is stored in the file:</p>
+<p>The traffic classification policy (also in YAML) is stored in the file:</p>
 
 <pre><code>config/tc_policy.yaml
 </code></pre>
@@ -77,17 +77,39 @@ in YAML ("YAML Ain't Markup Language") format
 <p>The traffic classification policy is composed of one or more <em>policy rules</em>, each of which contain:</p>
 
 <ul>
-  <li>A comment to describe the purpose of the rule (optional)</li>
-  <li>A match type, consisting of <em>any</em> or <em>all</em></li>
-  <li>One or more <em>policy conditions</em></li>
-  <li>One or more <em>actions</em></li>
+  <li>A <em>rule name</em></li>
+  <li>A <em>comment</em> to describe the purpose of the rule (optional)</li>
+  <li>A single <em>conditions</em> stanza</li>
+  <li>A single <em>actions</em> stanza</li>
 </ul>
 
-<p>Here is an example policy rule:</p>
+<p>Example simple traffic classification policy with a single rule:</p>
 
-<p><img src="images/userguide/policyrule.png" alt="Example Policy Rule"></p>
+<pre><code><img src="images/userguide/simple_tc_policy.png" alt="simple traffic classification policy">
+</code></pre>
 
-<p>Policy conditions reference classifiers. There are four types of classifier supported:
+<p>A <em>rule name</em> can be any single-line string, but must not be the same as any other rule name</p>
+
+<p>A <em>comment</em> must start with the attribute <em>comment:</em> and any single-line string can follow</p>
+
+<p>A <em>conditions</em> stanza contains:</p>
+
+<ul>
+  <li>A match type, consisting of <em>any</em> or <em>all</em></li>
+  <li>zero or more nested <em>conditions</em></li>
+  <li>One or more <em>classifiers</em> (see below)</li>
+</ul>
+
+<p>A <em>actions</em> stanza contains one or more attribute/value pairs</p>
+
+<p>Here is a more complex traffic classification policy:</p>
+
+<pre><code><img src="images/userguide/complex_tc_policy.png" alt="simple traffic classification policy">
+</code></pre>
+
+<p>Note that when there is more than one conditions stanza (only permitted in nested conditions), the main attributes for the stanzas must be unique, and start with <em>conditions</em></p>
+
+<p>Conditions invoke classifiers. There are four types of classifier supported:
 <ul>
   <li>Static</li>
   <li>Identity</li>

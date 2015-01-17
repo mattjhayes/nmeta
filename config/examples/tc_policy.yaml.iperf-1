@@ -1,7 +1,7 @@
 'PolicyRule 1':
     comment: Iperf High Priority
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         tcp_src: 5001
         tcp_dst: 5001
     actions:
@@ -9,8 +9,8 @@
         set_desc_tag: description="Default Priority Iperf Traffic"
 'PolicyRule 2':
     comment: Iperf High Priority
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         tcp_src: 5002
         tcp_dst: 5002
     actions:
@@ -18,8 +18,8 @@
         set_desc_tag: description="High Priority Iperf Traffic"
 'PolicyRule 3':
     comment: Iperf Low Priority
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         tcp_src: 5003
         tcp_dst: 5003
     actions:

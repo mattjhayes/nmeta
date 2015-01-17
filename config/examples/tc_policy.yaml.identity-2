@@ -4,8 +4,8 @@
 #
 'PolicyRule 0':
     comment: OpenFlow Protocol Traffic
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         tcp_src: 6633
         tcp_dst: 6633
     actions:
@@ -13,8 +13,8 @@
         set_desc_tag: description="OpenFlow Protocol Traffic"
 'PolicyRule 1':
     comment: Explicitly set Iperf traffic to default class
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         tcp_src: 5001
         tcp_dst: 5001
     actions:
@@ -22,8 +22,8 @@
         set_desc_tag: description="Default Priority Iperf Traffic"  
 'PolicyRule 2':
     comment: SSH traffic
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         tcp_src: 22
         tcp_dst: 22
     actions:
@@ -31,8 +31,8 @@
         set_desc_tag: description="High Priority SSH Traffic"
 'PolicyRule 3':
     comment: Use Case Identity-2 - High Priority Business Traffic
-    match_type: any
-    policy_conditions:
+    conditions:
+        match_type: any
         identity_lldp_systemname_re: '.*\.dev\.example\.com'
     actions:
         set_qos_tag: QoS_treatment=high_priority

@@ -73,7 +73,7 @@ in the <em>misc</em> sub directory. These include:</p>
 </code></pre>
 
 <p>Example usage, listening on port 80:</p>
-<p><img src="images/misc/web.png" alt="git flow init example"></p>
+<p><img src="images/misc/web.png" alt="websvr example screenshot"></p>
 
 <p>For more information, see documentation on <a href="http://webpy.readthedocs.org/en/latest/" target="_blank">web.py</a></p>
 
@@ -83,11 +83,16 @@ in the <em>misc</em> sub directory. These include:</p>
 </h2>
 
 <p>The <em>htest.py</em> script tests HTTP performance by sending repeated HTTP GET requests for an object over a persistent HTTP/1.1 connection</p>
-<p>It uses the Python Requests module<p>
+<p>It uses the Python Requests module. Pass it a URL to test against on the command line.<p>
 <p>Example usage:</p>
 
-<pre><code>TBD
+<pre><code>python htest.py URL
 </code></pre>
+
+<p>Example usage, connecting on port 1234:</p>
+<p><img src="images/misc/htest.png" alt="htest example screenshot"></p>
+
+<p>Results are written out to a CSV file, allowing for easy import into tools for analysis</p>
 
 <h2>
   <a id="misc-scripts" class="anchor" href="#misc-scripts" aria-hidden="true"><span class="octicon octicon-link"></span></a>
@@ -95,6 +100,21 @@ in the <em>misc</em> sub directory. These include:</p>
 </h2>
 
 <p>The <em>jsonpretty.py</em> script converts JSON API responses into human-readable format</p>
+
+<p>Install simplejson (assumes you already have pip installed):
+
+<pre><code>sudo pip install simplejson
+</code></pre>
+
+<p>Run it with:
+
+<pre><code>sudo python nmeta/misc/jsonpretty.py URL
+</code></pre>
+
+<p>Example usage:</p>
+<p><img src="images/misc/jsonpretty.png" alt="jsonpretty example screenshot"></p>
+
+
 
 <p>&nbsp;</p>
       </section>

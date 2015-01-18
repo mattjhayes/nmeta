@@ -49,9 +49,20 @@
   <a id="nmeta---network-metadata" class="anchor" href="#nmeta---network-metadata" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Architecture and Design
 </h1>
-<p>Here's an overview of how nmeta hangs together:</p>
+<p>Here's an overview of how nmeta processes packets:</p>
 <p><img src="images/system/nmeta_logical_1.png" alt="System Overview 1"></p>
-<em>(Click to Enlarge)</em>
+
+<p>Here are the (simplified) steps for processing a packet that does not have switch flow table entries:</p>
+<ol>
+  <li>A packet arrives at an OpenFlow switch and is not matched by the flow table(s). The table-miss action is set to send the packet to the controller so the switch sends the packet to the controller</li>
+  <li>The Ryu SDN controller receives the packet-in event and calls the nmeta module</li>
+  <li>The nmeta module calls the tc_policy module which runs the packet past a policy to determine if there are any actions</li>
+  <li>The tc_policy module sends the packet back to the nmeta module with any actions</li>
+  <li>The nmeta module sends the packet and any actions to the flow module</li>
+  <li>The flow module both stores flow metadata acts as an interface to consumers of the data. It provides information back to the nmeta module about any special treatment for the packet</li>
+  <li>The nmeta module sends (via Ryu) instructions to the switch on sending the packet out and installing a flow table entry (in some cases)</li>
+  <li>The switch sends the packet out, and installs a flow table entry (if instructed to)</li>
+</ol>
 
 <p>And a more detailed view:</p>
 <p><a href="design-image-logical.html" target="_blank"><img src="images/system/nmeta_logical_2.png" alt="System Overview 2"></a></p>

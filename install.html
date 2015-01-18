@@ -96,6 +96,62 @@ PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
 
 <h2>
   <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Add Aliases (Optional)
+</h2>
+
+<p>Aliases can make it quicker and easier to run common commands. Here are a few aliases that may be useful:</p>
+<table>
+  <tr>
+    <th>
+      Alias Command
+    </th>
+    <th>
+      What It Does
+    </th>
+    <th>
+      Raw Command
+    </th>
+  </tr>
+  <tr>
+    <td>
+      nm
+    </td>
+    <td>
+      Run nmeta
+    </td>
+    <td>
+      cd; cd ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
+    </td>
+  </tr>
+  <tr>
+    <td>
+      nt
+    </td>
+    <td>
+      Run nose tests
+    </td>
+    <td>
+      cd; cd nmeta; nosetests -v
+    </td>
+  </tr>
+</table>
+
+<p>To add the aliases, edit the .bash_aliases file in your home directory:</p>
+
+<pre><code>cd
+sudo vi .bash_aliases
+</code></pre>
+
+<p>Paste in the following:</p>
+
+<pre><code>alias nm="cd; cd ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py"
+alias nt="cd; cd nmeta; nosetests -v"
+</code></pre>
+
+<p>Note that these commands may change your working directory</p>
+
+<h2>
+  <a id="general-configuration" class="anchor" href="#general-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Fix LLDP Bug (Optional)
 </h2>
 

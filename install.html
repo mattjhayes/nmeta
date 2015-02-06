@@ -134,6 +134,17 @@ PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
       cd; cd nmeta; nosetests -v
     </td>
   </tr>
+  <tr>
+    <td>
+      yt
+    </td>
+    <td>
+      Check YAML compliance of tc_policy.yaml config file
+    </td>
+    <td>
+      python nmeta/misc/yamltest.py nmeta/config/tc_policy.yaml
+    </td>
+  </tr>
 </table>
 
 <p>To add the aliases, edit the .bash_aliases file in your home directory:</p>
@@ -146,6 +157,7 @@ sudo vi .bash_aliases
 
 <pre><code>alias nm="cd; cd ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py"
 alias nt="cd; cd nmeta; nosetests -v"
+alias yt='python nmeta/misc/yamltest.py nmeta/config/tc_policy.yaml'
 </code></pre>
 
 <p>Note that these commands may change your working directory</p>

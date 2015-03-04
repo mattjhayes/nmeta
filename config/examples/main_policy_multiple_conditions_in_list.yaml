@@ -1,0 +1,28 @@
+#*** Example Main Policy with multiple conditions in list
+#*** Written in YAML
+#
+tc_rules:
+    # Traffic Classification Rulesets and Rules
+    tc_ruleset_1:
+        - comment: OpenFlow Protocol Traffic
+          match_type: any
+          conditions_list:
+              - match_type: any
+                tcp_src: 6633
+                tcp_dst: 6633
+          actions:
+              set_qos_tag: QoS_treatment=system_priority
+              set_desc_tag: description="OpenFlow Protocol Traffic" 
+        - comment: Audit Division SSH traffic
+          match_type: all
+          conditions_list:
+              - match_type: any
+                tcp_src: 22
+                tcp_dst: 22
+              - match_type: any
+                identity_lldp_systemname_re: '.*\.audit\.example\.com'
+          actions:
+              set_qos_tag: QoS_treatment=high_priority
+              set_desc_tag: description="High Priority Audit SSH Traffic"
+
+

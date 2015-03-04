@@ -298,6 +298,7 @@ class NMeta(app_manager.RyuApp):
             self.logger.debug("DEBUG: module=nmeta Calling function to do "
                                "tidy-up on the Flow Metadata (FM) table")
             self.flowmetadata.maintain_fm_table(self.fm_table_max_age)
+            self.fm_table_last_tidyup_time = _time
         #*** Identity NIC and System table maintenance:
         _time = time.time()
         if (_time - self.identity_table_last_tidyup_time) \
@@ -309,6 +310,7 @@ class NMeta(app_manager.RyuApp):
             self.tc_policy.identity.maintain_identity_tables(
                                self.identity_nic_table_max_age,
                                self.identity_system_table_max_age)
+            self.identity_table_last_tidyup_time = _time
         #*** Statistical FCIP table maintenance:
         _time = time.time()
         if (_time - self.statistical_fcip_table_last_tidyup_time) > \
@@ -318,6 +320,7 @@ class NMeta(app_manager.RyuApp):
                                "tidy-up on the statistical FCIP table")
             self.tc_policy.statistical.maintain_fcip_table(
                                      self.statistical_fcip_table_max_age)
+            self.statistical_fcip_table_last_tidyup_time = _time
         #*** Payload FCIP table maintenance:
         _time = time.time()
         if (_time - self.payload_fcip_table_last_tidyup_time) > \
@@ -327,6 +330,7 @@ class NMeta(app_manager.RyuApp):
                                "tidy-up on the payload FCIP table")
             self.tc_policy.payload.maintain_fcip_table(
                                      self.payload_fcip_table_max_age)
+            self.payload_fcip_table_last_tidyup_time = _time
 
 # REST command template
 #*** Copied from the Ryu rest_router.py example code:

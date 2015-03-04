@@ -27,7 +27,7 @@ fm_table_max_age: 600
 #*** Flow Metadata Table interval in seconds between
 #*** running the tidy-up process that removes old
 #*** entries:
-fm_table_tidyup_interval: 12
+fm_table_tidyup_interval: 30
 #
 #*** Identity NIC Table entry maximum age in seconds
 #*** before being eligible for removal:
@@ -40,7 +40,7 @@ identity_system_table_max_age: 600
 #*** Identity NIC and System Tables interval in seconds between
 #*** running the tidy-up process that removes old
 #*** entries:
-identity_table_tidyup_interval: 5
+identity_table_tidyup_interval: 60
 #
 #*** Statistical Flow Classification in Progress (FCIP) table entry
 #*** maximum age in seconds before being eligible for removal:
@@ -49,7 +49,7 @@ statistical_fcip_table_max_age: 600
 #*** Statistical Flow Classification in Progress (FCIP) table interval
 #*** in seconds between running the tidy-up process that removes old
 #*** entries:
-statistical_fcip_table_tidyup_interval: 5
+statistical_fcip_table_tidyup_interval: 45
 #
 #*** Payload Flow Classification in Progress (FCIP) table entry
 #*** maximum age in seconds before being eligible for removal:
@@ -58,7 +58,7 @@ payload_fcip_table_max_age: 600
 #*** Payload Flow Classification in Progress (FCIP) table interval
 #*** in seconds between running the tidy-up process that removes old
 #*** entries:
-payload_fcip_table_tidyup_interval: 5
+payload_fcip_table_tidyup_interval: 40
 #
 
 

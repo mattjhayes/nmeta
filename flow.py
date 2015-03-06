@@ -171,8 +171,14 @@ class FlowMetadata(object):
                                     "that is not IPv4 but has dl_type=0x0800")
                 match = 0
             if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
-                actions = [datapath.ofproto_parser.OFPActionEnqueue(out_port, 
-                            out_queue)] 
+                #*** Only do Enqueue action if not flooding:
+                if out_port != ofproto.OFPP_FLOOD:
+                    actions = [datapath.ofproto_parser.OFPActionEnqueue \
+                                     (out_port, out_queue)]
+                else:
+                    actions = [datapath.ofproto_parser.OFPActionOutput \
+                                     (out_port)]
+                print "actions are %s" % actions
             elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
                 #*** Note: out_port must come last!
                 actions = [

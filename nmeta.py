@@ -40,10 +40,12 @@ import time
 import binascii
 
 #*** Ryu Imports:
+from ryu import utils
 from ryu.base import app_manager
 from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
+from ryu.controller.handler import HANDSHAKE_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import ofproto_v1_3
@@ -331,6 +333,17 @@ class NMeta(app_manager.RyuApp):
             self.tc_policy.payload.maintain_fcip_table(
                                      self.payload_fcip_table_max_age)
             self.payload_fcip_table_last_tidyup_time = _time
+
+    @set_ev_cls(ofp_event.EventOFPErrorMsg,
+            [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
+    def error_msg_handler(self, ev):
+        """
+        A switch has sent us an error event
+        """
+        msg = ev.msg
+        self.logger.error('ERROR: module=nmeta OFPErrorMsg received: '
+                      'type=0x%02x code=0x%02x message=%s',
+                      msg.type, msg.code, utils.hex_array(msg.data))
 
 # REST command template
 #*** Copied from the Ryu rest_router.py example code:

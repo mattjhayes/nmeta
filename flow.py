@@ -27,7 +27,7 @@ import json
 #*** Ryu imports:
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
-from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
 from ryu.lib.mac import haddr_to_bin
 from ryu.lib import addrconv
@@ -106,9 +106,11 @@ class FlowMetadata(object):
             #*** Build a fine-grained flow match to install onto switch
             eth = pkt.get_protocol(ethernet.ethernet)
             pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+            pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
             pkt_tcp = pkt.get_protocol(tcp.tcp)
             #*** Use Controller Abstraction module to build match statements:
-            if (pkt_tcp and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+            if (pkt_tcp and pkt_ip4 and 
+                     ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
                 match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
@@ -116,9 +118,21 @@ class FlowMetadata(object):
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
-                self.logger.debug("DEBUG: module=flow TCP match "
+                self.logger.debug("DEBUG: module=flow OF1.0 IPv4 TCP match "
                                   "is %s", match)
-            elif (pkt_tcp and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+            elif (pkt_tcp and pkt_ip6 and 
+                       ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=haddr_to_bin(eth.src),
+                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
+                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
+                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
+                self.logger.debug("DEBUG: module=flow OF1.0 IPv6 TCP match "
+                                  "is %s", match)
+            elif (pkt_tcp and pkt_ip4 and 
+                       ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
                 #*** Note OF1.3 needs eth src and dest in ascii not bin
                 #*** and tcp vs udp protocol specific attributes: 
                 match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
@@ -128,7 +142,20 @@ class FlowMetadata(object):
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
-                self.logger.debug("DEBUG: module=flow TCP match "
+                self.logger.debug("DEBUG: module=flow OF1.3 IPv4 TCP match "
+                                  "is %s", match)
+            elif (pkt_tcp and pkt_ip6 and 
+                       ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+                #*** Note OF1.3 needs eth src and dest in ascii not bin
+                #*** and tcp vs udp protocol specific attributes: 
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst, 
+                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
+                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
+                        tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
+                self.logger.debug("DEBUG: module=flow OF1.3 IPv6 TCP match "
                                   "is %s", match)
             elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
                 match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
@@ -404,3 +431,11 @@ class FlowMetadata(object):
         assert isinstance(ip_text, str)
         return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]      
 
+    def _ipv6_t2i(self, ip_text):
+        """
+        Turns an IPv6 address in text format into an integer.
+        """
+        if ip_text == 0:
+            return ip_text
+        assert isinstance(ip_text, str)
+        return struct.unpack('!I', addrconv.ipv6.text_to_bin(ip_text))[0]  

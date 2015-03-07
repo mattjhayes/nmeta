@@ -255,9 +255,9 @@ class NMeta(app_manager.RyuApp):
                               pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
         elif pkt_ip6:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                              "%s IP src %s dst %s proto %s",
+                              "%s IP src %s dst %s",
                               dpid, in_port,
-                              pkt_ip6.src, pkt_ip6.dst, pkt_ip6.proto)
+                              pkt_ip6.src, pkt_ip6.dst)
         else:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                              "%s src:%s dst:%s", dpid, in_port, src, dst)

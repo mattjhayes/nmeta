@@ -306,3 +306,41 @@ class ControllerAbstract(object):
                 exc_type, exc_value, exc_traceback)
             return 0 
         return 1
+
+    def packet_out_nq(self, datapath, msg, in_port, out_port):
+        """
+        Sends a supplied packet out switch port(s) (nq = no queueing)
+        """
+        try:
+            actions = [datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("ERROR: module=CtrlAbs error=E1000022 "
+                "actions exception %s, %s, %s",
+                exc_type, exc_value, exc_traceback)
+            return 0
+        #*** Now have we have actions, build the packet out message:
+        try:
+            #*** Assemble the switch/packet/actions ready to push:
+            out = datapath.ofproto_parser.OFPPacketOut(
+                datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
+                actions=actions)
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("ERROR: module=CtrlAbs error=E1000023 "
+               "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                exc_type, exc_value, exc_traceback)
+            return 0 
+        try:
+            #*** Tell the switch to send the packet:
+            datapath.send_msg(out)
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("ERROR: module=CtrlAbs error=E1000024 "
+               "datapath.send_msg Exception %s, %s, %s",
+                exc_type, exc_value, exc_traceback)
+            return 0 
+        return 1

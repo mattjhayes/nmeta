@@ -285,31 +285,37 @@ class NMeta(app_manager.RyuApp):
         #*** TBD: Build actions through ca module:
         #actions = self.ca.actions(datapath, out_port=out_port,
 
-        #*** Call Flow Metadata to get a match to install (if desired)
-        #*** and output queue:
-        (match, actions, out_queue) = self.flowmetadata.update_flowmetadata \
+        if out_port != ofproto.OFPP_FLOOD:
+            #*** Do some flow magic, but only if not a flooded packet:
+            #*** Call Flow Metadata to get a match to install (if desired)
+            #*** and output queue:
+            (match, actions, out_queue) = \
+                 self.flowmetadata.update_flowmetadata \
                                          (msg, out_port, flow_actions)
-        #*** Check to see if we have a flow to install:
-        if match and actions:
-            #*** Install flow match and actions to switch:
-            self.logger.debug("DEBUG: module=nmeta Installing actions "
+            #*** Check to see if we have a flow to install:
+            if match and actions:
+                #*** Install flow match and actions to switch:
+                self.logger.debug("DEBUG: module=nmeta Installing actions "
                               "%s on datapath %s", actions, datapath.id)
-            flow_add_result = self.ca.add_flow(datapath, match, actions,
+                self.ca.add_flow(datapath, match, actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
-            self.logger.debug("DEBUG: module=nmeta add_flow result is %s",
-                              flow_add_result)
-        else:
-            #*** Something went wrong so log it:
-            self.logger.error("ERROR: module=nmeta error=E1000007 Not "
+            else:
+                #*** Something went wrong so log it:
+                self.logger.error("ERROR: module=nmeta error=E1000007 Not "
                               "installing flow, match is % and actions are %s",
                               match, actions)
-
-        #*** Send Packet Out:
-        packet_out_result = self.ca.packet_out(datapath, msg, in_port,
+            #*** Send Packet Out:
+            packet_out_result = self.ca.packet_out(datapath, msg, in_port,
                                 out_port, out_queue)
-        self.logger.debug("DEBUG: module=nmeta Sent packet-out with result %s",
-                             packet_out_result)
+            self.logger.debug("DEBUG: module=nmeta Sent packet-out with result"
+                                  " %s", packet_out_result)
+        else:
+            #*** It's a packet that's flooded, so send without specific queue:
+            packet_out_result = self.ca.packet_out_nq(datapath, msg, in_port,
+                                out_port)
+            self.logger.debug("DEBUG: module=nmeta Sent packet-out (no queue) "
+                                  "with result %s", packet_out_result)
 
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:

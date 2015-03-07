@@ -26,6 +26,9 @@ and carries no warrantee whatsoever. You have been warned.
 #*** Return the Flow Metadata Table:
 #*** curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
 #
+#*** Return the Flow Metadata Table size in terms of number of rows:
+#*** curl -X GET http://127.0.0.1:8080/nmeta/flowtable/size/rows/
+#
 #*** Return the Identity NIC Table:
 #*** curl -X GET http://127.0.0.1:8080/nmeta/identity/nictable/
 #
@@ -88,6 +91,7 @@ class NMeta(app_manager.RyuApp):
                     ofproto_v1_3.OFP_VERSION]
     #*** Constants for REST API:
     url_flowtable = '/nmeta/flowtable/'
+    url_flowtable_size_rows = '/nmeta/flowtable/size/rows/'
     url_flowtable_by_ip = '/nmeta/flowtable/{ip}'
     url_identity_nic_table = '/nmeta/identity/nictable/'
     url_identity_system_table = '/nmeta/identity/systemtable/'
@@ -156,6 +160,11 @@ class NMeta(app_manager.RyuApp):
         mapper = wsgi.mapper
         wsgi.register(RESTAPIController, {nmeta_instance_name : self})
         requirements = {'ip': self.IP_PATTERN}
+        mapper.connect('flowtable', self.url_flowtable_size_rows,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='get_flow_table_size_rows',
+                       conditions=dict(method=['GET']))
         mapper.connect('flowtable', self.url_flowtable,
                        controller=RESTAPIController,
                        requirements=requirements,
@@ -389,6 +398,17 @@ class RESTAPIController(ControllerBase):
     def __init__(self, req, link, data, **config):
         super(RESTAPIController, self).__init__(req, link, data, **config)
         self.nmeta_parent_self = data[nmeta_instance_name]
+
+    @rest_command
+    def get_flow_table_size_rows(self, req, **kwargs):
+        """
+        REST API function that returns size of the
+        Flow Metadata (FM) table as a number of rows
+        """
+        nmeta = self.nmeta_parent_self
+        _fm_table_size_rows = nmeta.flowmetadata.get_fm_table_size_rows()
+        return _fm_table_size_rows
+        pass
 
     @rest_command
     def list_flow_table(self, req, **kwargs):

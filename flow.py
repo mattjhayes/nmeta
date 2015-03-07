@@ -226,6 +226,12 @@ class FlowMetadata(object):
         """
         return self._fm_table
 
+    def get_fm_table_size_rows(self):
+        """
+        Return the number of rows (items) in the flow metadata table
+        """
+        return len(self._fm_table)
+
     def _fm_check(self, pkt):
         """
         Checks if a packet is part of a flow in the

@@ -26,6 +26,9 @@ and carries no warrantee whatsoever. You have been warned.
 #*** Return the Flow Metadata Table:
 #*** curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
 #
+#*** Return the Flow Metadata Table size in terms of number of rows:
+#*** curl -X GET http://127.0.0.1:8080/nmeta/flowtable/size/rows/
+#
 #*** Return the Identity NIC Table:
 #*** curl -X GET http://127.0.0.1:8080/nmeta/identity/nictable/
 #
@@ -40,10 +43,12 @@ import time
 import binascii
 
 #*** Ryu Imports:
+from ryu import utils
 from ryu.base import app_manager
 from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
+from ryu.controller.handler import HANDSHAKE_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import ofproto_v1_3
@@ -51,7 +56,7 @@ from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib import addrconv
 from ryu.lib.packet import ethernet
-from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 from ryu.lib.packet import lldp
@@ -86,6 +91,7 @@ class NMeta(app_manager.RyuApp):
                     ofproto_v1_3.OFP_VERSION]
     #*** Constants for REST API:
     url_flowtable = '/nmeta/flowtable/'
+    url_flowtable_size_rows = '/nmeta/flowtable/size/rows/'
     url_flowtable_by_ip = '/nmeta/flowtable/{ip}'
     url_identity_nic_table = '/nmeta/identity/nictable/'
     url_identity_system_table = '/nmeta/identity/systemtable/'
@@ -154,6 +160,11 @@ class NMeta(app_manager.RyuApp):
         mapper = wsgi.mapper
         wsgi.register(RESTAPIController, {nmeta_instance_name : self})
         requirements = {'ip': self.IP_PATTERN}
+        mapper.connect('flowtable', self.url_flowtable_size_rows,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='get_flow_table_size_rows',
+                       conditions=dict(method=['GET']))
         mapper.connect('flowtable', self.url_flowtable,
                        controller=RESTAPIController,
                        requirements=requirements,
@@ -233,18 +244,29 @@ class NMeta(app_manager.RyuApp):
 
         #*** Some debug about the Packet In:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_udp = pkt.get_protocol(udp.udp)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
-        if pkt_tcp:
+        if pkt_ip4 and pkt_tcp:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                               "%s TCP %s %s %s %s",
                               dpid, in_port, pkt_ip4.src,
                               pkt_tcp.src_port, pkt_ip4.dst, pkt_tcp.dst_port)
+        elif pkt_ip6 and pkt_tcp:
+            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
+                              "%s TCP %s %s %s %s",
+                              dpid, in_port, pkt_ip6.src,
+                              pkt_tcp.src_port, pkt_ip6.dst, pkt_tcp.dst_port)
         elif pkt_ip4:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                               "%s IP src %s dst %s proto %s",
                               dpid, in_port,
                               pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
+        elif pkt_ip6:
+            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
+                              "%s IP src %s dst %s",
+                              dpid, in_port,
+                              pkt_ip6.src, pkt_ip6.dst)
         else:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                              "%s src:%s dst:%s", dpid, in_port, src, dst)
@@ -298,6 +320,7 @@ class NMeta(app_manager.RyuApp):
             self.logger.debug("DEBUG: module=nmeta Calling function to do "
                                "tidy-up on the Flow Metadata (FM) table")
             self.flowmetadata.maintain_fm_table(self.fm_table_max_age)
+            self.fm_table_last_tidyup_time = _time
         #*** Identity NIC and System table maintenance:
         _time = time.time()
         if (_time - self.identity_table_last_tidyup_time) \
@@ -309,6 +332,7 @@ class NMeta(app_manager.RyuApp):
             self.tc_policy.identity.maintain_identity_tables(
                                self.identity_nic_table_max_age,
                                self.identity_system_table_max_age)
+            self.identity_table_last_tidyup_time = _time
         #*** Statistical FCIP table maintenance:
         _time = time.time()
         if (_time - self.statistical_fcip_table_last_tidyup_time) > \
@@ -318,6 +342,7 @@ class NMeta(app_manager.RyuApp):
                                "tidy-up on the statistical FCIP table")
             self.tc_policy.statistical.maintain_fcip_table(
                                      self.statistical_fcip_table_max_age)
+            self.statistical_fcip_table_last_tidyup_time = _time
         #*** Payload FCIP table maintenance:
         _time = time.time()
         if (_time - self.payload_fcip_table_last_tidyup_time) > \
@@ -327,6 +352,18 @@ class NMeta(app_manager.RyuApp):
                                "tidy-up on the payload FCIP table")
             self.tc_policy.payload.maintain_fcip_table(
                                      self.payload_fcip_table_max_age)
+            self.payload_fcip_table_last_tidyup_time = _time
+
+    @set_ev_cls(ofp_event.EventOFPErrorMsg,
+            [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
+    def error_msg_handler(self, ev):
+        """
+        A switch has sent us an error event
+        """
+        msg = ev.msg
+        self.logger.error('ERROR: module=nmeta OFPErrorMsg received: '
+                      'type=0x%02x code=0x%02x message=%s',
+                      msg.type, msg.code, utils.hex_array(msg.data))
 
 # REST command template
 #*** Copied from the Ryu rest_router.py example code:
@@ -361,6 +398,17 @@ class RESTAPIController(ControllerBase):
     def __init__(self, req, link, data, **config):
         super(RESTAPIController, self).__init__(req, link, data, **config)
         self.nmeta_parent_self = data[nmeta_instance_name]
+
+    @rest_command
+    def get_flow_table_size_rows(self, req, **kwargs):
+        """
+        REST API function that returns size of the
+        Flow Metadata (FM) table as a number of rows
+        """
+        nmeta = self.nmeta_parent_self
+        _fm_table_size_rows = nmeta.flowmetadata.get_fm_table_size_rows()
+        return _fm_table_size_rows
+        pass
 
     @rest_command
     def list_flow_table(self, req, **kwargs):

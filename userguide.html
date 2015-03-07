@@ -69,17 +69,19 @@ in YAML ("YAML Ain't Markup Language") format
 
 <p>The traffic classification policy (also in YAML) is stored in the file:</p>
 
-<pre><code>config/tc_policy.yaml
+<pre><code>config/main_policy.yaml
 </code></pre>
 
 <p>It is used to control what classifiers are used, in what order and what actions are taken.</p>
 
-<p>The traffic classification policy is composed of one or more <em>policy rules</em>, each of which contain:</p>
+<p>The traffic classification policy is based off a root key <em>tc_rules</em>. This root contains a <em>ruleset</em> name (only one ruleset supported at this stage), which in turn contains one or more <em>rules</em>.</p>
+
+<p>Rules are an ordered list (denoted by preceding dash). Each rule contains:</p>
 
 <ul>
-  <li>A <em>rule name</em></li>
   <li>A <em>comment</em> to describe the purpose of the rule (optional)</li>
-  <li>A single <em>conditions</em> stanza</li>
+  <li>A <em>match type</em></li>
+  <li>A single <em>conditions_list</em> stanza that contains one or more <em>conditions</em> stanzas</li>
   <li>A single <em>actions</em> stanza</li>
 </ul>
 
@@ -88,15 +90,22 @@ in YAML ("YAML Ain't Markup Language") format
 <pre><code><img src="images/userguide/simple_tc_policy.png" alt="simple traffic classification policy">
 </code></pre>
 
-<p>A <em>rule name</em> can be any single-line string, but must not be the same as any other rule name</p>
-
 <p>A <em>comment</em> must start with the attribute <em>comment:</em> and any single-line string can follow</p>
 
-<p>A <em>conditions</em> stanza contains:</p>
+<p>A <em>match type</em> is one of <em>any</em> or <em>all</em></li>
+
+<p>A <em>conditions_list</em> stanza contains:</p>
 
 <ul>
   <li>A match type, consisting of <em>any</em> or <em>all</em></li>
-  <li>zero or more nested <em>conditions</em></li>
+  <li>One or more <em>conditions</em> as list items (denoted by dash preceding the first item)</li>
+  <li>One or more <em>classifiers</em> (see below)</li>
+</ul>
+
+<p>A <em>conditions</em> stanza is a list item in a conditions list and contains:</p>
+
+<ul>
+  <li>A match type, consisting of <em>any</em> or <em>all</em></li>
   <li>One or more <em>classifiers</em> (see below)</li>
 </ul>
 
@@ -104,10 +113,8 @@ in YAML ("YAML Ain't Markup Language") format
 
 <p>Here is a more complex traffic classification policy:</p>
 
-<pre><code><img src="images/userguide/complex_tc_policy.png" alt="simple traffic classification policy">
+<pre><code><img src="images/userguide/complex_tc_policy.png" alt="complex traffic classification policy">
 </code></pre>
-
-<p>Note that when there is more than one conditions stanza (only permitted in nested conditions), the main attributes for the stanzas must be unique, and start with <em>conditions</em></p>
 
 <p>Conditions invoke classifiers. There are four types of classifier supported:
 <ul>

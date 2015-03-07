@@ -311,15 +311,35 @@ class ControllerAbstract(object):
         """
         Sends a supplied packet out switch port(s) (nq = no queueing)
         """
-        try:
-            actions = [datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
-        except:
-            #*** Log the error and return 0:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=CtrlAbs error=E1000022 "
-                "actions exception %s, %s, %s",
-                exc_type, exc_value, exc_traceback)
+        ofproto = datapath.ofproto
+        if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
+            try:
+                actions = [datapath.ofproto_parser.OFPActionOutput \
+                             (out_port, )]
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("ERROR: module=CtrlAbs error=E1000022 "
+                    "actions exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0
+        elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
+            try:
+                actions = [datapath.ofproto_parser.OFPActionOutput \
+                             (out_port, 0)]
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("ERROR: module=CtrlAbs error=E1000025 "
+                    "actions exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0
+        else:
+            self.logger.error("ERROR: module=CtrlAbs error=E1000026 "
+                                "Unsupported OpenFlow version %s",
+                                ofproto.OFP_VERSION)
             return 0
+                
         #*** Now have we have actions, build the packet out message:
         try:
             #*** Assemble the switch/packet/actions ready to push:

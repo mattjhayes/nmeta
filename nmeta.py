@@ -278,6 +278,8 @@ class NMeta(app_manager.RyuApp):
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
         if dst in self.mac_to_port[dpid]:
+            self.logger.debug("DEBUG: module=nmeta MAC %s is in table via port"
+               " %s", dst, self.mac_to_port[dpid][dst])
             out_port = self.mac_to_port[dpid][dst]
         else:
             out_port = ofproto.OFPP_FLOOD
@@ -314,8 +316,8 @@ class NMeta(app_manager.RyuApp):
             #*** It's a packet that's flooded, so send without specific queue:
             packet_out_result = self.ca.packet_out_nq(datapath, msg, in_port,
                                 out_port)
-            self.logger.debug("DEBUG: module=nmeta Sent packet-out (no queue) "
-                                  "with result %s", packet_out_result)
+            #self.logger.debug("DEBUG: module=nmeta Sent packet-out (no queue) "
+            #                      "with result %s", packet_out_result)
 
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:

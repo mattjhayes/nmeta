@@ -178,7 +178,6 @@ class FlowMetadata(object):
                 else:
                     actions = [datapath.ofproto_parser.OFPActionOutput \
                                      (out_port)]
-                print "actions are %s" % actions
             elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
                 #*** Note: out_port must come last!
                 actions = [

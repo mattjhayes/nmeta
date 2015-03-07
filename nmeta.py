@@ -53,7 +53,7 @@ from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib import addrconv
 from ryu.lib.packet import ethernet
-from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 from ryu.lib.packet import lldp
@@ -235,18 +235,29 @@ class NMeta(app_manager.RyuApp):
 
         #*** Some debug about the Packet In:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_udp = pkt.get_protocol(udp.udp)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
-        if pkt_tcp:
+        if pkt_ip4 and pkt_tcp:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                               "%s TCP %s %s %s %s",
                               dpid, in_port, pkt_ip4.src,
                               pkt_tcp.src_port, pkt_ip4.dst, pkt_tcp.dst_port)
+        elif pkt_ip6 and pkt_tcp:
+            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
+                              "%s TCP %s %s %s %s",
+                              dpid, in_port, pkt_ip6.src,
+                              pkt_tcp.src_port, pkt_ip6.dst, pkt_tcp.dst_port)
         elif pkt_ip4:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                               "%s IP src %s dst %s proto %s",
                               dpid, in_port,
                               pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
+        elif pkt_ip6:
+            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
+                              "%s IP src %s dst %s proto %s",
+                              dpid, in_port,
+                              pkt_ip6.src, pkt_ip6.dst, pkt_ip6.proto)
         else:
             self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
                              "%s src:%s dst:%s", dpid, in_port, src, dst)

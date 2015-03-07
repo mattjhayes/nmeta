@@ -230,7 +230,6 @@ class ControllerAbstract(object):
                     "%s, %s, %s",
                     exc_type, exc_value, exc_traceback)
                 return 0
-            print "ca: actions are %s" % actions
             try:
                 datapath.send_msg(mod)
             except:

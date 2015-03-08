@@ -36,6 +36,7 @@ QOS_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'QoS_treatment', 'output_queue')
 QOS_FLOW_ACTION = 'set_qos_tag'
 QOS_POLICY_TAG = 'QoS_treatment'
 QOS_TREATMENT = 'output_queue'
+QOS_DEFAULT_QUEUE = 0
 
 class QoS(object):
     """
@@ -133,7 +134,7 @@ class QoS(object):
                     if result:
                         return(result)
         #*** No result, so return default queue value:
-        return(1)
+        return(QOS_DEFAULT_QUEUE)
 
     def _check_policy_rule(self, flow_actions, policy_rule):
         """

@@ -297,8 +297,9 @@ class NMeta(app_manager.RyuApp):
             #*** Check to see if we have a flow to install:
             if match and actions:
                 #*** Install flow match and actions to switch:
-                self.logger.debug("DEBUG: module=nmeta Installing actions "
-                              "%s on datapath %s", actions, datapath.id)
+                self.logger.debug("DEBUG: module=nmeta adding flow match=%s "
+                              "actions=%s datapath=%s", match, actions, 
+                              datapath.id)
                 self.ca.add_flow(datapath, match, actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
@@ -310,8 +311,6 @@ class NMeta(app_manager.RyuApp):
             #*** Send Packet Out:
             packet_out_result = self.ca.packet_out(datapath, msg, in_port,
                                 out_port, out_queue)
-            self.logger.debug("DEBUG: module=nmeta Sent packet-out with result"
-                                  " %s", packet_out_result)
         else:
             #*** It's a packet that's flooded, so send without specific queue:
             packet_out_result = self.ca.packet_out_nq(datapath, msg, in_port,

@@ -23,12 +23,22 @@ conditions_all_mac = {'match_type': 'all', 'eth_src': '08:60:6e:7f:74:e7',
 conditions_any_ip = {'match_type': 'any', 'ip_dst': '192.168.57.12',
                          'ip_src': '192.168.56.32'}
 conditions_any_ssh = {'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}
-conditions_nested = {'conditions 2': {'match_type': 'any',
-                'identity_lldp_systemname_re': '.*\\.audit\\.example\\.com'}, 
-                'conditions 1': {'match_type': 'any', 'tcp_src': 22, 
-                'tcp_dst': 22}, 'match_type': 'all'}
+
+conditions_rule_nested_1 = {'comment': 'Audit Division SSH traffic', 
+    'conditions_list': [{'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}, 
+    {'match_type': 'any', 'ip_src': '10.0.0.1'}], 'match_type': 'all', 
+    'actions': {'set_qos_tag': 'QoS_treatment=high_priority', 
+    'set_desc_tag': 'description="High Priority Audit Division SSH Traffic"'}}
+    
+conditions_rule_nested_2 = {'comment': 'Audit Division SSH traffic', 
+    'conditions_list': [{'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}, 
+    {'match_type': 'any', 'ip_src': '192.168.2.3'}], 'match_type': 'all', 
+    'actions': {'set_qos_tag': 'QoS_treatment=high_priority', 
+    'set_desc_tag': 'description="High Priority Audit Division SSH Traffic"'}}
+    
 results_dict_no_match = {'actions': False, 'match': False,
                      'continue_to_inspect': False}
+                     
 results_dict_match = {'actions': False, 'match': True,
                      'continue_to_inspect': False}
 
@@ -38,7 +48,7 @@ def test_check_conditions():
     pkt_arp = build_packet_ARP()
     pkt_tcp_22 = build_packet_tcp_22()
     #*** Call _check_conditions with a packet and a conditions stanza and
-    #***  validate the result is expected dictionary:
+    #***  validate the result is expected boolean:
     assert tc._check_conditions(pkt_arp, conditions_any_openflow) == \
                              results_dict_no_match
     assert tc._check_conditions(pkt_arp, conditions_all_openflow) == \
@@ -47,12 +57,14 @@ def test_check_conditions():
                              results_dict_match
     assert tc._check_conditions(pkt_arp, conditions_all_mac) == \
                              results_dict_no_match
-    assert tc._check_conditions(pkt_arp, conditions_nested) == \
+    #*** Rule checks:
+    assert tc._check_rule(pkt_arp, conditions_rule_nested_1) == \
                              results_dict_no_match
-    assert tc._check_conditions(pkt_tcp_22, conditions_any_ssh) == \
+    assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_1) == \
                              results_dict_match
-    assert tc._check_conditions(pkt_tcp_22, conditions_any_openflow) == \
+    assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_2) == \
                              results_dict_no_match
+
 
 #=========== Misc Functions to Generate Data for Unit Tests ===================
 def build_packet_ARP():

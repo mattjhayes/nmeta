@@ -311,50 +311,88 @@ class TrafficClassificationPolicy(object):
             self.identity.ip4_in(pkt)
         #*** Check against TC policy:
         for tc_rule in self.tc_ruleset:
-            #*** Iterate through the conditions list:
-            for condition_stanza in tc_rule['conditions_list']:
-                _result_dict = self._check_conditions(pkt, condition_stanza)
-                if _result_dict["match"]:
-                    self.logger.debug("DEBUG: module=tc_policy Matched policy "
-                                  "condition(s), returning "
-                                  "continue_to_inspect and actions...")
-                    #*** Merge actions dictionaries. Do type inspection.
-                    #*** There has to be a better way...!!!?
-                    if (isinstance(tc_rule['actions'], dict) and 
-                             isinstance(_result_dict['actions'], dict)):
-                        _merged_actions = dict(tc_rule['actions'].items() 
+            #*** Check the rule:
+            _result_dict = self._check_rule(pkt, tc_rule)
+            if _result_dict['match']:
+                self.logger.debug("DEBUG: module=tc_policy Matched policy "
+                                  "rule")
+                #*** Need to merge the actions configured on the rule
+                #*** with those returned by the classifiers
+                #*** Do type inspection to ensure only dealing with non-Null
+                #*** items. There has to be a better way...!!!?
+                if (isinstance(tc_rule['actions'], dict) and 
+                        isinstance(_result_dict['actions'], dict)):
+                    _merged_actions = dict(tc_rule['actions'].items() 
                                         + _result_dict['actions'].items())
-                    elif isinstance(tc_rule['actions'], dict):
-                        _merged_actions = tc_rule['actions']
-                    elif isinstance(_result_dict['actions'], dict):
-                        _merged_actions = _result_dict['actions']
-                    else:
-                        _merged_actions = False
-                    _result_dict['actions'] = _merged_actions
-                    self.logger.debug("DEBUG: module=tc_policy returning dict "
+                elif isinstance(tc_rule['actions'], dict):
+                    _merged_actions = tc_rule['actions']
+                elif isinstance(_result_dict['actions'], dict):
+                    _merged_actions = _result_dict['actions']
+                else:
+                    _merged_actions = False
+                _result_dict['actions'] = _merged_actions
+                self.logger.debug("DEBUG: module=tc_policy returning dict "
                                     "%s", _result_dict)
-                    return _result_dict
+                return _result_dict
         #*** No hits so return false on everything:
         _result_dict = {'match':False, 'continue_to_inspect':False,
                     'actions': False}
         return _result_dict
 
+    def _check_rule(self, pkt, rule):
+        """
+        Passed a main_policy.yaml tc_rule.
+        Check to see if packet matches conditions as per the
+        rule.
+        Return a results dictionary
+        """
+        _result_dict = {'match':True, 'continue_to_inspect':False,
+                    'actions': False}
+        self.rule_match_type = rule['match_type']
+        #*** Iterate through the conditions list:
+        for condition_stanza in rule['conditions_list']:
+            _result = self._check_conditions(pkt, condition_stanza)
+            _match = _result['match']
+            #*** Decide what to do based on match result and match type:
+            if _match and self.rule_match_type == "any":
+                _result_dict['match'] = True
+                return _result_dict
+            elif not _match and self.rule_match_type == "all":
+                _result_dict['match'] = False
+                return _result_dict
+            else:
+                #*** Not a condition that we take action on so keep going:
+                pass
+        #*** We've finished loop through all conditions and haven't returned.
+        #***  Work out what action to take:
+        if not _match and self.rule_match_type == "any":
+            _result_dict['match'] = False
+            return _result_dict
+        elif _match and self.rule_match_type == "all":
+            _result_dict['match'] = True
+            return _result_dict
+        else:
+            #*** Unexpected result:
+            self.logger.error("ERROR: module=tc_policy Unexpected result at "
+                "end of loop through attributes. policy_attr=%s, _match=%s, "
+                "self.match_type=%s", policy_attr, _match, 
+                 self.rule_match_type)
+            _result_dict['match'] = False
+            return _result_dict
+
     def _check_conditions(self, pkt, conditions):
         """
-        Passed a packet-in packet and a conditions stanza (which may contain
-        nested conditions_list stanzas).
+        Passed a packet-in packet and a conditions stanza (part of a 
+        conditions list).
         Check to see if packet matches conditions as per the
         match type, and if so return in the dictionary attribute "match" with
         the boolean value True otherwise boolean False.
-        The returned dictionary can also contain values indicating
-        whether or not a flow should be installed to the switch
-        (attribute "continue_to_inspect") and actions
-        (attribute "actions")
         A match_type of 'any' will return true as soon as a valid
         match is made and false if end of matching is reached.
         A match_type of 'all' will return false as soon as an invalid
         match is made and true if end of matching is reached.
         """
+        #print "conditions are %s" % conditions
         #*** initial settings for results dictionary:
         _result_dict = {'match':True, 'continue_to_inspect':False,
                     'actions': False}

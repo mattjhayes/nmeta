@@ -29,7 +29,7 @@ import collections
 #*** How many seconds to aggregate data into a bucket:
 BUCKET_SIZE_SECONDS = 2
 #*** How many seconds of buckets to retain:
-BUCKET_MAX_AGE = 60
+BUCKET_MAX_AGE = 600
 
 class Measurement(object):
     """
@@ -61,41 +61,70 @@ class Measurement(object):
         """
         current_time = int(time.time())
         bucket_delete_list = list()
-        self.logger.debug("DEBUG: module=measure Packet in. is %s - %s = %s gt %s?",
-            current_time, self.current_bucket, current_time-self.current_bucket, BUCKET_SIZE_SECONDS)
         if (current_time - self.current_bucket) > BUCKET_SIZE_SECONDS:
             #*** Need a new bucket:
-            print "creating a new bucket with 1 packet_in event"
+            self.logger.debug("DEBUG: module=measure Creating new bucket id "
+                               "%s", current_time)
             self._pi_buckets[current_time]['packets_in'] = 1
             self.current_bucket = current_time
+            self.logger.debug("DEBUG: module=measure Number of buckets is %s",
+                                  len(self._pi_buckets))
             #*** Delete any old buckets:
             for bucket_id in self._pi_buckets:
-                if self._pi_buckets[bucket_id] < \
-                          (current_time - BUCKET_MAX_AGE):
+                if bucket_id < (current_time - BUCKET_MAX_AGE):
                     #*** Mark the bucket for deletion (can't delete while
                     #*** iterating):
-                    print "adding bucket %s to delete list" % bucket_id
                     bucket_delete_list.append(bucket_id)
             for dead_bucket in bucket_delete_list:
-                print "Tidy-up - deleting bucket %s" % self._pi_buckets[dead_bucket]
+                self.logger.debug("DEBUG: module=measure Deleting dead bucket "
+                                     "%s", dead_bucket)
                 del self._pi_buckets[dead_bucket]
         else:
             self._pi_buckets[self.current_bucket]['packets_in'] += 1
-            print "there's now %s in the bucket" % self._pi_buckets[self.current_bucket]['packets_in']
 
-    def get_packet_in_rate_10s(self):
+    def get_packet_in_rate(self, rate_interval):
         """
-        Return the packet in rate for last 10 seconds
+        Return the packet_in rate for last x seconds
         """
-        #*** Measurement period for the rate calculation:
-        rate_interval = 10
+        current_time = int(time.time())
+        packets_in = 0
+        overlap_bucket = 0
+        actual_interval = 0
+        packet_in_rate = 0
         #*** Add contents of buckets that have a start time in that window
         #*** and note if there is an overlap bucket as start of window:
-        
+        for bucket_time in self._pi_buckets:
+                if bucket_time > (current_time - rate_interval):
+                    #*** Accumulate:
+                    self.logger.debug("DEBUG: module=measure Adding %s from "
+                        "bucket %s", self._pi_buckets[bucket_time],
+                        self._pi_buckets[bucket_time]['packets_in'])
+                    packets_in += self._pi_buckets[bucket_time]['packets_in']
+                #*** Check if overlap:
+                if (bucket_time > (current_time - (rate_interval + 
+                         BUCKET_SIZE_SECONDS)) and (bucket_time < 
+                         (current_time - rate_interval))):
+                    self.logger.debug("DEBUG: module=measure Overlapping "
+                           "bucket id %s", bucket_time)
+                    overlap_bucket = bucket_time
         #*** Work out the dividing time for rate calculation. It is the lesser
         #*** of (current_time - overlap_bucket_end_time) and rate_interval:
-        
+        if (current_time - (overlap_bucket + BUCKET_SIZE_SECONDS) 
+                  < rate_interval):
+            actual_interval = current_time - (overlap_bucket + 
+                                                BUCKET_SIZE_SECONDS)
+        else:
+            actual_interval = rate_interval
         #*** Return the rate:
-        #try:
+        try:
+            packet_in_rate = packets_in / actual_interval
+        except:
+            #*** Log the error (Divide by Zero error?) and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("ERROR: module=measure "
+                "Divide by Zero error? Exception %s, %s, %s",
+                            exc_type, exc_value, exc_traceback)
+            return 0
+        return packet_in_rate
             
             

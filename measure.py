@@ -20,6 +20,9 @@ It is provides methods to record events and retrieve
 data related to these measurements.
 """
 
+#*** Python 3 style division results as floating point:
+from __future__ import division
+
 import logging
 import logging.handlers
 import time
@@ -84,7 +87,7 @@ class Measurement(object):
 
     def get_packet_in_rate(self, rate_interval):
         """
-        Return the packet_in rate for last x seconds
+        Return the packet_in rate per second for last x seconds
         """
         current_time = int(time.time())
         packets_in = 0
@@ -97,9 +100,11 @@ class Measurement(object):
                 if bucket_time > (current_time - rate_interval):
                     #*** Accumulate:
                     self.logger.debug("DEBUG: module=measure Adding %s from "
-                        "bucket %s", self._pi_buckets[bucket_time],
-                        self._pi_buckets[bucket_time]['packets_in'])
-                    packets_in += self._pi_buckets[bucket_time]['packets_in']
+                        "bucket %s", 
+                        self._pi_buckets[bucket_time]['packets_in'],
+                        bucket_time)
+                    packets_in = packets_in + \
+                                   self._pi_buckets[bucket_time]['packets_in']
                 #*** Check if overlap:
                 if (bucket_time > (current_time - (rate_interval + 
                          BUCKET_SIZE_SECONDS)) and (bucket_time < 
@@ -107,6 +112,7 @@ class Measurement(object):
                     self.logger.debug("DEBUG: module=measure Overlapping "
                            "bucket id %s", bucket_time)
                     overlap_bucket = bucket_time
+        print "packets_in is %s" % packets_in
         #*** Work out the dividing time for rate calculation. It is the lesser
         #*** of (current_time - overlap_bucket_end_time) and rate_interval:
         if (current_time - (overlap_bucket + BUCKET_SIZE_SECONDS) 
@@ -115,6 +121,7 @@ class Measurement(object):
                                                 BUCKET_SIZE_SECONDS)
         else:
             actual_interval = rate_interval
+        print "actual_interval is %s" % actual_interval
         #*** Return the rate:
         try:
             packet_in_rate = packets_in / actual_interval
@@ -125,6 +132,7 @@ class Measurement(object):
                 "Divide by Zero error? Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
             return 0
+        print "packet_in_rate is %s" % packet_in_rate
         return packet_in_rate
             
             

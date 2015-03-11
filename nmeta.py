@@ -34,7 +34,10 @@ and carries no warrantee whatsoever. You have been warned.
 #
 #*** Return the Flow Metadata Table size in terms of number of rows:
 #*** http://127.0.0.1:8080/nmeta/measurement/tablesize/rows/
-
+#
+#*** Return event rate measurements:
+#*** http://127.0.0.1:8080/nmeta/measurement/eventrates/
+#
 
 #*** General Imports:
 import logging
@@ -83,6 +86,8 @@ REST_RESULT = 'result'
 REST_NG = 'failure'
 REST_DETAILS = 'details'
 nmeta_instance_name = 'nmeta_api_app'
+#*** Number of preceding seconds that events are averaged over:
+EVENT_RATE_INTERVAL = 60
 
 class NMeta(app_manager.RyuApp):
     """
@@ -98,6 +103,7 @@ class NMeta(app_manager.RyuApp):
     url_identity_system_table = '/nmeta/identity/systemtable/'
     #*** Measurement APIs:
     url_flowtable_size_rows = '/nmeta/measurement/tablesize/rows/'
+    url_measure_event_rates = '/nmeta/measurement/eventrates/'
     #
     IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
     _CONTEXTS = {'wsgi': WSGIApplication}
@@ -167,6 +173,11 @@ class NMeta(app_manager.RyuApp):
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='get_flow_table_size_rows',
+                       conditions=dict(method=['GET']))
+        mapper.connect('flowtable', self.url_measure_event_rates,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='get_event_rates',
                        conditions=dict(method=['GET']))
         mapper.connect('flowtable', self.url_flowtable,
                        controller=RESTAPIController,
@@ -425,7 +436,15 @@ class RESTAPIController(ControllerBase):
         nmeta = self.nmeta_parent_self
         _fm_table_size_rows = nmeta.flowmetadata.get_fm_table_size_rows()
         return _fm_table_size_rows
-        pass
+
+    @rest_command
+    def get_event_rates(self, req, **kwargs):
+        """
+        REST API function that returns event rates (per second averages)
+        """
+        nmeta = self.nmeta_parent_self
+        event_rates = nmeta.measure.get_packet_in_rate(EVENT_RATE_INTERVAL)
+        return event_rates
 
     @rest_command
     def list_flow_table(self, req, **kwargs):

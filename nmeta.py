@@ -248,7 +248,7 @@ class NMeta(app_manager.RyuApp):
         A switch has sent us a Packet In event
         """
         #*** Record the event for measurements:
-        self.measure.packet_in()
+        self.measure.record_packet_in()
         
         msg = ev.msg
         datapath = msg.datapath
@@ -321,6 +321,9 @@ class NMeta(app_manager.RyuApp):
                 self.logger.debug("DEBUG: module=nmeta adding flow match=%s "
                               "actions=%s datapath=%s", match, actions, 
                               datapath.id)
+                #*** Record the event for measurements:
+                self.measure.record_modify_flow()
+                #*** Call abstraction layer to add flow record
                 self.ca.add_flow(datapath, match, actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
@@ -330,14 +333,14 @@ class NMeta(app_manager.RyuApp):
                               "installing flow, match is % and actions are %s",
                               match, actions)
             #*** Send Packet Out:
+            self.measure.record_packet_out()
             packet_out_result = self.ca.packet_out(datapath, msg, in_port,
                                 out_port, out_queue)
         else:
             #*** It's a packet that's flooded, so send without specific queue:
+            self.measure.record_packet_out()
             packet_out_result = self.ca.packet_out_nq(datapath, msg, in_port,
                                 out_port)
-            #self.logger.debug("DEBUG: module=nmeta Sent packet-out (no queue) "
-            #                      "with result %s", packet_out_result)
 
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:
@@ -443,7 +446,7 @@ class RESTAPIController(ControllerBase):
         REST API function that returns event rates (per second averages)
         """
         nmeta = self.nmeta_parent_self
-        event_rates = nmeta.measure.get_packet_in_rate(EVENT_RATE_INTERVAL)
+        event_rates = nmeta.measure.get_event_rates(EVENT_RATE_INTERVAL)
         return event_rates
 
     @rest_command

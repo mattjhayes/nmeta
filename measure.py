@@ -57,7 +57,7 @@ class Measurement(object):
         self.current_bucket = int(time.time())
         self._pi_buckets[self.current_bucket]['packets_in'] = 0
 
-    def packet_in(self):
+    def record_packet_in(self):
         """
         Record that a packet in event occurred so that data can be
         stored to record packet in rate.
@@ -85,15 +85,65 @@ class Measurement(object):
         else:
             self._pi_buckets[self.current_bucket]['packets_in'] += 1
 
-    def get_packet_in_rate(self, rate_interval):
+    def record_packet_out(self):
         """
-        Return the packet_in rate per second for last x seconds
+        Record that a packet out event occurred so that data can be
+        stored to record the packet out rate.
         """
         current_time = int(time.time())
-        packets_in = 0
+        if (current_time - self.current_bucket) > BUCKET_SIZE_SECONDS:
+            #*** Need a new bucket:
+            self.logger.debug("DEBUG: module=measure Creating new bucket id "
+                               "%s", current_time)
+            self._pi_buckets[current_time]['packet_out'] = 1
+            self.current_bucket = current_time
+            self.logger.debug("DEBUG: module=measure Number of buckets is %s",
+                                  len(self._pi_buckets))
+        else:
+            self._pi_buckets[self.current_bucket]['packet_out'] += 1
+
+    def record_modify_flow(self):
+        """
+        Record that a modify flow event occurred so that data can be
+        stored to record the modify flow rate.
+        """
+        current_time = int(time.time())
+        if (current_time - self.current_bucket) > BUCKET_SIZE_SECONDS:
+            #*** Need a new bucket:
+            self.logger.debug("DEBUG: module=measure Creating new bucket id "
+                               "%s", current_time)
+            self._pi_buckets[current_time]['modify_flow'] = 1
+            self.current_bucket = current_time
+            self.logger.debug("DEBUG: module=measure Number of buckets is %s",
+                                  len(self._pi_buckets))
+        else:
+            self._pi_buckets[self.current_bucket]['modify_flow'] += 1
+
+    def get_event_rates(self, rate_interval):
+        """
+        Return the event type rates for all event types
+        """
+        _results_dict = dict()
+        _results_dict['packet_in_rate'] = \
+                        self.get_event_rate('packets_in', rate_interval)
+        _results_dict['modify_flow_rate'] = \
+                        self.get_event_rate('modify_flow', rate_interval)
+        _results_dict['packet_out_rate'] = \
+                        self.get_event_rate('packet_out', rate_interval)
+        return _results_dict
+
+
+    def get_event_rate(self, event_type, rate_interval):
+        """
+        Return the event type rate per second for last x seconds
+        """
+        current_time = int(time.time())
+        events_in = 0
         overlap_bucket = 0
         actual_interval = 0
-        packet_in_rate = 0
+        event_rate = 0
+        self.logger.debug("DEBUG: module=measure event_type %s rate_interval "
+                            "%s", event_type, rate_interval)
         #*** Add contents of buckets that have a start time in that window
         #*** and note if there is an overlap bucket as start of window:
         for bucket_time in self._pi_buckets:
@@ -101,10 +151,10 @@ class Measurement(object):
                     #*** Accumulate:
                     self.logger.debug("DEBUG: module=measure Adding %s from "
                         "bucket %s", 
-                        self._pi_buckets[bucket_time]['packets_in'],
+                        self._pi_buckets[bucket_time][event_type],
                         bucket_time)
-                    packets_in = packets_in + \
-                                   self._pi_buckets[bucket_time]['packets_in']
+                    events_in = events_in + \
+                                   self._pi_buckets[bucket_time][event_type]
                 #*** Check if overlap:
                 if (bucket_time > (current_time - (rate_interval + 
                          BUCKET_SIZE_SECONDS)) and (bucket_time < 
@@ -112,7 +162,6 @@ class Measurement(object):
                     self.logger.debug("DEBUG: module=measure Overlapping "
                            "bucket id %s", bucket_time)
                     overlap_bucket = bucket_time
-        print "packets_in is %s" % packets_in
         #*** Work out the dividing time for rate calculation. It is the lesser
         #*** of (current_time - overlap_bucket_end_time) and rate_interval:
         if (current_time - (overlap_bucket + BUCKET_SIZE_SECONDS) 
@@ -121,10 +170,9 @@ class Measurement(object):
                                                 BUCKET_SIZE_SECONDS)
         else:
             actual_interval = rate_interval
-        print "actual_interval is %s" % actual_interval
         #*** Return the rate:
         try:
-            packet_in_rate = packets_in / actual_interval
+            event_rate = events_in / actual_interval
         except:
             #*** Log the error (Divide by Zero error?) and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -132,7 +180,6 @@ class Measurement(object):
                 "Divide by Zero error? Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
             return 0
-        print "packet_in_rate is %s" % packet_in_rate
-        return packet_in_rate
+        return event_rate
             
             

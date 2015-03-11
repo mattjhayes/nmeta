@@ -24,16 +24,16 @@ and carries no warrantee whatsoever. You have been warned.
 #*** REST API Calls (examples to run on local host):
 #
 #*** Return the Flow Metadata Table:
-#*** curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
-#
-#*** Return the Flow Metadata Table size in terms of number of rows:
-#*** curl -X GET http://127.0.0.1:8080/nmeta/flowtable/size/rows/
+#*** http://127.0.0.1:8080/nmeta/flowtable/
 #
 #*** Return the Identity NIC Table:
-#*** curl -X GET http://127.0.0.1:8080/nmeta/identity/nictable/
+#*** http://127.0.0.1:8080/nmeta/identity/nictable/
 #
 #*** Return the Identity System Table:
-#*** curl -X GET http://127.0.0.1:8080/nmeta/identity/systemtable/
+#*** http://127.0.0.1:8080/nmeta/identity/systemtable/
+#
+#*** Return the Flow Metadata Table size in terms of number of rows:
+#*** http://127.0.0.1:8080/nmeta/measurement/tablesize/rows/
 
 
 #*** General Imports:
@@ -67,6 +67,8 @@ import flow
 import tc_policy
 import config
 import controller_abstraction
+import measure
+import forwarding
 
 #*** Web API REST imports:
 from webob import Response
@@ -91,10 +93,11 @@ class NMeta(app_manager.RyuApp):
                     ofproto_v1_3.OFP_VERSION]
     #*** Constants for REST API:
     url_flowtable = '/nmeta/flowtable/'
-    url_flowtable_size_rows = '/nmeta/flowtable/size/rows/'
     url_flowtable_by_ip = '/nmeta/flowtable/{ip}'
     url_identity_nic_table = '/nmeta/identity/nictable/'
     url_identity_system_table = '/nmeta/identity/systemtable/'
+    #*** Measurement APIs:
+    url_flowtable_size_rows = '/nmeta/measurement/tablesize/rows/'
     #
     IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
     _CONTEXTS = {'wsgi': WSGIApplication}
@@ -198,7 +201,11 @@ class NMeta(app_manager.RyuApp):
                          self.config.get_value("tc_statistical_logging_level"))
         self.ca = controller_abstraction.ControllerAbstract \
                             (self.config.get_value("ca_logging_level"))
-
+        self.measure = measure.Measurement \
+                            (self.config.get_value("measure_logging_level"))
+        self.forwarding = forwarding.Forwarding \
+                            (self.config.get_value("forwarding_logging_level"))
+        
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
         """
@@ -229,6 +236,9 @@ class NMeta(app_manager.RyuApp):
         """
         A switch has sent us a Packet In event
         """
+        #*** Record the event for measurements:
+        self.measure.packet_in()
+        
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto

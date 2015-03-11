@@ -392,7 +392,6 @@ class TrafficClassificationPolicy(object):
         A match_type of 'all' will return false as soon as an invalid
         match is made and true if end of matching is reached.
         """
-        #print "conditions are %s" % conditions
         #*** initial settings for results dictionary:
         _result_dict = {'match':True, 'continue_to_inspect':False,
                     'actions': False}

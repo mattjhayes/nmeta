@@ -50,7 +50,10 @@ CONFIG_TEMPLATE = {'miss_send_len': 1500,
                     'tc_identity_logging_level': 'INFO',
                     'tc_payload_logging_level': 'INFO',
                     'tc_statistical_logging_level': 'INFO',
-                    'ca_logging_level': 'INFO'}
+                    'ca_logging_level': 'INFO',
+                    'measure_logging_level': 'INFO',
+                    'forwarding_logging_level': 'DEBUG'
+}
 
 class Config(object):
     """

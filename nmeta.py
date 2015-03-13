@@ -24,17 +24,23 @@ and carries no warrantee whatsoever. You have been warned.
 #*** REST API Calls (examples to run on local host):
 #
 #*** Return the Flow Metadata Table:
-#*** curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
-#
-#*** Return the Flow Metadata Table size in terms of number of rows:
-#*** curl -X GET http://127.0.0.1:8080/nmeta/flowtable/size/rows/
+#*** http://127.0.0.1:8080/nmeta/flowtable/
 #
 #*** Return the Identity NIC Table:
-#*** curl -X GET http://127.0.0.1:8080/nmeta/identity/nictable/
+#*** http://127.0.0.1:8080/nmeta/identity/nictable/
 #
 #*** Return the Identity System Table:
-#*** curl -X GET http://127.0.0.1:8080/nmeta/identity/systemtable/
-
+#*** http://127.0.0.1:8080/nmeta/identity/systemtable/
+#
+#*** Return the Flow Metadata Table size in terms of number of rows:
+#*** http://127.0.0.1:8080/nmeta/measurement/tablesize/rows/
+#
+#*** Return event rate measurements:
+#*** http://127.0.0.1:8080/nmeta/measurement/eventrates/
+#
+#*** Return packet processing statistics:
+#*** http://127.0.0.1:8080/nmeta/measurement/metrics/packet_time/
+#
 
 #*** General Imports:
 import logging
@@ -67,6 +73,8 @@ import flow
 import tc_policy
 import config
 import controller_abstraction
+import measure
+import forwarding
 
 #*** Web API REST imports:
 from webob import Response
@@ -81,6 +89,8 @@ REST_RESULT = 'result'
 REST_NG = 'failure'
 REST_DETAILS = 'details'
 nmeta_instance_name = 'nmeta_api_app'
+#*** Number of preceding seconds that events are averaged over:
+EVENT_RATE_INTERVAL = 60
 
 class NMeta(app_manager.RyuApp):
     """
@@ -91,10 +101,13 @@ class NMeta(app_manager.RyuApp):
                     ofproto_v1_3.OFP_VERSION]
     #*** Constants for REST API:
     url_flowtable = '/nmeta/flowtable/'
-    url_flowtable_size_rows = '/nmeta/flowtable/size/rows/'
     url_flowtable_by_ip = '/nmeta/flowtable/{ip}'
     url_identity_nic_table = '/nmeta/identity/nictable/'
     url_identity_system_table = '/nmeta/identity/systemtable/'
+    #*** Measurement APIs:
+    url_flowtable_size_rows = '/nmeta/measurement/tablesize/rows/'
+    url_measure_event_rates = '/nmeta/measurement/eventrates/'
+    url_measure_pkt_time = '/nmeta/measurement/metrics/packet_time/'
     #
     IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
     _CONTEXTS = {'wsgi': WSGIApplication}
@@ -146,12 +159,17 @@ class NMeta(app_manager.RyuApp):
                             get_value('payload_fcip_table_max_age')
         self.payload_fcip_table_tidyup_interval = self.config.\
                             get_value('payload_fcip_table_tidyup_interval')
+        self.measure_buckets_max_age = self.config.\
+                            get_value('measure_buckets_max_age')
+        self.measure_buckets_tidyup_interval = self.config.\
+                            get_value('measure_buckets_tidyup_interval')
         #*** Set initial value of the variable that holds last time
         #*** for tidy-ups:
         self.fm_table_last_tidyup_time = time.time()
         self.identity_table_last_tidyup_time = time.time()
         self.statistical_fcip_table_last_tidyup_time = time.time()
         self.payload_fcip_table_last_tidyup_time = time.time()
+        self.measure_buckets_last_tidyup_time = time.time()
         #*** Initiate the mac_to_port dictionary for switching:
         self.mac_to_port = {}
         #*** Set up REST API:
@@ -164,6 +182,16 @@ class NMeta(app_manager.RyuApp):
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='get_flow_table_size_rows',
+                       conditions=dict(method=['GET']))
+        mapper.connect('flowtable', self.url_measure_event_rates,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='get_event_rates',
+                       conditions=dict(method=['GET']))
+        mapper.connect('flowtable', self.url_measure_pkt_time,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='get_packet_time',
                        conditions=dict(method=['GET']))
         mapper.connect('flowtable', self.url_flowtable,
                        controller=RESTAPIController,
@@ -198,7 +226,11 @@ class NMeta(app_manager.RyuApp):
                          self.config.get_value("tc_statistical_logging_level"))
         self.ca = controller_abstraction.ControllerAbstract \
                             (self.config.get_value("ca_logging_level"))
-
+        self.measure = measure.Measurement \
+                            (self.config.get_value("measure_logging_level"))
+        self.forwarding = forwarding.Forwarding \
+                            (self.config.get_value("forwarding_logging_level"))
+        
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
         """
@@ -229,6 +261,10 @@ class NMeta(app_manager.RyuApp):
         """
         A switch has sent us a Packet In event
         """
+        #*** Record the time for delta time measurement:
+        pi_start_time = time.time()
+        #*** Record the event for measurements:
+        self.measure.record_rate_event('packet_in')
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
@@ -278,6 +314,8 @@ class NMeta(app_manager.RyuApp):
         # learn a mac address to avoid FLOOD next time.
         self.mac_to_port[dpid][src] = in_port
         if dst in self.mac_to_port[dpid]:
+            self.logger.debug("DEBUG: module=nmeta MAC %s is in table via port"
+               " %s", dst, self.mac_to_port[dpid][dst])
             out_port = self.mac_to_port[dpid][dst]
         else:
             out_port = ofproto.OFPP_FLOOD
@@ -285,32 +323,45 @@ class NMeta(app_manager.RyuApp):
         #*** TBD: Build actions through ca module:
         #actions = self.ca.actions(datapath, out_port=out_port,
 
-        #*** Call Flow Metadata to get a match to install (if desired)
-        #*** and output queue:
-        (match, actions, out_queue) = self.flowmetadata.update_flowmetadata \
+        if out_port != ofproto.OFPP_FLOOD:
+            #*** Do some flow magic, but only if not a flooded packet:
+            #*** Call Flow Metadata to get a match to install (if desired)
+            #*** and output queue:
+            (match, actions, out_queue) = \
+                 self.flowmetadata.update_flowmetadata \
                                          (msg, out_port, flow_actions)
-        #*** Check to see if we have a flow to install:
-        if match and actions:
-            #*** Install flow match and actions to switch:
-            self.logger.debug("DEBUG: module=nmeta Installing actions "
-                              "%s on datapath %s", actions, datapath.id)
-            flow_add_result = self.ca.add_flow(datapath, match, actions,
+            #*** Check to see if we have a flow to install:
+            if match and actions:
+                #*** Install flow match and actions to switch:
+                self.logger.debug("DEBUG: module=nmeta adding flow match to"
+                              " datapath=%s", 
+                              datapath.id)
+                #*** Record the event for measurements:
+                self.measure.record_rate_event('modify_flow')
+                #*** Call abstraction layer to add flow record
+                self.ca.add_flow(datapath, match, actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
-            self.logger.debug("DEBUG: module=nmeta add_flow result is %s",
-                              flow_add_result)
-        else:
-            #*** Something went wrong so log it:
-            self.logger.error("ERROR: module=nmeta error=E1000007 Not "
+            else:
+                #*** Something went wrong so log it:
+                self.logger.error("ERROR: module=nmeta error=E1000007 Not "
                               "installing flow, match is % and actions are %s",
                               match, actions)
-
-        #*** Send Packet Out:
-        packet_out_result = self.ca.packet_out(datapath, msg, in_port,
+            #*** Send Packet Out:
+            packet_out_result = self.ca.packet_out(datapath, msg, in_port,
                                 out_port, out_queue)
-        self.logger.debug("DEBUG: module=nmeta Sent packet-out with result %s",
-                             packet_out_result)
-
+            #*** Record Measurements:
+            self.measure.record_rate_event('packet_out')
+            pi_delta_time = time.time() - pi_start_time
+            self.measure.record_metric('packet_delta', pi_delta_time)
+        else:
+            #*** It's a packet that's flooded, so send without specific queue:
+            packet_out_result = self.ca.packet_out_nq(datapath, msg, in_port,
+                                out_port)
+            #*** Record Measurements:
+            self.measure.record_rate_event('packet_out')
+            pi_delta_time = time.time() - pi_start_time
+            self.measure.record_metric('packet_delta', pi_delta_time)
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:
         _time = time.time()
@@ -353,6 +404,18 @@ class NMeta(app_manager.RyuApp):
             self.tc_policy.payload.maintain_fcip_table(
                                      self.payload_fcip_table_max_age)
             self.payload_fcip_table_last_tidyup_time = _time
+        #*** Measure bucket maintenance:
+        _time = time.time()
+        if (_time - self.measure_buckets_last_tidyup_time) > \
+                                 self.measure_buckets_tidyup_interval:
+            #*** Call function to do tidy-up on the measure buckets:
+            self.logger.debug("DEBUG: module=nmeta Calling function to do "
+                               "tidy-up on the measure buckets")
+            self.measure.kick_the_rate_buckets(
+                                     self.measure_buckets_max_age)
+            self.measure.kick_the_metric_buckets(
+                                     self.measure_buckets_max_age)
+            self.measure_buckets_last_tidyup_time = _time
 
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
@@ -408,7 +471,27 @@ class RESTAPIController(ControllerBase):
         nmeta = self.nmeta_parent_self
         _fm_table_size_rows = nmeta.flowmetadata.get_fm_table_size_rows()
         return _fm_table_size_rows
-        pass
+
+    @rest_command
+    def get_event_rates(self, req, **kwargs):
+        """
+        REST API function that returns event rates (per second averages)
+        """
+        nmeta = self.nmeta_parent_self
+        event_rates = nmeta.measure.get_event_rates(EVENT_RATE_INTERVAL)
+        return event_rates
+
+    @rest_command
+    def get_packet_time(self, req, **kwargs):
+        """
+        REST API function that returns packet processing time statistics
+        through nmeta (does not include time at switch, in transit nor
+        time queued in OS or Ryu
+        """
+        nmeta = self.nmeta_parent_self
+        packet_processing_stats = nmeta.measure.get_event_metric_stats \
+                        ('packet_delta', EVENT_RATE_INTERVAL)
+        return packet_processing_stats
 
     @rest_command
     def list_flow_table(self, req, **kwargs):

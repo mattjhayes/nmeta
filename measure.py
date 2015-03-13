@@ -188,6 +188,8 @@ class Measurement(object):
                 "Divide by Zero error? Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
             return 0
+        self.logger.debug("DEBUG: module=measure event_type=%s event_rate=%s",
+                            event_type, event_rate)
         return event_rate
 
     def get_event_metric_stats(self, event_type, rate_interval):
@@ -259,6 +261,8 @@ class Measurement(object):
         _results_dict[event_type]['number_of_buckets'] = acc_buckets
         _results_dict[event_type]['bucket_size_seconds'] = \
                                           METRIC_BUCKET_SIZE_SECONDS
+        self.logger.debug("DEBUG: module=measure get_event_metric_stats "
+            "_results_dict=%s", _results_dict)
         return _results_dict
 
     def kick_the_rate_buckets(self, bucket_max_age):

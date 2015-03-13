@@ -3,11 +3,14 @@ Nmeta Integration Tests
 .
 To run, type in nosetests in the nmeta directory
 """
-import tc_policy
 from ryu.ofproto import ether
 from ryu.lib.packet import ethernet, arp, packet, ipv4, tcp
 
-#==================== Policy Integration Tests ===============+==========
+#*** nmeta imports:
+import tc_policy
+import measure
+
+#*** Set up Policy Integration Tests:
 #*** Instantiate classes:
 tc = tc_policy.TrafficClassificationPolicy \
                     ("DEBUG","DEBUG","DEBUG","DEBUG","DEBUG")
@@ -42,8 +45,12 @@ results_dict_no_match = {'actions': False, 'match': False,
 results_dict_match = {'actions': False, 'match': True,
                      'continue_to_inspect': False}
 
-#*** Check Match Validity Tests:
-def test_check_conditions():
+#*** Set up Measurement Integration Tests:
+#*** Instantiate class:
+measure = measure.Measurement("DEBUG")
+
+#*** Check TC packet match against a conditions stanza:
+def test_tc_check_conditions():
     #*** Test Packets:
     pkt_arp = build_packet_ARP()
     pkt_tcp_22 = build_packet_tcp_22()
@@ -57,6 +64,12 @@ def test_check_conditions():
                              results_dict_match
     assert tc._check_conditions(pkt_arp, conditions_all_mac) == \
                              results_dict_no_match
+
+#*** Test TC packet match against a rule stanza:
+def test_tc_check_rule():
+    #*** Test Packets:
+    pkt_arp = build_packet_ARP()
+    pkt_tcp_22 = build_packet_tcp_22()
     #*** Rule checks:
     assert tc._check_rule(pkt_arp, conditions_rule_nested_1) == \
                              results_dict_no_match
@@ -65,6 +78,22 @@ def test_check_conditions():
     assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_2) == \
                              results_dict_no_match
 
+#*** Test Rate Measure Functions:
+def test_measure_rate():
+    measure.record_rate_event('rate_test')
+    measure.record_rate_event('rate_test')
+    measure.record_rate_event('rate_test')
+    assert measure.get_event_rate('rate_test', 60) == 0.05
+
+#*** Test Metric Measure Functions:
+def test_measure_metric():
+    measure.record_metric('metric_test', 5)
+    measure.record_metric('metric_test', 18)
+    measure.record_metric('metric_test', 19)
+    results_dict = measure.get_event_metric_stats ('metric_test', 60)
+    assert results_dict['metric_test']['max_max'] == 19
+    assert results_dict['metric_test']['min_min'] == 5
+    assert results_dict['metric_test']['avg'] == 14
 
 #=========== Misc Functions to Generate Data for Unit Tests ===================
 def build_packet_ARP():

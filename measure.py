@@ -154,15 +154,15 @@ class Measurement(object):
                             "%s", event_type, rate_interval)
         #*** Add contents of buckets that have a start time in that window
         #*** and note if there is an overlap bucket as start of window:
-        for bucket_time in self._rates_buckets:
+        for bucket_time in self._rate_buckets:
             if bucket_time > (current_time - rate_interval):
                 #*** Accumulate:
                 self.logger.debug("DEBUG: module=measure Adding %s from "
                         "rate bucket %s", 
-                        self._rates_buckets[bucket_time][event_type],
+                        self._rate_buckets[bucket_time][event_type],
                         bucket_time)
                 events_in = events_in + \
-                                   self._rates_buckets[bucket_time][event_type]
+                                   self._rate_buckets[bucket_time][event_type]
             #*** Check if overlap:
             if (bucket_time > (current_time - (rate_interval + 
                          RATE_BUCKET_SIZE_SECONDS)) and (bucket_time < 

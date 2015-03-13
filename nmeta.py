@@ -38,6 +38,9 @@ and carries no warrantee whatsoever. You have been warned.
 #*** Return event rate measurements:
 #*** http://127.0.0.1:8080/nmeta/measurement/eventrates/
 #
+#*** Return packet processing statistics:
+#*** http://127.0.0.1:8080/nmeta/measurement/metrics/packet_time/
+#
 
 #*** General Imports:
 import logging
@@ -104,6 +107,7 @@ class NMeta(app_manager.RyuApp):
     #*** Measurement APIs:
     url_flowtable_size_rows = '/nmeta/measurement/tablesize/rows/'
     url_measure_event_rates = '/nmeta/measurement/eventrates/'
+    url_measure_pkt_time = '/nmeta/measurement/metrics/packet_time/'
     #
     IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
     _CONTEXTS = {'wsgi': WSGIApplication}
@@ -184,6 +188,11 @@ class NMeta(app_manager.RyuApp):
                        requirements=requirements,
                        action='get_event_rates',
                        conditions=dict(method=['GET']))
+        mapper.connect('flowtable', self.url_measure_pkt_time,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='get_packet_time',
+                       conditions=dict(method=['GET']))
         mapper.connect('flowtable', self.url_flowtable,
                        controller=RESTAPIController,
                        requirements=requirements,
@@ -252,7 +261,7 @@ class NMeta(app_manager.RyuApp):
         """
         A switch has sent us a Packet In event
         """
-        #*** Record time for delta time measurement:
+        #*** Record the time for delta time measurement:
         pi_start_time = time.time()
         #*** Record the event for measurements:
         self.measure.record_rate_event('packet_in')
@@ -471,6 +480,18 @@ class RESTAPIController(ControllerBase):
         nmeta = self.nmeta_parent_self
         event_rates = nmeta.measure.get_event_rates(EVENT_RATE_INTERVAL)
         return event_rates
+
+    @rest_command
+    def get_packet_time(self, req, **kwargs):
+        """
+        REST API function that returns packet processing time statistics
+        through nmeta (does not include time at switch, in transit nor
+        time queued in OS or Ryu
+        """
+        nmeta = self.nmeta_parent_self
+        packet_processing_stats = nmeta.measure.get_event_metric_stats \
+                        ('packet_delta', EVENT_RATE_INTERVAL)
+        return packet_processing_stats
 
     @rest_command
     def list_flow_table(self, req, **kwargs):

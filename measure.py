@@ -193,29 +193,73 @@ class Measurement(object):
     def get_event_metric_stats(self, event_type, rate_interval):
         """
         Return the event metric stats for specified event type
+        as a dictionary
         """
         current_time = int(time.time())
         #*** Variables for accumulation from buckets:
-        max_max = 0
-        min_min = 0
+        first_time = True
         acc_total = 0
         acc_events = 0
+        acc_buckets = 0
         self.logger.debug("DEBUG: module=measure get_event_metric_stats "
                             "event_type %s rate_interval %s", 
                              event_type, rate_interval)
         #*** Calc on contents of buckets that have a start time in that window
-        for bucket_time in self._rates_buckets:
+        for bucket_time in self._metric_buckets:
             if bucket_time > (current_time - rate_interval):
-                #*** Accumulate:
+                acc_buckets += 1
+                if first_time:
+                    #*** Its the first time so set initial stats values:
+                    max_max = self._metric_buckets \
+                                   [self.current_metric_bucket] \
+                                   [event_type]['max']
+                    min_min = self._metric_buckets \
+                                   [self.current_metric_bucket] \
+                                   [event_type]['min']
+                    first_time = False
+                #*** Is this a new MaxMax?:
                 cur_max = self._metric_buckets[self.current_metric_bucket] \
                                    [event_type]['max']
                 if cur_max > max_max:
                     max_max = cur_max
-
+                #*** Is this a new MinMin?:
+                cur_min = self._metric_buckets[self.current_metric_bucket] \
+                                   [event_type]['min']
+                if cur_min < min_min:
+                    min_min = cur_min
+                #*** Accumulate the totals for metric and number of events:
+                acc_total += self._metric_buckets[self.current_metric_bucket] \
+                                   [event_type]['total']
+                acc_events += self._metric_buckets \
+                                   [self.current_metric_bucket] \
+                                   [event_type]['events']
+        #*** Calculate average:
+        if acc_events:
+            #*** Do division:
+            try:
+                acc_avg = acc_total / acc_events
+            except:
+                #*** Log the error and set acc_avg to 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("ERROR: module=measure in "
+                     "get_event_metric_stats Divide by Zero error? Exception "
+                     "%s, %s, %s",
+                     exc_type, exc_value, exc_traceback)
+                acc_avg = 0
+        else:
+            #*** No events so result is 0:
+            acc_avg = 0
+        #*** Build results dictionary:
         _results_dict = dict()
         _results_dict[event_type] = {}
-        _results_dict[event_type][min] = \
-                        self.get_event_metrics('packet_delta', rate_interval)
+        _results_dict[event_type]['max_max'] = max_max
+        _results_dict[event_type]['min_min'] = min_min
+        _results_dict[event_type]['avg'] = acc_avg
+        _results_dict[event_type]['number_of_measurements'] = acc_events
+        _results_dict[event_type]['number_of_buckets'] = acc_buckets
+        _results_dict[event_type]['bucket_size_seconds'] = \
+                                          METRIC_BUCKET_SIZE_SECONDS
+        return _results_dict
 
     def kick_the_rate_buckets(self, bucket_max_age):
         """

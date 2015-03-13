@@ -155,12 +155,17 @@ class NMeta(app_manager.RyuApp):
                             get_value('payload_fcip_table_max_age')
         self.payload_fcip_table_tidyup_interval = self.config.\
                             get_value('payload_fcip_table_tidyup_interval')
+        self.measure_buckets_max_age = self.config.\
+                            get_value('measure_buckets_max_age')
+        self.measure_buckets_tidyup_interval = self.config.\
+                            get_value('measure_buckets_tidyup_interval')
         #*** Set initial value of the variable that holds last time
         #*** for tidy-ups:
         self.fm_table_last_tidyup_time = time.time()
         self.identity_table_last_tidyup_time = time.time()
         self.statistical_fcip_table_last_tidyup_time = time.time()
         self.payload_fcip_table_last_tidyup_time = time.time()
+        self.measure_buckets_last_tidyup_time = time.time()
         #*** Initiate the mac_to_port dictionary for switching:
         self.mac_to_port = {}
         #*** Set up REST API:
@@ -247,9 +252,10 @@ class NMeta(app_manager.RyuApp):
         """
         A switch has sent us a Packet In event
         """
+        #*** Record time for delta time measurement:
+        pi_start_time = time.time()
         #*** Record the event for measurements:
-        self.measure.record_packet_in()
-        
+        self.measure.record_rate_event('packet_in')
         msg = ev.msg
         datapath = msg.datapath
         ofproto = datapath.ofproto
@@ -318,11 +324,11 @@ class NMeta(app_manager.RyuApp):
             #*** Check to see if we have a flow to install:
             if match and actions:
                 #*** Install flow match and actions to switch:
-                self.logger.debug("DEBUG: module=nmeta adding flow match=%s "
-                              "actions=%s datapath=%s", match, actions, 
+                self.logger.debug("DEBUG: module=nmeta adding flow match to"
+                              " datapath=%s", 
                               datapath.id)
                 #*** Record the event for measurements:
-                self.measure.record_modify_flow()
+                self.measure.record_rate_event('modify_flow')
                 #*** Call abstraction layer to add flow record
                 self.ca.add_flow(datapath, match, actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
@@ -333,15 +339,20 @@ class NMeta(app_manager.RyuApp):
                               "installing flow, match is % and actions are %s",
                               match, actions)
             #*** Send Packet Out:
-            self.measure.record_packet_out()
             packet_out_result = self.ca.packet_out(datapath, msg, in_port,
                                 out_port, out_queue)
+            #*** Record Measurements:
+            self.measure.record_rate_event('packet_out')
+            pi_delta_time = time.time() - pi_start_time
+            self.measure.record_metric('packet_delta', pi_delta_time)
         else:
             #*** It's a packet that's flooded, so send without specific queue:
-            self.measure.record_packet_out()
             packet_out_result = self.ca.packet_out_nq(datapath, msg, in_port,
                                 out_port)
-
+            #*** Record Measurements:
+            self.measure.record_rate_event('packet_out')
+            pi_delta_time = time.time() - pi_start_time
+            self.measure.record_metric('packet_delta', pi_delta_time)
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:
         _time = time.time()
@@ -384,6 +395,18 @@ class NMeta(app_manager.RyuApp):
             self.tc_policy.payload.maintain_fcip_table(
                                      self.payload_fcip_table_max_age)
             self.payload_fcip_table_last_tidyup_time = _time
+        #*** Measure bucket maintenance:
+        _time = time.time()
+        if (_time - self.measure_buckets_last_tidyup_time) > \
+                                 self.measure_buckets_tidyup_interval:
+            #*** Call function to do tidy-up on the measure buckets:
+            self.logger.debug("DEBUG: module=nmeta Calling function to do "
+                               "tidy-up on the measure buckets")
+            self.measure.kick_the_rate_buckets(
+                                     self.measure_buckets_max_age)
+            self.measure.kick_the_metric_buckets(
+                                     self.measure_buckets_max_age)
+            self.measure_buckets_last_tidyup_time = _time
 
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])

@@ -18,7 +18,7 @@ tc_identity_logging_level: INFO
 tc_payload_logging_level: INFO
 tc_statistical_logging_level: INFO
 ca_logging_level: INFO
-measure_logging_level: INFO
+measure_logging_level: DEBUG
 forwarding_logging_level: DEBUG
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
@@ -62,6 +62,13 @@ payload_fcip_table_max_age: 600
 #*** entries:
 payload_fcip_table_tidyup_interval: 40
 #
-
+#*** Measure buckets
+#*** maximum age in seconds before being eligible for removal:
+measure_buckets_max_age: 600
+#
+#*** Measure buckets interval
+#*** in seconds between running the tidy-up process that removes old
+#*** buckets:
+measure_buckets_tidyup_interval: 321
 
 

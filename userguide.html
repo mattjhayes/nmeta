@@ -48,9 +48,20 @@
   User Guide
 </h1>
 
+<h3>
+  <a id="contents" class="anchor" href="#contents" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Contents:
+</h3>
+<p>
+  <a href="#configure-nmeta-system">Configure Nmeta System Settings</a>
+  <br>
+  <a href="#main-policy-configuration">Configure Main Policy</a>
+  <br>
+  <a href="#use-the-api">Use the API</a>
+  <br>
 <h2>
-  <a id="configuration" class="anchor" href="#configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
-  Configuration
+  <a id="configure-nmeta-system" class="anchor" href="#configure-nmeta-system" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure the Nmeta System Settings
 </h2>
 
 <p>Configuration files are in the <em>config</em> subdirectory and are written
@@ -59,17 +70,17 @@ in YAML ("YAML Ain't Markup Language") format
 
 <p>The general configuration parameters are stored in the file:</p>
 
-<pre><code>config/config.yaml
+<pre><code>~/nmeta/config/config.yaml
 </code></pre>
 
-<h3>
-  <a id="traffic-classification-configuration" class="anchor" href="#traffic-classification-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
-  Traffic Classification Policy
-</h3>
+<h2>
+  <a id="main-policy-configuration" class="anchor" href="#main-policy-configuration" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Configure Main Policy
+</h2>
+<p>The main policy configures how nmeta works with data plane traffic. This includes traffic classification rules.
+<p>The main policy is stored in the YAML file:</p>
 
-<p>The traffic classification policy (also in YAML) is stored in the file:</p>
-
-<pre><code>config/main_policy.yaml
+<pre><code>~/nmeta/config/main_policy.yaml
 </code></pre>
 
 <p>It is used to control what classifiers are used, in what order and what actions are taken.</p>
@@ -281,28 +292,57 @@ in YAML ("YAML Ain't Markup Language") format
 </code></pre>
 
 <h1>
-<a id="api" class="anchor" href="#api" aria-hidden="true"><span class="octicon octicon-link"></span></a>API</h1>
+<a id="use-the-api" class="anchor" href="#use-the-api" aria-hidden="true"><span class="octicon octicon-link"></span></a>Use the API</h1>
 
-<p>REST API Calls (examples to run on local host):</p>
+<p>The nmeta API provides HTTP read access (no write at this stage) to data within nmeta. Data includes:
+<ul>
+  <li><em>Conversation Type Metadata</em>. The types of conversations that are occuring over the network
+  <li><em>Participant Metadata</em>. Who/what is connected to the network
+  <li><em>Performance Metrics</em>. How the system is performing
+</ul>
+
+<p>Example API Calls to run on local host:</p>
+
+<h3>
+<a id="conversation-type-metadata-api" class="anchor" href="#conversation-type-metadata-api" aria-hidden="true"><span class="octicon octicon-link"></span></a>Conversation Type Metadata API Calls
+</h3>
 
 <p>Return the Flow Metadata Table:</p>
 
-<pre><code>curl -X GET http://127.0.0.1:8080/nmeta/flowtable/
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/
 </code></pre>
 
-<p>or using the supplied script to provide 'pretty' output:</p>
-
-<pre><code>sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/
-</code></pre>
+<h3>
+<a id="participant-metadata-api" class="anchor" href="#participant-metadata-api" aria-hidden="true"><span class="octicon octicon-link"></span></a>Participant Metadata API Calls
+</h3>
 
 <p>Return the Identity NIC Table:</p>
 
-<pre><code>curl -X GET http://127.0.0.1:8080/nmeta/identity/nictable/
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/nictable/
 </code></pre>
 
 <p>Return the Identity System Table:</p>
 
-<pre><code>curl -X GET http://127.0.0.1:8080/nmeta/identity/systemtable/
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/systemtable/
+</code></pre>
+
+<h3>
+<a id="performance-metric-api" class="anchor" href="#performance-metric-api" aria-hidden="true"><span class="octicon octicon-link"></span></a>Performance Metric API Calls
+</h3>
+
+<p>Return the Flow Metadata table size as number of rows:</p>
+
+<pre>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/measurement/tablesize/rows/
+</code></pre>
+
+<p>Return the rate at which nmeta is processing events from switches, as events per second:</p>
+
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/measurement/eventrates/
+</code></pre>
+
+<p>Return statistics on nmeta per-packet processing time:</p>
+
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/measurement/metrics/packet_time/
 </code></pre>
 
 <h1>

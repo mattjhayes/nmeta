@@ -163,7 +163,8 @@ class FlowMetadata(object):
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst))
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
+                        nw_proto=pkt_ip4.proto)
                 self.logger.debug("DEBUG: module=flow IPv4 match "
                                   "is %s", match)
             elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
@@ -172,7 +173,8 @@ class FlowMetadata(object):
                         dl_src=eth.src,
                         dl_dst=eth.dst, 
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst))
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
+                        ip_proto=pkt_ip4.proto)
                 self.logger.debug("DEBUG: module=flow IPv4 match "
                                   "is %s", match)
             elif (eth.ethertype != 0x0800 and 

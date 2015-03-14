@@ -22,6 +22,10 @@ It is provides methods for forwarding functions.
 import logging
 import logging.handlers
 
+#*** Ryu Imports:
+from ryu.lib.packet import packet
+from ryu.lib.packet import ethernet
+
 class Forwarding(object):
     """
     This class is instantiated by nmeta.py and provides methods
@@ -38,10 +42,38 @@ class Forwarding(object):
         formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
+        #*** Initiate the mac_to_port dictionary for switching:
+        self.mac_to_port = {}
 
-    def packet_in(self):
+    def basic_switch(self, event, in_port):
         """
-        TBD
+        Passed a packet in event and return an output port
         """
-        self.logger.debug("DEBUG: module=forwarding Packet in...")
-        #*** UNDER CONSTRUCTION...
+        msg = event.msg
+        datapath = msg.datapath
+        ofproto = datapath.ofproto
+        pkt = packet.Packet(msg.data)
+        dpid = datapath.id
+        eth = pkt.get_protocol(ethernet.ethernet)
+        eth_src = eth.src
+        eth_dst = eth.dst
+        #*** If the dpid doesn't exist in mac_to_port dictionary, create it:
+        self.mac_to_port.setdefault(dpid, {})
+        #*** If the source MAC doesn't exist, create it:
+        self.mac_to_port[dpid].setdefault(eth_src, {})
+        #*** Learn the MAC address to avoid FLOOD next time.
+        self.mac_to_port[dpid][eth_src] = in_port
+        #*** Check to see if dst MAC is in learned MAC table:
+        if eth_dst in self.mac_to_port[dpid]:
+            #*** Found dst MAC so return the output port:
+            self.logger.debug("DEBUG: module=forwarding Forwarding eth_dst=%s "
+                    "via dpid=%s port=%s", eth_dst, 
+                    dpid, self.mac_to_port[dpid][eth_dst])
+            out_port = self.mac_to_port[dpid][eth_dst]
+        else:
+            #*** We haven't learned the dst MAC so flood it:
+            self.logger.debug("DEBUG: module=forwarding Flooding eth_src=%s"
+                                 " eth_dst=%s via dpid=%s flood port=%s",  
+                                   eth_src, eth_dst, dpid, ofproto.OFPP_FLOOD)
+            out_port = ofproto.OFPP_FLOOD
+        return out_port

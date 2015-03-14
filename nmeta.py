@@ -51,7 +51,6 @@ import binascii
 #*** Ryu Imports:
 from ryu import utils
 from ryu.base import app_manager
-from ryu.controller import mac_to_port
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import HANDSHAKE_DISPATCHER
@@ -170,8 +169,6 @@ class NMeta(app_manager.RyuApp):
         self.statistical_fcip_table_last_tidyup_time = time.time()
         self.payload_fcip_table_last_tidyup_time = time.time()
         self.measure_buckets_last_tidyup_time = time.time()
-        #*** Initiate the mac_to_port dictionary for switching:
-        self.mac_to_port = {}
         #*** Set up REST API:
         wsgi = kwargs['wsgi']
         self.data = {nmeta_instance_name: self}
@@ -239,7 +236,7 @@ class NMeta(app_manager.RyuApp):
         """
         datapath = ev.msg.datapath
         self.logger.info("INFO:  module=nmeta Setting config on switch "
-                         "DPID=%s to OFPC_FRAG flag %s and "
+                         "dpid=%s to OFPC_FRAG flag %s and "
                          "miss_send_len %s bytes",
                           datapath.id, self.ofpc_frag, self.miss_send_len)
         if datapath.ofproto.OFP_VERSION == 1:
@@ -249,8 +246,8 @@ class NMeta(app_manager.RyuApp):
         else:
             _of_version = "Unknown version " + \
                             str(datapath.ofproto.OFP_VERSION)
-        self.logger.info("INFO:  module=nmeta Switch DPID=%s OpenFlow version "
-                         "is %s", datapath.id, _of_version)
+        self.logger.info("INFO:  module=nmeta event=switch_msg dpid=%s "
+                         "of_version=%s", datapath.id, _of_version)
         datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
                                      datapath,
                                      self.ofpc_frag,
@@ -276,7 +273,6 @@ class NMeta(app_manager.RyuApp):
         in_port = self.ca.get_in_port(msg, datapath, ofproto)
 
         dpid = datapath.id
-        self.mac_to_port.setdefault(dpid, {})
 
         #*** Some debug about the Packet In:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
@@ -284,41 +280,38 @@ class NMeta(app_manager.RyuApp):
         pkt_udp = pkt.get_protocol(udp.udp)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
         if pkt_ip4 and pkt_tcp:
-            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                              "%s TCP %s %s %s %s",
+            self.logger.debug("DEBUG: module=nmeta event=pi_ipv4_tcp dpid=%s "
+                              "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
+                              "tcp_dst=%s",
                               dpid, in_port, pkt_ip4.src,
                               pkt_tcp.src_port, pkt_ip4.dst, pkt_tcp.dst_port)
         elif pkt_ip6 and pkt_tcp:
-            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                              "%s TCP %s %s %s %s",
+            self.logger.debug("DEBUG: module=nmeta event=pi_ipv6_tcp dpid=%s "
+                              "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
+                              "tcp_dst=%s",
                               dpid, in_port, pkt_ip6.src,
                               pkt_tcp.src_port, pkt_ip6.dst, pkt_tcp.dst_port)
         elif pkt_ip4:
-            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                              "%s IP src %s dst %s proto %s",
+            self.logger.debug("DEBUG: module=nmeta event=pi_ipv4 dpid="
+                              "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
                               dpid, in_port,
                               pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
         elif pkt_ip6:
-            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                              "%s IP src %s dst %s",
+            self.logger.debug("DEBUG: module=nmeta event=pi_ipv6 dpid=%s "
+                              "in_port=%s ip_src=%s ip_dst=%s",
                               dpid, in_port,
                               pkt_ip6.src, pkt_ip6.dst)
         else:
-            self.logger.debug("DEBUG: module=nmeta Packet In: dpid:%s in_port:"
-                             "%s src:%s dst:%s", dpid, in_port, src, dst)
+            self.logger.debug("DEBUG: module=nmeta event=pi_other dpid=%s "
+                             "in_port=%s eth_src=%s eth_dst=%s", dpid, in_port,
+                             src, dst)
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does return a dictionary of actions:
         flow_actions = self.tc_policy.check_policy(pkt, dpid, in_port)
-        #*** Forwarding Decision:
-        # learn a mac address to avoid FLOOD next time.
-        self.mac_to_port[dpid][src] = in_port
-        if dst in self.mac_to_port[dpid]:
-            self.logger.debug("DEBUG: module=nmeta MAC %s is in table via port"
-               " %s", dst, self.mac_to_port[dpid][dst])
-            out_port = self.mac_to_port[dpid][dst]
-        else:
-            out_port = ofproto.OFPP_FLOOD
+
+        #*** Call Forwarding module to carry out forwarding functions:
+        out_port = self.forwarding.basic_switch(ev, in_port)
 
         #*** TBD: Build actions through ca module:
         #actions = self.ca.actions(datapath, out_port=out_port,

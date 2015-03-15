@@ -33,7 +33,7 @@ tc_static_logging_level_s: DEBUG
 tc_identity_logging_level_s: INFO
 tc_payload_logging_level_s: INFO
 tc_statistical_logging_level_s: INFO
-ca_logging_level_s: DEBUG
+ca_logging_level_s: INFO
 measure_logging_level_s: INFO
 forwarding_logging_level_s: DEBUG
 #
@@ -54,7 +54,7 @@ tc_static_logging_level_c: DEBUG
 tc_identity_logging_level_c: INFO
 tc_payload_logging_level_c: INFO
 tc_statistical_logging_level_c: INFO
-ca_logging_level_c: DEBUG
+ca_logging_level_c: INFO
 measure_logging_level_c: INFO
 forwarding_logging_level_c: DEBUG
 #

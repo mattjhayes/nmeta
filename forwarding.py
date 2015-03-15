@@ -31,26 +31,44 @@ class Forwarding(object):
     This class is instantiated by nmeta.py and provides methods
     for making forwarding decisions and transformations to packets.
     """
-    def __init__(self, forwarding_logging_level):
-        #*** Set up logging:
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('forwarding_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('forwarding_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(forwarding_logging_level)
+        self.logger.setLevel(logging.DEBUG)
         self.logger.propagate = False
-        #*** Log to syslog on localhost
-        #*** TBD: get host and facility settings from config:
-        self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                'localhost', 514), facility=19)
-        syslog_formatter = logging.Formatter \
-          ('sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s')
-        self.syslog_handler.setFormatter(syslog_formatter)
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
         #*** Console logging:
-        self.console_handler = logging.StreamHandler()
-        console_formatter = logging.Formatter \
-           ('%(levelname)s: %(name)s %(funcName)s - %(message)s')
-        self.console_handler.setFormatter(console_formatter)
-        #*** Add console and syslog log handlers to logger:
-        self.logger.addHandler(self.syslog_handler)
-        self.logger.addHandler(self.console_handler)
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+        #
         #*** Initiate the mac_to_port dictionary for switching:
         self.mac_to_port = {}
 

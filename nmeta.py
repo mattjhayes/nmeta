@@ -226,7 +226,7 @@ class NMeta(app_manager.RyuApp):
         self.measure = measure.Measurement \
                             (self.config.get_value("measure_logging_level"))
         self.forwarding = forwarding.Forwarding \
-                            (self.config.get_value("forwarding_logging_level"))
+                            (self.config)
         
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):

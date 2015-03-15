@@ -117,22 +117,49 @@ class NMeta(app_manager.RyuApp):
         #*** config.yaml and provides access to keys/values:
         self.config = config.Config()
 
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(format='%(asctime)s %(levelname)s:%(message)s',
-            level=logging.DEBUG)
+        #*** Get logging config values from config class:
+        _logging_level_s = self.config.get_value \
+                                    ('nmeta_logging_level_s')
+        _logging_level_c = self.config.get_value \
+                                    ('nmeta_logging_level_c')
+        _syslog_enabled = self.config.get_value ('syslog_enabled')
+        _loghost = self.config.get_value ('loghost')
+        _logport = self.config.get_value ('logport')
+        _logfacility = self.config.get_value ('logfacility')
+        _syslog_format = self.config.get_value ('syslog_format')
+        _console_log_enabled = self.config.get_value ('console_log_enabled')
+        _console_format = self.config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(self.config.get_value("nmeta_logging_level"))
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(
-                        address=('localhost', 514),
-                        facility=19)
-        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+
         #*** Set up variables:
         #*** Get max bytes of new flow packets to send to controller from
         #*** config file:
         self.miss_send_len = self.config.get_value("miss_send_len")
         if self.miss_send_len < 1500:
-            self.logger.info("INFO:  module=nmeta Be aware that setting "
+            self.logger.info("Be aware that setting "
                              "miss_send_len to less than a full size packet "
                              "may result in errors due to truncation. "
                              "Configured value is %s bytes",
@@ -214,19 +241,16 @@ class NMeta(app_manager.RyuApp):
         self.flowmetadata = flow.FlowMetadata \
                            (self.config.get_value("flow_logging_level"),
                             self.config.get_value("qos_logging_level"),
-                            self.config.get_value("ca_logging_level"))
+                            self.config)
         self.tc_policy = tc_policy.TrafficClassificationPolicy \
                         (self.config.get_value("tc_policy_logging_level"),
                          self.config.get_value("tc_static_logging_level"),
                          self.config.get_value("tc_identity_logging_level"),
                          self.config.get_value("tc_payload_logging_level"),
                          self.config.get_value("tc_statistical_logging_level"))
-        self.ca = controller_abstraction.ControllerAbstract \
-                            (self.config.get_value("ca_logging_level"))
-        self.measure = measure.Measurement \
-                            (self.config.get_value("measure_logging_level"))
-        self.forwarding = forwarding.Forwarding \
-                            (self.config)
+        self.ca = controller_abstraction.ControllerAbstract(self.config)
+        self.measure = measure.Measurement(self.config)
+        self.forwarding = forwarding.Forwarding(self.config)
         
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
@@ -235,9 +259,9 @@ class NMeta(app_manager.RyuApp):
         A larger value can help avoid truncated packets
         """
         datapath = ev.msg.datapath
-        self.logger.info("INFO:  module=nmeta Setting config on switch "
-                         "dpid=%s to OFPC_FRAG flag %s and "
-                         "miss_send_len %s bytes",
+        self.logger.info("Setting config on switch "
+                         "dpid=%s to OFPC_FRAG flag=%s and "
+                         "miss_send_len=%s bytes",
                           datapath.id, self.ofpc_frag, self.miss_send_len)
         if datapath.ofproto.OFP_VERSION == 1:
             _of_version = "1.0"
@@ -246,7 +270,7 @@ class NMeta(app_manager.RyuApp):
         else:
             _of_version = "Unknown version " + \
                             str(datapath.ofproto.OFP_VERSION)
-        self.logger.info("INFO:  module=nmeta event=switch_msg dpid=%s "
+        self.logger.info("event=switch_msg dpid=%s "
                          "of_version=%s", datapath.id, _of_version)
         datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
                                      datapath,
@@ -280,29 +304,29 @@ class NMeta(app_manager.RyuApp):
         pkt_udp = pkt.get_protocol(udp.udp)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
         if pkt_ip4 and pkt_tcp:
-            self.logger.debug("DEBUG: module=nmeta event=pi_ipv4_tcp dpid=%s "
+            self.logger.debug("event=pi_ipv4_tcp dpid=%s "
                               "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
                               "tcp_dst=%s",
                               dpid, in_port, pkt_ip4.src,
                               pkt_tcp.src_port, pkt_ip4.dst, pkt_tcp.dst_port)
         elif pkt_ip6 and pkt_tcp:
-            self.logger.debug("DEBUG: module=nmeta event=pi_ipv6_tcp dpid=%s "
+            self.logger.debug("event=pi_ipv6_tcp dpid=%s "
                               "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
                               "tcp_dst=%s",
                               dpid, in_port, pkt_ip6.src,
                               pkt_tcp.src_port, pkt_ip6.dst, pkt_tcp.dst_port)
         elif pkt_ip4:
-            self.logger.debug("DEBUG: module=nmeta event=pi_ipv4 dpid="
+            self.logger.debug("event=pi_ipv4 dpid="
                               "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
                               dpid, in_port,
                               pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
         elif pkt_ip6:
-            self.logger.debug("DEBUG: module=nmeta event=pi_ipv6 dpid=%s "
+            self.logger.debug("event=pi_ipv6 dpid=%s "
                               "in_port=%s ip_src=%s ip_dst=%s",
                               dpid, in_port,
                               pkt_ip6.src, pkt_ip6.dst)
         else:
-            self.logger.debug("DEBUG: module=nmeta event=pi_other dpid=%s "
+            self.logger.debug("event=pi_other dpid=%s "
                              "in_port=%s eth_src=%s eth_dst=%s", dpid, in_port,
                              src, dst)
         #*** Traffic Classification:
@@ -326,7 +350,7 @@ class NMeta(app_manager.RyuApp):
             #*** Check to see if we have a flow to install:
             if match and actions:
                 #*** Install flow match and actions to switch:
-                self.logger.debug("DEBUG: module=nmeta adding flow match to"
+                self.logger.debug("adding flow match to"
                               " datapath=%s", 
                               datapath.id)
                 #*** Record the event for measurements:
@@ -337,8 +361,8 @@ class NMeta(app_manager.RyuApp):
                                   hard_timeout=0)
             else:
                 #*** Something went wrong so log it:
-                self.logger.error("ERROR: module=nmeta error=E1000007 Not "
-                              "installing flow, match is % and actions are %s",
+                self.logger.error("error=E1000007 Not "
+                              "installing flow, match=%s and actions=%s",
                               match, actions)
             #*** Send Packet Out:
             packet_out_result = self.ca.packet_out(datapath, msg, in_port,
@@ -361,8 +385,7 @@ class NMeta(app_manager.RyuApp):
         if (_time - self.fm_table_last_tidyup_time) > \
                                  self.fm_table_tidyup_interval:
             #*** Call function to do tidy-up on the Flow Metadata (FM) table:
-            self.logger.debug("DEBUG: module=nmeta Calling function to do "
-                               "tidy-up on the Flow Metadata (FM) table")
+            self.logger.debug("event=tidy-up table=fm_table")
             self.flowmetadata.maintain_fm_table(self.fm_table_max_age)
             self.fm_table_last_tidyup_time = _time
         #*** Identity NIC and System table maintenance:
@@ -371,8 +394,7 @@ class NMeta(app_manager.RyuApp):
                               > self.identity_table_tidyup_interval:
             #*** Call function to do tidy-up on the Identity NIC
             #***  and System tables:
-            self.logger.debug("DEBUG: module=nmeta Calling function to do "
-                              "tidy-up on the Identity NIC and System tables")
+            self.logger.debug("event=tidy-up table=identity*")
             self.tc_policy.identity.maintain_identity_tables(
                                self.identity_nic_table_max_age,
                                self.identity_system_table_max_age)
@@ -382,8 +404,7 @@ class NMeta(app_manager.RyuApp):
         if (_time - self.statistical_fcip_table_last_tidyup_time) > \
                                  self.statistical_fcip_table_tidyup_interval:
             #*** Call function to do tidy-up on the FCIP table:
-            self.logger.debug("DEBUG: module=nmeta Calling function to do "
-                               "tidy-up on the statistical FCIP table")
+            self.logger.debug("event=tidy-up table=statistical_fcip_table")
             self.tc_policy.statistical.maintain_fcip_table(
                                      self.statistical_fcip_table_max_age)
             self.statistical_fcip_table_last_tidyup_time = _time
@@ -392,8 +413,7 @@ class NMeta(app_manager.RyuApp):
         if (_time - self.payload_fcip_table_last_tidyup_time) > \
                                  self.payload_fcip_table_tidyup_interval:
             #*** Call function to do tidy-up on the FCIP table:
-            self.logger.debug("DEBUG: module=nmeta Calling function to do "
-                               "tidy-up on the payload FCIP table")
+            self.logger.debug("event=tidy-up table=payload_fcip_table")
             self.tc_policy.payload.maintain_fcip_table(
                                      self.payload_fcip_table_max_age)
             self.payload_fcip_table_last_tidyup_time = _time
@@ -402,8 +422,7 @@ class NMeta(app_manager.RyuApp):
         if (_time - self.measure_buckets_last_tidyup_time) > \
                                  self.measure_buckets_tidyup_interval:
             #*** Call function to do tidy-up on the measure buckets:
-            self.logger.debug("DEBUG: module=nmeta Calling function to do "
-                               "tidy-up on the measure buckets")
+            self.logger.debug("event=tidy-up table=measure_buckets")
             self.measure.kick_the_rate_buckets(
                                      self.measure_buckets_max_age)
             self.measure.kick_the_metric_buckets(
@@ -417,7 +436,7 @@ class NMeta(app_manager.RyuApp):
         A switch has sent us an error event
         """
         msg = ev.msg
-        self.logger.error('ERROR: module=nmeta OFPErrorMsg received: '
+        self.logger.error('event=OFPErrorMsg_received: '
                       'type=0x%02x code=0x%02x message=%s',
                       msg.type, msg.code, utils.hex_array(msg.data))
 

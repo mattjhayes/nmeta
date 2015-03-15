@@ -45,7 +45,7 @@ class FlowMetadata(object):
     add/remove/update/search flow metadata table entries
     """
     def __init__(self, flow_logging_level, qos_logging_level, 
-                  ca_logging_level):
+                  _config):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
@@ -60,7 +60,7 @@ class FlowMetadata(object):
         self._fm_table = nmisc.AutoVivification()
         #*** Instantiate the Controller Abstraction class for calls to 
         #*** OpenFlow Switches:
-        self.ca = controller_abstraction.ControllerAbstract(ca_logging_level)
+        self.ca = controller_abstraction.ControllerAbstract(_config)
         #*** initialise Flow Metadata Table unique reference number:
         self._fm_ref = 1
         #*** Instantiate QoS class:

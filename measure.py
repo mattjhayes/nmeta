@@ -40,17 +40,45 @@ class Measurement(object):
     to record events and retrieve data related to these measurements.
     """
 
-    def __init__(self, measure_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('measure_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('measure_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(measure_logging_level)
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address=('localhost',
-                                                      514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+        #
+
         #*** Initialise the bucket dictionaries:
         self._rate_buckets = collections.defaultdict \
                              (lambda: collections.defaultdict(int))
@@ -67,12 +95,12 @@ class Measurement(object):
         if (current_time - self.current_rate_bucket) > \
                                         RATE_BUCKET_SIZE_SECONDS:
             #*** Need a new bucket:
-            self.logger.debug("DEBUG: module=measure Creating new rate bucket"
-                               " id %s", current_time)
+            self.logger.debug("event=create_new_rate_bucket"
+                               " id=%s", current_time)
             self._rate_buckets[current_time][event_type] = 1
             self.current_rate_bucket = current_time
-            self.logger.debug("DEBUG: module=measure Number of rate buckets is"
-                                   " %s", len(self._rate_buckets))
+            self.logger.debug("number_of_rate_buckets=%s",
+                                  len(self._rate_buckets))
         else:
             #*** Accumulate 1 to the event type in the bucket:
             self._rate_buckets[self.current_rate_bucket][event_type] += 1
@@ -86,11 +114,11 @@ class Measurement(object):
         if (current_time - self.current_metric_bucket) > \
                           METRIC_BUCKET_SIZE_SECONDS:
             #*** Need a new bucket:
-            self.logger.debug("DEBUG: module=measure Creating new metric "
-                               "bucket id %s", current_time)
+            self.logger.debug("event=create_new_metric_bucket id=%s",
+                                      current_time)
             self.current_metric_bucket = current_time
-            self.logger.debug("DEBUG: module=measure Number of metric buckets"
-                                  " is %s", len(self._metric_buckets))
+            self.logger.debug("number_of_metric_buckets=%s", 
+                                      len(self._metric_buckets))
         #*** Create a key for the event type in metrics buckets dict if 
         #***  doesn't exist:
         if not event_type in self._metric_buckets[self.current_metric_bucket]:
@@ -151,15 +179,14 @@ class Measurement(object):
         overlap_bucket = 0
         actual_interval = 0
         event_rate = 0
-        self.logger.debug("DEBUG: module=measure event_type %s rate_interval "
-                            "%s", event_type, rate_interval)
+        self.logger.debug("event_type=%s rate_interval=%s", 
+                                       event_type, rate_interval)
         #*** Add contents of buckets that have a start time in that window
         #*** and note if there is an overlap bucket as start of window:
         for bucket_time in self._rate_buckets:
             if bucket_time > (current_time - rate_interval):
                 #*** Accumulate:
-                self.logger.debug("DEBUG: module=measure Adding %s from "
-                        "rate bucket %s", 
+                self.logger.debug("Adding %s from rate bucket %s", 
                         self._rate_buckets[bucket_time][event_type],
                         bucket_time)
                 events_in = events_in + \
@@ -168,8 +195,8 @@ class Measurement(object):
             if (bucket_time > (current_time - (rate_interval + 
                          RATE_BUCKET_SIZE_SECONDS)) and (bucket_time < 
                          (current_time - rate_interval))):
-                self.logger.debug("DEBUG: module=measure Overlapping "
-                           "rate bucket id %s", bucket_time)
+                self.logger.debug("event=overlapping_rate_bucket id=%s",
+                                          bucket_time)
                 overlap_bucket = bucket_time
         #*** Work out the dividing time for rate calculation. It is the lesser
         #*** of (current_time - overlap_bucket_end_time) and rate_interval:
@@ -185,11 +212,11 @@ class Measurement(object):
         except:
             #*** Log the error (Divide by Zero error?) and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=measure in get_event_rate"
+            self.logger.error("Unknown error in get_event_rate. "
                 "Divide by Zero error? Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
             return 0
-        self.logger.debug("DEBUG: module=measure event_type=%s event_rate=%s",
+        self.logger.debug("event_type=%s event_rate=%s",
                             event_type, event_rate)
         return event_rate
 
@@ -204,8 +231,7 @@ class Measurement(object):
         acc_total = 0
         acc_events = 0
         acc_buckets = 0
-        self.logger.debug("DEBUG: module=measure get_event_metric_stats "
-                            "event_type %s rate_interval %s", 
+        self.logger.debug("event_type=%s rate_interval=%s", 
                              event_type, rate_interval)
         #*** Calc on contents of buckets that have a start time in that window
         for bucket_time in self._metric_buckets:
@@ -244,8 +270,7 @@ class Measurement(object):
             except:
                 #*** Log the error and set acc_avg to 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=measure in "
-                     "get_event_metric_stats Divide by Zero error? Exception "
+                self.logger.error("Divide by Zero error? Exception "
                      "%s, %s, %s",
                      exc_type, exc_value, exc_traceback)
                 acc_avg = 0
@@ -262,8 +287,7 @@ class Measurement(object):
         _results_dict[event_type]['number_of_buckets'] = acc_buckets
         _results_dict[event_type]['bucket_size_seconds'] = \
                                           METRIC_BUCKET_SIZE_SECONDS
-        self.logger.debug("DEBUG: module=measure get_event_metric_stats "
-            "_results_dict=%s", _results_dict)
+        self.logger.debug("_results_dict=%s", _results_dict)
         return _results_dict
 
     def kick_the_rate_buckets(self, bucket_max_age):
@@ -279,8 +303,8 @@ class Measurement(object):
                 #*** iterating):
                 bucket_delete_list.append(bucket_id)
         for dead_bucket in bucket_delete_list:
-            self.logger.debug("DEBUG: module=measure Deleting dead rate bucket"
-                                     " %s", dead_bucket)
+            self.logger.debug("Deleting dead rate bucket"
+                                     "id=%s", dead_bucket)
             del self._rate_buckets[dead_bucket]
             
     def kick_the_metric_buckets(self, bucket_max_age):
@@ -296,7 +320,7 @@ class Measurement(object):
                 #*** iterating):
                 bucket_delete_list.append(bucket_id)
         for dead_bucket in bucket_delete_list:
-            self.logger.debug("DEBUG: module=measure Deleting dead metric "
-                                     "bucket %s", dead_bucket)
+            self.logger.debug("Deleting dead metric "
+                                     "bucket id=%s", dead_bucket)
             del self._metric_buckets[dead_bucket]
 

@@ -41,17 +41,44 @@ class PayloadInspect(object):
     (class: TrafficClassificationPolicy) and provides methods to 
     run payload traffic classification matches
     """
-    def __init__(self, tc_payload_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('tc_payload_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('tc_payload_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(tc_payload_logging_level)
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = \
-                    ('localhost', 514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+        #
         #*** Instantiate the Flow Classification In Progress (FCIP) Table:
         self._fcip_table = nmisc.AutoVivification()        
         #*** Initialise FCIP Tables unique reference number:
@@ -70,7 +97,7 @@ class PayloadInspect(object):
             results_dict = self._payload_ftp(pkt)
             return results_dict
         else:
-            self.logger.error("ERROR: module=tc_payload Policy attribute %s "
+            self.logger.error("Policy attribute %s "
                               "and value %s did not match", policy_attr, 
                               policy_value)
             return {'match':False, 'continue_to_inspect':False}        
@@ -110,7 +137,7 @@ class PayloadInspect(object):
                     #*** Have dynamic port so can stop inspecting this flow.
                     #*** Note that this is likely to be an errant assumption.
                     #*** (i.e. will not see any subsequent control traffic)
-                    self.logger.debug("DEBUG: module=tc_payload FTP dynamic TCP port number is %s", _dynamic_port)
+                    self.logger.debug("FTP dynamic TCP port number is %s", _dynamic_port)
                     _continue_to_inspect = False
                     #*** Finalise the flow:
                     self._fcip_finalise(_fcip_results['table_ref'])
@@ -143,7 +170,7 @@ class PayloadInspect(object):
         #*** Initialise variables
         _dynamic_port = 0
         if payload[:8] == '504f5254':
-            self.logger.debug("DEBUG: module=tc_payload matched PORT command")
+            self.logger.debug("matched PORT command")
             #*** Now decode to get the dynamic port. It's comma separated 
             #***  (Hex 2c) decimal characters in hex:
             _port_cmd_values_raw = payload[9:].split("2c")
@@ -156,7 +183,7 @@ class PayloadInspect(object):
             if ((_dynamic_port > 0) and (_dynamic_port < 65537)):
                 return _dynamic_port
             else:
-                self.logger.warning("WARNING: module=tc_payload function="
+                self.logger.warning("function="
                                     "_payload_ftp dynamic port not valid: %s", 
                                             _dynamic_port)
                 return 0                           
@@ -308,7 +335,7 @@ class PayloadInspect(object):
         #*** Classifier Type:
         self._fcip_table[self._fcip_ref]['classifier_type'] = classifier_type
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_payload added new: %s", 
+            self.logger.debug("added new: %s", 
                                 self._fcip_table[self._fcip_ref])
         #*** increment table ref ready for next time we use it:
         self._fcip_ref += 1
@@ -319,7 +346,7 @@ class PayloadInspect(object):
         Flow Classification In Progress (FCIP) table.
         """
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_payload add_new2: %s", 
+            self.logger.debug("add_new2: %s", 
                                 flow_dict)
         #*** Initial setting of variable allowing more packets being added:
         self._fcip_table[self._fcip_ref]['finalised'] = flow_dict['finalised']
@@ -332,7 +359,7 @@ class PayloadInspect(object):
         #*** Classifier Type:
         self._fcip_table[self._fcip_ref]['classifier_type'] = flow_dict['classifier_type']
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_payload added new: %s", 
+            self.logger.debug("added new: %s", 
                                self._fcip_table[self._fcip_ref])
         #*** increment table ref ready for next time we use it:
         self._fcip_ref += 1
@@ -352,7 +379,7 @@ class PayloadInspect(object):
             if self._fcip_table[_table_ref]['time_last']:
                 _last = self._fcip_table[_table_ref]['time_last']
                 if (_time - _last > max_age_fcip):
-                    self.logger.debug("DEBUG: module=tc_payload Deleting "
+                    self.logger.debug("Deleting "
                                       "FCIP table ref %s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
                     #***  the table ref:

@@ -41,19 +41,46 @@ class StatisticalInspect(object):
     (class: TrafficClassificationPolicy) and provides methods to 
     run statistical traffic classification matches
     """
-    def __init__(self, tc_statistical_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('tc_statistical_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('tc_statistical_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(tc_statistical_logging_level)
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = \
-                            ('localhost', 514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+
         #*** Instantiate the Flow Classification In Progress (FCIP) Table:
-        self._fcip_table = nmisc.AutoVivification()        
+        self._fcip_table = nmisc.AutoVivification()
         #*** Initialise FCIP Tables unique reference number:
         self._fcip_ref = 1
         #*** Do you want really verbose debugging?
@@ -65,14 +92,14 @@ class StatisticalInspect(object):
         return a dictionary containing attributes 'valid', 
         'continue_to_inspect' and 'actions' with appropriate values set.
         """
-        self.logger.debug("DEBUG: module=tc_statistical check_statistical was "
+        self.logger.debug("check_statistical was "
                            "called")
         if policy_attr == "statistical_qos_bandwidth_1":
             #*** call the function for this particular statistical classifier
             results_dict = self._statistical_qos_bandwidth_1(pkt)
             return results_dict
         else:
-            self.logger.error("ERROR: module=tc_statistical Policy attribute "
+            self.logger.error("Policy attribute "
                               "%s did not match", policy_attr)
             return {'valid':False, 'continue_to_inspect':False, 
                      'actions':'none'}        
@@ -102,7 +129,7 @@ class StatisticalInspect(object):
                     'actions':_actions}
         #*** It is TCP, check if it's part of a flow we're already classifying:
         _table_ref = self._fcip_check(pkt)
-        self.logger.debug("DEBUG: module=tc_statistical Table ref is %s", _table_ref)          
+        self.logger.debug("Table ref is %s", _table_ref)          
         if _table_ref:
             #*** It's a flow that we are classifying. Update the table and
             #*** check if we have enough data to make a classification.
@@ -113,7 +140,7 @@ class StatisticalInspect(object):
                 #*** Note that _flow_packet_count will be 0 if a duplicate packet
                 if _flow_packet_count > (_max_packets - 1):
                     #*** Reached our maximum packet count so do some classification:
-                    self.logger.debug("DEBUG: module=tc_statistical Reached max packets count")
+                    self.logger.debug("Reached max packets count")
                     #*** Set the flow to be finalised so no more packets will be added: 
                     self._fcip_finalise(_table_ref)
                     #*** Set result value to say that flow can be installed to switch now
@@ -130,8 +157,8 @@ class StatisticalInspect(object):
                         _interpacket_ratio = float(_min_interpacket_interval) / float(_max_interpacket_interval)
                     else:
                         _interpacket_ratio = 0
-                    self.logger.debug("DEBUG: module=tc_statistical _max_packet_size is %s", _max_packet_size)
-                    self.logger.debug("DEBUG: module=tc_statistical _interpacket_ratio is %s", _interpacket_ratio)
+                    self.logger.debug("_max_packet_size is %s", _max_packet_size)
+                    self.logger.debug("_interpacket_ratio is %s", _interpacket_ratio)
                     #*** Decide actions based on the statistics:
                     if (_max_packet_size > _max_packet_size_threshold and 
                             _interpacket_ratio < _interpacket_ratio_threshold):
@@ -140,7 +167,7 @@ class StatisticalInspect(object):
                     else:
                         #*** Doesn't look like bandwidth hog so default priority:
                         _actions = { 'set_qos_tag': "QoS_treatment=default_priority" }
-                    self.logger.debug("DEBUG: module=tc_statistical Decided on actions %s", _actions)
+                    self.logger.debug("Decided on actions %s", _actions)
                     #*** Install actions into table so that subsequent packets of same flow
                     #*** get same actions when seeing finalised entry:
                     self._fcip_table[_table_ref]["actions"] = _actions
@@ -244,7 +271,7 @@ class StatisticalInspect(object):
                 _previous_reverse = _arrival_time
             else:
                 #*** should never hit this...
-                self.logger.error("ERROR: module=tc_statistical Strange condition encountered")
+                self.logger.error("Strange condition encountered")
         if not _max_interpacket:
             return 0
         else:
@@ -290,7 +317,7 @@ class StatisticalInspect(object):
                 _previous_reverse = _arrival_time
             else:
                 #*** should never hit this...
-                self.logger.error("ERROR: module=tc_statistical Strange condition encountered")
+                self.logger.error("Strange condition encountered")
         if not _min_interpacket:
             return 0
         else:
@@ -321,7 +348,7 @@ class StatisticalInspect(object):
                 _previous_reverse = _arrival_time
             else:
                 #*** should never hit this...
-                self.logger.error("ERROR: module=tc_statistical Strange condition encountered")
+                self.logger.error("Strange condition encountered")
         return _interpacket_interval
             
     def _fcip_finalise(self, table_ref):
@@ -365,7 +392,7 @@ class StatisticalInspect(object):
                 if _tcp_match:
                     #*** Matched IP and TCP parameters so return
                     #*** the table reference:
-                    self.logger.debug("DEBUG: module=tc_statistical Matched a flow "
+                    self.logger.debug("Matched a flow "
                                       "we're already classifying...")
                     return _table_ref
                 
@@ -444,7 +471,7 @@ class StatisticalInspect(object):
         #*** Number of packets is 1 as this is the first packet in the flow:
         self._fcip_table[self._fcip_ref]["number_of_packets"] = 1
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_statistical added new: %s", 
+            self.logger.debug("added new: %s", 
                                self._fcip_table[self._fcip_ref])
         #*** increment table ref ready for next time we use it:
         self._fcip_ref += 1
@@ -466,12 +493,12 @@ class StatisticalInspect(object):
             #*** or the same packet from another switch along the data path
             #*** so we'll ignore it:
             if self.extra_debugging:
-                self.logger.debug("DEBUG: module=tc_statistical Ignoring duplicate packet")
+                self.logger.debug("Ignoring duplicate packet")
             return 0
         #*** Work out what packet number we are in the flow:
         _packet_number = self._fcip_table[table_ref]["number_of_packets"]
         _packet_number += 1
-        self.logger.debug("DEBUG: module=tc_statistical _packet_number is %s", _packet_number)        
+        self.logger.debug("_packet_number is %s", _packet_number)        
         #*** Update number of packets:
         self._fcip_table[table_ref]["number_of_packets"] = _packet_number
         #*** Work out directionality and add to the table:
@@ -502,7 +529,7 @@ class StatisticalInspect(object):
         self._fcip_table[table_ref]["ack"][_packet_number] = _pkt_tcp.ack
         self._fcip_table[table_ref]["bits"][_packet_number] = _pkt_tcp.bits
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_statistical updated with packet %s: %s", 
+            self.logger.debug("updated with packet %s: %s", 
                               _packet_number, self._fcip_table[table_ref])
             #*** Extra data for easy recording of statistical results for analysis charts:
             _max_packet_size = self._calc_max_packet_size(table_ref)
@@ -533,7 +560,7 @@ class StatisticalInspect(object):
             and self._fcip_table[table_ref]["ack"][_packet_number] == _pkt_tcp.ack
             and self._fcip_table[table_ref]["bits"][_packet_number] == _pkt_tcp.bits):
                 if self.extra_debugging:
-                    self.logger.debug("DEBUG: module=tc_statistical DUPLICATE PACKET")
+                    self.logger.debug("DUPLICATE PACKET")
                 return True
         return False
         
@@ -556,7 +583,7 @@ class StatisticalInspect(object):
         find it otherwise 0
         """
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=tc_statistical SCALE: TCP Option "
+            self.logger.debug("SCALE: TCP Option "
                               "is %s", option)
         byte_key = bytearray(option)
         _position = 0
@@ -574,7 +601,7 @@ class StatisticalInspect(object):
                 #***  now get the value:
                 _position += 2
                 if self.extra_debugging:
-                    self.logger.debug("DEBUG: module=tc_statistical SCALE: "
+                    self.logger.debug("SCALE: "
                                        "matched scale %s", byte_key[_position])
                 return byte_key[_position]
             else:
@@ -600,7 +627,7 @@ class StatisticalInspect(object):
             if self._fcip_table[_table_ref]['time_last']:
                 _last = self._fcip_table[_table_ref]['time_last']
                 if (_time - _last > max_age_fcip):
-                    self.logger.debug("DEBUG: module=tc_statistical Deleting "
+                    self.logger.debug("Deleting "
                                       "FCIP table ref %s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
                     #***  the table ref:

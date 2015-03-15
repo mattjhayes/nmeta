@@ -238,16 +238,8 @@ class NMeta(app_manager.RyuApp):
                        action='list_identity_system_table',
                        conditions=dict(method=['GET']))
         #*** Instantiate Classes:
-        self.flowmetadata = flow.FlowMetadata \
-                           (self.config.get_value("flow_logging_level"),
-                            self.config.get_value("qos_logging_level"),
-                            self.config)
-        self.tc_policy = tc_policy.TrafficClassificationPolicy \
-                        (self.config.get_value("tc_policy_logging_level"),
-                         self.config.get_value("tc_static_logging_level"),
-                         self.config.get_value("tc_identity_logging_level"),
-                         self.config.get_value("tc_payload_logging_level"),
-                         self.config.get_value("tc_statistical_logging_level"))
+        self.flowmetadata = flow.FlowMetadata(self.config)
+        self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.ca = controller_abstraction.ControllerAbstract(self.config)
         self.measure = measure.Measurement(self.config)
         self.forwarding = forwarding.Forwarding(self.config)

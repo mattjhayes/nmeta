@@ -32,16 +32,25 @@ class Forwarding(object):
     for making forwarding decisions and transformations to packets.
     """
     def __init__(self, forwarding_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+        #*** Set up logging:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(forwarding_logging_level)
+        self.logger.propagate = False
         #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address=('localhost',
-                                                      514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
+        #*** TBD: get host and facility settings from config:
+        self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                'localhost', 514), facility=19)
+        syslog_formatter = logging.Formatter \
+          ('sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s')
+        self.syslog_handler.setFormatter(syslog_formatter)
+        #*** Console logging:
+        self.console_handler = logging.StreamHandler()
+        console_formatter = logging.Formatter \
+           ('%(levelname)s: %(name)s %(funcName)s - %(message)s')
+        self.console_handler.setFormatter(console_formatter)
+        #*** Add console and syslog log handlers to logger:
+        self.logger.addHandler(self.syslog_handler)
+        self.logger.addHandler(self.console_handler)
         #*** Initiate the mac_to_port dictionary for switching:
         self.mac_to_port = {}
 
@@ -66,13 +75,13 @@ class Forwarding(object):
         #*** Check to see if dst MAC is in learned MAC table:
         if eth_dst in self.mac_to_port[dpid]:
             #*** Found dst MAC so return the output port:
-            self.logger.debug("DEBUG: module=forwarding Forwarding eth_dst=%s "
+            self.logger.debug("Forwarding eth_dst=%s "
                     "via dpid=%s port=%s", eth_dst, 
                     dpid, self.mac_to_port[dpid][eth_dst])
             out_port = self.mac_to_port[dpid][eth_dst]
         else:
             #*** We haven't learned the dst MAC so flood it:
-            self.logger.debug("DEBUG: module=forwarding Flooding eth_src=%s"
+            self.logger.debug("Flooding eth_src=%s"
                                  " eth_dst=%s via dpid=%s flood port=%s",  
                                    eth_src, eth_dst, dpid, ofproto.OFPP_FLOOD)
             out_port = ofproto.OFPP_FLOOD

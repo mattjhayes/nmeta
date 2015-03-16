@@ -47,18 +47,44 @@ class StaticInspect(object):
     (class: TrafficClassificationPolicy) and provides methods to 
     query static traffic classification matches
     """
-    def __init__(self, tc_static_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('tc_static_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('tc_static_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(tc_static_logging_level)
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = \
-                    ('localhost', 514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
-        
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+       
     def check_static(self, policy_attr, policy_value, pkt):
         """
         Passed a static classification attribute, value and packet and
@@ -109,7 +135,7 @@ class StaticInspect(object):
         else:
             #*** didn't match any policy conditions so return false and
             #***  log an error:
-            self.logger.error("ERROR: module=tc_static Policy attribute %s "
+            self.logger.error("Policy attribute %s "
                                   "did not match", policy_attr)            
             return False                           
 
@@ -121,12 +147,12 @@ class StaticInspect(object):
         """
         try:
             if not EUI(value_to_check):
-                self.logger.debug("DEBUG: module=tc_policy Check of "
+                self.logger.debug("Check of "
                         "is_valid_macaddress on %s returned false",
                         value_to_check)
                 return 0
         except:
-            self.logger.debug("DEBUG: module=tc_policy Check of "
+            self.logger.debug("Check of "
                     "is_valid_macaddress on %s raised an exception", 
                     value_to_check)
             return 0
@@ -143,12 +169,12 @@ class StaticInspect(object):
             try:
                 if not (int(value_to_check, 16) > 0 and \
                                int(value_to_check, 16) < 65536):
-                    self.logger.debug("DEBUG: module=tc_static Check of "
+                    self.logger.debug("Check of "
                         "is_valid_ethertype as hex on %s returned false",
                         value_to_check)
                     return 0
             except:
-                self.logger.debug("DEBUG: module=tc_static Check of "
+                self.logger.debug("Check of "
                     "is_valid_ethertype as hex on %s raised an exception", 
                         value_to_check)
                 return 0
@@ -157,12 +183,12 @@ class StaticInspect(object):
             try:
                 if not (int(value_to_check) > 0 and \
                                   int(value_to_check) < 65536):
-                    self.logger.debug("DEBUG: module=tc_static Check of "
+                    self.logger.debug("Check of "
                         "is_valid_ethertype as decimal on %s returned false",
                         value_to_check)
                     return 0
             except:
-                self.logger.debug("DEBUG: module=tc_static Check of "
+                self.logger.debug("Check of "
                     "is_valid_ethertype as decimal on %s raised an exception", 
                         value_to_check)
                 return 0
@@ -178,12 +204,12 @@ class StaticInspect(object):
         if "/" in value_to_check:
             try:
                 if not IPNetwork(value_to_check):
-                    self.logger.debug("DEBUG: module=tc_static Network check "
+                    self.logger.debug("Network check "
                         "of is_valid_ip_space on %s returned false",
                         value_to_check)
                     return 0
             except:
-                self.logger.debug("DEBUG: module=tc_static Network check of "
+                self.logger.debug("Network check of "
                     "is_valid_ip_space on %s raised an exception", 
                     value_to_check)
                 return 0
@@ -192,31 +218,31 @@ class StaticInspect(object):
         elif "-" in value_to_check:
             ip_range = value_to_check.split("-")
             if len(ip_range) != 2:
-                self.logger.debug("DEBUG: module=tc_static Range check of "
+                self.logger.debug("Range check of "
                     "is_valid_ip_space on %s failed as not 2 items in list", 
                     value_to_check)
                 return 0
             try:
                 if not (IPAddress(ip_range[0]) and IPAddress(ip_range[1])):
-                    self.logger.debug("DEBUG: module=tc_static Range check "
+                    self.logger.debug("Range check "
                         "of is_valid_ip_space on %s returned false",
                         value_to_check)
                     return 0
             except:
-                self.logger.debug("DEBUG: module=tc_static Range check of "
+                self.logger.debug("Range check of "
                     "is_valid_ip_space on %s raised an exception", 
                     value_to_check)
                 return 0
             #*** Check second value in range greater than first value:
             if IPAddress(ip_range[0]).value >= IPAddress(ip_range[1]).value:
-                self.logger.debug("DEBUG: module=tc_static Range check of "
+                self.logger.debug("Range check of "
                     "is_valid_ip_space on %s failed as range is negative", 
                     value_to_check)
                 return 0
             #*** Check both IP addresses are the same version:
             if IPAddress(ip_range[0]).version != \
                                  IPAddress(ip_range[1]).version:
-                self.logger.debug("DEBUG: module=tc_static Range check of "
+                self.logger.debug("Range check of "
                     "is_valid_ip_space on %s failed as IP versions are "
                     "different", value_to_check)
                 return 0
@@ -225,12 +251,12 @@ class StaticInspect(object):
             #*** Or is it just a plain simple IP address?:
             try:
                 if not IPAddress(value_to_check):
-                    self.logger.debug("DEBUG: module=tc_policy Check of "
+                    self.logger.debug("Check of "
                         "is_valid_ip_space on %s returned false",
                         value_to_check)
                     return 0
             except:
-                self.logger.debug("DEBUG: module=tc_static Check of "
+                self.logger.debug("Check of "
                     "is_valid_ip_space on %s raised an exception", 
                     value_to_check)
                 return 0
@@ -245,12 +271,12 @@ class StaticInspect(object):
         """
         try:
             if not (int(value_to_check)>0 and int(value_to_check)<65536):
-                self.logger.debug("DEBUG: module=tc_static Check of "
+                self.logger.debug("Check of "
                     "is_valid_transport_port on %s returned false",
                     value_to_check)
                 return 0
         except:
-            self.logger.debug("DEBUG: module=tc_static Check of "
+            self.logger.debug("Check of "
                 "is_valid_transport_port on %s raised an exception", 
                 value_to_check)
             return 0
@@ -264,12 +290,12 @@ class StaticInspect(object):
         """
         try:
             if not EUI(value_to_check1) == EUI(value_to_check2):
-                self.logger.debug("DEBUG: module=tc_static Check of "
+                self.logger.debug("Check of "
                         "is_match_macaddress on %s vs %s returned false",
                         value_to_check1, value_to_check2)
                 return 0
         except:
-            self.logger.debug("DEBUG: module=tc_static Check of "
+            self.logger.debug("Check of "
                     "is_match_macaddress on %s vs %s raised an exception", 
                     value_to_check1, value_to_check2)
             return 0
@@ -289,7 +315,7 @@ class StaticInspect(object):
                 value_to_check1_dec = int(value_to_check1, 16)
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=tc_static error=E1000010 "
+                self.logger.error("error=E1000010 "
                         "Failed to convert hex to dec. Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
@@ -299,7 +325,7 @@ class StaticInspect(object):
                 value_to_check1_dec = int(value_to_check1)
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=tc_static error=E1000011 "
+                self.logger.error("error=E1000011 "
                         "Failed to convert to integer. Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
@@ -309,7 +335,7 @@ class StaticInspect(object):
                 value_to_check2_dec = int(value_to_check2, 16)
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=tc_static error=E1000012 "
+                self.logger.error("error=E1000012 "
                         "Failed to convert hex to dec. Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
@@ -319,7 +345,7 @@ class StaticInspect(object):
                 value_to_check2_dec = int(value_to_check2)
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=tc_static error=E1000013 "
+                self.logger.error("error=E1000013 "
                         "Failed to convert to integer. Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
@@ -340,7 +366,7 @@ class StaticInspect(object):
                 ip_space_object = IPNetwork(ip_space)
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=tc_static error=E1000015 "
+                self.logger.error("error=E1000015 "
                         "Exception converting to IPNetwork object. "
                         "Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
@@ -349,7 +375,7 @@ class StaticInspect(object):
         elif "-" in ip_space:
             ip_range = ip_space.split("-")
             if len(ip_range) != 2:
-                self.logger.error("ERROR: module=tc_static error=E1000016 "
+                self.logger.error("error=E1000016 "
                     "Range split of ip_space %s on - was not len 2 but %s", 
                     ip_space, len(ip_range))
                 return 0
@@ -357,7 +383,7 @@ class StaticInspect(object):
                 ip_space_object = list(iter_iprange(ip_range[0], ip_range[1]))
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=tc_static error=E1000017 "
+                self.logger.error("error=E1000017 "
                         "Exception on conversion of %s to iter_iprange "
                         "Exception %s, %s, %s",
                         ip_range, exc_type, exc_value, exc_traceback)
@@ -368,7 +394,7 @@ class StaticInspect(object):
                 ip_space_object = list(iter_iprange(ip_space, ip_space))
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=tc_static error=E1000019 "
+                self.logger.error("error=E1000019 "
                         "Exception converting to IPAddress object. "
                         "Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
@@ -378,7 +404,7 @@ class StaticInspect(object):
             ip_addr_object = IPAddress(ip_addr)
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=tc_static error=E1000021 "
+            self.logger.error("error=E1000021 "
                         "Exception converting to IPAddress object. "
                         "Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)

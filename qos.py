@@ -47,17 +47,44 @@ class QoS(object):
     the QoS treatment policy, and uses this to determine appropriate
     treatment action(s)
     """
-    def __init__(self, qos_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('qos_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('qos_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(qos_logging_level)
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = \
-                         ('localhost', 514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+
         #*** Name of the config file:
         self.policy_filename = "qos_policy.yaml"
         self.config_directory = "config"
@@ -67,15 +94,15 @@ class QoS(object):
         self.fullpathname = os.path.join(self.working_directory,
                                          self.config_directory,
                                          self.policy_filename)
-        self.logger.info("INFO:  module=qos About to open config file "
+        self.logger.info("About to open config file "
                          "%s", self.fullpathname)
         #*** Ingest the policy file:
         try:
             with open(self.fullpathname, 'r') as filename:
                 self._qos_policy = yaml.load(filename)
         except (IOError, OSError) as exception:
-            self.logger.error("ERROR: module=qos Failed to open policy "
-                              "file %s %s", self.fullpathname, exception)  
+            self.logger.error("Failed to open policy file=%s exception=%s", 
+                                           self.fullpathname, exception)  
             sys.exit("Exiting qos module. Please create qos config file")  
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
@@ -87,15 +114,14 @@ class QoS(object):
         correct format so that it won't cause unexpected errors during
         packet checks. 
         """
-        self.logger.debug("DEBUG: module=qos Validating QoS Policy...")
+        self.logger.debug("Validating QoS Policy...")
         for policy_rule in self._qos_policy.keys():
-            self.logger.debug("DEBUG: module=qos Validating PolicyRule "
-                              "%s", policy_rule)
+            self.logger.debug("Validating PolicyRule=%s", policy_rule)
             #*** Test for unsupported PolicyRule attributes:            
             for policy_rule_parameter in self._qos_policy[policy_rule].keys():
                 if not (policy_rule_parameter in 
                        QOS_CONFIG_POLICYRULE_ATTRIBUTES):
-                    self.logger.critical("CRITICAL: module=qos The "
+                    self.logger.critical("The "
                                          "following PolicyRule attribute is "
                                          "invalid: %s ", policy_rule_parameter)
                     sys.exit("Exiting nmeta. Please fix error in "
@@ -104,7 +130,7 @@ class QoS(object):
                 #*** attribute 'output_queue' with a valid value:
                 if not (QOS_TREATMENT in 
                         self._qos_policy[policy_rule].keys()):
-                    self.logger.critical("CRITICAL: module=qos The "
+                    self.logger.critical("The "
                                          "PolicyRule %s is missing attribute "
                                          " %s ", policy_rule, QOS_TREATMENT)
                     sys.exit("Exiting nmeta. Please fix error in "
@@ -113,7 +139,7 @@ class QoS(object):
                 #*** attribute 'QoS_treatment' with a valid value:
                 if not (QOS_POLICY_TAG in 
                         self._qos_policy[policy_rule].keys()):
-                    self.logger.critical("CRITICAL: module=qos The "
+                    self.logger.critical("The "
                                          "PolicyRule %s is missing attribute "
                                          " %s ", policy_rule, QOS_POLICY_TAG)
                     sys.exit("Exiting nmeta. Please fix error in "
@@ -148,7 +174,7 @@ class QoS(object):
             tc_qos_atr = qos_avp_list[0]
             tc_qos_val = qos_avp_list[1]
         else:
-            self.logger.error("ERROR: module=qos length of qos_avp_list not "
+            self.logger.error("length of qos_avp_list not "
                               "> 1. Check syntax of QoS policy")
             return(0)
         #*** Sanity checks:

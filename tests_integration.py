@@ -9,11 +9,13 @@ from ryu.lib.packet import ethernet, arp, packet, ipv4, tcp
 #*** nmeta imports:
 import tc_policy
 import measure
+import config
 
 #*** Set up Policy Integration Tests:
 #*** Instantiate classes:
+_config = config.Config()
 tc = tc_policy.TrafficClassificationPolicy \
-                    ("DEBUG","DEBUG","DEBUG","DEBUG","DEBUG")
+                    (_config)
 #*** Test values for policy_conditions:
 conditions_any_openflow = {'match_type': 'any',
                              'tcp_src': 6633, 'tcp_dst': 6633}
@@ -47,7 +49,7 @@ results_dict_match = {'actions': False, 'match': True,
 
 #*** Set up Measurement Integration Tests:
 #*** Instantiate class:
-measure = measure.Measurement("DEBUG")
+measure = measure.Measurement(_config)
 
 #*** Check TC packet match against a conditions stanza:
 def test_tc_check_conditions():

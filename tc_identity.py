@@ -41,17 +41,44 @@ class IdentityInspect(object):
     (class: TrafficClassificationPolicy) and provides methods to 
     ingest identity updates and query identities
     """
-    def __init__(self, tc_identity_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('tc_identity_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('tc_identity_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(tc_identity_logging_level)
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = ('localhost', 
-                         514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+
         #*** Instantiate the System and NIC Identity Tables:
         self._sys_identity_table = nmisc.AutoVivification()
         self._nic_identity_table = nmisc.AutoVivification()
@@ -118,7 +145,7 @@ class IdentityInspect(object):
                 #*** Didn't match that LLDP system name so return false:
                 return False          
         else:
-            self.logger.error("ERROR: module=tc_identity Policy attribute %s did not match", policy_attr)
+            self.logger.error("Policy attribute %s did not match", policy_attr)
             return False
 
     def lldp_in(self, pkt, dpid, inport):
@@ -140,9 +167,11 @@ class IdentityInspect(object):
                 self._sys_identity_table[_table_ref]['time_last'] = time.time()
             else:
                 #*** Add a new record to the System table:
-                self._set_sys_record_new_chassisid(_chassis_id_text, _system_name, pkt, dpid, inport)
+                self._set_sys_record_new_chassisid(_chassis_id_text, 
+                                               _system_name, pkt, dpid, inport)
         else:
-            self.logger.warning("WARNING: module=tc_identity Passed an LLDP packet that did not parse properly")
+            self.logger.warning("Passed an LLDP packet that did not parse "
+                                       "properly")
             return(0)
 
     def ip4_in(self, pkt):
@@ -154,14 +183,15 @@ class IdentityInspect(object):
         pkt_eth = pkt.get_protocol(ethernet.ethernet)
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         if pkt_ip4:
-            #*** Get the NIC identity table reference for the source MAC address
-            #*** (if it exists):
+            #*** Get the NIC identity table reference for the source
+            #*** MAC address (if it exists):
             _nic_table_ref = self._get_nic_ref_by_MAC(pkt_eth.src)
             if _nic_table_ref:
                 #*** Write the IP address to this table row:
                 self._set_nic_record_add_IP4_addr(_nic_table_ref, pkt_ip4.src)
         else:
-            self.logger.warning("WARNING: module=tc_identity Passed an IPv4 packet that did not parse properly")
+            self.logger.warning("Passed an IPv4 packet that did not parse"
+                                "properly")
             return(0)
 
     def get_identity_nic_table(self):
@@ -192,8 +222,8 @@ class IdentityInspect(object):
             if self._nic_identity_table[_table_ref]['time_last']:
                 _last = self._nic_identity_table[_table_ref]['time_last']
                 if (_time - _last > max_age_nic):
-                    self.logger.debug("DEBUG: module=tc_identity Deleting NIC"
-                                      " table ref %s", _table_ref)
+                    self.logger.debug("Deleting NIC"
+                                      " table ref id=%s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
                     #***  the table ref:
                     _for_deletion.append(_table_ref)
@@ -206,8 +236,8 @@ class IdentityInspect(object):
             if self._sys_identity_table[_table_ref]['time_last']:
                 _last = self._sys_identity_table[_table_ref]['time_last']
                 if (_time - _last > max_age_sys):
-                    self.logger.debug("DEBUG: module=tc_identity Deleting "
-                                      "System table ref %s", _table_ref)
+                    self.logger.debug("Deleting "
+                                      "System table ref id=%s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
                     #***  the table ref:
                     _for_deletion.append(_table_ref)
@@ -223,7 +253,8 @@ class IdentityInspect(object):
         return 0
         """
         for table_ref in self._sys_identity_table:
-            if (chassis_id_text == self._sys_identity_table[table_ref]['chassis_id']):
+            if (chassis_id_text == self._sys_identity_table[table_ref] \
+                                ['chassis_id']):
                 return(table_ref)
         return(0)
         
@@ -236,12 +267,14 @@ class IdentityInspect(object):
         """
         if policy_attr == 'identity_lldp_systemname': 
             for table_ref in self._sys_identity_table:
-                if (systemname == self._sys_identity_table[table_ref]['system_name']):
+                if (systemname == self._sys_identity_table[table_ref] \
+                                            ['system_name']):
                     return(table_ref)
             return(0)
         elif policy_attr == 'identity_lldp_systemname_re':
             for table_ref in self._sys_identity_table:
-                if (re.match(systemname, self._sys_identity_table[table_ref]['system_name'])):
+                if (re.match(systemname, self._sys_identity_table[table_ref] \
+                                            ['system_name'])):
                     return(table_ref)
             return(0)
         else:
@@ -256,7 +289,7 @@ class IdentityInspect(object):
         """       
         for table_ref in self._nic_identity_table:
             if (mac_addr == self._nic_identity_table[table_ref]['mac_addr']):
-                self.logger.debug("DEBUG: module=tc_identity Matched on nic table_ref %s", table_ref)
+                self.logger.debug("Matched on nic table_ref id=%s", table_ref)
                 return(table_ref)
         return(0)
 
@@ -286,7 +319,8 @@ class IdentityInspect(object):
         result = self._sys_identity_table[sys_ref]['nic_table_ref']
         return(result)
         
-    def _set_sys_record_new_chassisid(self, chassis_id_text, system_name, pkt, dpid, inport):
+    def _set_sys_record_new_chassisid(self, chassis_id_text, system_name, pkt, 
+                                                      dpid, inport):
         """
         Record a new system identity into the system identity table.
         Passed an LLDP Chassis ID in text format, an LLDP system name,
@@ -303,16 +337,20 @@ class IdentityInspect(object):
         if not _nic_table_ref:
             _nic_table_ref = self._set_nic_record_new(pkt, dpid, inport)
         #*** Write a new row into the system identity table:
-        self._sys_identity_table[self._sys_id_ref] = {'chassis_id' : chassis_id_text,
-                                                      'system_name' : system_name,
-                                                      'nic_table_ref' : _nic_table_ref,
-                                                      'time_first' : time.time(),
-                                                      'time_last' : time.time()
-                                                      }         
-        #*** Update the NIC table ref with a reference back to the system identity table:
+        self._sys_identity_table[self._sys_id_ref] = \
+            {
+            'chassis_id' : chassis_id_text,
+            'system_name' : system_name,
+            'nic_table_ref' : _nic_table_ref,
+            'time_first' : time.time(),
+            'time_last' : time.time()
+        }         
+        #*** Update the NIC table ref with a reference back to the system 
+        #*** identity table:
         self._set_nic_record_add_sys_ref(_nic_table_ref, self._sys_id_ref)
-        self.logger.debug("DEBUG: module=tc_identity Adding new sys identity table entry: %s ref: %s",
-                          self._sys_identity_table[self._sys_id_ref], self._sys_id_ref)
+        self.logger.debug("Adding new sys identity table entry: %s ref: %s",
+                          self._sys_identity_table[self._sys_id_ref], 
+                          self._sys_id_ref)
         #*** increment table ref:
         self._sys_id_ref += 1
         
@@ -336,7 +374,7 @@ class IdentityInspect(object):
         self._nic_identity_table[self._nic_id_ref]['time_last'] = time.time()
         #*** record table ref:
         table_ref = self._nic_id_ref
-        self.logger.debug("DEBUG: module=tc_identity Adding new NIC identity table entry: %s ref: %s",
+        self.logger.debug("Adding new NIC identity table entry: %s ref: %s",
                           self._nic_identity_table[table_ref], table_ref)        
         #*** increment table ref:
         self._nic_id_ref += 1
@@ -349,7 +387,8 @@ class IdentityInspect(object):
         table reference
         """
         self._nic_identity_table[nic_ref]['sys_ref'] = sys_ref
-        self.logger.debug("DEBUG: module=tc_identity Adding sys_ref: %s to nic_ref: %s", sys_ref, nic_ref)
+        self.logger.debug("Adding sys_ref: %s to nic_ref: %s", 
+                                         sys_ref, nic_ref)
         #*** Update timestamp:
         self._nic_identity_table[nic_ref]['time_last'] = time.time()
         
@@ -359,7 +398,7 @@ class IdentityInspect(object):
         address
         """
         self._nic_identity_table[nic_ref]['ip4_addr'] = ip4_addr
-        self.logger.debug("DEBUG: module=tc_identity Adding ip4_addr: %s to nic_ref: %s", ip4_addr, nic_ref)
+        self.logger.debug("Adding ip4_addr: %s to nic_ref: %s", ip4_addr, nic_ref)
         #*** Update timestamp:
         self._nic_identity_table[nic_ref]['time_last'] = time.time()       
 

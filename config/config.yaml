@@ -7,19 +7,56 @@ miss_send_len: 1500
 #*** Tell switch how to handle fragments (see OpenFlow spec)
 ofpc_frag: 0
 #
-#========== LOGGING LEVELS PER MODULE ===============
+#========== SYSLOG ==================================
+#*** Set to 1 if want to log to syslog:
+syslog_enabled: 1
+#
+#*** Where to send syslog (use localhost to keep on-box):
+loghost: localhost
+#
+#*** Port number to send on:
+logport: 514
+#
+#*** Facility to use:
+logfacility: 19
+#
+#*** Syslog Log Format:
+syslog_format: "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s"
+#
+#*** Syslog Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level: DEBUG
-flow_logging_level: INFO
-qos_logging_level: INFO
-tc_policy_logging_level: DEBUG
-tc_static_logging_level: DEBUG
-tc_identity_logging_level: INFO
-tc_payload_logging_level: INFO
-tc_statistical_logging_level: INFO
-ca_logging_level: INFO
-measure_logging_level: INFO
-forwarding_logging_level: DEBUG
+nmeta_logging_level_s: DEBUG
+flow_logging_level_s: INFO
+qos_logging_level_s: INFO
+tc_policy_logging_level_s: DEBUG
+tc_static_logging_level_s: DEBUG
+tc_identity_logging_level_s: INFO
+tc_payload_logging_level_s: INFO
+tc_statistical_logging_level_s: INFO
+ca_logging_level_s: INFO
+measure_logging_level_s: INFO
+forwarding_logging_level_s: DEBUG
+#
+#========== CONSOLE LOGGING =========================
+#*** Set to 1 if want to log to console:
+console_log_enabled: 1
+#
+#*** Console Log Format:
+console_format: "%(levelname)s: %(name)s %(funcName)s: %(message)s"
+#
+#*** Console Logging Levels Per Module
+#*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
+nmeta_logging_level_c: DEBUG
+flow_logging_level_c: INFO
+qos_logging_level_c: INFO
+tc_policy_logging_level_c: DEBUG
+tc_static_logging_level_c: DEBUG
+tc_identity_logging_level_c: INFO
+tc_payload_logging_level_c: INFO
+tc_statistical_logging_level_c: INFO
+ca_logging_level_c: INFO
+measure_logging_level_c: INFO
+forwarding_logging_level_c: DEBUG
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds

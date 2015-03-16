@@ -44,27 +44,53 @@ class FlowMetadata(object):
     This class is instantiated by nmeta.py and provides methods to 
     add/remove/update/search flow metadata table entries
     """
-    def __init__(self, flow_logging_level, qos_logging_level, 
-                  ca_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('flow_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('flow_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(flow_logging_level)
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address = 
-                        ('localhost', 514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
+
         #*** Instantiate the Flow Metadata (FM) Table:
         self._fm_table = nmisc.AutoVivification()
         #*** Instantiate the Controller Abstraction class for calls to 
         #*** OpenFlow Switches:
-        self.ca = controller_abstraction.ControllerAbstract(ca_logging_level)
+        self.ca = controller_abstraction.ControllerAbstract(_config)
         #*** initialise Flow Metadata Table unique reference number:
         self._fm_ref = 1
         #*** Instantiate QoS class:
-        self.qos = qos.QoS(qos_logging_level)
+        self.qos = qos.QoS(_config)
         #*** Do you want really verbose debugging?
         self.extra_debugging = 1
         
@@ -86,7 +112,7 @@ class FlowMetadata(object):
         #*** check if packet is part of a flow already in the FM table:
         _table_ref = self._fm_check(pkt)
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=flow table_ref match is %s", 
+            self.logger.debug("table_ref_match=%s", 
                               _table_ref)
         if _table_ref:
             self._fm_add_to_existing(pkt, _table_ref, flow_actions)
@@ -101,7 +127,7 @@ class FlowMetadata(object):
             out_queue = self.qos.check_policy(flow_actions["actions"])
             #*** Debug:
             if out_queue:
-                 self.logger.debug("DEBUG: module=flow out_queue is %s",
+                 self.logger.debug("out_queue=%s",
                                out_queue)              
             #*** Build a fine-grained flow match to install onto switch
             eth = pkt.get_protocol(ethernet.ethernet)
@@ -118,7 +144,7 @@ class FlowMetadata(object):
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
-                self.logger.debug("DEBUG: module=flow OF1.0 IPv4 TCP match "
+                self.logger.debug("OF1.0 IPv4 TCP match "
                                   "is %s", match)
             elif (pkt_tcp and pkt_ip6 and 
                        ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
@@ -129,7 +155,7 @@ class FlowMetadata(object):
                         dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
                         nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
-                self.logger.debug("DEBUG: module=flow OF1.0 IPv6 TCP match "
+                self.logger.debug("OF1.0 IPv6 TCP match "
                                   "is %s", match)
             elif (pkt_tcp and pkt_ip4 and 
                        ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
@@ -142,7 +168,7 @@ class FlowMetadata(object):
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
-                self.logger.debug("DEBUG: module=flow OF1.3 IPv4 TCP match "
+                self.logger.debug("OF1.3 IPv4 TCP match "
                                   "is %s", match)
             elif (pkt_tcp and pkt_ip6 and 
                        ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
@@ -155,7 +181,7 @@ class FlowMetadata(object):
                         dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
                         nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
-                self.logger.debug("DEBUG: module=flow OF1.3 IPv6 TCP match "
+                self.logger.debug("OF1.3 IPv6 TCP match "
                                   "is %s", match)
             elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
                 match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
@@ -163,8 +189,9 @@ class FlowMetadata(object):
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst))
-                self.logger.debug("DEBUG: module=flow IPv4 match "
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
+                        nw_proto=pkt_ip4.proto)
+                self.logger.debug("IPv4 match "
                                   "is %s", match)
             elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
                 match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
@@ -172,8 +199,9 @@ class FlowMetadata(object):
                         dl_src=eth.src,
                         dl_dst=eth.dst, 
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst))
-                self.logger.debug("DEBUG: module=flow IPv4 match "
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
+                        ip_proto=pkt_ip4.proto)
+                self.logger.debug("IPv4 match "
                                   "is %s", match)
             elif (eth.ethertype != 0x0800 and 
                    ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
@@ -181,7 +209,7 @@ class FlowMetadata(object):
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst))
-                self.logger.debug("DEBUG: module=flow Non-IP match"
+                self.logger.debug("Non-IP match"
                                   " is %s", match)
             elif (eth.ethertype != 0x0800 and 
                    ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
@@ -189,12 +217,12 @@ class FlowMetadata(object):
                         in_port=in_port,
                         dl_src=eth.src,
                         dl_dst=eth.dst)
-                self.logger.debug("DEBUG: module=flow Non-IP match"
+                self.logger.debug("Non-IP match"
                                   " is %s", match)
             else:
                 #*** possibly strange weirdness happened so log this event as
                 #*** a warning and don't install flow match:
-                self.logger.warning("WARNING: module=flow Packet observed "
+                self.logger.warning("Packet observed "
                                     "that is not IPv4 but has dl_type=0x0800")
                 match = 0
             if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
@@ -211,13 +239,13 @@ class FlowMetadata(object):
                     datapath.ofproto_parser.OFPActionSetQueue(out_queue),
                     datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
             else:
-                self.logger.error("ERROR: module=flow error=E1000006 Unhandled"
+                self.logger.error("error=E1000006 Unhandled"
                     " OF version %s means no action will be installed", 
                     ofproto.OFP_VERSION)
                 actions = 0
             return (match, actions, out_queue)
         else:
-            self.logger.debug("DEBUG: module=flow Not installing flow to "
+            self.logger.debug("Not installing flow to "
                               "switch as continue_to_inspect is True")
             match = 0
             actions = 0
@@ -238,8 +266,8 @@ class FlowMetadata(object):
             if self._fm_table[_table_ref]["time_last"]:
                 _last = self._fm_table[_table_ref]["time_last"]
                 if (_time - _last > max_age):
-                    self.logger.debug("DEBUG: module=flow Deleting FM table "
-                                        "ref %s", _table_ref)
+                    self.logger.debug("event=delete_FM_table_row"
+                                        "id=%s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
                     #***  the table ref:
                     _for_deletion.append(_table_ref)
@@ -275,13 +303,15 @@ class FlowMetadata(object):
                 _ip_match = self._fm_check_ip(_table_ref, pkt)
                 if _ip_match:
                     #*** Matched IP address pair in either direction
-                    #*** Now check for TCP port match (with consideration to directionality):
+                    #*** Now check for TCP port match (with consideration 
+                    #*** to directionality):
                     if _pkt_tcp:
-                        _tcp_match = self._fm_check_tcp(_table_ref, _ip_match, pkt)
+                        _tcp_match = self._fm_check_tcp(_table_ref, 
+                                                         _ip_match, pkt)
                         if _tcp_match:
                             #*** Matched IP and TCP parameters so return
                             #*** the table reference:
-                            self.logger.debug("DEBUG: module=flow Matched a flow "
+                            self.logger.debug("Matched a flow "
                                               "we're already classifying...")
                             return _table_ref
                     else:
@@ -289,14 +319,15 @@ class FlowMetadata(object):
                         #*** return the table ref, but needs work in future....
                         return _table_ref
             elif _pkt_eth:
-                #*** Non-IP packet, check if it matches on src and dest MAC and ethertype
+                #*** Non-IP packet, check if it matches on src and dest MAC 
+                #*** and ethertype
                 _eth_match = self._fm_check_eth(_table_ref, pkt)
                 if _eth_match:
                     return _table_ref
             else:
                 #*** We shouldn't ever hit this condition. Just log that
                 #*** some weirdness went on
-                self.logger.warning("WARNING: module=flow observed non ethernet packet")  
+                self.logger.warning("observed non-ethernet packet")  
                 return False
         #*** No match iterating through FM table so return false:
         return False
@@ -393,14 +424,14 @@ class FlowMetadata(object):
         else:
             #*** We shouldn't ever hit this condition. Just log that
             #*** some weirdness went on
-            self.logger.warning("WARNING: module=flow observed non ethernet packet")
+            self.logger.warning("observed non ethernet packet")
         #*** Need to add in what (if any) classification has been made:
         if flow_actions:
             self._fm_table[self._fm_ref]["flow_actions"] = flow_actions 
         #*** Number of packets seen by controller is 1 as this is the first packet in the flow:
         self._fm_table[self._fm_ref]["number_of_packets_to_controller"] = 1
         if self.extra_debugging:
-            self.logger.debug("DEBUG: module=flow added new: %s", self._fm_table[self._fm_ref])
+            self.logger.debug("added new: %s", self._fm_table[self._fm_ref])
         #*** increment table ref ready for next time we use it:
         self._fm_ref += 1
 

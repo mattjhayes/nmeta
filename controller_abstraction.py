@@ -69,17 +69,43 @@ class ControllerAbstract(object):
     program to know calls specific to the version of
     OpenFlow that the switch runs (where practical...)
     """
-    def __init__(self, ca_logging_level):
-        #*** Set up logging to write to syslog:
-        logging.basicConfig(level=logging.DEBUG)
+    def __init__(self, _config):
+        #*** Get logging config values from config class:
+        _logging_level_s = _config.get_value \
+                                    ('ca_logging_level_s')
+        _logging_level_c = _config.get_value \
+                                    ('ca_logging_level_c')
+        _syslog_enabled = _config.get_value ('syslog_enabled')
+        _loghost = _config.get_value ('loghost')
+        _logport = _config.get_value ('logport')
+        _logfacility = _config.get_value ('logfacility')
+        _syslog_format = _config.get_value ('syslog_format')
+        _console_log_enabled = _config.get_value ('console_log_enabled')
+        _console_format = _config.get_value ('console_format')
+        #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(ca_logging_level)
-        #*** Log to syslog on localhost
-        self.handler = logging.handlers.SysLogHandler(address=
-                            ('localhost', 514), facility=19)
-        formatter = logging.Formatter('%(name)s: %(levelname)s %(message)s')
-        self.handler.setFormatter(formatter)
-        self.logger.addHandler(self.handler)
+        self.logger.setLevel(logging.DEBUG)
+        self.logger.propagate = False
+        #*** Syslog:
+        if _syslog_enabled:
+            #*** Log to syslog on host specified in config.yaml:
+            self.syslog_handler = logging.handlers.SysLogHandler(address=(
+                                                _loghost, _logport), 
+                                                facility=_logfacility)
+            syslog_formatter = logging.Formatter(_syslog_format)
+            self.syslog_handler.setFormatter(syslog_formatter)
+            self.syslog_handler.setLevel(_logging_level_s)
+            #*** Add syslog log handler to logger:
+            self.logger.addHandler(self.syslog_handler)
+        #*** Console logging:
+        if _console_log_enabled:
+            #*** Log to the console:
+            self.console_handler = logging.StreamHandler()
+            console_formatter = logging.Formatter(_console_format)
+            self.console_handler.setFormatter(console_formatter)
+            self.console_handler.setLevel(_logging_level_c)
+            #*** Add console log handler to logger:
+            self.logger.addHandler(self.console_handler)
 
     def get_in_port(self, msg, datapath, ofproto):
         """
@@ -94,8 +120,8 @@ class ControllerAbstract(object):
             inport = msg.in_port
             return inport
         else:
-            self.logger.error("ERROR: module=CtrlAbs Unsupported OpenFlow "
-                              "version %s", datapath.ofproto.OFP_VERSION)
+            self.logger.error("Unsupported_OpenFlow_Version=%s", 
+                                      datapath.ofproto.OFP_VERSION)
             return 0
 
     def get_flow_match(self, datapath, ofproto, **kwargs):
@@ -118,21 +144,20 @@ class ControllerAbstract(object):
                     new_key = OF_MATCH_COMPAT[key][str(ofproto)]
                     #*** Only log if changing the key:
                     if key != new_key:
-                        self.logger.debug("DEBUG: module=CtrlAbs match "
-                                      "attr %s will be replaced with %s",
-                                      key, new_key)
+                        self.logger.debug("match_attr=%s will be replaced "
+                                 "with %s", key, new_key)
                     results[new_key] = value
                 else:
                     #*** No valid attribute for this OF version so log the
                     #*** error and return 0:
-                    self.logger.error("ERROR: module=CtrlAbs match failed."
-                                      " No OF %s match for attr %s in %s",
+                    self.logger.error("event=match_failed No OF %s match for "
+                                    "attr=%s in OF_MATCH_COMPAT=%s",
                                       ofproto, key, OF_MATCH_COMPAT[key])
                     return 0
             else:
                 #*** Key doesn't exist so log the error and return 0:
-                self.logger.error("ERROR: module=CtrlAbs match failed "
-                                      "on attr %s", OF_MATCH_COMPAT[key])
+                self.logger.error("event=match_failed attr=%s", 
+                                       OF_MATCH_COMPAT[key])
                 return 0
         #*** We now have a compatible kwargs dict build a match:
         try:
@@ -140,8 +165,7 @@ class ControllerAbstract(object):
         except:
             #*** Log the error and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=CtrlAbs "
-                    "ofproto_parser.OFPMatch error %s, %s, %s",
+            self.logger.error("event=ofproto_parser.OFPMatch_error %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
             return 0
         return match
@@ -167,9 +191,9 @@ class ControllerAbstract(object):
             except:
                 #*** Log the error and return 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=CtrlAbs "
-                    "parser.OFPInstructionActions v1.3 Exception %s, %s, %s",
-                            exc_type, exc_value, exc_traceback)
+                self.logger.error("parser.OFPInstructionActions v1.3 "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
                 return 0
             if kwargs['buffer_id']:
                 try:
@@ -183,8 +207,8 @@ class ControllerAbstract(object):
                 except:
                     #*** Log the error and return 0:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    self.logger.error("ERROR: module=CtrlAbs "
-                        "parser.OFPFlowMod v1.3 #1 Exception %s, %s, %s",
+                    self.logger.error("parser.OFPFlowMod v1.3 #1 Exception "
+                            "%s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                     return 0
             else:
@@ -197,8 +221,8 @@ class ControllerAbstract(object):
                 except:
                     #*** Log the error and return 0:
                     exc_type, exc_value, exc_traceback = sys.exc_info()
-                    self.logger.error("ERROR: module=CtrlAbs "
-                        "parser.OFPFlowMod v1.3 #2 Exception %s, %s, %s",
+                    self.logger.error("parser.OFPFlowMod v1.3 #2 Exception "
+                            "%s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                     return 0
             try:
@@ -207,8 +231,8 @@ class ControllerAbstract(object):
             except:
                 #*** Log the error and return 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=CtrlAbs "
-                    "datapath.send_msg v1.3 Exception %s, %s, %s",
+                self.logger.error("datapath.send_msg v1.3 Exception "
+                            "%s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
             return 1
@@ -225,9 +249,8 @@ class ControllerAbstract(object):
             except:
                 #*** Log the error and return 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=CtrlAbs "
-                    "datapath.ofproto_parser.OFPFlowMod v1.0 Exception "
-                    "%s, %s, %s",
+                self.logger.error("datapath.ofproto_parser.OFPFlowMod "
+                     "v1.0 Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
                 return 0
             try:
@@ -235,8 +258,8 @@ class ControllerAbstract(object):
             except:
                 #*** Log the error and return 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=CtrlAbs "
-                    "datapath.send_msg v1.0 Exception %s, %s, %s",
+                self.logger.error("datapath.send_msg v1.0 Exception "
+                            "%s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
             return 1
@@ -260,7 +283,7 @@ class ControllerAbstract(object):
             except:
                 #*** Log the error and return 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=CtrlAbs error=E1000001 "
+                self.logger.error("error=E1000001 "
                    "actions v01 Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
                 return 0 
@@ -273,12 +296,12 @@ class ControllerAbstract(object):
             except:
                 #*** Log the error and return 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=CtrlAbs error=E1000002 "
+                self.logger.error("error=E1000002 "
                    "actions v03 Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
                 return 0 
         else:
-            self.logger.error("ERROR: module=CtrlAbs error=E1000003 "
+            self.logger.error("error=E1000003 "
                                 "Unsupported OpenFlow version %s",
                                 ofproto.OFP_VERSION)
             return 0
@@ -291,7 +314,7 @@ class ControllerAbstract(object):
         except:
             #*** Log the error and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=CtrlAbs error=E1000004 "
+            self.logger.error("error=E1000004 "
                "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
                 exc_type, exc_value, exc_traceback)
             return 0 
@@ -301,7 +324,7 @@ class ControllerAbstract(object):
         except:
             #*** Log the error and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=CtrlAbs error=E1000005 "
+            self.logger.error("error=E1000005 "
                "datapath.send_msg Exception %s, %s, %s",
                 exc_type, exc_value, exc_traceback)
             return 0 
@@ -319,7 +342,7 @@ class ControllerAbstract(object):
             except:
                 #*** Log the error and return 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=CtrlAbs error=E1000022 "
+                self.logger.error("error=E1000022 "
                     "actions exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
                 return 0
@@ -330,12 +353,12 @@ class ControllerAbstract(object):
             except:
                 #*** Log the error and return 0:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("ERROR: module=CtrlAbs error=E1000025 "
+                self.logger.error("error=E1000025 "
                     "actions exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
                 return 0
         else:
-            self.logger.error("ERROR: module=CtrlAbs error=E1000026 "
+            self.logger.error("error=E1000026 "
                                 "Unsupported OpenFlow version %s",
                                 ofproto.OFP_VERSION)
             return 0
@@ -349,7 +372,7 @@ class ControllerAbstract(object):
         except:
             #*** Log the error and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=CtrlAbs error=E1000023 "
+            self.logger.error("error=E1000023 "
                "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
                 exc_type, exc_value, exc_traceback)
             return 0 
@@ -359,7 +382,7 @@ class ControllerAbstract(object):
         except:
             #*** Log the error and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("ERROR: module=CtrlAbs error=E1000024 "
+            self.logger.error("error=E1000024 "
                "datapath.send_msg Exception %s, %s, %s",
                 exc_type, exc_value, exc_traceback)
             return 0 

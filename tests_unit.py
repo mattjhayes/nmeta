@@ -5,11 +5,13 @@ To run, type in nosetests in the nmeta directory
 """
 
 import tc_policy
+import config
 
 #======================== tc_policy.py Unit Tests ============================
 #*** Instantiate classes:
+_config = config.Config()
 tc = tc_policy.TrafficClassificationPolicy \
-                    ("DEBUG","DEBUG","DEBUG","DEBUG","DEBUG")
+                    (_config)
 
 #*** MAC Address Validity Tests:
 def test_is_valid_macaddress():

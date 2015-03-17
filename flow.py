@@ -50,13 +50,13 @@ class FlowMetadata(object):
                                     ('flow_logging_level_s')
         _logging_level_c = _config.get_value \
                                     ('flow_logging_level_c')
-        _syslog_enabled = _config.get_value ('syslog_enabled')
-        _loghost = _config.get_value ('loghost')
-        _logport = _config.get_value ('logport')
-        _logfacility = _config.get_value ('logfacility')
-        _syslog_format = _config.get_value ('syslog_format')
-        _console_log_enabled = _config.get_value ('console_log_enabled')
-        _console_format = _config.get_value ('console_format')
+        _syslog_enabled = _config.get_value('syslog_enabled')
+        _loghost = _config.get_value('loghost')
+        _logport = _config.get_value('logport')
+        _logfacility = _config.get_value('logfacility')
+        _syslog_format = _config.get_value('syslog_format')
+        _console_log_enabled = _config.get_value('console_log_enabled')
+        _console_format = _config.get_value('console_format')
         #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -94,10 +94,37 @@ class FlowMetadata(object):
         #*** Do you want really verbose debugging?
         self.extra_debugging = 1
         
-    def update_flowmetadata(self, msg, out_port, flow_actions):
+    def update_flowmetadata(self, msg, flow_actions):
         """
-        Passed a message, output port(s) and actions (as assigned by
-        Traffic Classification policy) and do the following:
+        Passed a message and actions assigned by
+        Traffic Classification and Forwarding modules.
+        Do the following:
+        1) Update Flow Metadata Table
+        2) Check QoS to see if special queueing should be applied. 
+           If so update the actions
+        3) Return updated actions
+        """
+        pkt = packet.Packet(msg.data)
+        #*** check if packet is part of a flow already in the FM table:
+        _table_ref = self._fm_check(pkt)
+        if _table_ref:
+            #*** In table so update existing record:
+            self._fm_add_to_existing(pkt, _table_ref, flow_actions)
+        else:
+            #*** Not in table, so lets add it:
+            self._fm_add_new(pkt, flow_actions)
+        #*** Call QoS check_policy to see if special queueing
+        #***  should be applied:
+        out_queue = self.qos.check_policy(flow_actions['actions'])
+        self.logger.debug("out_queue=%s", out_queue)
+        flow_actions['queue'] = out_queue
+        #*** Return the updated flow actions:
+        return flow_actions
+
+    def update_flowmetadata_old(self, msg, out_port, flow_actions):
+        """
+        Passed a message, output port(s) and actions assigned by
+        Traffic Classification and Forwarding, and do the following:
         1) Update Flow Metadata Table
         2) Check if flow should be installed to switch
         3) Check QoS to see if special queueing should be applied 
@@ -127,8 +154,7 @@ class FlowMetadata(object):
             out_queue = self.qos.check_policy(flow_actions["actions"])
             #*** Debug:
             if out_queue:
-                 self.logger.debug("out_queue=%s",
-                               out_queue)              
+                 self.logger.debug("out_queue=%s", out_queue)
             #*** Build a fine-grained flow match to install onto switch
             eth = pkt.get_protocol(ethernet.ethernet)
             pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
@@ -137,7 +163,7 @@ class FlowMetadata(object):
             #*** Use Controller Abstraction module to build match statements:
             if (pkt_tcp and pkt_ip4 and 
                      ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 
@@ -384,12 +410,14 @@ class FlowMetadata(object):
         _pkt_tcp = pkt.get_protocol(tcp.tcp)
         _tcp_A = _pkt_tcp.src_port
         _tcp_B = _pkt_tcp.dst_port
-        if (ip_match == 'forward' and _tcp_A == self._fm_table[table_ref]["tcp_A"]
-            and _tcp_B == self._fm_table[table_ref]["tcp_B"]):
-                return True
-        elif (ip_match == 'reverse' and _tcp_A == self._fm_table[table_ref]["tcp_B"]
-            and _tcp_B == self._fm_table[table_ref]["tcp_A"]):
-                return True
+        if (ip_match == 'forward' and
+                    _tcp_A == self._fm_table[table_ref]["tcp_A"]
+                    and _tcp_B == self._fm_table[table_ref]["tcp_B"]):
+            return True
+        elif (ip_match == 'reverse' and
+                    _tcp_A == self._fm_table[table_ref]["tcp_B"]
+                    and _tcp_B == self._fm_table[table_ref]["tcp_A"]):
+            return True
         else:
             return False
             
@@ -398,7 +426,8 @@ class FlowMetadata(object):
         Passed a packet that is a new flow 
         along with flow actions and add to the
         Flow Metadata (FM) table.
-        """        
+        """
+        self.logger.debug("Adding new record to flow metadata table")
         _pkt_eth = pkt.get_protocol(ethernet.ethernet)
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         _pkt_tcp = pkt.get_protocol(tcp.tcp)
@@ -409,12 +438,13 @@ class FlowMetadata(object):
             #*** Add IP info:
             self._fm_table[self._fm_ref]["ip_A"] = _pkt_ip4.src
             self._fm_table[self._fm_ref]["ip_B"] = _pkt_ip4.dst
+            self._fm_table[self._fm_ref]["ip_proto"] = _pkt_ip4.proto
             if _pkt_tcp:
                 #*** Add TCP info:
                 self._fm_table[self._fm_ref]["tcp_A"] = _pkt_tcp.src_port
                 self._fm_table[self._fm_ref]["tcp_B"] = _pkt_tcp.dst_port
-            #*** Need to add other attribute/values here for different protocol types:
-            #*** <TBD>
+            #*** Need to add other attribute/values here for different 
+            #***  protocol types: <TBD>
         elif _pkt_eth:
             #*** Add layer-2 as non-IP traffic so local to a subnet 
             #*** and therefore it is significant:
@@ -428,7 +458,8 @@ class FlowMetadata(object):
         #*** Need to add in what (if any) classification has been made:
         if flow_actions:
             self._fm_table[self._fm_ref]["flow_actions"] = flow_actions 
-        #*** Number of packets seen by controller is 1 as this is the first packet in the flow:
+        #*** Number of packets seen by controller is 1 as this is the first 
+        #***  packet in the flow:
         self._fm_table[self._fm_ref]["number_of_packets_to_controller"] = 1
         if self.extra_debugging:
             self.logger.debug("added new: %s", self._fm_table[self._fm_ref])
@@ -441,10 +472,12 @@ class FlowMetadata(object):
         already classifying and a reference to the
         Flow Metadata (FM) table.
         """
+        self.logger.debug("Updating existing record in flow metadata table")
         #*** Update last seen timestamp:
         self._fm_table[table_ref]["time_last"] = time.time()
         #*** Update the count of Packet-In events for this flow:
-        _packet_in_count = self._fm_table[table_ref]['number_of_packets_to_controller']
+        _packet_in_count = \
+                   self._fm_table[table_ref]['number_of_packets_to_controller']
         if _packet_in_count:
             self._fm_table[table_ref]["number_of_packets_to_controller"] = _packet_in_count + 1
         else:

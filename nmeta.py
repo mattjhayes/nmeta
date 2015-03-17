@@ -122,13 +122,13 @@ class NMeta(app_manager.RyuApp):
                                     ('nmeta_logging_level_s')
         _logging_level_c = self.config.get_value \
                                     ('nmeta_logging_level_c')
-        _syslog_enabled = self.config.get_value ('syslog_enabled')
-        _loghost = self.config.get_value ('loghost')
-        _logport = self.config.get_value ('logport')
-        _logfacility = self.config.get_value ('logfacility')
-        _syslog_format = self.config.get_value ('syslog_format')
-        _console_log_enabled = self.config.get_value ('console_log_enabled')
-        _console_format = self.config.get_value ('console_format')
+        _syslog_enabled = self.config.get_value('syslog_enabled')
+        _loghost = self.config.get_value('loghost')
+        _logport = self.config.get_value('logport')
+        _logfacility = self.config.get_value('logfacility')
+        _syslog_format = self.config.get_value('syslog_format')
+        _console_log_enabled = self.config.get_value('console_log_enabled')
+        _console_format = self.config.get_value('console_format')
         #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -237,7 +237,7 @@ class NMeta(app_manager.RyuApp):
                        requirements=requirements,
                        action='list_identity_system_table',
                        conditions=dict(method=['GET']))
-        #*** Instantiate Classes:
+        #*** Instantiate Module Classes:
         self.flowmetadata = flow.FlowMetadata(self.config)
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.ca = controller_abstraction.ControllerAbstract(self.config)
@@ -274,7 +274,7 @@ class NMeta(app_manager.RyuApp):
         """
         A switch has sent us a Packet In event
         """
-        #*** Record the time for delta time measurement:
+        #*** Record the time for later delta measurement:
         pi_start_time = time.time()
         #*** Record the event for measurements:
         self.measure.record_rate_event('packet_in')

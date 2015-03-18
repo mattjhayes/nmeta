@@ -22,17 +22,13 @@ import logging
 import logging.handlers
 import struct
 import time
-import json
 
 #*** Ryu imports:
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
-from ryu.lib.mac import haddr_to_bin
 from ryu.lib import addrconv
-from ryu.ofproto import ofproto_v1_0
-from ryu.ofproto import ofproto_v1_3
 
 #*** nmeta imports:
 import qos
@@ -117,165 +113,9 @@ class FlowMetadata(object):
         #***  should be applied:
         out_queue = self.qos.check_policy(flow_actions['actions'])
         self.logger.debug("out_queue=%s", out_queue)
-        flow_actions['queue'] = out_queue
+        flow_actions['out_queue'] = out_queue
         #*** Return the updated flow actions:
         return flow_actions
-
-    def update_flowmetadata_old(self, msg, out_port, flow_actions):
-        """
-        Passed a message, output port(s) and actions assigned by
-        Traffic Classification and Forwarding, and do the following:
-        1) Update Flow Metadata Table
-        2) Check if flow should be installed to switch
-        3) Check QoS to see if special queueing should be applied 
-        4) Return a Flow Match (if required) and Actions to install to switch
-        """
-        datapath = msg.datapath
-        ofproto = datapath.ofproto
-        pkt = packet.Packet(msg.data)
-        in_port = self.ca.get_in_port(msg, datapath, ofproto)
-        dpid = datapath.id
-        
-        #*** check if packet is part of a flow already in the FM table:
-        _table_ref = self._fm_check(pkt)
-        if self.extra_debugging:
-            self.logger.debug("table_ref_match=%s", 
-                              _table_ref)
-        if _table_ref:
-            self._fm_add_to_existing(pkt, _table_ref, flow_actions)
-        else:
-            #*** Not in table so lets add it:
-            self._fm_add_new(pkt, flow_actions)
-            
-        #*** Check if a flow should be installed to the switch:
-        if not flow_actions["continue_to_inspect"]:       
-            #*** Call QoS check_policy to see if special queueing
-            #*** should be applied:
-            out_queue = self.qos.check_policy(flow_actions["actions"])
-            #*** Debug:
-            if out_queue:
-                 self.logger.debug("out_queue=%s", out_queue)
-            #*** Build a fine-grained flow match to install onto switch
-            eth = pkt.get_protocol(ethernet.ethernet)
-            pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-            pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-            pkt_tcp = pkt.get_protocol(tcp.tcp)
-            #*** Use Controller Abstraction module to build match statements:
-            if (pkt_tcp and pkt_ip4 and 
-                     ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION,
-                        in_port=in_port,
-                        dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
-                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
-                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
-                self.logger.debug("OF1.0 IPv4 TCP match "
-                                  "is %s", match)
-            elif (pkt_tcp and pkt_ip6 and 
-                       ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
-                        in_port=in_port,
-                        dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
-                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
-                self.logger.debug("OF1.0 IPv6 TCP match "
-                                  "is %s", match)
-            elif (pkt_tcp and pkt_ip4 and 
-                       ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
-                #*** Note OF1.3 needs eth src and dest in ascii not bin
-                #*** and tcp vs udp protocol specific attributes: 
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
-                        in_port=in_port,
-                        dl_src=eth.src,
-                        dl_dst=eth.dst, 
-                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
-                        tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
-                self.logger.debug("OF1.3 IPv4 TCP match "
-                                  "is %s", match)
-            elif (pkt_tcp and pkt_ip6 and 
-                       ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
-                #*** Note OF1.3 needs eth src and dest in ascii not bin
-                #*** and tcp vs udp protocol specific attributes: 
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
-                        in_port=in_port,
-                        dl_src=eth.src,
-                        dl_dst=eth.dst, 
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
-                        tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
-                self.logger.debug("OF1.3 IPv6 TCP match "
-                                  "is %s", match)
-            elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
-                        in_port=in_port,
-                        dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
-                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
-                        nw_proto=pkt_ip4.proto)
-                self.logger.debug("IPv4 match "
-                                  "is %s", match)
-            elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
-                        in_port=in_port,
-                        dl_src=eth.src,
-                        dl_dst=eth.dst, 
-                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
-                        ip_proto=pkt_ip4.proto)
-                self.logger.debug("IPv4 match "
-                                  "is %s", match)
-            elif (eth.ethertype != 0x0800 and 
-                   ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
-                        in_port=in_port,
-                        dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst))
-                self.logger.debug("Non-IP match"
-                                  " is %s", match)
-            elif (eth.ethertype != 0x0800 and 
-                   ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
-                match = self.ca.get_flow_match(datapath, ofproto.OFP_VERSION, 
-                        in_port=in_port,
-                        dl_src=eth.src,
-                        dl_dst=eth.dst)
-                self.logger.debug("Non-IP match"
-                                  " is %s", match)
-            else:
-                #*** possibly strange weirdness happened so log this event as
-                #*** a warning and don't install flow match:
-                self.logger.warning("Packet observed "
-                                    "that is not IPv4 but has dl_type=0x0800")
-                match = 0
-            if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
-                #*** Only do Enqueue action if not flooding:
-                if out_port != ofproto.OFPP_FLOOD:
-                    actions = [datapath.ofproto_parser.OFPActionEnqueue \
-                                     (out_port, out_queue)]
-                else:
-                    actions = [datapath.ofproto_parser.OFPActionOutput \
-                                     (out_port)]
-            elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
-                #*** Note: out_port must come last!
-                actions = [
-                    datapath.ofproto_parser.OFPActionSetQueue(out_queue),
-                    datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
-            else:
-                self.logger.error("error=E1000006 Unhandled"
-                    " OF version %s means no action will be installed", 
-                    ofproto.OFP_VERSION)
-                actions = 0
-            return (match, actions, out_queue)
-        else:
-            self.logger.debug("Not installing flow to "
-                              "switch as continue_to_inspect is True")
-            match = 0
-            actions = 0
-            return (match, actions, out_queue)
 
     def maintain_fm_table(self, max_age):
         """
@@ -493,7 +333,7 @@ class FlowMetadata(object):
         if ip_text == 0:
             return ip_text
         assert isinstance(ip_text, str)
-        return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]      
+        return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
 
     def _ipv6_t2i(self, ip_text):
         """
@@ -502,4 +342,4 @@ class FlowMetadata(object):
         if ip_text == 0:
             return ip_text
         assert isinstance(ip_text, str)
-        return struct.unpack('!I', addrconv.ipv6.text_to_bin(ip_text))[0]  
+        return struct.unpack('!I', addrconv.ipv6.text_to_bin(ip_text))[0]

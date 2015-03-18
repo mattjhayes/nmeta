@@ -23,10 +23,17 @@ differences between OpenFlow versions where practical
 import logging
 import logging.handlers
 import sys
+import struct
 
 #*** Ryu Imports:
+from ryu.lib.mac import haddr_to_bin
+from ryu.lib import addrconv
 from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import ofproto_v1_3
+from ryu.lib.packet import packet
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4, ipv6
+from ryu.lib.packet import tcp
 
 #*** This dictionary is used to check validity of flow match attributes
 #*** per OpenFlow version, and provides alternates for different versions
@@ -107,68 +114,230 @@ class ControllerAbstract(object):
             #*** Add console log handler to logger:
             self.logger.addHandler(self.console_handler)
 
-    def get_in_port(self, msg, datapath, ofproto):
+    def add_flow_tcp(self, datapath, msg, flow_actions, **kwargs):
         """
-        Passed a msg, datapath and OF protocol version
-        and return the port that the
-        packet came in on (version specific)
+        Add a TCP flow table entry to a switch.
+        Returns 1 for success or 0 for any type of error
+        Required kwargs are:
+            priority (0)
+            buffer_id (None)
+            idle_timeout (5)
+            hard_timeout (0)
         """
-        if ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
-            inport = msg.match['in_port']
-            return inport
-        elif ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
-            inport = msg.in_port
-            return inport
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
+        pkt_tcp = pkt.get_protocol(tcp.tcp)
+        in_port=flow_actions['in_port']
+        idle_timeout=kwargs['idle_timeout']
+        hard_timeout=kwargs['hard_timeout']
+        buffer_id=kwargs['buffer_id']
+        priority=kwargs['priority']
+        #*** Build a match that is dependant on the IP and OpenFlow versions:
+        if (pkt_tcp and pkt_ip4 and 
+                     ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
+                        in_port=in_port,
+                        dl_src=haddr_to_bin(eth.src),
+                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
+                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
+            self.logger.debug("event=add_flow ofv=%s match_type=IPv4-TCP "
+                                  "match=%s", ofproto.OFP_VERSION, match)
+        elif (pkt_tcp and pkt_ip6 and 
+                       ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=haddr_to_bin(eth.src),
+                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
+                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
+                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
+            self.logger.debug("event=add_flow ofv=%s match_type=IPv6-TCP "
+                                 "match=%s", ofproto.OFP_VERSION, match)
+        elif (pkt_tcp and pkt_ip4 and 
+                       ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+            #*** Note OF1.3 needs eth src and dest in ascii not bin
+            #*** and tcp vs udp protocol specific attributes: 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst, 
+                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
+                        tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
+            self.logger.debug("event=add_flow ofv=%s match_type=IPv4-TCP "
+                                 "match=%s", ofproto.OFP_VERSION, match)
+        elif (pkt_tcp and pkt_ip6 and 
+                       ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+            #*** Note OF1.3 needs eth src and dest in ascii not bin
+            #*** and tcp vs udp protocol specific attributes: 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst, 
+                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
+                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
+                        tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
+            self.logger.debug("event=add_flow ofv=%s match_type=IPv6-TCP "
+                                   "match=%s", ofproto.OFP_VERSION, match)
         else:
-            self.logger.error("Unsupported_OpenFlow_Version=%s", 
-                                      datapath.ofproto.OFP_VERSION)
+            #*** Possibly an unsupported OF version. Log and return 0:
+            self.logger.error("event=add_flow error=E1000027 Did not compute. "
+                                "ofv=%s pkt=%s", ofproto.OFP_VERSION, pkt)
             return 0
+        #*** Get the actions to install for the match:
+        actions = self.get_actions(datapath, ofproto.OFP_VERSION,
+                        flow_actions['out_port'], flow_actions['out_queue'])
+        self.logger.debug("actions=%s", actions)
+        #*** Now have a match and actions so call add_flow to instantiate it:
+        _result = self.add_flow(datapath, match, actions,
+                                 priority=priority, buffer_id=buffer_id,
+                                 idle_timeout=idle_timeout,
+                                 hard_timeout=hard_timeout)
+        self.logger.debug("result is %s", _result)
+        return _result
 
-    def get_flow_match(self, datapath, ofproto, **kwargs):
+    def add_flow_ip(self, datapath, msg, flow_actions, **kwargs):
         """
-        Passed a OF protocol version and a Flow Match keyword arguments dict
-        and return an OF match tailored for the OF version
-        otherwise 0 (false) if compatibility not possible.
-        TBD: validating values...
+        Add an IP (v4 or v6) flow table entry to a switch.
+        Returns 1 for success or 0 for any type of error
+        Required kwargs are:
+            priority (0)
+            buffer_id (None)
+            idle_timeout (5)
+            hard_timeout (0)
+        Uses IP protocol number to prevent matching on TCP flows
         """
-        #*** Iterate through all kwargs checking attribute validity and
-        #*** substituting as appropriate or exiting with 0 if invalid
-        #*** or not not valid and not substitutable for current OF version:
-        results = dict()
-        for key, value in kwargs.iteritems():
-            #*** Check if key exists in OF_MATCH_COMPAT dict:
-            if key in OF_MATCH_COMPAT:
-                #*** Key exists, check version compatibility:
-                if str(ofproto) in OF_MATCH_COMPAT[key]:
-                    #*** Write compatible key to results (may be the original):
-                    new_key = OF_MATCH_COMPAT[key][str(ofproto)]
-                    #*** Only log if changing the key:
-                    if key != new_key:
-                        self.logger.debug("match_attr=%s will be replaced "
-                                 "with %s", key, new_key)
-                    results[new_key] = value
-                else:
-                    #*** No valid attribute for this OF version so log the
-                    #*** error and return 0:
-                    self.logger.error("event=match_failed No OF %s match for "
-                                    "attr=%s in OF_MATCH_COMPAT=%s",
-                                      ofproto, key, OF_MATCH_COMPAT[key])
-                    return 0
-            else:
-                #*** Key doesn't exist so log the error and return 0:
-                self.logger.error("event=match_failed attr=%s", 
-                                       OF_MATCH_COMPAT[key])
-                return 0
-        #*** We now have a compatible kwargs dict build a match:
-        try:
-            match = datapath.ofproto_parser.OFPMatch(**results)
-        except:
-            #*** Log the error and return 0:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("event=ofproto_parser.OFPMatch_error %s, %s, %s",
-                            exc_type, exc_value, exc_traceback)
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
+        in_port=flow_actions['in_port']
+        idle_timeout=kwargs['idle_timeout']
+        hard_timeout=kwargs['hard_timeout']
+        buffer_id=kwargs['buffer_id']
+        priority=kwargs['priority']
+        #*** Build a match that is dependant on the IP and OpenFlow versions:
+        if (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=haddr_to_bin(eth.src),
+                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
+                        nw_proto=pkt_ip4.proto)
+            self.logger.debug("event=add_flow ofv=%s match_type=IPv4 match=%s",
+                                  ofproto.OFP_VERSION, match)
+        elif (pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=haddr_to_bin(eth.src),
+                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
+                        nw_dst=self._ipv6_t2i(pkt_ip6.dst),
+                        nw_proto=pkt_ip4.proto)
+            self.logger.debug("event=add_flow ofv=%s match_type=IPv6 match=%s",
+                                  ofproto.OFP_VERSION, match)
+        elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst, 
+                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
+                        ip_proto=pkt_ip4.proto)
+            self.logger.debug("event=add_flow ofv=%s match_type=IPv4 match=%s",
+                                  ofproto.OFP_VERSION, match)
+        elif (pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst, 
+                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
+                        nw_dst=self._ipv6_t2i(pkt_ip6.dst),
+                        ip_proto=pkt_ip4.proto)
+            self.logger.debug("event=add_flow ofv=%s match_type=IPv6 match=%s",
+                                  ofproto.OFP_VERSION, match)
+        else:
+            #*** Possibly an unsupported OF version. Log and return 0:
+            self.logger.error("event=add_flow error=E1000028 Did not compute. "
+                                "ofv=%s pkt=%s", ofproto.OFP_VERSION, pkt)
             return 0
-        return match
+        #*** Get the actions to install for the match:
+        actions = self.get_actions(datapath, ofproto.OFP_VERSION,
+                        flow_actions['out_port'], flow_actions['out_queue'])
+        self.logger.debug("actions=%s", actions)
+        #*** Now have a match and actions so call add_flow to instantiate it:
+        _result = self.add_flow(datapath, match, actions,
+                                 priority=priority, buffer_id=buffer_id,
+                                 idle_timeout=idle_timeout,
+                                 hard_timeout=hard_timeout)
+        self.logger.debug("result is %s", _result)
+        return _result
+
+    def add_flow_eth(self, datapath, msg, flow_actions, **kwargs):
+        """
+        Add an ethernet (non-IP) flow table entry to a switch.
+        Returns 1 for success or 0 for any type of error
+        Required kwargs are:
+            priority (0)
+            buffer_id (None)
+            idle_timeout (5)
+            hard_timeout (0)
+        Uses Ethertype in match to prevent matching against IPv4 
+        or IPv6 flows
+        """
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+        in_port=flow_actions['in_port']
+        idle_timeout=kwargs['idle_timeout']
+        hard_timeout=kwargs['hard_timeout']
+        buffer_id=kwargs['buffer_id']
+        priority=kwargs['priority']
+        #*** Build a match that is dependant on the IP and OpenFlow versions:
+        if (eth.ethertype != 0x0800 and 
+                   ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=haddr_to_bin(eth.src),
+                        dl_dst=haddr_to_bin(eth.dst),
+                        dl_type=eth.ethertype)
+            self.logger.debug("event=add_flow ofv=%s match_type=Non-IP "
+                                  "match=%s", ofproto.OFP_VERSION, match)
+        elif (eth.ethertype != 0x0800 and 
+                   ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+                        in_port=in_port,
+                        dl_src=eth.src,
+                        dl_dst=eth.dst,
+                        dl_type=eth.ethertype)
+            self.logger.debug("event=add_flow ofv=%s match_type=Non-IP "
+                                  "match=%s", ofproto.OFP_VERSION, match)
+        else:
+            #*** Possibly an unsupported OF version. Log and return 0:
+            self.logger.error("event=add_flow error=E1000028 Did not compute. "
+                                "ofv=%s pkt=%s", ofproto.OFP_VERSION, pkt)
+            return 0
+        #*** Get the actions to install for the match:
+        actions = self.get_actions(datapath, ofproto.OFP_VERSION,
+                        flow_actions['out_port'], flow_actions['out_queue'])
+        self.logger.debug("actions=%s", actions)
+        #*** Now have a match and actions so call add_flow to instantiate it:
+        _result = self.add_flow(datapath, match, actions,
+                                 priority=priority, buffer_id=buffer_id,
+                                 idle_timeout=idle_timeout,
+                                 hard_timeout=hard_timeout)
+        self.logger.debug("result is %s", _result)
+        return _result
 
     def add_flow(self, datapath, match, actions, **kwargs):
         """
@@ -263,6 +432,96 @@ class ControllerAbstract(object):
                             exc_type, exc_value, exc_traceback)
                 return 0
             return 1
+
+    def get_flow_match(self, datapath, ofproto, **kwargs):
+        """
+        Passed a OF protocol version and a Flow Match keyword arguments dict
+        and return an OF match tailored for the OF version
+        otherwise 0 (false) if compatibility not possible.
+        TBD: validating values...
+        """
+        #*** Iterate through all kwargs checking attribute validity and
+        #*** substituting as appropriate or exiting with 0 if invalid
+        #*** or not not valid and not substitutable for current OF version:
+        results = dict()
+        for key, value in kwargs.iteritems():
+            #*** Check if key exists in OF_MATCH_COMPAT dict:
+            if key in OF_MATCH_COMPAT:
+                #*** Key exists, check version compatibility:
+                if str(ofproto) in OF_MATCH_COMPAT[key]:
+                    #*** Write compatible key to results (may be the original):
+                    new_key = OF_MATCH_COMPAT[key][str(ofproto)]
+                    #*** Only log if changing the key:
+                    if key != new_key:
+                        self.logger.debug("match_attr=%s will be replaced "
+                                 "with %s", key, new_key)
+                    results[new_key] = value
+                else:
+                    #*** No valid attribute for this OF version so log the
+                    #*** error and return 0:
+                    self.logger.error("event=match_failed No OF %s match for "
+                                    "attr=%s in OF_MATCH_COMPAT=%s",
+                                      ofproto, key, OF_MATCH_COMPAT[key])
+                    return 0
+            else:
+                #*** Key doesn't exist so log the error and return 0:
+                self.logger.error("event=match_failed attr=%s", 
+                                       OF_MATCH_COMPAT[key])
+                return 0
+        #*** We now have a compatible kwargs dict build a match:
+        try:
+            match = datapath.ofproto_parser.OFPMatch(**results)
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("event=ofproto_parser.OFPMatch_error %s, %s, %s",
+                            exc_type, exc_value, exc_traceback)
+            return 0
+        return match
+
+    def get_in_port(self, msg, datapath, ofproto):
+        """
+        Passed a msg, datapath and OF protocol version
+        and return the port that the
+        packet came in on (version specific)
+        """
+        if ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
+            inport = msg.match['in_port']
+            return inport
+        elif ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
+            inport = msg.in_port
+            return inport
+        else:
+            self.logger.error("Unsupported_OpenFlow_Version=%s", 
+                                      datapath.ofproto.OFP_VERSION)
+            return 0
+
+    def get_actions(self, datapath, ofv, out_port, out_queue):
+        """
+        Passed a datapath, an OpenFlow version an out port,
+        an out queue and flood port # and build and return an
+        appropriate set of actions for this
+        """
+        ofproto = datapath.ofproto
+        if ofv == ofproto_v1_0.OFP_VERSION:
+            #*** Only do Enqueue action if not flooding:
+            if out_port != ofproto.OFPP_FLOOD:
+                actions = [datapath.ofproto_parser.OFPActionEnqueue \
+                                     (out_port, out_queue)]
+            else:
+                actions = [datapath.ofproto_parser.OFPActionOutput \
+                                     (out_port)]
+        elif ofv == ofproto_v1_3.OFP_VERSION:
+            #*** Note: out_port must come last!
+            actions = [
+                    datapath.ofproto_parser.OFPActionSetQueue(out_queue),
+                    datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
+        else:
+            self.logger.error("error=E1000006 Unhandled"
+                    " OF version ofv=%s means no action will be installed", 
+                    ofv)
+            actions = 0
+        return actions
 
     def packet_out(self, datapath, msg, in_port, out_port, out_queue):
         """
@@ -387,3 +646,22 @@ class ControllerAbstract(object):
                 exc_type, exc_value, exc_traceback)
             return 0 
         return 1
+
+    def _ipv4_t2i(self, ip_text):
+        """
+        Turns an IPv4 address in text format into an integer.
+        Borrowed from rest_router.py code
+        """
+        if ip_text == 0:
+            return ip_text
+        assert isinstance(ip_text, str)
+        return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
+
+    def _ipv6_t2i(self, ip_text):
+        """
+        Turns an IPv6 address in text format into an integer.
+        """
+        if ip_text == 0:
+            return ip_text
+        assert isinstance(ip_text, str)
+        return struct.unpack('!I', addrconv.ipv6.text_to_bin(ip_text))[0]

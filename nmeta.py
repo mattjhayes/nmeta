@@ -122,13 +122,13 @@ class NMeta(app_manager.RyuApp):
                                     ('nmeta_logging_level_s')
         _logging_level_c = self.config.get_value \
                                     ('nmeta_logging_level_c')
-        _syslog_enabled = self.config.get_value ('syslog_enabled')
-        _loghost = self.config.get_value ('loghost')
-        _logport = self.config.get_value ('logport')
-        _logfacility = self.config.get_value ('logfacility')
-        _syslog_format = self.config.get_value ('syslog_format')
-        _console_log_enabled = self.config.get_value ('console_log_enabled')
-        _console_format = self.config.get_value ('console_format')
+        _syslog_enabled = self.config.get_value('syslog_enabled')
+        _loghost = self.config.get_value('loghost')
+        _logport = self.config.get_value('logport')
+        _logfacility = self.config.get_value('logfacility')
+        _syslog_format = self.config.get_value('syslog_format')
+        _console_log_enabled = self.config.get_value('console_log_enabled')
+        _console_format = self.config.get_value('console_format')
         #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -237,7 +237,7 @@ class NMeta(app_manager.RyuApp):
                        requirements=requirements,
                        action='list_identity_system_table',
                        conditions=dict(method=['GET']))
-        #*** Instantiate Classes:
+        #*** Instantiate Module Classes:
         self.flowmetadata = flow.FlowMetadata(self.config)
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.ca = controller_abstraction.ControllerAbstract(self.config)
@@ -263,7 +263,7 @@ class NMeta(app_manager.RyuApp):
             _of_version = "Unknown version " + \
                             str(datapath.ofproto.OFP_VERSION)
         self.logger.info("event=switch_msg dpid=%s "
-                         "of_version=%s", datapath.id, _of_version)
+                         "ofv=%s", datapath.id, _of_version)
         datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
                                      datapath,
                                      self.ofpc_frag,
@@ -274,7 +274,7 @@ class NMeta(app_manager.RyuApp):
         """
         A switch has sent us a Packet In event
         """
-        #*** Record the time for delta time measurement:
+        #*** Record the time for later delta measurement:
         pi_start_time = time.time()
         #*** Record the event for measurements:
         self.measure.record_rate_event('packet_in')
@@ -329,36 +329,41 @@ class NMeta(app_manager.RyuApp):
         #*** Call Forwarding module to carry out forwarding functions:
         out_port = self.forwarding.basic_switch(ev, in_port)
 
-        #*** TBD: Build actions through ca module:
-        #actions = self.ca.actions(datapath, out_port=out_port,
+        #*** Accumulate extra information in the flow_actions dictionary:
+        flow_actions['in_port'] = in_port
+        flow_actions['out_port'] = out_port
 
+        #*** Update Flow Metadata Table and add QoS queue:
+        flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
+
+        #*** Do some add flow magic, but only if not a flooded packet:
+        #*** Prefer to do fine-grained match where possible:
         if out_port != ofproto.OFPP_FLOOD:
-            #*** Do some flow magic, but only if not a flooded packet:
-            #*** Call Flow Metadata to get a match to install (if desired)
-            #*** and output queue:
-            (match, actions, out_queue) = \
-                 self.flowmetadata.update_flowmetadata \
-                                         (msg, out_port, flow_actions)
-            #*** Check to see if we have a flow to install:
-            if match and actions:
-                #*** Install flow match and actions to switch:
-                self.logger.debug("adding flow match to"
-                              " datapath=%s", 
-                              datapath.id)
-                #*** Record the event for measurements:
-                self.measure.record_rate_event('modify_flow')
-                #*** Call abstraction layer to add flow record
-                self.ca.add_flow(datapath, match, actions,
+            if pkt_tcp:
+                #*** Call abstraction layer to add TCP flow record:
+                self.logger.debug("event=add_flow match_type=tcp")
+                _result = self.ca.add_flow_tcp(datapath, msg, flow_actions,
+                                  priority=0, buffer_id=None, idle_timeout=5,
+                                  hard_timeout=0)
+            elif pkt_ip4 or pkt_ip6:
+                #*** Call abstraction layer to add IPv4 flow record:
+                self.logger.debug("event=add_flow match_type=ipv4")
+                _result = self.ca.add_flow_ip(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             else:
-                #*** Something went wrong so log it:
-                self.logger.error("error=E1000007 Not "
-                              "installing flow, match=%s and actions=%s",
-                              match, actions)
+                #*** Call abstraction layer to add Ethernet flow record:
+                self.logger.debug("event=add_flow match_type=eth")
+                _result = self.ca.add_flow_eth(datapath, msg, flow_actions,
+                                  priority=0, buffer_id=None, idle_timeout=5,
+                                  hard_timeout=0)
+            self.logger.debug("event=add_flow result=%s", _result)
+            #*** Record the event for measurements:
+            self.measure.record_rate_event('add_flow')
+
             #*** Send Packet Out:
             packet_out_result = self.ca.packet_out(datapath, msg, in_port,
-                                out_port, out_queue)
+                                out_port, flow_actions['out_queue'])
             #*** Record Measurements:
             self.measure.record_rate_event('packet_out')
             pi_delta_time = time.time() - pi_start_time

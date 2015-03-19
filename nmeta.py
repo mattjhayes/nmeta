@@ -299,14 +299,14 @@ class NMeta(app_manager.RyuApp):
             self.logger.debug("event=pi_ipv4_tcp dpid=%s "
                               "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
                               "tcp_dst=%s",
-                              dpid, in_port, pkt_ip4.src,
-                              pkt_tcp.src_port, pkt_ip4.dst, pkt_tcp.dst_port)
+                              dpid, in_port, pkt_ip4.src, pkt_ip4.dst, 
+                              pkt_tcp.src_port, pkt_tcp.dst_port)
         elif pkt_ip6 and pkt_tcp:
             self.logger.debug("event=pi_ipv6_tcp dpid=%s "
                               "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
                               "tcp_dst=%s",
-                              dpid, in_port, pkt_ip6.src,
-                              pkt_tcp.src_port, pkt_ip6.dst, pkt_tcp.dst_port)
+                              dpid, in_port, pkt_ip6.src, pkt_ip6.dst, 
+                              pkt_tcp.src_port, pkt_tcp.dst_port)
         elif pkt_ip4:
             self.logger.debug("event=pi_ipv4 dpid="
                               "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
@@ -319,8 +319,8 @@ class NMeta(app_manager.RyuApp):
                               pkt_ip6.src, pkt_ip6.dst)
         else:
             self.logger.debug("event=pi_other dpid=%s "
-                             "in_port=%s eth_src=%s eth_dst=%s", dpid, in_port,
-                             src, dst)
+                             "in_port=%s eth_src=%s eth_dst=%s eth_type=%s", 
+                             dpid, in_port, src, dst, eth.ethertype)
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does return a dictionary of actions:
@@ -339,21 +339,45 @@ class NMeta(app_manager.RyuApp):
         #*** Do some add flow magic, but only if not a flooded packet:
         #*** Prefer to do fine-grained match where possible:
         if out_port != ofproto.OFPP_FLOOD:
-            if pkt_tcp:
+            if pkt_tcp and pkt_ip4:
                 #*** Call abstraction layer to add TCP flow record:
-                self.logger.debug("event=add_flow match_type=tcp")
+                self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
+                                  "ip_dst=%s ip_ver=4 tcp_src=%s tcp_dst=%s", 
+                                  pkt_ip4.src, pkt_ip4.dst, 
+                                  pkt_tcp.src_port, pkt_tcp.dst_port)
                 _result = self.ca.add_flow_tcp(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
-            elif pkt_ip4 or pkt_ip6:
-                #*** Call abstraction layer to add IPv4 flow record:
-                self.logger.debug("event=add_flow match_type=ipv4")
+            elif pkt_tcp and pkt_ip6:
+                #*** Call abstraction layer to add TCP flow record:
+                self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
+                                  "ip_dst=%s ip_ver=6 tcp_src=%s tcp_dst=%s", 
+                                  pkt_ip6.src, pkt_ip6.dst, 
+                                  pkt_tcp.src_port, pkt_tcp.dst_port)
+                _result = self.ca.add_flow_tcp(datapath, msg, flow_actions,
+                                  priority=0, buffer_id=None, idle_timeout=5,
+                                  hard_timeout=0)
+            elif pkt_ip4:
+                #*** Call abstraction layer to add IP flow record:
+                self.logger.debug("event=add_flow match_type=ip ip_src=%s "
+                                  "ip_dst=%s ip_proto=%s ip_ver=4", 
+                                  pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
+                _result = self.ca.add_flow_ip(datapath, msg, flow_actions,
+                                  priority=0, buffer_id=None, idle_timeout=5,
+                                  hard_timeout=0)
+            elif pkt_ip6:
+                #*** Call abstraction layer to add IP flow record:
+                self.logger.debug("event=add_flow match_type=ip ip_src=%s "
+                                  "ip_dst=%s ip_proto=%s ip_ver=6", 
+                                  pkt_ip6.src, pkt_ip6.dst, pkt_ip6.proto)
                 _result = self.ca.add_flow_ip(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             else:
                 #*** Call abstraction layer to add Ethernet flow record:
-                self.logger.debug("event=add_flow match_type=eth")
+                self.logger.debug("event=add_flow match_type=eth eth_src=%s "
+                                  "eth_dst=%s eth_type=%s", 
+                                  src, dst, eth.ethertype)
                 _result = self.ca.add_flow_eth(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)

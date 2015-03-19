@@ -161,13 +161,21 @@ class Measurement(object):
         """
         Return the event type rates for all rate event types
         """
+        current_time = int(time.time())
+        _event_types = dict()
         _results_dict = dict()
-        _results_dict['packet_in_rate'] = \
-                        self.get_event_rate('packet_in', rate_interval)
-        _results_dict['modify_flow_rate'] = \
-                        self.get_event_rate('modify_flow', rate_interval)
-        _results_dict['packet_out_rate'] = \
-                        self.get_event_rate('packet_out', rate_interval)
+        #*** Build a dictionary of event types from current buckets:
+        for bucket_time in self._rate_buckets:
+            if bucket_time > (current_time - rate_interval):
+                #*** Accumulate event types:
+                for _ev in self._rate_buckets[bucket_time]:
+                    if not _ev in _event_types:
+                        _event_types[_ev] = {}
+        #*** iterate through event types and accumulate rates in
+        #*** a results dictionary by event type
+        for _event_type in _event_types:
+            _results_dict[_event_type] = \
+                        self.get_event_rate(_event_type, rate_interval)
         return _results_dict
 
     def get_event_rate(self, event_type, rate_interval):

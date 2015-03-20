@@ -30,7 +30,10 @@ import os
 
 #*** Packet-related imports:
 from ryu.lib.packet import ethernet
+from ryu.lib.packet import arp
+from ryu.lib.packet import dhcp
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 
 #*** nmeta imports:
@@ -38,6 +41,7 @@ import tc_static
 import tc_identity
 import tc_statistical
 import tc_payload
+import dns_experimental
 
 #*** YAML for config and policy file parsing:
 import yaml
@@ -133,6 +137,7 @@ class TrafficClassificationPolicy(object):
         self.payload = tc_payload.PayloadInspect(_config)
         self.statistical = tc_statistical.StatisticalInspect \
                                 (_config)
+        self.dns = dns_experimental.DNS(_config)
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
@@ -324,6 +329,26 @@ class TrafficClassificationPolicy(object):
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         if pkt_ip4:
             self.identity.ip4_in(pkt)
+        #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
+        #*** Check to see if it is an IPv4 ARP reply
+        #***  and if so harvest the information:
+        pkt_arp = pkt.get_protocol(arp.arp)
+        if pkt_arp:
+            self.logger.debug("event=ARP arp=%s", pkt_arp)
+        #*** Check to see if it is an IPv4 DHCP ACK
+        #***  and if so harvest the information:
+        pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
+        if pkt_dhcp:
+            self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
+        #*** Check to see if it is an IPv4 DNS packet
+        #***  and if so pass to the identity module to process
+        pkt_udp = pkt.get_protocol(udp.udp)
+        if pkt_udp:
+            if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
+                _dns_result = self.dns.parse_dns(pkt.protocols[-1])
+                print "DNS result is %s" % _dns_result
+                #print "Matched DNS...payload=%s" % \
+                #                str(binascii.b2a_hex(pkt.protocols[-1]))
         #*** Check against TC policy:
         for tc_rule in self.tc_ruleset:
             #*** Check the rule:

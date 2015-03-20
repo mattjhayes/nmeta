@@ -79,9 +79,14 @@ class IdentityInspect(object):
             #*** Add console log handler to logger:
             self.logger.addHandler(self.console_handler)
 
-        #*** Instantiate the System and NIC Identity Tables:
+        #*** Instantiate the System and NIC Identity Tables (Legacy):
         self._sys_identity_table = nmisc.AutoVivification()
         self._nic_identity_table = nmisc.AutoVivification()
+        #*** Identity Dictionaries (New):
+        self._id_mac = {}
+        self._id_ip = {}
+        self._id_node = {}
+        self._id_service = {}
         #*** Initialise Identity Tables unique reference numbers:
         #*** Start at 1 so that value 0 can be used for boolean
         #*** false on checks

@@ -37,6 +37,7 @@ ca_logging_level_s: INFO
 measure_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 dns_logging_level_s: INFO
+api_logging_level_s: DEBUG
 #
 #========== CONSOLE LOGGING =========================
 #*** Set to 1 if want to log to console:
@@ -59,6 +60,7 @@ ca_logging_level_c: INFO
 measure_logging_level_c: INFO
 forwarding_logging_level_c: INFO
 dns_logging_level_c: INFO
+api_logging_level_c: DEBUG
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds

@@ -71,6 +71,7 @@ import config
 import controller_abstraction
 import measure
 import forwarding
+import api
 
 #*** Web API REST imports:
 from webob import Response
@@ -92,6 +93,8 @@ class NMeta(app_manager.RyuApp):
     #*** Supports OpenFlow versions 1.0 and 1.3:
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
                     ofproto_v1_3.OFP_VERSION]
+    
+    #&&&&&&&&&&&&&&& TO BE DELETED:
     #*** Constants for REST API:
     url_flowtable = '/nmeta/flowtable/'
     url_flowtable_by_ip = '/nmeta/flowtable/{ip}'
@@ -104,6 +107,7 @@ class NMeta(app_manager.RyuApp):
     #
     IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
     _CONTEXTS = {'wsgi': WSGIApplication}
+    #&&&&&&&&&&&&&&& 
 
     def __init__(self, *args, **kwargs):
         super(NMeta, self).__init__(*args, **kwargs)
@@ -241,6 +245,7 @@ class NMeta(app_manager.RyuApp):
         self.ca = controller_abstraction.ControllerAbstract(self.config)
         self.measure = measure.Measurement(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
+        self.api = api.Api(self, self.config)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):

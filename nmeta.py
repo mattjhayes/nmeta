@@ -46,7 +46,6 @@ and carries no warrantee whatsoever. You have been warned.
 import logging
 import struct
 import time
-import binascii
 
 #*** Ryu Imports:
 from ryu import utils
@@ -57,14 +56,12 @@ from ryu.controller.handler import HANDSHAKE_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import ofproto_v1_3
-from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib import addrconv
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
-from ryu.lib.packet import lldp
 from ryu.exception import RyuException
 
 #*** nmeta imports:
@@ -77,11 +74,8 @@ import forwarding
 
 #*** Web API REST imports:
 from webob import Response
-from ryu.app.wsgi import ControllerBase, WSGIApplication, route
+from ryu.app.wsgi import ControllerBase, WSGIApplication
 import json
-
-#*** YAML for config and policy file parsing:
-import yaml
 
 #*** Constants for REST API:
 REST_RESULT = 'result'
@@ -118,9 +112,9 @@ class NMeta(app_manager.RyuApp):
         self.config = config.Config()
 
         #*** Get logging config values from config class:
-        _logging_level_s = self.config.get_value \
+        self.logging_level_s = self.config.get_value \
                                     ('nmeta_logging_level_s')
-        _logging_level_c = self.config.get_value \
+        self.logging_level_c = self.config.get_value \
                                     ('nmeta_logging_level_c')
         _syslog_enabled = self.config.get_value('syslog_enabled')
         _loghost = self.config.get_value('loghost')
@@ -137,11 +131,11 @@ class NMeta(app_manager.RyuApp):
         if _syslog_enabled:
             #*** Log to syslog on host specified in config.yaml:
             self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
+                                                _loghost, _logport),
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(_logging_level_s)
+            self.syslog_handler.setLevel(self.logging_level_s)
             #*** Add syslog log handler to logger:
             self.logger.addHandler(self.syslog_handler)
         #*** Console logging:
@@ -150,7 +144,7 @@ class NMeta(app_manager.RyuApp):
             self.console_handler = logging.StreamHandler()
             console_formatter = logging.Formatter(_console_format)
             self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(_logging_level_c)
+            self.console_handler.setLevel(self.logging_level_c)
             #*** Add console log handler to logger:
             self.logger.addHandler(self.console_handler)
 
@@ -243,7 +237,7 @@ class NMeta(app_manager.RyuApp):
         self.ca = controller_abstraction.ControllerAbstract(self.config)
         self.measure = measure.Measurement(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
-        
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
         """
@@ -276,51 +270,57 @@ class NMeta(app_manager.RyuApp):
         """
         #*** Record the time for later delta measurement:
         pi_start_time = time.time()
+
         #*** Record the event for measurements:
         self.measure.record_rate_event('packet_in')
+
+        #*** Extract variables:
         msg = ev.msg
         datapath = msg.datapath
+        dpid = datapath.id
         ofproto = datapath.ofproto
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        dst = eth.dst
-        src = eth.src
-
-        in_port = self.ca.get_in_port(msg, datapath, ofproto)
-
-        dpid = datapath.id
-
-        #*** Some debug about the Packet In:
+        eth_src = eth.src
+        eth_dst = eth.dst
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_udp = pkt.get_protocol(udp.udp)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
-        if pkt_ip4 and pkt_tcp:
-            self.logger.debug("event=pi_ipv4_tcp dpid=%s "
-                              "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
-                              "tcp_dst=%s",
-                              dpid, in_port, pkt_ip4.src, pkt_ip4.dst, 
-                              pkt_tcp.src_port, pkt_tcp.dst_port)
-        elif pkt_ip6 and pkt_tcp:
-            self.logger.debug("event=pi_ipv6_tcp dpid=%s "
-                              "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
-                              "tcp_dst=%s",
-                              dpid, in_port, pkt_ip6.src, pkt_ip6.dst, 
-                              pkt_tcp.src_port, pkt_tcp.dst_port)
-        elif pkt_ip4:
-            self.logger.debug("event=pi_ipv4 dpid="
-                              "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
-                              dpid, in_port,
-                              pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
-        elif pkt_ip6:
-            self.logger.debug("event=pi_ipv6 dpid=%s "
-                              "in_port=%s ip_src=%s ip_dst=%s",
-                              dpid, in_port,
-                              pkt_ip6.src, pkt_ip6.dst)
-        else:
-            self.logger.debug("event=pi_other dpid=%s "
-                             "in_port=%s eth_src=%s eth_dst=%s eth_type=%s", 
-                             dpid, in_port, src, dst, eth.ethertype)
+
+        #*** Get the in port (OpenFlow version dependant call):
+        in_port = self.ca.get_in_port(msg, datapath, ofproto)
+
+        #*** Only run this stanza if syslog or console logging set to DEBUG:
+        if self.logging_level_s == 'DEBUG' or self.logging_level_c == 'DEBUG':
+            #*** Some debug about the Packet In:
+            if pkt_ip4 and pkt_tcp:
+                self.logger.debug("event=pi_ipv4_tcp dpid=%s "
+                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
+                                  "tcp_dst=%s",
+                                  dpid, in_port, pkt_ip4.src, pkt_ip4.dst,
+                                  pkt_tcp.src_port, pkt_tcp.dst_port)
+            elif pkt_ip6 and pkt_tcp:
+                self.logger.debug("event=pi_ipv6_tcp dpid=%s "
+                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
+                                  "tcp_dst=%s",
+                                  dpid, in_port, pkt_ip6.src, pkt_ip6.dst,
+                                  pkt_tcp.src_port, pkt_tcp.dst_port)
+            elif pkt_ip4:
+                self.logger.debug("event=pi_ipv4 dpid="
+                                  "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
+                                  dpid, in_port,
+                                  pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
+            elif pkt_ip6:
+                self.logger.debug("event=pi_ipv6 dpid=%s "
+                                  "in_port=%s ip_src=%s ip_dst=%s",
+                                  dpid, in_port,
+                                  pkt_ip6.src, pkt_ip6.dst)
+            else:
+                self.logger.debug("event=pi_other dpid=%s "
+                                "in_port=%s eth_src=%s eth_dst=%s eth_type=%s",
+                                dpid, in_port, eth_src, eth_dst, eth.ethertype)
+
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does return a dictionary of actions:
@@ -342,8 +342,8 @@ class NMeta(app_manager.RyuApp):
             if pkt_tcp and pkt_ip4:
                 #*** Call abstraction layer to add TCP flow record:
                 self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
-                                  "ip_dst=%s ip_ver=4 tcp_src=%s tcp_dst=%s", 
-                                  pkt_ip4.src, pkt_ip4.dst, 
+                                  "ip_dst=%s ip_ver=4 tcp_src=%s tcp_dst=%s",
+                                  pkt_ip4.src, pkt_ip4.dst,
                                   pkt_tcp.src_port, pkt_tcp.dst_port)
                 _result = self.ca.add_flow_tcp(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
@@ -351,8 +351,8 @@ class NMeta(app_manager.RyuApp):
             elif pkt_tcp and pkt_ip6:
                 #*** Call abstraction layer to add TCP flow record:
                 self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
-                                  "ip_dst=%s ip_ver=6 tcp_src=%s tcp_dst=%s", 
-                                  pkt_ip6.src, pkt_ip6.dst, 
+                                  "ip_dst=%s ip_ver=6 tcp_src=%s tcp_dst=%s",
+                                  pkt_ip6.src, pkt_ip6.dst,
                                   pkt_tcp.src_port, pkt_tcp.dst_port)
                 _result = self.ca.add_flow_tcp(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
@@ -360,7 +360,7 @@ class NMeta(app_manager.RyuApp):
             elif pkt_ip4:
                 #*** Call abstraction layer to add IP flow record:
                 self.logger.debug("event=add_flow match_type=ip ip_src=%s "
-                                  "ip_dst=%s ip_proto=%s ip_ver=4", 
+                                  "ip_dst=%s ip_proto=%s ip_ver=4",
                                   pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
                 _result = self.ca.add_flow_ip(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
@@ -368,7 +368,7 @@ class NMeta(app_manager.RyuApp):
             elif pkt_ip6:
                 #*** Call abstraction layer to add IP flow record:
                 self.logger.debug("event=add_flow match_type=ip ip_src=%s "
-                                  "ip_dst=%s ip_proto=%s ip_ver=6", 
+                                  "ip_dst=%s ip_proto=%s ip_ver=6",
                                   pkt_ip6.src, pkt_ip6.dst, pkt_ip6.proto)
                 _result = self.ca.add_flow_ip(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
@@ -376,18 +376,20 @@ class NMeta(app_manager.RyuApp):
             else:
                 #*** Call abstraction layer to add Ethernet flow record:
                 self.logger.debug("event=add_flow match_type=eth eth_src=%s "
-                                  "eth_dst=%s eth_type=%s", 
-                                  src, dst, eth.ethertype)
+                                  "eth_dst=%s eth_type=%s",
+                                  eth_src, eth_dst, eth.ethertype)
                 _result = self.ca.add_flow_eth(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             self.logger.debug("event=add_flow result=%s", _result)
+
             #*** Record the event for measurements:
             self.measure.record_rate_event('add_flow')
 
             #*** Send Packet Out:
             packet_out_result = self.ca.packet_out(datapath, msg, in_port,
                                 out_port, flow_actions['out_queue'])
+
             #*** Record Measurements:
             self.measure.record_rate_event('packet_out')
             pi_delta_time = time.time() - pi_start_time
@@ -396,10 +398,12 @@ class NMeta(app_manager.RyuApp):
             #*** It's a packet that's flooded, so send without specific queue:
             packet_out_result = self.ca.packet_out_nq(datapath, msg, in_port,
                                 out_port)
+
             #*** Record Measurements:
             self.measure.record_rate_event('packet_out')
             pi_delta_time = time.time() - pi_start_time
             self.measure.record_metric('packet_delta', pi_delta_time)
+
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:
         _time = time.time()
@@ -551,7 +555,7 @@ class RESTAPIController(ControllerBase):
     @rest_command
     def list_identity_nic_table(self, req, **kwargs):
         """
-        REST API function that returns contents of the 
+        REST API function that returns contents of the
         Identity NIC table
         """
         nmeta = self.nmeta_parent_self
@@ -561,11 +565,12 @@ class RESTAPIController(ControllerBase):
     @rest_command
     def list_identity_system_table(self, req, **kwargs):
         """
-        REST API function that returns contents of the 
+        REST API function that returns contents of the
         Identity NIC table
         """
         nmeta = self.nmeta_parent_self
-        _identity_system_table = nmeta.tc_policy.identity.get_identity_system_table()
+        _identity_system_table = \
+                           nmeta.tc_policy.identity.get_identity_system_table()
         return _identity_system_table
 
 @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)

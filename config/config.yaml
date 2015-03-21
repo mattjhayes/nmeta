@@ -25,18 +25,18 @@ syslog_format: "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s"
 #
 #*** Syslog Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_s: DEBUG
+nmeta_logging_level_s: INFO
 flow_logging_level_s: INFO
 qos_logging_level_s: INFO
-tc_policy_logging_level_s: DEBUG
-tc_static_logging_level_s: DEBUG
+tc_policy_logging_level_s: INFO
+tc_static_logging_level_s: INFO
 tc_identity_logging_level_s: INFO
 tc_payload_logging_level_s: INFO
 tc_statistical_logging_level_s: INFO
 ca_logging_level_s: INFO
 measure_logging_level_s: INFO
-forwarding_logging_level_s: DEBUG
-dns_logging_level_s: DEBUG
+forwarding_logging_level_s: INFO
+dns_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
 #*** Set to 1 if want to log to console:
@@ -47,18 +47,18 @@ console_format: "%(levelname)s: %(name)s %(funcName)s: %(message)s"
 #
 #*** Console Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_c: DEBUG
+nmeta_logging_level_c: INFO
 flow_logging_level_c: INFO
 qos_logging_level_c: INFO
-tc_policy_logging_level_c: DEBUG
-tc_static_logging_level_c: DEBUG
+tc_policy_logging_level_c: INFO
+tc_static_logging_level_c: INFO
 tc_identity_logging_level_c: INFO
 tc_payload_logging_level_c: INFO
 tc_statistical_logging_level_c: INFO
 ca_logging_level_c: INFO
 measure_logging_level_c: INFO
-forwarding_logging_level_c: DEBUG
-dns_logging_level_c: DEBUG
+forwarding_logging_level_c: INFO
+dns_logging_level_c: INFO
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds

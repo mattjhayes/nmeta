@@ -179,6 +179,19 @@ class IdentityInspect(object):
                                        "properly")
             return(0)
 
+    def arp_reply_in(self, arped_ip, arped_mac):
+        """
+        Passed an IPv4 ARP reply packet
+        fields and add to relevant metadata
+        """
+        #*** UNDER CONSTRUCTION....
+        if arped_mac in self._id_mac:
+            #*** We have this MAC in table, check if know mapping to IPv4 addr:
+            pass
+        else:
+            #*** MAC not in table, add it:
+            pass
+
     def ip4_in(self, pkt):
         """
         Passed an IPv4 packet

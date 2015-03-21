@@ -334,7 +334,10 @@ class TrafficClassificationPolicy(object):
         #***  and if so harvest the information:
         pkt_arp = pkt.get_protocol(arp.arp)
         if pkt_arp:
-            self.logger.debug("event=ARP arp=%s", pkt_arp)
+            #*** It's an ARP, but is it a reply (opcode 2) for IPv4?:
+            if pkt_arp.opcode == 2 and pkt_arp.proto == 2048:
+                self.logger.debug("event=ARP reply arp=%s", pkt_arp)
+                self.identity.arp_reply_in(pkt_arp.src_ip, pkt_arp.src_mac)
         #*** Check to see if it is an IPv4 DHCP ACK
         #***  and if so harvest the information:
         pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
@@ -346,7 +349,7 @@ class TrafficClassificationPolicy(object):
         if pkt_udp:
             if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
                 _dns_result = self.dns.parse_dns(pkt.protocols[-1])
-                print "DNS result is %s" % _dns_result
+                #print "DNS result is %s" % _dns_result
                 #print "Matched DNS...payload=%s" % \
                 #                str(binascii.b2a_hex(pkt.protocols[-1]))
         #*** Check against TC policy:

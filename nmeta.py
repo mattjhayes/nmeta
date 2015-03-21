@@ -112,9 +112,9 @@ class NMeta(app_manager.RyuApp):
         self.config = config.Config()
 
         #*** Get logging config values from config class:
-        self.logging_level_s = self.config.get_value \
+        _logging_level_s = self.config.get_value \
                                     ('nmeta_logging_level_s')
-        self.logging_level_c = self.config.get_value \
+        _logging_level_c = self.config.get_value \
                                     ('nmeta_logging_level_c')
         _syslog_enabled = self.config.get_value('syslog_enabled')
         _loghost = self.config.get_value('loghost')
@@ -135,7 +135,7 @@ class NMeta(app_manager.RyuApp):
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(self.logging_level_s)
+            self.syslog_handler.setLevel(_logging_level_s)
             #*** Add syslog log handler to logger:
             self.logger.addHandler(self.syslog_handler)
         #*** Console logging:
@@ -144,10 +144,14 @@ class NMeta(app_manager.RyuApp):
             self.console_handler = logging.StreamHandler()
             console_formatter = logging.Formatter(_console_format)
             self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(self.logging_level_c)
+            self.console_handler.setLevel(_logging_level_c)
             #*** Add console log handler to logger:
             self.logger.addHandler(self.console_handler)
-
+        #*** Set a variable to indicate if either or both levels are at debug:
+        if _logging_level_s == 'DEBUG' or _logging_level_c == 'DEBUG':
+            self.debug_on = True
+        else:
+            self.debug_on = False
         #*** Set up variables:
         #*** Get max bytes of new flow packets to send to controller from
         #*** config file:
@@ -292,7 +296,7 @@ class NMeta(app_manager.RyuApp):
         in_port = self.ca.get_in_port(msg, datapath, ofproto)
 
         #*** Only run this stanza if syslog or console logging set to DEBUG:
-        if self.logging_level_s == 'DEBUG' or self.logging_level_c == 'DEBUG':
+        if self.debug_on:
             #*** Some debug about the Packet In:
             if pkt_ip4 and pkt_tcp:
                 self.logger.debug("event=pi_ipv4_tcp dpid=%s "

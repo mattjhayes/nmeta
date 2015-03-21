@@ -59,7 +59,13 @@
   <br>
   <a href="#Using-Git-Flow">Using Git Flow</a>
   <br>
+  <a href="#quality-code">Quality Code</a>
+  <br>
+  <a href="#logging">Logging</a>
+  <br>
   <a href="#Testing">Learning to Love Automated Testing</a>
+  <br>
+  <a href="#merge-to-master-branch">Merging to master Branch</a>
   <br>
   <a href="#Updating-the-Website">Updating the Website</a>
   <br>
@@ -122,6 +128,47 @@
 </code></pre>
 
 <h2>
+  <a id="logging" class="anchor" href="#logging" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Logging
+</h2>
+<p>
+  Good logging is important to code development and testing.
+</p>
+<p>
+  All modules initiate their own instance of <em>logger</em> during init, with configuration specified in config.yaml.
+</p>
+<p>
+  Log formats differ for console and syslog formats, but both automatically add the names of the module and function to the event.
+</p>
+
+<p>
+  Logging should use key=value format where appropriate to simplify analysis of logs with tools such as <a href="https://www.splunk.com/" target="_blank"> Splunk</a>. Example screenshot of analysis of event=*:
+</p>
+<p>
+  <img src="images/develop/splunk-events.png" alt="Splunk events analysis example">
+</p>
+
+<p>
+  TBD: List of keys and values to use in log messages
+</p>
+
+<p>
+  TBD: Logging code examples
+</p>
+
+<h2>
+  <a id="quality-code" class="anchor" href="#quality-code" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Quality Code
+</h2>
+<p>
+  Python code should (where practical) comply with <a href="https://www.python.org/dev/peps/pep-0008/" target="_blank">PEP8</a> standards.
+</p>
+<p>
+  A good tool for assessing code quality is <a href="http://www.pylint.org/" target="_blank">Pylint</a>. Code doesn't need to be 10/10, there will be some
+  things that should be taken under advisement. Use common sense...
+</p>
+
+<h2>
   <a id="Testing" class="anchor" href="#Testing" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Learning to Love Automated Testing
 </h2>
@@ -132,6 +179,33 @@
 <pre><code>nosetests -v
 </code></pre>
 
+<h2>
+  <a id="merge-to-master-branch" class="anchor" href="#merge-to-master-branch" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Merging to master branch
+</h2>
+<p>
+  Here's a few checks to do before merging code updates to the <em>master</em> branch:
+</p>
+<ul>
+  <li>
+    Does the updated code get a reasonable score in <a href="#quality-code">pylint</a>?
+  </li>
+  <li>
+    Does the code pass <a href="#Testing">automated testing</a>?
+  </li>
+  <li>
+    Has the code been run in a test environment?
+  </li>
+  <li>
+    Have logs been examined to ensure no unexpected errors?
+  </li>
+  <li>
+    Has performance data from test environment been examined to ensure no detrimental impact on performance?
+  </li>
+  <li>
+    Are all logging levels in config.yaml set to 'INFO'?
+  </li>
+</ul>
 
 <h2>
   <a id="Updating-the-Website" class="anchor" href="#Updating-the-Website" aria-hidden="true"><span class="octicon octicon-link"></span></a>

@@ -66,6 +66,8 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'conditions_list': 'PolicyConditions'}
 TC_CONFIG_ACTIONS = ('set_qos_tag', 'set_desc_tag', 'pass_return_tags')
 TC_CONFIG_MATCH_TYPES = ('any', 'all', 'statistical')
+#*** Keys that must exist under 'identity' in the policy:
+IDENTITY_KEYS = ('arp', 'lldp', 'dns', 'dhcp')
 
 class TrafficClassificationPolicy(object):
     """
@@ -144,16 +146,16 @@ class TrafficClassificationPolicy(object):
 
     def validate_policy(self):
         """
-        Check Traffic Classification (TC) policy to ensure that it is in
+        Check main policy to ensure that it is in
         correct format so that it won't cause unexpected errors during
         packet checks.
         """
-        self.logger.debug("Validating TC Policy...")
+        self.logger.debug("Validating main policy...")
         #*** Validate that policy has a 'tc_rules' key off the root:
         if not 'tc_rules' in self._main_policy:
-            #*** No 'tc_rules' key off the root so log and exit:
+            #*** No 'tc_rules' key off the root, so log and exit:
             self.logger.critical("Missing tc_rules"
-                                    "key in root of policy")
+                                    "key in root of main policy")
             sys.exit("Exiting nmeta. Please fix error in "
                              "main_policy.yaml file")
         #*** Get the tc ruleset name, only one ruleset supported at this stage:
@@ -196,6 +198,28 @@ class TrafficClassificationPolicy(object):
                                                  action)
                             sys.exit("Exiting nmeta. Please fix error in "
                                      "main_policy.yaml file")
+
+        #*** Validate that policy has a 'identity' key off the root:
+        if not 'identity' in self._main_policy:
+            #*** No 'identity' key off the root, so log and exit:
+            self.logger.critical("Missing identity"
+                                    "key in root of main policy")
+            sys.exit("Exiting nmeta. Please fix error in "
+                             "main_policy.yaml file")
+        #*** Get the identity keys and validate that they all exist in policy:
+        for _id_key in IDENTITY_KEYS:
+            if not _id_key in self._main_policy['identity'].keys():
+                self.logger.critical("Missing identity "
+                                    "key in main policy: %s", _id_key)
+                sys.exit("Exiting nmeta. Please fix error in "
+                             "main_policy.yaml file")
+        #*** Conversely, check all identity keys in the policy are valid:
+        for _id_pol_key in self._main_policy['identity'].keys():
+            if not _id_pol_key in IDENTITY_KEYS:
+                self.logger.critical("Invalid identity "
+                                    "key in main policy: %s", _id_pol_key)
+                sys.exit("Exiting nmeta. Please fix error in "
+                             "main_policy.yaml file")
 
     def _validate_conditions(self, policy_conditions):
         """
@@ -314,44 +338,48 @@ class TrafficClassificationPolicy(object):
         rules and if it does return the associated actions.
         This function is written for efficiency as it will be called for
         every packet-in event and delays will slow down the transmission
-        of these packets. For efficiency, it assumes that the TC policy
+        of these packets. For efficiency, it assumes that the main policy
         is valid as it has been checked after ingestion or update.
-        It performs an additional function of sending any packets that
-        contain identity information (i.e. LLDP) to the Identity module
+        It also performs an additional function of gathering identity
+        metadata
         """
-        #*** Check to see if it is an LLDP packet
-        #*** and if so pass to the identity module to process:
-        pkt_eth = pkt.get_protocol(ethernet.ethernet)
-        if pkt_eth.ethertype == 35020:
-            self.identity.lldp_in(pkt, dpid, inport)
+        if self._main_policy['identity']['lldp'] == 1:
+            #*** Check to see if it is an LLDP packet
+            #*** and if so pass to the identity module to process:
+            pkt_eth = pkt.get_protocol(ethernet.ethernet)
+            if pkt_eth.ethertype == 35020:
+                self.identity.lldp_in(pkt, dpid, inport)
         #*** Check to see if it is an IPv4 packet
         #*** and if so pass to the identity module to process:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         if pkt_ip4:
             self.identity.ip4_in(pkt)
         #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
-        #*** Check to see if it is an IPv4 ARP reply
-        #***  and if so harvest the information:
-        pkt_arp = pkt.get_protocol(arp.arp)
-        if pkt_arp:
-            #*** It's an ARP, but is it a reply (opcode 2) for IPv4?:
-            if pkt_arp.opcode == 2 and pkt_arp.proto == 2048:
-                self.logger.debug("event=ARP reply arp=%s", pkt_arp)
-                self.identity.arp_reply_in(pkt_arp.src_ip, pkt_arp.src_mac)
-        #*** Check to see if it is an IPv4 DHCP ACK
-        #***  and if so harvest the information:
-        pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
-        if pkt_dhcp:
-            self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
-        #*** Check to see if it is an IPv4 DNS packet
-        #***  and if so pass to the identity module to process
-        pkt_udp = pkt.get_protocol(udp.udp)
-        if pkt_udp:
-            if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
-                _dns_result = self.dns.parse_dns(pkt.protocols[-1])
-                #print "DNS result is %s" % _dns_result
-                #print "Matched DNS...payload=%s" % \
-                #                str(binascii.b2a_hex(pkt.protocols[-1]))
+        if self._main_policy['identity']['arp'] == 1:
+            #*** Check to see if it is an IPv4 ARP reply
+            #***  and if so harvest the information:
+            pkt_arp = pkt.get_protocol(arp.arp)
+            if pkt_arp:
+                #*** It's an ARP, but is it a reply (opcode 2) for IPv4?:
+                if pkt_arp.opcode == 2 and pkt_arp.proto == 2048:
+                    self.logger.debug("event=ARP reply arp=%s", pkt_arp)
+                    self.identity.arp_reply_in(pkt_arp.src_ip, pkt_arp.src_mac)
+        if self._main_policy['identity']['dhcp'] == 1:
+            #*** Check to see if it is an IPv4 DHCP ACK
+            #***  and if so harvest the information:
+            pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
+            if pkt_dhcp:
+                self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
+        if self._main_policy['identity']['dns'] == 1:
+            #*** Check to see if it is an IPv4 DNS packet
+            #***  and if so pass to the identity module to process
+            #*** At the time of writing there isn't a DNS parser in Ryu
+            #***  so do some dodgy stuff here in the interim...
+            pkt_udp = pkt.get_protocol(udp.udp)
+            if pkt_udp:
+                if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
+                    _dns_result = self.dns.parse_dns(pkt.protocols[-1])
+
         #*** Check against TC policy:
         for tc_rule in self.tc_ruleset:
             #*** Check the rule:

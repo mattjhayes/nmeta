@@ -227,6 +227,7 @@ class NMeta(app_manager.RyuApp):
 
         #*** Extract variables:
         msg = ev.msg
+
         datapath = msg.datapath
         dpid = datapath.id
         ofproto = datapath.ofproto

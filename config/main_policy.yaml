@@ -23,4 +23,22 @@ tc_rules:
                 identity_lldp_systemname_re: '.*\.audit\.example\.com'
           actions:
               set_qos_tag: QoS_treatment=high_priority
-              set_desc_tag: description="High Priority Audit Division SSH Traffic"
+              set_desc_tag: description="High Priority Audit Div SSH Traffic"
+#
+identity:
+    # Control how identity information is collected
+    # This is a 1 for on and 0 for off but will later tie to set of
+    # ports on which to run it
+    #
+    # Turn this on to collect ARP MAC address to IPv4 address mappings:
+    arp: 1
+    #
+    # Turn this on to collect Link Layer Discovery Protocol information:
+    lldp: 1
+    #
+    # Turn this on to collect DNS reply data matching services to IP addresses:
+    dns: 1
+    #
+    # Turn this on to collect DHCP information about address allocations and
+    # hostnames:
+    dhcp: 1

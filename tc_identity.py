@@ -187,7 +187,13 @@ class IdentityInspect(object):
         #*** UNDER CONSTRUCTION....
         if arped_mac in self._id_mac:
             #*** We have this MAC in table, check if know mapping to IPv4 addr:
-            pass
+            if arped_ip in self._id_mac[arped_mac]['ip']:
+                #*** Already know the IP, update time last seen:
+                self._id_mac[arped_mac]['ip'][arped_ip]['last_seen'] = \
+                                                                    time.time()
+            else:
+                #*** Add IP and time to this MAC:
+                pass
         else:
             #*** MAC not in table, add it:
             pass

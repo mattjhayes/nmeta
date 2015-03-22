@@ -64,6 +64,9 @@ from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 from ryu.exception import RyuException
 
+#*** Required for api module context:
+from ryu.app.wsgi import WSGIApplication
+
 #*** nmeta imports:
 import flow
 import tc_policy
@@ -73,16 +76,6 @@ import measure
 import forwarding
 import api
 
-#*** Web API REST imports:
-from webob import Response
-from ryu.app.wsgi import ControllerBase, WSGIApplication
-import json
-
-#*** Constants for REST API:
-REST_RESULT = 'result'
-REST_NG = 'failure'
-REST_DETAILS = 'details'
-nmeta_instance_name = 'nmeta_api_app'
 #*** Number of preceding seconds that events are averaged over:
 EVENT_RATE_INTERVAL = 60
 
@@ -93,21 +86,9 @@ class NMeta(app_manager.RyuApp):
     #*** Supports OpenFlow versions 1.0 and 1.3:
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
                     ofproto_v1_3.OFP_VERSION]
-    
-    #&&&&&&&&&&&&&&& TO BE DELETED:
-    #*** Constants for REST API:
-    url_flowtable = '/nmeta/flowtable/'
-    url_flowtable_by_ip = '/nmeta/flowtable/{ip}'
-    url_identity_nic_table = '/nmeta/identity/nictable/'
-    url_identity_system_table = '/nmeta/identity/systemtable/'
-    #*** Measurement APIs:
-    url_flowtable_size_rows = '/nmeta/measurement/tablesize/rows/'
-    url_measure_event_rates = '/nmeta/measurement/eventrates/'
-    url_measure_pkt_time = '/nmeta/measurement/metrics/packet_time/'
-    #
-    IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
+
+    #*** Used to call api module:
     _CONTEXTS = {'wsgi': WSGIApplication}
-    #&&&&&&&&&&&&&&& 
 
     def __init__(self, *args, **kwargs):
         super(NMeta, self).__init__(*args, **kwargs)
@@ -198,54 +179,15 @@ class NMeta(app_manager.RyuApp):
         self.statistical_fcip_table_last_tidyup_time = time.time()
         self.payload_fcip_table_last_tidyup_time = time.time()
         self.measure_buckets_last_tidyup_time = time.time()
-        #*** Set up REST API:
-        wsgi = kwargs['wsgi']
-        self.data = {nmeta_instance_name: self}
-        mapper = wsgi.mapper
-        wsgi.register(RESTAPIController, {nmeta_instance_name : self})
-        requirements = {'ip': self.IP_PATTERN}
-        mapper.connect('flowtable', self.url_flowtable_size_rows,
-                       controller=RESTAPIController,
-                       requirements=requirements,
-                       action='get_flow_table_size_rows',
-                       conditions=dict(method=['GET']))
-        mapper.connect('flowtable', self.url_measure_event_rates,
-                       controller=RESTAPIController,
-                       requirements=requirements,
-                       action='get_event_rates',
-                       conditions=dict(method=['GET']))
-        mapper.connect('flowtable', self.url_measure_pkt_time,
-                       controller=RESTAPIController,
-                       requirements=requirements,
-                       action='get_packet_time',
-                       conditions=dict(method=['GET']))
-        mapper.connect('flowtable', self.url_flowtable,
-                       controller=RESTAPIController,
-                       requirements=requirements,
-                       action='list_flow_table',
-                       conditions=dict(method=['GET']))
-        mapper.connect('flowtable', self.url_flowtable_by_ip,
-                       controller=RESTAPIController,
-                       requirements=requirements,
-                       action='list_flow_table_by_ip',
-                       conditions=dict(method=['GET']))
-        mapper.connect('flowtable', self.url_identity_nic_table,
-                       controller=RESTAPIController,
-                       requirements=requirements,
-                       action='list_identity_nic_table',
-                       conditions=dict(method=['GET']))
-        mapper.connect('flowtable', self.url_identity_system_table,
-                       controller=RESTAPIController,
-                       requirements=requirements,
-                       action='list_identity_system_table',
-                       conditions=dict(method=['GET']))
+
         #*** Instantiate Module Classes:
         self.flowmetadata = flow.FlowMetadata(self.config)
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.ca = controller_abstraction.ControllerAbstract(self.config)
         self.measure = measure.Measurement(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
-        self.api = api.Api(self, self.config)
+        wsgi = kwargs['wsgi']
+        self.api = api.Api(self, self.config, wsgi)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
@@ -474,114 +416,6 @@ class NMeta(app_manager.RyuApp):
                       'type=0x%02x code=0x%02x message=%s',
                       msg.type, msg.code, utils.hex_array(msg.data))
 
-# REST command template
-#*** Copied from the Ryu rest_router.py example code:
-def rest_command(func):
-    def _rest_command(*args, **kwargs):
-        try:
-            msg = func(*args, **kwargs)
-            return Response(content_type='application/json',
-                            body=json.dumps(msg))
-        except SyntaxError as e:
-            status = 400
-            details = e.msg
-        except (ValueError, NameError) as e:
-            status = 400
-            details = e.message
-        except NotFoundError as msg:
-            status = 404
-            details = str(msg)
-        msg = {REST_RESULT: REST_NG,
-               REST_DETAILS: details}
-        return Response(status=status, body=json.dumps(msg))
-    return _rest_command
-
-class NotFoundError(RyuException):
-    message = 'Error occurred talking to function <TBD>'
-
-class RESTAPIController(ControllerBase):
-    """
-    This class is used to control REST API access to the
-    nmeta data and control functions
-    """
-    def __init__(self, req, link, data, **config):
-        super(RESTAPIController, self).__init__(req, link, data, **config)
-        self.nmeta_parent_self = data[nmeta_instance_name]
-
-    @rest_command
-    def get_flow_table_size_rows(self, req, **kwargs):
-        """
-        REST API function that returns size of the
-        Flow Metadata (FM) table as a number of rows
-        """
-        nmeta = self.nmeta_parent_self
-        _fm_table_size_rows = nmeta.flowmetadata.get_fm_table_size_rows()
-        return _fm_table_size_rows
-
-    @rest_command
-    def get_event_rates(self, req, **kwargs):
-        """
-        REST API function that returns event rates (per second averages)
-        """
-        nmeta = self.nmeta_parent_self
-        event_rates = nmeta.measure.get_event_rates(EVENT_RATE_INTERVAL)
-        return event_rates
-
-    @rest_command
-    def get_packet_time(self, req, **kwargs):
-        """
-        REST API function that returns packet processing time statistics
-        through nmeta (does not include time at switch, in transit nor
-        time queued in OS or Ryu
-        """
-        nmeta = self.nmeta_parent_self
-        packet_processing_stats = nmeta.measure.get_event_metric_stats \
-                        ('packet_delta', EVENT_RATE_INTERVAL)
-        return packet_processing_stats
-
-    @rest_command
-    def list_flow_table(self, req, **kwargs):
-        """
-        REST API function that returns contents of the
-        Flow Metadata (FM) table
-        """
-        nmeta = self.nmeta_parent_self
-        _fm_table = nmeta.flowmetadata.get_fm_table()
-        return _fm_table
-
-    @rest_command
-    def list_flow_table_by_IP(self, req, **kwargs):
-        """
-        REST API function that returns contents of the
-        Flow Metadata (FM) table filtered on an IP address
-        (matches source or destination IP).
-        .
-        <TBD>
-        """
-        print "##### list_flow_table_by_IP"
-        pass
-
-    @rest_command
-    def list_identity_nic_table(self, req, **kwargs):
-        """
-        REST API function that returns contents of the
-        Identity NIC table
-        """
-        nmeta = self.nmeta_parent_self
-        _identity_nic_table = nmeta.tc_policy.identity.get_identity_nic_table()
-        return _identity_nic_table
-
-    @rest_command
-    def list_identity_system_table(self, req, **kwargs):
-        """
-        REST API function that returns contents of the
-        Identity NIC table
-        """
-        nmeta = self.nmeta_parent_self
-        _identity_system_table = \
-                           nmeta.tc_policy.identity.get_identity_system_table()
-        return _identity_system_table
-
 @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
 def _port_status_handler(self, ev):
     """
@@ -607,4 +441,3 @@ def ipv4_text_to_int(ip_text):
         return ip_text
     assert isinstance(ip_text, str)
     return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
-

@@ -37,6 +37,7 @@ ca_logging_level_s: INFO
 measure_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 dns_logging_level_s: INFO
+api_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
 #*** Set to 1 if want to log to console:
@@ -59,6 +60,7 @@ ca_logging_level_c: INFO
 measure_logging_level_c: INFO
 forwarding_logging_level_c: INFO
 dns_logging_level_c: INFO
+api_logging_level_c: INFO
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds
@@ -109,5 +111,11 @@ measure_buckets_max_age: 600
 #*** in seconds between running the tidy-up process that removes old
 #*** buckets:
 measure_buckets_tidyup_interval: 321
-
+#
+#========== MEASUREMENT =============================
+#*** Control how measurements are made regarding
+#*** nmeta performance etc.
+#
+#*** Number of preceding seconds that events are averaged over:
+event_rate_interval: 60
 

@@ -53,6 +53,7 @@ class Measurement(object):
         _syslog_format = _config.get_value ('syslog_format')
         _console_log_enabled = _config.get_value ('console_log_enabled')
         _console_format = _config.get_value ('console_format')
+        self._event_rate_interval = _config.get_value ('event_rate_interval')
         #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -157,10 +158,11 @@ class Measurement(object):
             self._metric_buckets[self.current_metric_bucket]\
                                         [event_type]['events'] += 1
 
-    def get_event_rates(self, rate_interval):
+    def get_event_rates(self):
         """
         Return the event type rates for all rate event types
         """
+        rate_interval = self._event_rate_interval
         current_time = int(time.time())
         _event_types = dict()
         _results_dict = dict()
@@ -175,13 +177,14 @@ class Measurement(object):
         #*** a results dictionary by event type
         for _event_type in _event_types:
             _results_dict[_event_type] = \
-                        self.get_event_rate(_event_type, rate_interval)
+                        self.get_event_rate(_event_type)
         return _results_dict
 
-    def get_event_rate(self, event_type, rate_interval):
+    def get_event_rate(self, event_type):
         """
         Return the event type rate per second for last x seconds
         """
+        rate_interval = self._event_rate_interval
         current_time = int(time.time())
         events_in = 0
         overlap_bucket = 0
@@ -228,11 +231,12 @@ class Measurement(object):
                             event_type, event_rate)
         return event_rate
 
-    def get_event_metric_stats(self, event_type, rate_interval):
+    def get_event_metric_stats(self, event_type):
         """
         Return the event metric stats for specified event type
         as a dictionary
         """
+        rate_interval = self._event_rate_interval
         current_time = int(time.time())
         #*** Variables for accumulation from buckets:
         first_time = True

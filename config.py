@@ -58,6 +58,7 @@ CONFIG_TEMPLATE = \
     'measure_logging_level_c': 'INFO',
     'forwarding_logging_level_c': 'DEBUG',
     'dns_logging_level_c': 'DEBUG',
+    'api_logging_level_c': 'DEBUG',
     'nmeta_logging_level_s': 'INFO',
     'flow_logging_level_s': 'INFO',
     'qos_logging_level_s': 'INFO',
@@ -70,6 +71,7 @@ CONFIG_TEMPLATE = \
     'measure_logging_level_s': 'INFO',
     'forwarding_logging_level_s': 'DEBUG',
     'dns_logging_level_s': 'DEBUG',
+    'api_logging_level_s': 'DEBUG',
     'syslog_enabled': 0,
     'loghost': 'localhost',
     'logport': 514,
@@ -77,7 +79,8 @@ CONFIG_TEMPLATE = \
     'syslog_format': \
         "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s",
     'console_log_enabled': 1,
-    'console_format': "%(levelname)s: %(name)s %(funcName)s: %(message)s"
+    'console_format': "%(levelname)s: %(name)s %(funcName)s: %(message)s",
+    'event_rate_interval': 60
 }
 
 class Config(object):

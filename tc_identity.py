@@ -179,24 +179,25 @@ class IdentityInspect(object):
                                        "properly")
             return(0)
 
-    def arp_reply_in(self, arped_ip, arped_mac):
+    def arp_reply_in(self, arped_ip, arped_mac, ctx):
         """
-        Passed an IPv4 ARP reply packet
-        fields and add to relevant metadata
+        Passed an IPv4 ARP reply MAC and IPv4 address and a context
+        and add to relevant metadata
         """
-        #*** UNDER CONSTRUCTION....
-        if arped_mac in self._id_mac:
-            #*** We have this MAC in table, check if know mapping to IPv4 addr:
-            if arped_ip in self._id_mac[arped_mac]['ip']:
-                #*** Already know the IP, update time last seen:
-                self._id_mac[arped_mac]['ip'][arped_ip]['last_seen'] = \
-                                                                    time.time()
-            else:
-                #*** Add IP and time to this MAC:
-                pass
-        else:
+        #*** Make sure context key exists:
+        self._id_mac.setdefault(ctx, {})
+        if not arped_mac in self._id_mac[ctx]:
             #*** MAC not in table, add it:
-            pass
+            self._id_mac[ctx].setdefault(arped_mac, {})
+        #*** Ensure 'ip' key exists:
+        self._id_mac[ctx][arped_mac].setdefault('ip', {})
+        #*** Check if know mapping to IPv4 addr:
+        if not arped_ip in self._id_mac[ctx][arped_mac]['ip']:
+            #*** Add IP to this MAC:
+            self._id_mac[ctx][arped_mac]['ip'][arped_ip] = {}
+        #*** Update time last seen and set source attribution:
+        self._id_mac[ctx][arped_mac]['ip'][arped_ip]['last_seen'] = time.time()
+        self._id_mac[ctx][arped_mac]['ip'][arped_ip]['source'] = 'arp'
 
     def ip4_in(self, pkt):
         """
@@ -229,6 +230,12 @@ class IdentityInspect(object):
         Return the Identity System table
         """
         return self._sys_identity_table
+
+    def get_id_mac_table(self):
+        """
+        Return the Identity MAC table
+        """
+        return self._id_mac
 
     def maintain_identity_tables(self, max_age_nic, max_age_sys):
         """

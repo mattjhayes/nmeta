@@ -355,6 +355,9 @@ class TrafficClassificationPolicy(object):
         if pkt_ip4:
             self.identity.ip4_in(pkt)
         #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
+        #*** context is future-proofing for when the system will support 
+        #*** multiple contexts. For now just set to 'default':
+        context = 'default'
         if self._main_policy['identity']['arp'] == 1:
             #*** Check to see if it is an IPv4 ARP reply
             #***  and if so harvest the information:
@@ -363,7 +366,8 @@ class TrafficClassificationPolicy(object):
                 #*** It's an ARP, but is it a reply (opcode 2) for IPv4?:
                 if pkt_arp.opcode == 2 and pkt_arp.proto == 2048:
                     self.logger.debug("event=ARP reply arp=%s", pkt_arp)
-                    self.identity.arp_reply_in(pkt_arp.src_ip, pkt_arp.src_mac)
+                    self.identity.arp_reply_in \
+                                (pkt_arp.src_ip, pkt_arp.src_mac, context)
         if self._main_policy['identity']['dhcp'] == 1:
             #*** Check to see if it is an IPv4 DHCP ACK
             #***  and if so harvest the information:

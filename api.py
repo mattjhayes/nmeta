@@ -153,6 +153,17 @@ class RESTAPIController(ControllerBase):
                            nmeta.tc_policy.identity.get_identity_system_table()
         return _identity_system_table
 
+    @rest_command
+    def get_id_mac(self, req, **kwargs):
+        """
+        REST API function that returns contents of the
+        id_mac table
+        """
+        nmeta = self.nmeta_parent_self
+        _id_mac_table = \
+                           nmeta.tc_policy.identity.get_id_mac_table()
+        return _id_mac_table
+
 
 class Api(object):
     """
@@ -168,6 +179,8 @@ class Api(object):
     url_flowtable_size_rows = '/nmeta/measurement/tablesize/rows/'
     url_measure_event_rates = '/nmeta/measurement/eventrates/'
     url_measure_pkt_time = '/nmeta/measurement/metrics/packet_time/'
+    #*** New Identity Metadata calls:
+    url_identity_mac_table = '/nmeta/identity/mac/'
     #
     IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
     _CONTEXTS = {'wsgi': WSGIApplication}
@@ -251,4 +264,9 @@ class Api(object):
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='list_identity_system_table',
+                       conditions=dict(method=['GET']))
+        mapper.connect('flowtable', self.url_identity_mac_table,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='get_id_mac',
                        conditions=dict(method=['GET']))

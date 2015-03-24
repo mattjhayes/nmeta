@@ -45,7 +45,6 @@ import tc_payload
 #*** For DNS extraction as not native to Ryu:
 import dns_experimental
 import dpkt
-import socket
 
 #*** YAML for config and policy file parsing:
 import yaml

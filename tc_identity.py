@@ -24,6 +24,8 @@ import struct
 import time
 import re
 
+import socket
+
 #*** Ryu imports:
 from ryu.lib import addrconv
 from ryu.lib.packet import packet

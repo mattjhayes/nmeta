@@ -181,11 +181,11 @@ class IdentityInspect(object):
 
     def dns_reply_in(self, queries, answers, ctx):
         """
-        Passed a DNS query and some responses and a context
+        Passed a DNS object and a context
         """
         for qname in queries:
             print "DNS Query is %s" % qname.name
-        for answer in dns.an:
+        for answer in answers:
             if answer.type == 1:
                 #*** DNS A Record:
                 print "Domain name: ", answer.name, "IP: ", \

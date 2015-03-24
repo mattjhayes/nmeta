@@ -390,14 +390,14 @@ class TrafficClassificationPolicy(object):
                     print "DNS payload is: %s" % pkt.protocols[-1]
                     try:
                         dns = dpkt.dns.DNS(pkt.protocols[-1])
-                        self.logger.debug("Matched dns packet")
-                        self.identity.dns_reply_in(dns.qd, dns.an, context)
                     except:
                         exc_type, exc_value, exc_traceback = sys.exc_info()
                         self.logger.error("DNS extraction failed "
                             "Exception %s, %s, %s",
                              exc_type, exc_value, exc_traceback)
-                        self.logger.debug("dpkt failed")
+                    if dns:
+                        self.logger.debug("Matched dns packet")
+                        self.identity.dns_reply_in(dns.qd, dns.an, context)
 
 
         #*** Check against TC policy:

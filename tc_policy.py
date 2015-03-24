@@ -387,6 +387,7 @@ class TrafficClassificationPolicy(object):
             if pkt_udp:
                 if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
                     #*** Use dpkt to parse DNS data:
+                    print "DNS payload is: %s" % pkt.protocols[-1]
                     try:
                         dns = dpkt.dns.DNS(pkt.protocols[-1])
                         self.logger.debug("Matched dns packet")

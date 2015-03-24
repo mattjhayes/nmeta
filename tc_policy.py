@@ -392,6 +392,10 @@ class TrafficClassificationPolicy(object):
                         self.logger.debug("Matched dns packet")
                         self.identity.dns_reply_in(dns.qd, dns.an, context)
                     except:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        self.logger.error("DNS extraction failed "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
                         self.logger.debug("dpkt failed")
 
 

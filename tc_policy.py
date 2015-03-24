@@ -41,7 +41,11 @@ import tc_static
 import tc_identity
 import tc_statistical
 import tc_payload
+
+#*** For DNS extraction as not native to Ryu:
 import dns_experimental
+import dpkt
+import socket
 
 #*** YAML for config and policy file parsing:
 import yaml
@@ -382,7 +386,14 @@ class TrafficClassificationPolicy(object):
             pkt_udp = pkt.get_protocol(udp.udp)
             if pkt_udp:
                 if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
-                    _dns_result = self.dns.parse_dns(pkt.protocols[-1])
+                    #*** Use dpkt to parse DNS data:
+                    try:
+                        dns = dpkt.dns.DNS(pkt.protocols[-1])
+                        self.logger.debug("Matched dns packet")
+                        self.identity.dns_reply_in(dns.qd, dns.an, context)
+                    except:
+                        self.logger.debug("dpkt failed")
+
 
         #*** Check against TC policy:
         for tc_rule in self.tc_ruleset:

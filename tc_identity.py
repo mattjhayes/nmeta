@@ -179,6 +179,18 @@ class IdentityInspect(object):
                                        "properly")
             return(0)
 
+    def dns_reply_in(self, queries, answers, ctx):
+        """
+        Passed a DNS query and some responses and a context
+        """
+        for qname in queries:
+            print "DNS Query is %s" % qname.name
+        for answer in dns.an:
+            if answer.type == 1:
+                #*** DNS A Record:
+                print "Domain name: ", answer.name, "IP: ", \
+                                      socket.inet_ntoa(answer.rdata)
+
     def arp_reply_in(self, arped_ip, arped_mac, ctx):
         """
         Passed an IPv4 ARP reply MAC and IPv4 address and a context

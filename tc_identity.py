@@ -183,15 +183,35 @@ class IdentityInspect(object):
 
     def dns_reply_in(self, queries, answers, ctx):
         """
-        Passed a DNS object and a context
+        Passed a DNS parameters and a context
+        and add to relevant metadata
         """
         for qname in queries:
-            print "DNS Query is %s" % qname.name
+            self.logger.debug("dns_query=%s", qname.name)
         for answer in answers:
             if answer.type == 1:
                 #*** DNS A Record:
-                print "Domain name: ", answer.name, "IP: ", \
-                                      socket.inet_ntoa(answer.rdata)
+                answer_ip = socket.inet_ntoa(answer.rdata)
+                answer_name = answer.name
+                self.logger.debug("dns_answer_name=%s dns_answer_rdata=%s", 
+                                answer_name, answer_ip)
+                #*** Make sure context key exists:
+                self._id_ip.setdefault(ctx, {})
+                if not answer_ip in self._id_ip[ctx]:
+                    #*** MAC not in table, add it:
+                    self._id_ip[ctx].setdefault(answer_ip, {})
+                #*** Ensure 'service' key exists:
+                self._id_ip[ctx][answer_ip].setdefault('service', {})
+                #*** Check if know mapping to service:
+                if not answer_name in self._id_ip[ctx][answer_ip]['service']:
+                    #*** Add service name to this IP:
+                    self._id_ip[ctx][answer_ip]['service'][answer_name] = {}
+                #*** Update time last seen and set source attribution:
+                self._id_ip[ctx][answer_ip]['service'][answer_name] \
+                                                    ['last_seen'] = time.time()
+                self._id_ip[ctx][answer_ip]['service'][answer_name] \
+                                                    ['source'] = 'dns'
+
 
     def arp_reply_in(self, arped_ip, arped_mac, ctx):
         """

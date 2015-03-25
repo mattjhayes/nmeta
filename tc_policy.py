@@ -42,8 +42,7 @@ import tc_identity
 import tc_statistical
 import tc_payload
 
-#*** For DNS extraction as not native to Ryu:
-import dns_experimental
+#*** Import dpkt for DNS extraction, as not native to Ryu:
 import dpkt
 
 #*** YAML for config and policy file parsing:
@@ -142,7 +141,6 @@ class TrafficClassificationPolicy(object):
         self.payload = tc_payload.PayloadInspect(_config)
         self.statistical = tc_statistical.StatisticalInspect \
                                 (_config)
-        self.dns = dns_experimental.DNS(_config)
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
@@ -382,11 +380,12 @@ class TrafficClassificationPolicy(object):
             #***  and if so pass to the identity module to process
             #*** At the time of writing there isn't a DNS parser in Ryu
             #***  so do some dodgy stuff here in the interim...
+            pkt_tcp = pkt.get_protocol(tcp.tcp)
             pkt_udp = pkt.get_protocol(udp.udp)
+            dns = 0
             if pkt_udp:
                 if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
-                    #*** Use dpkt to parse DNS data:
-                    print "DNS payload is: %s" % pkt.protocols[-1]
+                    #*** Use dpkt to parse UDP DNS data:
                     try:
                         dns = dpkt.dns.DNS(pkt.protocols[-1])
                     except:
@@ -394,9 +393,19 @@ class TrafficClassificationPolicy(object):
                         self.logger.error("DNS extraction failed "
                             "Exception %s, %s, %s",
                              exc_type, exc_value, exc_traceback)
-                    if dns:
-                        self.logger.debug("Matched dns packet")
-                        self.identity.dns_reply_in(dns.qd, dns.an, context)
+            if pkt_tcp:
+                if pkt_tcp.src_port == 53 or pkt_tcp.dst_port == 53:
+                    #*** Use dpkt to parse TCP DNS data:
+                    try:
+                        dns = dpkt.dns.DNS(pkt.protocols[-1])
+                    except:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        self.logger.error("DNS extraction failed "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+            if dns:
+                #*** Call identity class with DNS parameters:
+                self.identity.dns_reply_in(dns.qd, dns.an, context)
 
 
         #*** Check against TC policy:

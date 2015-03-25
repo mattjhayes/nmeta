@@ -21,26 +21,7 @@ Do not use this code for production deployments - it is proof of concept code
 and carries no warrantee whatsoever. You have been warned.
 """
 
-#*** REST API Calls (examples to run on local host):
-#
-#*** Return the Flow Metadata Table:
-#*** http://127.0.0.1:8080/nmeta/flowtable/
-#
-#*** Return the Identity NIC Table:
-#*** http://127.0.0.1:8080/nmeta/identity/nictable/
-#
-#*** Return the Identity System Table:
-#*** http://127.0.0.1:8080/nmeta/identity/systemtable/
-#
-#*** Return the Flow Metadata Table size in terms of number of rows:
-#*** http://127.0.0.1:8080/nmeta/measurement/tablesize/rows/
-#
-#*** Return event rate measurements:
-#*** http://127.0.0.1:8080/nmeta/measurement/eventrates/
-#
-#*** Return packet processing statistics:
-#*** http://127.0.0.1:8080/nmeta/measurement/metrics/packet_time/
-#
+#*** Note: see api.py module for REST API calls
 
 #*** General Imports:
 import logging
@@ -413,9 +394,16 @@ class NMeta(app_manager.RyuApp):
         A switch has sent us an error event
         """
         msg = ev.msg
-        self.logger.error('event=OFPErrorMsg_received: '
+        datapath = msg.datapath
+        dpid = datapath.id
+        if msg.type == 0x03 and msg.code == 0x00:
+            self.logger.error('event=OFPErrorMsg_received: dpid=%s '
+                      'type=Flow_Table_Full(0x03) code=0x%02x message=%s',
+                      dpid, msg.code, utils.hex_array(msg.data))
+        else:
+            self.logger.error('event=OFPErrorMsg_received: dpid=%s '
                       'type=0x%02x code=0x%02x message=%s',
-                      msg.type, msg.code, utils.hex_array(msg.data))
+                      dpid, msg.type, msg.code, utils.hex_array(msg.data))
 
 @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
 def _port_status_handler(self, ev):

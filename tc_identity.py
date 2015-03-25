@@ -271,6 +271,12 @@ class IdentityInspect(object):
         """
         return self._id_mac
 
+    def get_id_ip_table(self):
+        """
+        Return the Identity MAC table
+        """
+        return self._id_ip
+
     def maintain_identity_tables(self, max_age_nic, max_age_sys):
         """
         Deletes old entries from Identity NIC and 

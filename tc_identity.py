@@ -302,14 +302,26 @@ class IdentityInspect(object):
         Return the number of rows (items) in the MAC address
         metadata table
         """
-        return len(self._id_mac)
+        #*** context is future-proofing for when the system will support 
+        #*** multiple contexts. For now just set to 'default':
+        context = 'default'
+        if context in self._id_mac:
+            return len(self._id_mac[context])
+        else:
+            return 0
 
     def get_id_ip_table_size_rows(self):
         """
         Return the number of rows (items) in the IP address
         metadata table
         """
-        return len(self._id_ip)
+        #*** context is future-proofing for when the system will support 
+        #*** multiple contexts. For now just set to 'default':
+        context = 'default'
+        if context in self._id_ip:
+            return len(self._id_ip[context])
+        else:
+            return 0
 
     def maintain_identity_tables(self, max_age_nic, max_age_sys):
         """

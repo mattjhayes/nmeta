@@ -139,6 +139,13 @@ class ControllerAbstract(object):
         #*** Build a match that is dependant on the IP and OpenFlow versions:
         if (pkt_tcp and pkt_ip4 and 
                      ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+            #*** Build a full match to get maximum performance from
+            #*** software switches by allowing them to install into
+            #*** a hash instead of linear table
+            #*** TBD: need to dynamically set values for dl_vlan,
+            #***  dl_vlan_pcp, nw_tos and dl_type
+            #print "packet is %s" % pkt
+            #print "packet eth is %s" % eth
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_vlan=0xffff,

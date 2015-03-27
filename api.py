@@ -80,19 +80,33 @@ class RESTAPIController(ControllerBase):
         self.nmeta_parent_self = data[NMETA_INSTANCE]
 
     @rest_command
-    def get_table_size_rows(self, req, **kwargs):
+    def get_data_structure_size_rows(self, req, **kwargs):
         """
         REST API function that returns size of all the
-        state tables as number of rows
+        state tables as number of first level rows (entries or keys)
         """
         nmeta = self.nmeta_parent_self
         _results = {}
+        #*** context is future-proofing for when the system will support 
+        #*** multiple contexts. For now just set to 'default':
+        context = 'default'
+        if context in nmeta.tc_policy.identity.id_mac:
+            _results['id_mac_size_rows'] = \
+                          len(nmeta.tc_policy.identity.id_mac[context])
+        else:
+            _results['id_mac_size_rows'] = 0
+        if context in nmeta.tc_policy.identity.id_ip:
+            _results['id_ip_size_rows'] = \
+                          len(nmeta.tc_policy.identity.id_ip[context])
+        else:
+            _results['id_ip_size_rows'] = 0
+        if context in nmeta.tc_policy.identity.id_service:
+            _results['id_service_size_rows'] = \
+                          len(nmeta.tc_policy.identity.id_service[context])
+        else:
+            _results['id_service_size_rows'] = 0
         _results['fm_table_size_rows'] = \
                         nmeta.flowmetadata.get_fm_table_size_rows()
-        _results['id_mac_table_size_rows'] = \
-                        nmeta.tc_policy.identity.get_id_mac_table_size_rows()
-        _results['id_ip_table_size_rows'] = \
-                        nmeta.tc_policy.identity.get_id_ip_table_size_rows()
         return _results
 
     @rest_command
@@ -224,7 +238,7 @@ class Api(object):
     url_identity_nic_table = '/nmeta/identity/nictable/'
     url_identity_system_table = '/nmeta/identity/systemtable/'
     #*** Measurement APIs:
-    url_table_size_rows = '/nmeta/measurement/tablesize/rows/'
+    url_data_size_rows = '/nmeta/measurement/tablesize/rows/'
     url_measure_event_rates = '/nmeta/measurement/eventrates/'
     url_measure_pkt_time = '/nmeta/measurement/metrics/packet_time/'
     #*** New Identity Metadata calls:
@@ -280,10 +294,10 @@ class Api(object):
         #*** Register the RESTAPIController class:
         wsgi.register(RESTAPIController, {NMETA_INSTANCE : _nmeta})
         requirements = {'ip': self.IP_PATTERN}
-        mapper.connect('flowtable', self.url_table_size_rows,
+        mapper.connect('data_structure_size_rows', self.url_data_size_rows,
                        controller=RESTAPIController,
                        requirements=requirements,
-                       action='get_table_size_rows',
+                       action='get_data_structure_size_rows',
                        conditions=dict(method=['GET']))
         mapper.connect('flowtable', self.url_measure_event_rates,
                        controller=RESTAPIController,

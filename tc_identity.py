@@ -216,6 +216,17 @@ class IdentityInspect(object):
                                                     ['last_seen'] = time.time()
                 self.id_ip[ctx][answer_ip]['service'][answer_name] \
                                                     ['source'] = 'dns'
+                #*** Check if service is a CNAME for another domain:
+                if answer_name in self.id_service[ctx]:
+                    #*** Add the original domain to the IP so that
+                    #*** rules can be written for services without
+                    #*** needing to understand CNAMES:
+                    cname = self.id_service[ctx][answer_name]['domain']
+                    self.id_ip[ctx][answer_ip]['service'][cname] = {}
+                    self.id_ip[ctx][answer_ip]['service'][cname]['last_seen'] \
+                                                                  = time.time()
+                    self.id_ip[ctx][answer_ip]['service'][cname]['source'] = \
+                                                                    'dns_cname'
             elif answer.type == 5:
                 #*** DNS CNAME Record:
                 answer_cname = answer.cname
@@ -285,32 +296,6 @@ class IdentityInspect(object):
         Return the Identity System table
         """
         return self._sys_identity_table
-
-    def get_id_mac_table_size_rows(self):
-        """
-        Return the number of rows (items) in the MAC address
-        metadata table
-        """
-        #*** context is future-proofing for when the system will support 
-        #*** multiple contexts. For now just set to 'default':
-        context = 'default'
-        if context in self.id_mac:
-            return len(self.id_mac[context])
-        else:
-            return 0
-
-    def get_id_ip_table_size_rows(self):
-        """
-        Return the number of rows (items) in the IP address
-        metadata table
-        """
-        #*** context is future-proofing for when the system will support 
-        #*** multiple contexts. For now just set to 'default':
-        context = 'default'
-        if context in self.id_ip:
-            return len(self.id_ip[context])
-        else:
-            return 0
 
     def maintain_identity_tables(self, max_age_nic, max_age_sys):
         """

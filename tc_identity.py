@@ -84,11 +84,12 @@ class IdentityInspect(object):
         #*** Instantiate the System and NIC Identity Tables (Legacy):
         self._sys_identity_table = nmisc.AutoVivification()
         self._nic_identity_table = nmisc.AutoVivification()
-        #*** Identity Dictionaries (New):
-        self._id_mac = {}
-        self._id_ip = {}
-        self._id_node = {}
-        self._id_service = {}
+        #*** Identity Dictionaries
+        #***  Let these be accessed directly to avoid overhead of getters:
+        self.id_mac = {}
+        self.id_ip = {}
+        self.id_node = {}
+        self.id_service = {}
         #*** Initialise Identity Tables unique reference numbers:
         #*** Start at 1 so that value 0 can be used for boolean
         #*** false on checks
@@ -200,20 +201,20 @@ class IdentityInspect(object):
                 self.logger.debug("dns_answer_name=%s dns_answer_A=%s", 
                                 answer_name, answer_ip)
                 #*** Make sure context key exists:
-                self._id_ip.setdefault(ctx, {})
-                if not answer_ip in self._id_ip[ctx]:
+                self.id_ip.setdefault(ctx, {})
+                if not answer_ip in self.id_ip[ctx]:
                     #*** MAC not in table, add it:
-                    self._id_ip[ctx].setdefault(answer_ip, {})
+                    self.id_ip[ctx].setdefault(answer_ip, {})
                 #*** Ensure 'service' key exists:
-                self._id_ip[ctx][answer_ip].setdefault('service', {})
+                self.id_ip[ctx][answer_ip].setdefault('service', {})
                 #*** Check if know mapping to service:
-                if not answer_name in self._id_ip[ctx][answer_ip]['service']:
+                if not answer_name in self.id_ip[ctx][answer_ip]['service']:
                     #*** Add service name to this IP:
-                    self._id_ip[ctx][answer_ip]['service'][answer_name] = {}
+                    self.id_ip[ctx][answer_ip]['service'][answer_name] = {}
                 #*** Update time last seen and set source attribution:
-                self._id_ip[ctx][answer_ip]['service'][answer_name] \
+                self.id_ip[ctx][answer_ip]['service'][answer_name] \
                                                     ['last_seen'] = time.time()
-                self._id_ip[ctx][answer_ip]['service'][answer_name] \
+                self.id_ip[ctx][answer_ip]['service'][answer_name] \
                                                     ['source'] = 'dns'
             elif answer.type == 5:
                 #*** DNS CNAME Record:
@@ -222,12 +223,12 @@ class IdentityInspect(object):
                 self.logger.debug("dns_answer_name=%s dns_answer_CNAME=%s", 
                                 answer_name, answer_cname)
                 #*** Make sure context key exists:
-                self._id_service.setdefault(ctx, {})
-                if not answer_cname in self._id_service[ctx]:
+                self.id_service.setdefault(ctx, {})
+                if not answer_cname in self.id_service[ctx]:
                     #*** CNAME not in service table, add it:
-                    self._id_service[ctx].setdefault(answer_cname, {})
-                self._id_service[ctx][answer_cname]['type'] = 'dns_CNAME'
-                self._id_service[ctx][answer_cname]['domain'] = answer.name
+                    self.id_service[ctx].setdefault(answer_cname, {})
+                self.id_service[ctx][answer_cname]['type'] = 'dns_CNAME'
+                self.id_service[ctx][answer_cname]['domain'] = answer.name
             else:
                 #*** Not a type that we handle yet
                 pass
@@ -239,19 +240,19 @@ class IdentityInspect(object):
         and add to relevant metadata
         """
         #*** Make sure context key exists:
-        self._id_mac.setdefault(ctx, {})
-        if not arped_mac in self._id_mac[ctx]:
+        self.id_mac.setdefault(ctx, {})
+        if not arped_mac in self.id_mac[ctx]:
             #*** MAC not in table, add it:
-            self._id_mac[ctx].setdefault(arped_mac, {})
+            self.id_mac[ctx].setdefault(arped_mac, {})
         #*** Ensure 'ip' key exists:
-        self._id_mac[ctx][arped_mac].setdefault('ip', {})
+        self.id_mac[ctx][arped_mac].setdefault('ip', {})
         #*** Check if know mapping to IPv4 addr:
-        if not arped_ip in self._id_mac[ctx][arped_mac]['ip']:
+        if not arped_ip in self.id_mac[ctx][arped_mac]['ip']:
             #*** Add IP to this MAC:
-            self._id_mac[ctx][arped_mac]['ip'][arped_ip] = {}
+            self.id_mac[ctx][arped_mac]['ip'][arped_ip] = {}
         #*** Update time last seen and set source attribution:
-        self._id_mac[ctx][arped_mac]['ip'][arped_ip]['last_seen'] = time.time()
-        self._id_mac[ctx][arped_mac]['ip'][arped_ip]['source'] = 'arp'
+        self.id_mac[ctx][arped_mac]['ip'][arped_ip]['last_seen'] = time.time()
+        self.id_mac[ctx][arped_mac]['ip'][arped_ip]['source'] = 'arp'
 
     def ip4_in(self, pkt):
         """
@@ -285,18 +286,6 @@ class IdentityInspect(object):
         """
         return self._sys_identity_table
 
-    def get_id_mac_table(self):
-        """
-        Return the Identity MAC table
-        """
-        return self._id_mac
-
-    def get_id_ip_table(self):
-        """
-        Return the Identity MAC table
-        """
-        return self._id_ip
-
     def get_id_mac_table_size_rows(self):
         """
         Return the number of rows (items) in the MAC address
@@ -305,8 +294,8 @@ class IdentityInspect(object):
         #*** context is future-proofing for when the system will support 
         #*** multiple contexts. For now just set to 'default':
         context = 'default'
-        if context in self._id_mac:
-            return len(self._id_mac[context])
+        if context in self.id_mac:
+            return len(self.id_mac[context])
         else:
             return 0
 
@@ -318,8 +307,8 @@ class IdentityInspect(object):
         #*** context is future-proofing for when the system will support 
         #*** multiple contexts. For now just set to 'default':
         context = 'default'
-        if context in self._id_ip:
-            return len(self._id_ip[context])
+        if context in self.id_ip:
+            return len(self.id_ip[context])
         else:
             return 0
 

@@ -162,25 +162,56 @@ class RESTAPIController(ControllerBase):
     @rest_command
     def get_id_mac(self, req, **kwargs):
         """
-        REST API function that returns contents of the
-        id_mac table
+        REST API function that returns contents of the identity
+        id_mac data structure
         """
         nmeta = self.nmeta_parent_self
-        _id_mac_table = \
-                           nmeta.tc_policy.identity.get_id_mac_table()
-        return _id_mac_table
+        try:
+            _id_mac = nmeta.tc_policy.identity.id_mac
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("API could not access id_mac data structure "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+            return 0
+        return _id_mac
 
     @rest_command
     def get_id_ip(self, req, **kwargs):
         """
-        REST API function that returns contents of the
-        id_ip table
+        REST API function that returns contents of the identity
+        id_ip data structure
         """
         nmeta = self.nmeta_parent_self
-        _id_ip_table = \
-                           nmeta.tc_policy.identity.get_id_ip_table()
-        return _id_ip_table
+        try:
+            _id_ip = nmeta.tc_policy.identity.id_ip
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("API could not access id_ip data structure "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+            return 0
+        return _id_ip
 
+    @rest_command
+    def get_id_service(self, req, **kwargs):
+        """
+        REST API function that returns contents of the identity
+        id_service data structure
+        """
+        nmeta = self.nmeta_parent_self
+        try:
+            _id_service = nmeta.tc_policy.identity.id_service
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("API could not access id_service data structure "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+            return 0
+        return _id_service
 
 class Api(object):
     """
@@ -197,8 +228,9 @@ class Api(object):
     url_measure_event_rates = '/nmeta/measurement/eventrates/'
     url_measure_pkt_time = '/nmeta/measurement/metrics/packet_time/'
     #*** New Identity Metadata calls:
-    url_identity_ip_table = '/nmeta/identity/ip/'
-    url_identity_mac_table = '/nmeta/identity/mac/'
+    url_identity_mac = '/nmeta/identity/mac/'
+    url_identity_ip = '/nmeta/identity/ip/'
+    url_identity_service = '/nmeta/identity/service/'
     #
     IP_PATTERN = r'\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$){4}\b'
     _CONTEXTS = {'wsgi': WSGIApplication}
@@ -283,13 +315,18 @@ class Api(object):
                        requirements=requirements,
                        action='list_identity_system_table',
                        conditions=dict(method=['GET']))
-        mapper.connect('mac_table', self.url_identity_mac_table,
+        mapper.connect('identity_mac', self.url_identity_mac,
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='get_id_mac',
                        conditions=dict(method=['GET']))
-        mapper.connect('ip_table', self.url_identity_ip_table,
+        mapper.connect('identity_ip', self.url_identity_ip,
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='get_id_ip',
+                       conditions=dict(method=['GET']))
+        mapper.connect('identity_service', self.url_identity_service,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='get_id_service',
                        conditions=dict(method=['GET']))

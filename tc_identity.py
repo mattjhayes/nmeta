@@ -186,6 +186,10 @@ class IdentityInspect(object):
         Passed a DNS parameters and a context
         and add to relevant metadata
         """
+        #*** TBD: Need to add security to this... Checks are
+        #*** needed to ensure that the answer is a response
+        #*** to a query, and that the relevant fields match
+        #*** to ensure response is not spoofed.
         for qname in queries:
             self.logger.debug("dns_query=%s", qname.name)
         for answer in answers:
@@ -193,7 +197,7 @@ class IdentityInspect(object):
                 #*** DNS A Record:
                 answer_ip = socket.inet_ntoa(answer.rdata)
                 answer_name = answer.name
-                self.logger.debug("dns_answer_name=%s dns_answer_rdata=%s", 
+                self.logger.debug("dns_answer_name=%s dns_answer_A=%s", 
                                 answer_name, answer_ip)
                 #*** Make sure context key exists:
                 self._id_ip.setdefault(ctx, {})
@@ -211,6 +215,22 @@ class IdentityInspect(object):
                                                     ['last_seen'] = time.time()
                 self._id_ip[ctx][answer_ip]['service'][answer_name] \
                                                     ['source'] = 'dns'
+            elif answer.type == 5:
+                #*** DNS CNAME Record:
+                answer_cname = answer.cname
+                answer_name = answer.name
+                self.logger.debug("dns_answer_name=%s dns_answer_CNAME=%s", 
+                                answer_name, answer_cname)
+                #*** Make sure context key exists:
+                self._id_service.setdefault(ctx, {})
+                if not answer_cname in self._id_service[ctx]:
+                    #*** CNAME not in service table, add it:
+                    self._id_service[ctx].setdefault(answer_cname, {})
+                self._id_service[ctx][answer_cname]['type'] = 'dns_CNAME'
+                self._id_service[ctx][answer_cname]['domain'] = answer.name
+            else:
+                #*** Not a type that we handle yet
+                pass
 
 
     def arp_reply_in(self, arped_ip, arped_mac, ctx):
@@ -276,6 +296,20 @@ class IdentityInspect(object):
         Return the Identity MAC table
         """
         return self._id_ip
+
+    def get_id_mac_table_size_rows(self):
+        """
+        Return the number of rows (items) in the MAC address
+        metadata table
+        """
+        return len(self._id_mac)
+
+    def get_id_ip_table_size_rows(self):
+        """
+        Return the number of rows (items) in the IP address
+        metadata table
+        """
+        return len(self._id_ip)
 
     def maintain_identity_tables(self, max_age_nic, max_age_sys):
         """

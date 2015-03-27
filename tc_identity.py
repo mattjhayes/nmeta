@@ -277,6 +277,20 @@ class IdentityInspect(object):
         """
         return self._id_ip
 
+    def get_id_mac_table_size_rows(self):
+        """
+        Return the number of rows (items) in the MAC address
+        metadata table
+        """
+        return len(self._id_mac)
+
+    def get_id_ip_table_size_rows(self):
+        """
+        Return the number of rows (items) in the IP address
+        metadata table
+        """
+        return len(self._id_ip)
+
     def maintain_identity_tables(self, max_age_nic, max_age_sys):
         """
         Deletes old entries from Identity NIC and 

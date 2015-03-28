@@ -217,6 +217,8 @@ class IdentityInspect(object):
                 self.id_ip[ctx][answer_ip]['service'][answer_name] \
                                                     ['source'] = 'dns'
                 #*** Check if service is a CNAME for another domain:
+                #*** Make sure context key exists:
+                self.id_service.setdefault(ctx, {})
                 if answer_name in self.id_service[ctx]:
                     #*** Add the original domain to the IP so that
                     #*** rules can be written for services without

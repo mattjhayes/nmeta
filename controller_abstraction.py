@@ -148,17 +148,11 @@ class ControllerAbstract(object):
             #print "packet eth is %s" % eth
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
-                        dl_vlan=0xffff,
-                        dl_vlan_pcp=0x00,
-                        nw_tos=0x00,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 
-                        dl_type=0x0800,
-                        nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), 
-                        nw_proto=6,
-                        tp_src=pkt_tcp.src_port, 
-                        tp_dst=pkt_tcp.dst_port)
+                        dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
+                        tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4-TCP "
                                   "match=%s", ofproto.OFP_VERSION, match)
         elif (pkt_tcp and pkt_ip6 and 

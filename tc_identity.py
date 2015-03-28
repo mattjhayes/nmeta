@@ -230,7 +230,7 @@ class IdentityInspect(object):
                     ipsvcodom = self.id_ip[ctx][answer_ip]['service'] \
                                                         .setdefault(odom, {})
                     ipsvcodom['last_seen'] = time.time()
-                    ipsvcodom['ttl'] = odom['ttl']
+                    ipsvcodom['ttl'] = answer.ttl
                     ipsvcodom['source'] = 'dns'
             elif answer.type == 5:
                 #*** DNS CNAME Record:

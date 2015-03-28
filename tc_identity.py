@@ -244,7 +244,7 @@ class IdentityInspect(object):
                 svc_cname_dom = svc_cname.setdefault('domain', {})
                 svc_cname_dom_a = svc_cname_dom.setdefault(answer.name, {})
                 svc_cname_dom_a['last_seen'] = time.time()
-                svc_cname_dom_a['ttl'] = odom['ttl']
+                svc_cname_dom_a['ttl'] = answer.ttl
             else:
                 #*** Not a type that we handle yet
                 pass

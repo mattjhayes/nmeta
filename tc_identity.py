@@ -198,8 +198,10 @@ class IdentityInspect(object):
                 #*** DNS A Record:
                 answer_ip = socket.inet_ntoa(answer.rdata)
                 answer_name = answer.name
-                self.logger.debug("dns_answer_name=%s dns_answer_A=%s", 
-                                answer_name, answer_ip)
+                answer_ttl = answer.ttl
+                self.logger.debug("dns_answer_name=%s dns_answer_A=%s "
+                                "answer_ttl=%s", 
+                                answer_name, answer_ip, answer_ttl)
                 #*** Make sure context key exists:
                 self.id_ip.setdefault(ctx, {})
                 if not answer_ip in self.id_ip[ctx]:
@@ -214,6 +216,8 @@ class IdentityInspect(object):
                 #*** Update time last seen and set source attribution:
                 self.id_ip[ctx][answer_ip]['service'][answer_name] \
                                                     ['last_seen'] = time.time()
+                self.id_ip[ctx][answer_ip]['service'][answer_name] \
+                                                    ['ttl'] = answer_ttl
                 self.id_ip[ctx][answer_ip]['service'][answer_name] \
                                                     ['source'] = 'dns'
                 #*** Check if service is a CNAME for another domain:

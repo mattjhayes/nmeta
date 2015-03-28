@@ -224,14 +224,17 @@ class IdentityInspect(object):
                 if answer_name in self.id_service[ctx]:
                     #*** Add the original domain to the IP so that
                     #*** rules can be written for services without
-                    #*** needing to understand CNAMES:
+                    #*** needing to understand CNAMES
+                    #*** Update the service that is the cname to ref this:
                     svc['source'] = 'dns_cname'
-                    odom = self.id_service[ctx][answer_name]['domain']
-                    ipsvcodom = self.id_ip[ctx][answer_ip]['service'] \
-                                                        .setdefault(odom, {})
-                    ipsvcodom['last_seen'] = time.time()
-                    ipsvcodom['ttl'] = answer.ttl
-                    ipsvcodom['source'] = 'dns'
+                    #*** Could be multiple original domains for the cname:
+                    odom_v = self.id_service[ctx][answer_name]['domain'].values
+                    for odom_value in odom_v:
+                        ipsvcodom = self.id_ip[ctx][answer_ip]['service'] \
+                                                .setdefault(odom_value, {})
+                        ipsvcodom['last_seen'] = time.time()
+                        ipsvcodom['ttl'] = answer.ttl
+                        ipsvcodom['source'] = 'dns'
             elif answer.type == 5:
                 #*** DNS CNAME Record:
                 answer_cname = answer.cname

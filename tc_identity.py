@@ -228,8 +228,8 @@ class IdentityInspect(object):
                     #*** Update the service that is the cname to ref this:
                     svc['source'] = 'dns_cname'
                     #*** Could be multiple original domains for the cname:
-                    odom_v = self.id_service[ctx][answer_name]['domain'].values
-                    for odom_value in odom_v:
+                    odom_dict = self.id_service[ctx][answer_name]['domain']
+                    for odom_value in odom_dict:
                         ipsvcodom = self.id_ip[ctx][answer_ip]['service'] \
                                                 .setdefault(odom_value, {})
                         ipsvcodom['last_seen'] = time.time()

@@ -241,9 +241,10 @@ class IdentityInspect(object):
                 svc_ctx = self.id_service.setdefault(ctx, {})
                 svc_cname = svc_ctx.setdefault(answer_cname, {})
                 svc_cname['type'] = 'dns_cname'
-                svc_cname_dom['domain'][answer.name]
-                svc_cname_dom['last_seen'] = time.time()
-                svc_cname_dom['ttl'] = odom['ttl']
+                svc_cname_dom = svc_cname.setdefault('domain', {})
+                svc_cname_dom_a = svc_cname_dom.setdefault(answer.name, {})
+                svc_cname_dom_a['last_seen'] = time.time()
+                svc_cname_dom_a['ttl'] = odom['ttl']
             else:
                 #*** Not a type that we handle yet
                 pass

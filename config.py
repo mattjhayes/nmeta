@@ -40,6 +40,7 @@ CONFIG_TEMPLATE = \
     'identity_nic_table_max_age': 600,
     'identity_system_table_max_age': 600,
     'identity_table_tidyup_interval': 5,
+    'identity_arp_max_age': 60,
     'statistical_fcip_table_max_age': 600,
     'statistical_fcip_table_tidyup_interval': 5,
     'payload_fcip_table_max_age': 600,

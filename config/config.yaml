@@ -83,6 +83,10 @@ identity_system_table_max_age: 600
 #*** entries:
 identity_table_tidyup_interval: 60
 #
+#*** Max age in seconds for a learnt ARP before considering for deletion
+#*** and ignoring for identity purposes:
+identity_arp_max_age: 60
+
 #*** Statistical Flow Classification in Progress (FCIP) table entry
 #*** maximum age in seconds before being eligible for removal:
 statistical_fcip_table_max_age: 600

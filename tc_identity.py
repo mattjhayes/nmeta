@@ -95,7 +95,12 @@ class IdentityInspect(object):
         #*** false on checks
         self._sys_id_ref = 1
         self._nic_id_ref = 1
-        
+        #*** Get config values for tidy up of dynamic data:
+        self.max_age_nic = _config.get_value('identity_nic_table_max_age')
+        self.max_age_sys = _config.\
+                                     get_value('identity_system_table_max_age')
+        self.arp_max = _config.get_value('identity_arp_max_age')
+
     def check_identity(self, policy_attr, policy_value, pkt):
         """
         Passed an identity attribute, value and packet and
@@ -304,7 +309,7 @@ class IdentityInspect(object):
         """
         return self._sys_identity_table
 
-    def maintain_identity_tables(self, max_age_nic, max_age_sys):
+    def maintain_identity_tables(self):
         """
         Deletes old entries from Identity NIC and 
         System tables.
@@ -319,7 +324,7 @@ class IdentityInspect(object):
         for _table_ref in self._nic_identity_table:
             if self._nic_identity_table[_table_ref]['time_last']:
                 _last = self._nic_identity_table[_table_ref]['time_last']
-                if (_time - _last > max_age_nic):
+                if (_time - _last > self.max_age_nic):
                     self.logger.debug("Deleting NIC"
                                       " table ref id=%s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
@@ -333,7 +338,7 @@ class IdentityInspect(object):
         for _table_ref in self._sys_identity_table:
             if self._sys_identity_table[_table_ref]['time_last']:
                 _last = self._sys_identity_table[_table_ref]['time_last']
-                if (_time - _last > max_age_sys):
+                if (_time - _last > self.max_age_sys):
                     self.logger.debug("Deleting "
                                       "System table ref id=%s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
@@ -342,6 +347,44 @@ class IdentityInspect(object):
         #*** Now iterate over the list of references to delete:
         for _del_ref in _for_deletion:
             del self._sys_identity_table[_del_ref]
+
+        #*** Maintain the id_mac structure:
+        _for_deletion = []
+        self.logger.debug("Maintaining the id_mac structure")
+        for ctx in self.id_mac:
+            mac_ctx = self.id_mac[ctx]
+            for mac in mac_ctx:
+                mac_ctx_mac = mac_ctx[mac]
+                for ip in mac_ctx_mac['ip']:
+                    mac_ctx_mac_ip = mac_ctx_mac['ip'][ip]
+                    last_seen = mac_ctx_mac_ip['last_seen']
+                    #*** Has the ARP not been seen for more than max age?: 
+                    if (last_seen + self.arp_max) < _time:
+                        #*** Mark for deletion:
+                        del_dict = {'ctx': ctx, 'mac': mac, 'ip': ip}
+                        _for_deletion.append(del_dict)
+                        age = _time - last_seen
+                        self.logger.debug("marking ARP ip=%s mac=%s age=%s "
+                                     "seconds for deletion", ip, mac, age)
+        #*** Now iterate over the list of references to delete:
+        for _del_ref in _for_deletion:
+            ctx = _del_ref['ctx']
+            mac = _del_ref['mac']
+            ip = _del_ref['ip']
+            del self.id_mac[ctx][mac]['ip'][ip]
+            #*** TBD: check if that was the only IP for that MAC and if so
+            #*** delete the MAC:
+
+        #*** Maintain the id_ip structure:
+        _for_deletion = []
+        self.logger.debug("Maintaining the id_ip structure")
+        for ctx in self.id_ip:
+            ip_ctx = self.id_mac[ctx]
+            for ip in ip_ctx:
+                ip_ctx_ip = mac_ctx[ip]
+                for service in ip_ctx_ip['service']:
+                    self.logger.debug("service is %s", service)
+                    #*** TBD:
 
     def _get_sys_ref_by_chassisid(self, chassis_id_text):
         """

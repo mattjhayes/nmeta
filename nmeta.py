@@ -135,10 +135,6 @@ class NMeta(app_manager.RyuApp):
         self.fm_table_max_age = self.config.get_value('fm_table_max_age')
         self.fm_table_tidyup_interval = self.config.\
                                           get_value('fm_table_tidyup_interval')
-        self.identity_nic_table_max_age = self.config.\
-                                        get_value('identity_nic_table_max_age')
-        self.identity_system_table_max_age = self.config.\
-                                     get_value('identity_system_table_max_age')
         self.identity_table_tidyup_interval = self.config.\
                                     get_value('identity_table_tidyup_interval')
         self.statistical_fcip_table_max_age = self.config.\
@@ -353,9 +349,7 @@ class NMeta(app_manager.RyuApp):
             #*** Call function to do tidy-up on the Identity NIC
             #***  and System tables:
             self.logger.debug("event=tidy-up table=identity*")
-            self.tc_policy.identity.maintain_identity_tables(
-                               self.identity_nic_table_max_age,
-                               self.identity_system_table_max_age)
+            self.tc_policy.identity.maintain_identity_tables()
             self.identity_table_last_tidyup_time = _time
         #*** Statistical FCIP table maintenance:
         _time = time.time()

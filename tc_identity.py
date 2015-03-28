@@ -214,12 +214,10 @@ class IdentityInspect(object):
                     #*** Add service name to this IP:
                     self.id_ip[ctx][answer_ip]['service'][answer_name] = {}
                 #*** Update time last seen and set source attribution:
-                self.id_ip[ctx][answer_ip]['service'][answer_name] \
-                                                    ['last_seen'] = time.time()
-                self.id_ip[ctx][answer_ip]['service'][answer_name] \
-                                                    ['ttl'] = answer_ttl
-                self.id_ip[ctx][answer_ip]['service'][answer_name] \
-                                                    ['source'] = 'dns'
+                svc = self.id_ip[ctx][answer_ip]['service'][answer_name]
+                svc['last_seen'] = time.time()
+                svc['ttl'] = answer_ttl
+                svc['source'] = 'dns'
                 #*** Check if service is a CNAME for another domain:
                 #*** Make sure context key exists:
                 self.id_service.setdefault(ctx, {})
@@ -227,29 +225,28 @@ class IdentityInspect(object):
                     #*** Add the original domain to the IP so that
                     #*** rules can be written for services without
                     #*** needing to understand CNAMES:
-                    cname = self.id_service[ctx][answer_name]['domain']
-                    self.id_ip[ctx][answer_ip]['service'][cname] = {}
-                    self.id_ip[ctx][answer_ip]['service'][cname]['last_seen'] \
-                                                                  = time.time()
-                    self.id_ip[ctx][answer_ip]['service'][cname]['source'] = \
-                                                                    'dns_cname'
+                    svc['source'] = 'dns_cname'
+                    odom = self.id_service[ctx][answer_name]['domain']
+                    ipsvcodom = self.id_ip[ctx][answer_ip]['service'] \
+                                                        .setdefault(odom, {})
+                    ipsvcodom['last_seen'] = time.time()
+                    ipsvcodom['ttl'] = odom['ttl']
+                    ipsvcodom['source'] = 'dns'
             elif answer.type == 5:
                 #*** DNS CNAME Record:
                 answer_cname = answer.cname
                 answer_name = answer.name
                 self.logger.debug("dns_answer_name=%s dns_answer_CNAME=%s", 
                                 answer_name, answer_cname)
-                #*** Make sure context key exists:
-                self.id_service.setdefault(ctx, {})
-                if not answer_cname in self.id_service[ctx]:
-                    #*** CNAME not in service table, add it:
-                    self.id_service[ctx].setdefault(answer_cname, {})
-                self.id_service[ctx][answer_cname]['type'] = 'dns_CNAME'
-                self.id_service[ctx][answer_cname]['domain'] = answer.name
+                svc_ctx = self.id_service.setdefault(ctx, {})
+                svc_cname = svc_ctx.setdefault(answer_cname, {})
+                svc_cname['type'] = 'dns_cname'
+                svc_cname['domain'] = answer.name
+                svc_cname['domain']['last_seen'] = time.time()
+                svc_cname['domain']['ttl'] = odom['ttl']
             else:
                 #*** Not a type that we handle yet
                 pass
-
 
     def arp_reply_in(self, arped_ip, arped_mac, ctx):
         """

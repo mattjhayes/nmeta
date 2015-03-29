@@ -319,22 +319,26 @@ class IdentityInspect(object):
             flow = _flows[idx]
             if 'ip_A' in flow:
                 ip = flow['ip_A']
+                self.logger.debug("checking ip_A=%s", ip)
                 for ctx in self.id_ip:
-                    ip_ctx = self.id_mac[ctx]
-                    if ip in ip_ctx:
-                        ip_ctx_ip = ip_ctx[ip]
-                        #*** Have found IP in id_ip, add any metadata to flow:
-                        if 'service' in ip_ctx_ip:
-                            flow['ip_A_services'] = ip_ctx_ip['service']
+                    ip_ctx = self.id_ip[ctx]
+                    if ip:
+                        if ip in ip_ctx:
+                            ip_ctx_ip = ip_ctx[ip]
+                            #*** Found IP in id_ip, add any metadata to flow:
+                            if 'service' in ip_ctx_ip:
+                                flow['ip_A_services'] = ip_ctx_ip['service']
             if 'ip_B' in flow:
                 ip = flow['ip_B']
+                self.logger.debug("checking ip_B=%s", ip)
                 for ctx in self.id_ip:
-                    ip_ctx = self.id_mac[ctx]
-                    if ip in ip_ctx:
-                        ip_ctx_ip = ip_ctx[ip]
-                        #*** Have found IP in id_ip, add any metadata to flow:
-                        if 'service' in ip_ctx_ip:
-                            flow['ip_B_services'] = ip_ctx_ip['service']
+                    ip_ctx = self.id_ip[ctx]
+                    if ip:
+                        if ip in ip_ctx:
+                            ip_ctx_ip = ip_ctx[ip]
+                            #*** Found IP in id_ip, add any metadata to flow:
+                            if 'service' in ip_ctx_ip:
+                                flow['ip_B_services'] = ip_ctx_ip['service']
             #*** Accumulate updated flows into results dict
             _result_dict[idx] = flow
         return _result_dict

@@ -175,12 +175,12 @@ class IdentityInspect(object):
                 for ip in ips:
                     if ip in self.id_ip[ctx]:
                         ip_ctx_ip = ip_ctx[ip]
-                    if 'service' in ip_ctx_ip:
-                        for service in ip_ctx_ip['service']:
-                            if service == policy_value:
-                                #*** Matched service but need to check valid:
-                                if valid_id_ip_service(ctx, ip, service):
-                                    return True
+                        if 'service' in ip_ctx_ip:
+                            for service in ip_ctx_ip['service']:
+                                if service == policy_value:
+                                    #*** Matched service but is it valid?:
+                                    if valid_id_ip_service(ctx, ip, service):
+                                        return True
 
         elif policy_attr == "identity_service_dns_re":
             #*** Look up service in id_ip structure:
@@ -195,12 +195,12 @@ class IdentityInspect(object):
                 for ip in ips:
                     if ip in self.id_ip[ctx]:
                         ip_ctx_ip = ip_ctx[ip]
-                    if 'service' in ip_ctx_ip:
-                        for service in ip_ctx_ip['service']:
-                            if (re.match(policy_value, service)):
-                                #*** Matched service but need to check valid:
-                                if valid_id_ip_service(ctx, ip, service):
-                                    return True
+                        if 'service' in ip_ctx_ip:
+                            for service in ip_ctx_ip['service']:
+                                if (re.match(policy_value, service)):
+                                    #*** Matched service but is it valid?:
+                                    if valid_id_ip_service(ctx, ip, service):
+                                        return True
 
         else:
             self.logger.error("Policy attribute %s did not match", policy_attr)

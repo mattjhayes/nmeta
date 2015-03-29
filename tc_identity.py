@@ -408,7 +408,10 @@ class IdentityInspect(object):
             del self.id_mac[ctx][mac]['ip'][ip]
             #*** TBD: check if that was the only IP for that MAC and if so
             #*** delete the MAC:
-
+            if self.id_mac[ctx][mac]['ip'] == {}:
+                del self.id_mac[ctx][mac]['ip']
+                if self.id_mac[ctx][mac] == {}:
+                    del self.id_mac[ctx][mac]
 
         #*** Maintain the id_ip structure:
         _for_deletion = []

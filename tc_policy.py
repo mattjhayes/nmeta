@@ -62,6 +62,8 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'eth_type': 'EtherType',
                                'identity_lldp_systemname': 'String',
                                'identity_lldp_systemname_re': 'String',
+                               'identity_service_dns': 'String',
+                               'identity_service_dns_re': 'String',
                                'payload_type': 'String',
                                'statistical_qos_bandwidth_1': 'String',
                                'match_type': 'MatchType',
@@ -407,11 +409,10 @@ class TrafficClassificationPolicy(object):
                 #*** Call identity class with DNS parameters:
                 self.identity.dns_reply_in(dns.qd, dns.an, context)
 
-
         #*** Check against TC policy:
         for tc_rule in self.tc_ruleset:
             #*** Check the rule:
-            _result_dict = self._check_rule(pkt, tc_rule)
+            _result_dict = self._check_rule(pkt, tc_rule, context)
             if _result_dict['match']:
                 self.logger.debug("Matched policy rule")
                 #*** Need to merge the actions configured on the rule
@@ -436,7 +437,7 @@ class TrafficClassificationPolicy(object):
                     'actions': False}
         return _result_dict
 
-    def _check_rule(self, pkt, rule):
+    def _check_rule(self, pkt, rule, ctx):
         """
         Passed a main_policy.yaml tc_rule.
         Check to see if packet matches conditions as per the
@@ -448,7 +449,7 @@ class TrafficClassificationPolicy(object):
         self.rule_match_type = rule['match_type']
         #*** Iterate through the conditions list:
         for condition_stanza in rule['conditions_list']:
-            _result = self._check_conditions(pkt, condition_stanza)
+            _result = self._check_conditions(pkt, condition_stanza, ctx)
             _match = _result['match']
             #*** Decide what to do based on match result and match type:
             if _match and self.rule_match_type == "any":
@@ -477,7 +478,7 @@ class TrafficClassificationPolicy(object):
             _result_dict['match'] = False
             return _result_dict
 
-    def _check_conditions(self, pkt, conditions):
+    def _check_conditions(self, pkt, conditions, ctx):
         """
         Passed a packet-in packet and a conditions stanza (part of a 
         conditions list).
@@ -508,7 +509,7 @@ class TrafficClassificationPolicy(object):
             #*** Main if/elif/else check on condition attribute type:
             if policy_attr_type == "identity":
                 _match = self.identity.check_identity(policy_attr, 
-                                             policy_value, pkt)
+                                             policy_value, pkt, ctx)
             elif policy_attr_type == "payload":
                 _payload_dict = self.payload.check_payload(policy_attr,
                                          policy_value, pkt)
@@ -518,7 +519,7 @@ class TrafficClassificationPolicy(object):
                                      _payload_dict["continue_to_inspect"]
             elif policy_attr_type == "conditions_list":
                 #*** Do a recursive call on nested conditions:
-                _nested_dict = self._check_conditions(pkt, policy_value)
+                _nested_dict = self._check_conditions(pkt, policy_value, ctx)
                 _match = _nested_dict["match"]
                 #*** TBD: How do we deal with nested continue to inspect
                 #***  results that conflict?

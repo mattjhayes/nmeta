@@ -32,6 +32,7 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import lldp
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
 from ryu.lib.packet import tcp
 
 #*** nmeta imports:
@@ -101,7 +102,7 @@ class IdentityInspect(object):
                                      get_value('identity_system_table_max_age')
         self.arp_max = _config.get_value('identity_arp_max_age')
 
-    def check_identity(self, policy_attr, policy_value, pkt):
+    def check_identity(self, policy_attr, policy_value, pkt, ctx):
         """
         Passed an identity attribute, value and packet and
         return True or False based on whether or not the packet strongly
@@ -109,7 +110,8 @@ class IdentityInspect(object):
         """
         pkt_eth = pkt.get_protocol(ethernet.ethernet)
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)         
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
+        pkt_tcp = pkt.get_protocol(tcp.tcp)
         if policy_attr == "identity_lldp_chassisid":
             sys_ref = self._get_sys_ref_by_chassisid(policy_value)
             if sys_ref:
@@ -122,20 +124,22 @@ class IdentityInspect(object):
                         return True
                     if pkt_eth.dst == self._get_nic_MAC_addr(nic_ref):
                         #*** Dest MAC addr matches the NIC MAC address
-                        return True                        
-                    if pkt_ip4:                                         
+                        return True
+                    if pkt_ip4:
                         if pkt_ip4.src == self._get_nic_ip4_addr(nic_ref):
                             #*** Source IP addr matches the NIC identity IP
                             return True
                         if pkt_ip4.dst == self._get_nic_ip4_addr(nic_ref):
                             #*** Dest IP addr matches the NIC identity IP
-                            return True                                
+                            return True
             else:
                 #*** Didn't match that LLDP Chassis ID so return false:
-                return False  
+                return False
+
         elif ((policy_attr == "identity_lldp_systemname") or 
               (policy_attr == "identity_lldp_systemname_re")):
-            sys_ref = self._get_sys_ref_by_systemname(policy_attr, policy_value)
+            sys_ref = self._get_sys_ref_by_systemname(policy_attr,
+                                                           policy_value)
             if sys_ref:
                 #*** Have matched a record with that system name, now check 
                 #*** if the packet relates to that system:
@@ -146,20 +150,78 @@ class IdentityInspect(object):
                         return True
                     if pkt_eth.dst == self._get_nic_MAC_addr(nic_ref):
                         #*** Dest MAC addr matches the NIC MAC address
-                        return True                        
-                    if pkt_ip4:                                          
+                        return True
+                    if pkt_ip4:
                         if pkt_ip4.src == self._get_nic_ip4_addr(nic_ref):
                             #*** Source IP addr matches the NIC identity IP
                             return True
                         if pkt_ip4.dst == self._get_nic_ip4_addr(nic_ref):
                             #*** Dest IP addr matches the NIC identity IP
-                            return True        
+                            return True
             else:
                 #*** Didn't match that LLDP system name so return false:
-                return False          
+                return False
+
+        elif policy_attr == "identity_service_dns":
+            #*** Look up service in id_ip structure:
+            ips = []
+            if pkt_ip4:
+                #*** turn the src and dst IPs into a list so can iterate:
+                ips = [pkt_ip4.src, pkt_ip4.dst]
+            if pkt_ip6:
+                #*** turn the src and dst IPs into a list so can iterate:
+                ips = [pkt_ip6.src, pkt_ip6.dst]
+            if ctx in self.id_ip:
+                for ip in ips:
+                    if ip in self.id_ip[ctx]:
+                        ip_ctx_ip = ip_ctx[ip]
+                    if 'service' in ip_ctx_ip:
+                        for service in ip_ctx_ip['service']:
+                            if service == policy_value:
+                                #*** Matched service but need to check valid:
+                                if valid_id_ip_service(ctx, ip, service):
+                                    return True
+
+        elif policy_attr == "identity_service_dns_re":
+            #*** Look up service in id_ip structure:
+            ips = []
+            if pkt_ip4:
+                #*** turn the src and dst IPs into a list so can iterate:
+                ips = [pkt_ip4.src, pkt_ip4.dst]
+            if pkt_ip6:
+                #*** turn the src and dst IPs into a list so can iterate:
+                ips = [pkt_ip6.src, pkt_ip6.dst]
+            if ctx in self.id_ip:
+                for ip in ips:
+                    if ip in self.id_ip[ctx]:
+                        ip_ctx_ip = ip_ctx[ip]
+                    if 'service' in ip_ctx_ip:
+                        for service in ip_ctx_ip['service']:
+                            if (re.match(policy_value, service)):
+                                #*** Matched service but need to check valid:
+                                if valid_id_ip_service(ctx, ip, service):
+                                    return True
+
         else:
             self.logger.error("Policy attribute %s did not match", policy_attr)
             return False
+
+    def valid_id_ip_service(self, ctx, ip, service):
+        """
+        Passed variables to look up a service in id_ip structure.
+        Check that this service is valid (i.e. not stale)
+        Return boolean
+        """
+        _time = time.time()
+        svc = self.id_ip[ctx][ip]['service'][service]
+        if 'source' in svc:
+            if svc['source'] == 'dns' or svc['source'] == 'dns_cname':
+                last_seen = svc['last_seen']
+                ttl = svc['ttl']
+                if (last_seen + ttl) > _time:
+                    #*** TTL is current, so service is valid:
+                    return True
+        return False
 
     def lldp_in(self, pkt, dpid, inport):
         """

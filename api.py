@@ -159,11 +159,11 @@ class RESTAPIController(ControllerBase):
         REST API function that returns contents of the
         Flow Metadata (FM) table filtered on an IP address
         (matches source or destination IP).
-        .
-        <TBD>
         """
-        print "##### list_flow_table_by_IP"
-        pass
+        #nmeta = self.nmeta_parent_self
+        #_fm_table = nmeta.flowmetadata.get_fm_table()
+        print "kwargs are %s" % kwargs
+        return 'foo'
 
     @rest_command
     def list_identity_nic_table(self, req, **kwargs):

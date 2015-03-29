@@ -13,17 +13,16 @@ tc_rules:
           actions:
               set_qos_tag: QoS_treatment=system_priority
               set_desc_tag: description="OpenFlow Protocol Traffic"
-        - comment: Audit Division SSH traffic
+        - comment: YouTube Video Streaming
           match_type: all
           conditions_list:
               - match_type: any
-                tcp_src: 22
-                tcp_dst: 22
+                tcp_src: 443
+                tcp_dst: 443
               - match_type: any
-                identity_lldp_systemname_re: '.*\.audit\.example\.com'
+                identity_service_dns_re: '.*\.youtube\.com'
           actions:
-              set_qos_tag: QoS_treatment=high_priority
-              set_desc_tag: description="High Priority Audit Div SSH Traffic"
+              set_desc_tag: description="YouTube Streaming Traffic"
 #
 identity:
     # Control how identity information is collected

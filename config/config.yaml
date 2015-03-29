@@ -81,7 +81,7 @@ identity_system_table_max_age: 600
 #*** Identity NIC and System Tables interval in seconds between
 #*** running the tidy-up process that removes old
 #*** entries:
-identity_table_tidyup_interval: 60
+identity_table_tidyup_interval: 234
 #
 #*** Max age in seconds for a learnt ARP before considering for deletion
 #*** and ignoring for identity purposes:

@@ -382,7 +382,7 @@ class IdentityInspect(object):
             ip_ctx = self.id_mac[ctx]
             for ip in ip_ctx:
                 ip_ctx_ip = mac_ctx[ip]
-                if service in ip_ctx_ip:
+                if 'service' in ip_ctx_ip:
                     for service in ip_ctx_ip['service']:
                         self.logger.debug("service is %s", service)
                         #*** TBD:

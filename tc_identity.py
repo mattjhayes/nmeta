@@ -382,9 +382,10 @@ class IdentityInspect(object):
             ip_ctx = self.id_mac[ctx]
             for ip in ip_ctx:
                 ip_ctx_ip = mac_ctx[ip]
-                for service in ip_ctx_ip['service']:
-                    self.logger.debug("service is %s", service)
-                    #*** TBD:
+                if service in ip_ctx_ip:
+                    for service in ip_ctx_ip['service']:
+                        self.logger.debug("service is %s", service)
+                        #*** TBD:
 
     def _get_sys_ref_by_chassisid(self, chassis_id_text):
         """

@@ -319,7 +319,7 @@ class IdentityInspect(object):
             flow = _flows[idx]
             if 'ip_A' in flow:
                 ip = flow['ip_A']
-                self.logger.debug("checking ip_A=%s", ip)
+                #self.logger.debug("checking ip_A=%s", ip)
                 for ctx in self.id_ip:
                     ip_ctx = self.id_ip[ctx]
                     if ip:
@@ -330,7 +330,7 @@ class IdentityInspect(object):
                                 flow['ip_A_services'] = ip_ctx_ip['service']
             if 'ip_B' in flow:
                 ip = flow['ip_B']
-                self.logger.debug("checking ip_B=%s", ip)
+                #self.logger.debug("checking ip_B=%s", ip)
                 for ctx in self.id_ip:
                     ip_ctx = self.id_ip[ctx]
                     if ip:
@@ -418,7 +418,13 @@ class IdentityInspect(object):
                 ip_ctx_ip = ip_ctx[ip]
                 if 'service' in ip_ctx_ip:
                     for service in ip_ctx_ip['service']:
+                        ip_ctx_ip_svc = ip_ctx_ip['service'][service]
                         self.logger.debug("service is %s", service)
+                        if ip_ctx_ip_svc['source'] == 'dns':
+                            self.logger.debug("source is dns")
+                        else:
+                            self.logger.debug("source is %s", 
+                                                    ip_ctx_ip_svc['source'])
                         #*** TBD:
 
     def _get_sys_ref_by_chassisid(self, chassis_id_text):

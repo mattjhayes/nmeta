@@ -180,7 +180,8 @@ class IdentityInspect(object):
                             for service in ip_ctx_ip['service']:
                                 if service == policy_value:
                                     #*** Matched service but is it valid?:
-                                    if valid_id_ip_service(ctx, ip, service):
+                                    if self.valid_id_ip_service(ctx, ip,
+                                                                    service):
                                         return True
 
         elif policy_attr == "identity_service_dns_re":
@@ -201,7 +202,8 @@ class IdentityInspect(object):
                             for service in ip_ctx_ip['service']:
                                 if (re.match(policy_value, service)):
                                     #*** Matched service but is it valid?:
-                                    if valid_id_ip_service(ctx, ip, service):
+                                    if self.valid_id_ip_service(ctx, ip,
+                                                                    service):
                                         return True
 
         else:

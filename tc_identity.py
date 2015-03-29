@@ -420,12 +420,24 @@ class IdentityInspect(object):
                     for service in ip_ctx_ip['service']:
                         ip_ctx_ip_svc = ip_ctx_ip['service'][service]
                         self.logger.debug("service is %s", service)
-                        if ip_ctx_ip_svc['source'] == 'dns':
-                            self.logger.debug("source is dns")
-                        else:
-                            self.logger.debug("source is %s", 
-                                                    ip_ctx_ip_svc['source'])
-                        #*** TBD:
+                        if ip_ctx_ip_svc['source'] == 'dns' or \
+                                        ip_ctx_ip_svc['source'] == 'dns_cname':
+                            self.logger.debug("source is dns or dns_cname")
+                            last_seen = ip_ctx_ip_svc['last_seen']
+                            ttl = ip_ctx_ip_svc['ttl']
+                            if (last_seen + ttl) < _time:
+                                #*** Mark for deletion:
+                                del_dict = {'ctx': ctx, 'ip': ip, 
+                                                 'service': service}
+                                _for_deletion.append(del_dict)
+                                self.logger.debug("marking IP del_dict=%s "
+                                     "for deletion", del_dict)
+        #*** Now iterate over the list of references to delete:
+        for _del_ref in _for_deletion:
+            ctx = _del_ref['ctx']
+            ip = _del_ref['ip']
+            service = _del_ref['service']
+            del self.id_ip[ctx][ip]['service'][service]
 
     def _get_sys_ref_by_chassisid(self, chassis_id_text):
         """

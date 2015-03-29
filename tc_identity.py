@@ -409,6 +409,7 @@ class IdentityInspect(object):
             #*** TBD: check if that was the only IP for that MAC and if so
             #*** delete the MAC:
 
+
         #*** Maintain the id_ip structure:
         _for_deletion = []
         self.logger.debug("Maintaining the id_ip structure")
@@ -438,6 +439,13 @@ class IdentityInspect(object):
             ip = _del_ref['ip']
             service = _del_ref['service']
             del self.id_ip[ctx][ip]['service'][service]
+            #*** also delete the IP address if no other services or other keys
+            #*** exist:
+            if self.id_ip[ctx][ip]['service'] == {}:
+                del self.id_ip[ctx][ip]['service']
+                if self.id_ip[ctx][ip] == {}:
+                    self.logger.debug("struct=id_ip deleting ip=%s", ip)
+                    del self.id_ip[ctx][ip]
 
     def _get_sys_ref_by_chassisid(self, chassis_id_text):
         """

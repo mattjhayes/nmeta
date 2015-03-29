@@ -142,8 +142,8 @@ class ControllerAbstract(object):
             #*** TBD: Build an exact match to get maximum performance from
             #*** software switches by allowing them to install into
             #*** a hash instead of linear table
-            #*** Need to dynamically set values for dl_vlan,
-            #***  dl_vlan_pcp, nw_tos and dl_type
+            #*** TBD: dynamically set values for dl_vlan,
+            #***  dl_vlan_pcp, nw_tos and dl_type (not done yet)
             #*** Tested this with Pantou and it initially worked but then
             #*** failed, possibly due to static setting of extra values,
             #*** so backed it out.

@@ -172,6 +172,7 @@ class IdentityInspect(object):
                 #*** turn the src and dst IPs into a list so can iterate:
                 ips = [pkt_ip6.src, pkt_ip6.dst]
             if ctx in self.id_ip:
+                ip_ctx = self.id_ip[ctx]
                 for ip in ips:
                     if ip in self.id_ip[ctx]:
                         ip_ctx_ip = ip_ctx[ip]
@@ -192,6 +193,7 @@ class IdentityInspect(object):
                 #*** turn the src and dst IPs into a list so can iterate:
                 ips = [pkt_ip6.src, pkt_ip6.dst]
             if ctx in self.id_ip:
+                ip_ctx = self.id_ip[ctx]
                 for ip in ips:
                     if ip in self.id_ip[ctx]:
                         ip_ctx_ip = ip_ctx[ip]

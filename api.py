@@ -141,6 +141,19 @@ class RESTAPIController(ControllerBase):
         return _fm_table
 
     @rest_command
+    def list_flow_table_augmented(self, req, **kwargs):
+        """
+        REST API function that returns contents of the
+        Flow Metadata (FM) table, augmented with appropriate
+        identity metadata
+        """
+        nmeta = self.nmeta_parent_self
+        _fm_table = nmeta.flowmetadata.get_fm_table()
+        #*** Ask the identity module to augment the flow metadata:
+        _result = nmeta.tc_policy.identity.get_augmented_fm_table(_fm_table)
+        return _result
+
+    @rest_command
     def list_flow_table_by_IP(self, req, **kwargs):
         """
         REST API function that returns contents of the
@@ -234,6 +247,7 @@ class Api(object):
     """
     #*** Constants for REST API:
     url_flowtable = '/nmeta/flowtable/'
+    url_flowtable_augmented = '/nmeta/flowtable/augmented/'
     url_flowtable_by_ip = '/nmeta/flowtable/{ip}'
     url_identity_nic_table = '/nmeta/identity/nictable/'
     url_identity_system_table = '/nmeta/identity/systemtable/'
@@ -313,6 +327,11 @@ class Api(object):
                        controller=RESTAPIController,
                        requirements=requirements,
                        action='list_flow_table',
+                       conditions=dict(method=['GET']))
+        mapper.connect('flowtable_augmented', self.url_flowtable_augmented,
+                       controller=RESTAPIController,
+                       requirements=requirements,
+                       action='list_flow_table_augmented',
                        conditions=dict(method=['GET']))
         mapper.connect('flowtable', self.url_flowtable_by_ip,
                        controller=RESTAPIController,

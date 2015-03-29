@@ -309,6 +309,36 @@ class IdentityInspect(object):
         """
         return self._sys_identity_table
 
+    def get_augmented_fm_table(self, _flows):
+        """
+        Return the flow metadata table augmented with
+        appropriate identity metadata
+        """
+        _result_dict = {}
+        for idx in _flows:
+            flow = _flows[idx]
+            if 'ip_A' in flow:
+                ip = flow['ip_A']
+                for ctx in self.id_ip:
+                    ip_ctx = self.id_mac[ctx]
+                    if ip in ip_ctx:
+                        ip_ctx_ip = ip_ctx[ip]
+                        #*** Have found IP in id_ip, add any metadata to flow:
+                        if 'service' in ip_ctx_ip:
+                            flow['ip_A_services'] = ip_ctx_ip['service']
+            if 'ip_B' in flow:
+                ip = flow['ip_B']
+                for ctx in self.id_ip:
+                    ip_ctx = self.id_mac[ctx]
+                    if ip in ip_ctx:
+                        ip_ctx_ip = ip_ctx[ip]
+                        #*** Have found IP in id_ip, add any metadata to flow:
+                        if 'service' in ip_ctx_ip:
+                            flow['ip_B_services'] = ip_ctx_ip['service']
+            #*** Accumulate updated flows into results dict
+            _result_dict[idx] = flow
+        return _result_dict
+
     def maintain_identity_tables(self):
         """
         Deletes old entries from Identity NIC and 
@@ -379,9 +409,9 @@ class IdentityInspect(object):
         _for_deletion = []
         self.logger.debug("Maintaining the id_ip structure")
         for ctx in self.id_ip:
-            ip_ctx = self.id_mac[ctx]
+            ip_ctx = self.id_ip[ctx]
             for ip in ip_ctx:
-                ip_ctx_ip = mac_ctx[ip]
+                ip_ctx_ip = ip_ctx[ip]
                 if 'service' in ip_ctx_ip:
                     for service in ip_ctx_ip['service']:
                         self.logger.debug("service is %s", service)

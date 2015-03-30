@@ -50,7 +50,7 @@ console_format: "%(levelname)s: %(name)s %(funcName)s: %(message)s"
 nmeta_logging_level_c: INFO
 flow_logging_level_c: INFO
 qos_logging_level_c: INFO
-tc_policy_logging_level_c: DEBUG
+tc_policy_logging_level_c: INFO
 tc_static_logging_level_c: INFO
 tc_identity_logging_level_c: DEBUG
 tc_payload_logging_level_c: INFO

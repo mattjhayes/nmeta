@@ -16,7 +16,7 @@
 """
 This module is part of the nmeta suite running on top of Ryu SDN
 controller to provide network identity and flow metadata.
-It is provides methods for forwarding functions.
+It provides methods for forwarding functions.
 """
 
 import logging

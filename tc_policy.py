@@ -30,7 +30,10 @@ import os
 
 #*** Packet-related imports:
 from ryu.lib.packet import ethernet
+from ryu.lib.packet import arp
+from ryu.lib.packet import dhcp
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 
 #*** nmeta imports:
@@ -38,6 +41,9 @@ import tc_static
 import tc_identity
 import tc_statistical
 import tc_payload
+
+#*** Import dpkt for DNS extraction, as not native to Ryu:
+import dpkt
 
 #*** YAML for config and policy file parsing:
 import yaml
@@ -56,12 +62,16 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'eth_type': 'EtherType',
                                'identity_lldp_systemname': 'String',
                                'identity_lldp_systemname_re': 'String',
+                               'identity_service_dns': 'String',
+                               'identity_service_dns_re': 'String',
                                'payload_type': 'String',
                                'statistical_qos_bandwidth_1': 'String',
                                'match_type': 'MatchType',
                                'conditions_list': 'PolicyConditions'}
 TC_CONFIG_ACTIONS = ('set_qos_tag', 'set_desc_tag', 'pass_return_tags')
 TC_CONFIG_MATCH_TYPES = ('any', 'all', 'statistical')
+#*** Keys that must exist under 'identity' in the policy:
+IDENTITY_KEYS = ('arp', 'lldp', 'dns', 'dhcp')
 
 class TrafficClassificationPolicy(object):
     """
@@ -139,16 +149,16 @@ class TrafficClassificationPolicy(object):
 
     def validate_policy(self):
         """
-        Check Traffic Classification (TC) policy to ensure that it is in
+        Check main policy to ensure that it is in
         correct format so that it won't cause unexpected errors during
         packet checks.
         """
-        self.logger.debug("Validating TC Policy...")
+        self.logger.debug("Validating main policy...")
         #*** Validate that policy has a 'tc_rules' key off the root:
         if not 'tc_rules' in self._main_policy:
-            #*** No 'tc_rules' key off the root so log and exit:
+            #*** No 'tc_rules' key off the root, so log and exit:
             self.logger.critical("Missing tc_rules"
-                                    "key in root of policy")
+                                    "key in root of main policy")
             sys.exit("Exiting nmeta. Please fix error in "
                              "main_policy.yaml file")
         #*** Get the tc ruleset name, only one ruleset supported at this stage:
@@ -191,6 +201,28 @@ class TrafficClassificationPolicy(object):
                                                  action)
                             sys.exit("Exiting nmeta. Please fix error in "
                                      "main_policy.yaml file")
+
+        #*** Validate that policy has a 'identity' key off the root:
+        if not 'identity' in self._main_policy:
+            #*** No 'identity' key off the root, so log and exit:
+            self.logger.critical("Missing identity"
+                                    "key in root of main policy")
+            sys.exit("Exiting nmeta. Please fix error in "
+                             "main_policy.yaml file")
+        #*** Get the identity keys and validate that they all exist in policy:
+        for _id_key in IDENTITY_KEYS:
+            if not _id_key in self._main_policy['identity'].keys():
+                self.logger.critical("Missing identity "
+                                    "key in main policy: %s", _id_key)
+                sys.exit("Exiting nmeta. Please fix error in "
+                             "main_policy.yaml file")
+        #*** Conversely, check all identity keys in the policy are valid:
+        for _id_pol_key in self._main_policy['identity'].keys():
+            if not _id_pol_key in IDENTITY_KEYS:
+                self.logger.critical("Invalid identity "
+                                    "key in main policy: %s", _id_pol_key)
+                sys.exit("Exiting nmeta. Please fix error in "
+                             "main_policy.yaml file")
 
     def _validate_conditions(self, policy_conditions):
         """
@@ -309,25 +341,78 @@ class TrafficClassificationPolicy(object):
         rules and if it does return the associated actions.
         This function is written for efficiency as it will be called for
         every packet-in event and delays will slow down the transmission
-        of these packets. For efficiency, it assumes that the TC policy
+        of these packets. For efficiency, it assumes that the main policy
         is valid as it has been checked after ingestion or update.
-        It performs an additional function of sending any packets that
-        contain identity information (i.e. LLDP) to the Identity module
+        It also performs an additional function of gathering identity
+        metadata
         """
-        #*** Check to see if it is an LLDP packet
-        #*** and if so pass to the identity module to process:
-        pkt_eth = pkt.get_protocol(ethernet.ethernet)
-        if pkt_eth.ethertype == 35020:
-            self.identity.lldp_in(pkt, dpid, inport)
+        if self._main_policy['identity']['lldp'] == 1:
+            #*** Check to see if it is an LLDP packet
+            #*** and if so pass to the identity module to process:
+            pkt_eth = pkt.get_protocol(ethernet.ethernet)
+            if pkt_eth.ethertype == 35020:
+                self.identity.lldp_in(pkt, dpid, inport)
         #*** Check to see if it is an IPv4 packet
         #*** and if so pass to the identity module to process:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         if pkt_ip4:
             self.identity.ip4_in(pkt)
+        #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
+        #*** context is future-proofing for when the system will support 
+        #*** multiple contexts. For now just set to 'default':
+        context = 'default'
+        if self._main_policy['identity']['arp'] == 1:
+            #*** Check to see if it is an IPv4 ARP reply
+            #***  and if so harvest the information:
+            pkt_arp = pkt.get_protocol(arp.arp)
+            if pkt_arp:
+                #*** It's an ARP, but is it a reply (opcode 2) for IPv4?:
+                if pkt_arp.opcode == 2 and pkt_arp.proto == 2048:
+                    self.logger.debug("event=ARP reply arp=%s", pkt_arp)
+                    self.identity.arp_reply_in \
+                                (pkt_arp.src_ip, pkt_arp.src_mac, context)
+        if self._main_policy['identity']['dhcp'] == 1:
+            #*** Check to see if it is an IPv4 DHCP ACK
+            #***  and if so harvest the information:
+            pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
+            if pkt_dhcp:
+                self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
+        if self._main_policy['identity']['dns'] == 1:
+            #*** Check to see if it is an IPv4 DNS packet
+            #***  and if so pass to the identity module to process
+            #*** At the time of writing there isn't a DNS parser in Ryu
+            #***  so do some dodgy stuff here in the interim...
+            pkt_tcp = pkt.get_protocol(tcp.tcp)
+            pkt_udp = pkt.get_protocol(udp.udp)
+            dns = 0
+            if pkt_udp:
+                if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
+                    #*** Use dpkt to parse UDP DNS data:
+                    try:
+                        dns = dpkt.dns.DNS(pkt.protocols[-1])
+                    except:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        self.logger.error("DNS extraction failed "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+            if pkt_tcp:
+                if pkt_tcp.src_port == 53 or pkt_tcp.dst_port == 53:
+                    #*** Use dpkt to parse TCP DNS data:
+                    try:
+                        dns = dpkt.dns.DNS(pkt.protocols[-1])
+                    except:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        self.logger.error("DNS extraction failed "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+            if dns:
+                #*** Call identity class with DNS parameters:
+                self.identity.dns_reply_in(dns.qd, dns.an, context)
+
         #*** Check against TC policy:
         for tc_rule in self.tc_ruleset:
             #*** Check the rule:
-            _result_dict = self._check_rule(pkt, tc_rule)
+            _result_dict = self._check_rule(pkt, tc_rule, context)
             if _result_dict['match']:
                 self.logger.debug("Matched policy rule")
                 #*** Need to merge the actions configured on the rule
@@ -352,7 +437,7 @@ class TrafficClassificationPolicy(object):
                     'actions': False}
         return _result_dict
 
-    def _check_rule(self, pkt, rule):
+    def _check_rule(self, pkt, rule, ctx):
         """
         Passed a main_policy.yaml tc_rule.
         Check to see if packet matches conditions as per the
@@ -364,7 +449,7 @@ class TrafficClassificationPolicy(object):
         self.rule_match_type = rule['match_type']
         #*** Iterate through the conditions list:
         for condition_stanza in rule['conditions_list']:
-            _result = self._check_conditions(pkt, condition_stanza)
+            _result = self._check_conditions(pkt, condition_stanza, ctx)
             _match = _result['match']
             #*** Decide what to do based on match result and match type:
             if _match and self.rule_match_type == "any":
@@ -393,7 +478,7 @@ class TrafficClassificationPolicy(object):
             _result_dict['match'] = False
             return _result_dict
 
-    def _check_conditions(self, pkt, conditions):
+    def _check_conditions(self, pkt, conditions, ctx):
         """
         Passed a packet-in packet and a conditions stanza (part of a 
         conditions list).
@@ -424,7 +509,7 @@ class TrafficClassificationPolicy(object):
             #*** Main if/elif/else check on condition attribute type:
             if policy_attr_type == "identity":
                 _match = self.identity.check_identity(policy_attr, 
-                                             policy_value, pkt)
+                                             policy_value, pkt, ctx)
             elif policy_attr_type == "payload":
                 _payload_dict = self.payload.check_payload(policy_attr,
                                          policy_value, pkt)
@@ -434,7 +519,7 @@ class TrafficClassificationPolicy(object):
                                      _payload_dict["continue_to_inspect"]
             elif policy_attr_type == "conditions_list":
                 #*** Do a recursive call on nested conditions:
-                _nested_dict = self._check_conditions(pkt, policy_value)
+                _nested_dict = self._check_conditions(pkt, policy_value, ctx)
                 _match = _nested_dict["match"]
                 #*** TBD: How do we deal with nested continue to inspect
                 #***  results that conflict?

@@ -24,12 +24,15 @@ import struct
 import time
 import re
 
+import socket
+
 #*** Ryu imports:
 from ryu.lib import addrconv
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import lldp
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
 from ryu.lib.packet import tcp
 
 #*** nmeta imports:
@@ -79,16 +82,27 @@ class IdentityInspect(object):
             #*** Add console log handler to logger:
             self.logger.addHandler(self.console_handler)
 
-        #*** Instantiate the System and NIC Identity Tables:
+        #*** Instantiate the System and NIC Identity Tables (Legacy):
         self._sys_identity_table = nmisc.AutoVivification()
         self._nic_identity_table = nmisc.AutoVivification()
+        #*** Identity Dictionaries
+        #***  Let these be accessed directly to avoid overhead of getters:
+        self.id_mac = {}
+        self.id_ip = {}
+        self.id_node = {}
+        self.id_service = {}
         #*** Initialise Identity Tables unique reference numbers:
         #*** Start at 1 so that value 0 can be used for boolean
         #*** false on checks
         self._sys_id_ref = 1
         self._nic_id_ref = 1
-        
-    def check_identity(self, policy_attr, policy_value, pkt):
+        #*** Get config values for tidy up of dynamic data:
+        self.max_age_nic = _config.get_value('identity_nic_table_max_age')
+        self.max_age_sys = _config.\
+                                     get_value('identity_system_table_max_age')
+        self.arp_max = _config.get_value('identity_arp_max_age')
+
+    def check_identity(self, policy_attr, policy_value, pkt, ctx):
         """
         Passed an identity attribute, value and packet and
         return True or False based on whether or not the packet strongly
@@ -96,7 +110,8 @@ class IdentityInspect(object):
         """
         pkt_eth = pkt.get_protocol(ethernet.ethernet)
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)         
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
+        pkt_tcp = pkt.get_protocol(tcp.tcp)
         if policy_attr == "identity_lldp_chassisid":
             sys_ref = self._get_sys_ref_by_chassisid(policy_value)
             if sys_ref:
@@ -109,20 +124,22 @@ class IdentityInspect(object):
                         return True
                     if pkt_eth.dst == self._get_nic_MAC_addr(nic_ref):
                         #*** Dest MAC addr matches the NIC MAC address
-                        return True                        
-                    if pkt_ip4:                                         
+                        return True
+                    if pkt_ip4:
                         if pkt_ip4.src == self._get_nic_ip4_addr(nic_ref):
                             #*** Source IP addr matches the NIC identity IP
                             return True
                         if pkt_ip4.dst == self._get_nic_ip4_addr(nic_ref):
                             #*** Dest IP addr matches the NIC identity IP
-                            return True                                
+                            return True
             else:
                 #*** Didn't match that LLDP Chassis ID so return false:
-                return False  
+                return False
+
         elif ((policy_attr == "identity_lldp_systemname") or 
               (policy_attr == "identity_lldp_systemname_re")):
-            sys_ref = self._get_sys_ref_by_systemname(policy_attr, policy_value)
+            sys_ref = self._get_sys_ref_by_systemname(policy_attr,
+                                                           policy_value)
             if sys_ref:
                 #*** Have matched a record with that system name, now check 
                 #*** if the packet relates to that system:
@@ -133,20 +150,82 @@ class IdentityInspect(object):
                         return True
                     if pkt_eth.dst == self._get_nic_MAC_addr(nic_ref):
                         #*** Dest MAC addr matches the NIC MAC address
-                        return True                        
-                    if pkt_ip4:                                          
+                        return True
+                    if pkt_ip4:
                         if pkt_ip4.src == self._get_nic_ip4_addr(nic_ref):
                             #*** Source IP addr matches the NIC identity IP
                             return True
                         if pkt_ip4.dst == self._get_nic_ip4_addr(nic_ref):
                             #*** Dest IP addr matches the NIC identity IP
-                            return True        
+                            return True
             else:
                 #*** Didn't match that LLDP system name so return false:
-                return False          
+                return False
+
+        elif policy_attr == "identity_service_dns":
+            #*** Look up service in id_ip structure:
+            ips = []
+            if pkt_ip4:
+                #*** turn the src and dst IPs into a list so can iterate:
+                ips = [pkt_ip4.src, pkt_ip4.dst]
+            if pkt_ip6:
+                #*** turn the src and dst IPs into a list so can iterate:
+                ips = [pkt_ip6.src, pkt_ip6.dst]
+            if ctx in self.id_ip:
+                ip_ctx = self.id_ip[ctx]
+                for ip in ips:
+                    if ip in self.id_ip[ctx]:
+                        ip_ctx_ip = ip_ctx[ip]
+                        if 'service' in ip_ctx_ip:
+                            for service in ip_ctx_ip['service']:
+                                if service == policy_value:
+                                    #*** Matched service but is it valid?:
+                                    if self.valid_id_ip_service(ctx, ip,
+                                                                    service):
+                                        return True
+
+        elif policy_attr == "identity_service_dns_re":
+            #*** Look up service in id_ip structure:
+            ips = []
+            if pkt_ip4:
+                #*** turn the src and dst IPs into a list so can iterate:
+                ips = [pkt_ip4.src, pkt_ip4.dst]
+            if pkt_ip6:
+                #*** turn the src and dst IPs into a list so can iterate:
+                ips = [pkt_ip6.src, pkt_ip6.dst]
+            if ctx in self.id_ip:
+                ip_ctx = self.id_ip[ctx]
+                for ip in ips:
+                    if ip in self.id_ip[ctx]:
+                        ip_ctx_ip = ip_ctx[ip]
+                        if 'service' in ip_ctx_ip:
+                            for service in ip_ctx_ip['service']:
+                                if (re.match(policy_value, service)):
+                                    #*** Matched service but is it valid?:
+                                    if self.valid_id_ip_service(ctx, ip,
+                                                                    service):
+                                        return True
+
         else:
             self.logger.error("Policy attribute %s did not match", policy_attr)
             return False
+
+    def valid_id_ip_service(self, ctx, ip, service):
+        """
+        Passed variables to look up a service in id_ip structure.
+        Check that this service is valid (i.e. not stale)
+        Return boolean
+        """
+        _time = time.time()
+        svc = self.id_ip[ctx][ip]['service'][service]
+        if 'source' in svc:
+            if svc['source'] == 'dns' or svc['source'] == 'dns_cname':
+                last_seen = svc['last_seen']
+                ttl = svc['ttl']
+                if (last_seen + ttl) > _time:
+                    #*** TTL is current, so service is valid:
+                    return True
+        return False
 
     def lldp_in(self, pkt, dpid, inport):
         """
@@ -173,6 +252,96 @@ class IdentityInspect(object):
             self.logger.warning("Passed an LLDP packet that did not parse "
                                        "properly")
             return(0)
+
+    def dns_reply_in(self, queries, answers, ctx):
+        """
+        Passed a DNS parameters and a context
+        and add to relevant metadata
+        """
+        #*** TBD: Need to add security to this... Checks are
+        #*** needed to ensure that the answer is a response
+        #*** to a query, and that the relevant fields match
+        #*** to ensure response is not spoofed.
+        for qname in queries:
+            self.logger.debug("dns_query=%s", qname.name)
+        for answer in answers:
+            if answer.type == 1:
+                #*** DNS A Record:
+                answer_ip = socket.inet_ntoa(answer.rdata)
+                answer_name = answer.name
+                answer_ttl = answer.ttl
+                self.logger.debug("dns_answer_name=%s dns_answer_A=%s "
+                                "answer_ttl=%s", 
+                                answer_name, answer_ip, answer_ttl)
+                #*** Make sure context key exists:
+                self.id_ip.setdefault(ctx, {})
+                if not answer_ip in self.id_ip[ctx]:
+                    #*** MAC not in table, add it:
+                    self.id_ip[ctx].setdefault(answer_ip, {})
+                #*** Ensure 'service' key exists:
+                self.id_ip[ctx][answer_ip].setdefault('service', {})
+                #*** Check if know mapping to service:
+                if not answer_name in self.id_ip[ctx][answer_ip]['service']:
+                    #*** Add service name to this IP:
+                    self.id_ip[ctx][answer_ip]['service'][answer_name] = {}
+                #*** Update time last seen and set source attribution:
+                svc = self.id_ip[ctx][answer_ip]['service'][answer_name]
+                svc['last_seen'] = time.time()
+                svc['ttl'] = answer_ttl
+                svc['source'] = 'dns'
+                #*** Check if service is a CNAME for another domain:
+                #*** Make sure context key exists:
+                self.id_service.setdefault(ctx, {})
+                if answer_name in self.id_service[ctx]:
+                    #*** Add the original domain to the IP so that
+                    #*** rules can be written for services without
+                    #*** needing to understand CNAMES
+                    #*** Update the service that is the cname to ref this:
+                    svc['source'] = 'dns_cname'
+                    #*** Could be multiple original domains for the cname:
+                    odom_dict = self.id_service[ctx][answer_name]['domain']
+                    for odom_value in odom_dict:
+                        ipsvcodom = self.id_ip[ctx][answer_ip]['service'] \
+                                                .setdefault(odom_value, {})
+                        ipsvcodom['last_seen'] = time.time()
+                        ipsvcodom['ttl'] = answer.ttl
+                        ipsvcodom['source'] = 'dns'
+            elif answer.type == 5:
+                #*** DNS CNAME Record:
+                answer_cname = answer.cname
+                answer_name = answer.name
+                self.logger.debug("dns_answer_name=%s dns_answer_CNAME=%s", 
+                                answer_name, answer_cname)
+                svc_ctx = self.id_service.setdefault(ctx, {})
+                svc_cname = svc_ctx.setdefault(answer_cname, {})
+                svc_cname['type'] = 'dns_cname'
+                svc_cname_dom = svc_cname.setdefault('domain', {})
+                svc_cname_dom_a = svc_cname_dom.setdefault(answer.name, {})
+                svc_cname_dom_a['last_seen'] = time.time()
+                svc_cname_dom_a['ttl'] = answer.ttl
+            else:
+                #*** Not a type that we handle yet
+                pass
+
+    def arp_reply_in(self, arped_ip, arped_mac, ctx):
+        """
+        Passed an IPv4 ARP reply MAC and IPv4 address and a context
+        and add to relevant metadata
+        """
+        #*** Make sure context key exists:
+        self.id_mac.setdefault(ctx, {})
+        if not arped_mac in self.id_mac[ctx]:
+            #*** MAC not in table, add it:
+            self.id_mac[ctx].setdefault(arped_mac, {})
+        #*** Ensure 'ip' key exists:
+        self.id_mac[ctx][arped_mac].setdefault('ip', {})
+        #*** Check if know mapping to IPv4 addr:
+        if not arped_ip in self.id_mac[ctx][arped_mac]['ip']:
+            #*** Add IP to this MAC:
+            self.id_mac[ctx][arped_mac]['ip'][arped_ip] = {}
+        #*** Update time last seen and set source attribution:
+        self.id_mac[ctx][arped_mac]['ip'][arped_ip]['last_seen'] = time.time()
+        self.id_mac[ctx][arped_mac]['ip'][arped_ip]['source'] = 'arp'
 
     def ip4_in(self, pkt):
         """
@@ -206,7 +375,41 @@ class IdentityInspect(object):
         """
         return self._sys_identity_table
 
-    def maintain_identity_tables(self, max_age_nic, max_age_sys):
+    def get_augmented_fm_table(self, _flows):
+        """
+        Return the flow metadata table augmented with
+        appropriate identity metadata
+        """
+        _result_dict = {}
+        for idx in _flows:
+            flow = _flows[idx]
+            if 'ip_A' in flow:
+                ip = flow['ip_A']
+                #self.logger.debug("checking ip_A=%s", ip)
+                for ctx in self.id_ip:
+                    ip_ctx = self.id_ip[ctx]
+                    if ip:
+                        if ip in ip_ctx:
+                            ip_ctx_ip = ip_ctx[ip]
+                            #*** Found IP in id_ip, add any metadata to flow:
+                            if 'service' in ip_ctx_ip:
+                                flow['ip_A_services'] = ip_ctx_ip['service']
+            if 'ip_B' in flow:
+                ip = flow['ip_B']
+                #self.logger.debug("checking ip_B=%s", ip)
+                for ctx in self.id_ip:
+                    ip_ctx = self.id_ip[ctx]
+                    if ip:
+                        if ip in ip_ctx:
+                            ip_ctx_ip = ip_ctx[ip]
+                            #*** Found IP in id_ip, add any metadata to flow:
+                            if 'service' in ip_ctx_ip:
+                                flow['ip_B_services'] = ip_ctx_ip['service']
+            #*** Accumulate updated flows into results dict
+            _result_dict[idx] = flow
+        return _result_dict
+
+    def maintain_identity_tables(self):
         """
         Deletes old entries from Identity NIC and 
         System tables.
@@ -221,7 +424,7 @@ class IdentityInspect(object):
         for _table_ref in self._nic_identity_table:
             if self._nic_identity_table[_table_ref]['time_last']:
                 _last = self._nic_identity_table[_table_ref]['time_last']
-                if (_time - _last > max_age_nic):
+                if (_time - _last > self.max_age_nic):
                     self.logger.debug("Deleting NIC"
                                       " table ref id=%s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
@@ -235,7 +438,7 @@ class IdentityInspect(object):
         for _table_ref in self._sys_identity_table:
             if self._sys_identity_table[_table_ref]['time_last']:
                 _last = self._sys_identity_table[_table_ref]['time_last']
-                if (_time - _last > max_age_sys):
+                if (_time - _last > self.max_age_sys):
                     self.logger.debug("Deleting "
                                       "System table ref id=%s", _table_ref)
                     #*** Can't delete while iterating dictionary so just note
@@ -244,6 +447,74 @@ class IdentityInspect(object):
         #*** Now iterate over the list of references to delete:
         for _del_ref in _for_deletion:
             del self._sys_identity_table[_del_ref]
+
+        #*** Maintain the id_mac structure:
+        _for_deletion = []
+        self.logger.debug("Maintaining the id_mac structure")
+        for ctx in self.id_mac:
+            mac_ctx = self.id_mac[ctx]
+            for mac in mac_ctx:
+                mac_ctx_mac = mac_ctx[mac]
+                for ip in mac_ctx_mac['ip']:
+                    mac_ctx_mac_ip = mac_ctx_mac['ip'][ip]
+                    last_seen = mac_ctx_mac_ip['last_seen']
+                    #*** Has the ARP not been seen for more than max age?: 
+                    if (last_seen + self.arp_max) < _time:
+                        #*** Mark for deletion:
+                        del_dict = {'ctx': ctx, 'mac': mac, 'ip': ip}
+                        _for_deletion.append(del_dict)
+                        age = _time - last_seen
+                        self.logger.debug("marking ARP ip=%s mac=%s age=%s "
+                                     "seconds for deletion", ip, mac, age)
+        #*** Now iterate over the list of references to delete:
+        for _del_ref in _for_deletion:
+            ctx = _del_ref['ctx']
+            mac = _del_ref['mac']
+            ip = _del_ref['ip']
+            del self.id_mac[ctx][mac]['ip'][ip]
+            #*** TBD: check if that was the only IP for that MAC and if so
+            #*** delete the MAC:
+            if self.id_mac[ctx][mac]['ip'] == {}:
+                del self.id_mac[ctx][mac]['ip']
+                if self.id_mac[ctx][mac] == {}:
+                    del self.id_mac[ctx][mac]
+
+        #*** Maintain the id_ip structure:
+        _for_deletion = []
+        self.logger.debug("Maintaining the id_ip structure")
+        for ctx in self.id_ip:
+            ip_ctx = self.id_ip[ctx]
+            for ip in ip_ctx:
+                ip_ctx_ip = ip_ctx[ip]
+                if 'service' in ip_ctx_ip:
+                    for service in ip_ctx_ip['service']:
+                        ip_ctx_ip_svc = ip_ctx_ip['service'][service]
+                        self.logger.debug("service is %s", service)
+                        if ip_ctx_ip_svc['source'] == 'dns' or \
+                                        ip_ctx_ip_svc['source'] == 'dns_cname':
+                            self.logger.debug("source is dns or dns_cname")
+                            last_seen = ip_ctx_ip_svc['last_seen']
+                            ttl = ip_ctx_ip_svc['ttl']
+                            if (last_seen + ttl) < _time:
+                                #*** Mark for deletion:
+                                del_dict = {'ctx': ctx, 'ip': ip, 
+                                                 'service': service}
+                                _for_deletion.append(del_dict)
+                                self.logger.debug("marking IP del_dict=%s "
+                                     "for deletion", del_dict)
+        #*** Now iterate over the list of references to delete:
+        for _del_ref in _for_deletion:
+            ctx = _del_ref['ctx']
+            ip = _del_ref['ip']
+            service = _del_ref['service']
+            del self.id_ip[ctx][ip]['service'][service]
+            #*** also delete the IP address if no other services or other keys
+            #*** exist:
+            if self.id_ip[ctx][ip]['service'] == {}:
+                del self.id_ip[ctx][ip]['service']
+                if self.id_ip[ctx][ip] == {}:
+                    self.logger.debug("struct=id_ip deleting ip=%s", ip)
+                    del self.id_ip[ctx][ip]
 
     def _get_sys_ref_by_chassisid(self, chassis_id_text):
         """

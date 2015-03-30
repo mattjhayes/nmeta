@@ -13,32 +13,14 @@ tc_rules:
           actions:
               set_qos_tag: QoS_treatment=system_priority
               set_desc_tag: description="OpenFlow Protocol Traffic"
-        - comment: Explicitly set Iperf traffic to default class
+        - comment: Use Case Payload-1 - Low Priority FTP Traffic
           match_type: any
           conditions_list:
               - match_type: any
-                tcp_src: 5001
-                tcp_dst: 5001
+                payload_type: ftp
           actions:
-              set_qos_tag: QoS_treatment=default_priority
-              set_desc_tag: description="Default Priority Iperf Traffic"  
-        - comment: SSH traffic
-          match_type: any
-          conditions_list:
-              - match_type: any
-                tcp_src: 22
-                tcp_dst: 22
-          actions:
-              set_qos_tag: QoS_treatment=high_priority
-              set_desc_tag: description="High Priority SSH Traffic"
-        - comment: Use Case Identity-1 - High Priority Business Traffic
-          match_type: any
-          conditions_list:
-              - match_type: any
-                identity_lldp_systemname_re: '.*\.audit\.example\.com'
-          actions:
-              set_qos_tag: QoS_treatment=high_priority
-              set_desc_tag: description="High Priority Business Traffic" 
+              set_qos_tag: QoS_treatment=low_priority
+              set_desc_tag: description="Low Priority FTP Traffic" 
 #
 identity:
     # Control how identity information is collected

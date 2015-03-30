@@ -25,18 +25,18 @@ syslog_format: "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s"
 #
 #*** Syslog Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_s: DEBUG
+nmeta_logging_level_s: INFO
 flow_logging_level_s: INFO
 qos_logging_level_s: INFO
-tc_policy_logging_level_s: DEBUG
-tc_static_logging_level_s: DEBUG
+tc_policy_logging_level_s: INFO
+tc_static_logging_level_s: INFO
 tc_identity_logging_level_s: INFO
 tc_payload_logging_level_s: INFO
 tc_statistical_logging_level_s: INFO
 ca_logging_level_s: INFO
 measure_logging_level_s: INFO
-forwarding_logging_level_s: DEBUG
-dns_logging_level_s: DEBUG
+forwarding_logging_level_s: INFO
+api_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
 #*** Set to 1 if want to log to console:
@@ -47,18 +47,18 @@ console_format: "%(levelname)s: %(name)s %(funcName)s: %(message)s"
 #
 #*** Console Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_c: DEBUG
+nmeta_logging_level_c: INFO
 flow_logging_level_c: INFO
 qos_logging_level_c: INFO
-tc_policy_logging_level_c: DEBUG
-tc_static_logging_level_c: DEBUG
-tc_identity_logging_level_c: INFO
+tc_policy_logging_level_c: INFO
+tc_static_logging_level_c: INFO
+tc_identity_logging_level_c: DEBUG
 tc_payload_logging_level_c: INFO
 tc_statistical_logging_level_c: INFO
 ca_logging_level_c: INFO
 measure_logging_level_c: INFO
-forwarding_logging_level_c: DEBUG
-dns_logging_level_c: DEBUG
+forwarding_logging_level_c: INFO
+api_logging_level_c: INFO
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds
@@ -81,8 +81,12 @@ identity_system_table_max_age: 600
 #*** Identity NIC and System Tables interval in seconds between
 #*** running the tidy-up process that removes old
 #*** entries:
-identity_table_tidyup_interval: 60
+identity_table_tidyup_interval: 234
 #
+#*** Max age in seconds for a learnt ARP before considering for deletion
+#*** and ignoring for identity purposes:
+identity_arp_max_age: 60
+
 #*** Statistical Flow Classification in Progress (FCIP) table entry
 #*** maximum age in seconds before being eligible for removal:
 statistical_fcip_table_max_age: 600
@@ -109,5 +113,11 @@ measure_buckets_max_age: 600
 #*** in seconds between running the tidy-up process that removes old
 #*** buckets:
 measure_buckets_tidyup_interval: 321
-
+#
+#========== MEASUREMENT =============================
+#*** Control how measurements are made regarding
+#*** nmeta performance etc.
+#
+#*** Number of preceding seconds that events are averaged over:
+event_rate_interval: 60
 

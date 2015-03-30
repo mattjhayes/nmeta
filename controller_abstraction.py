@@ -139,7 +139,32 @@ class ControllerAbstract(object):
         #*** Build a match that is dependant on the IP and OpenFlow versions:
         if (pkt_tcp and pkt_ip4 and 
                      ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
+            #*** TBD: Build an exact match to get maximum performance from
+            #*** software switches by allowing them to install into
+            #*** a hash instead of linear table
+            #*** TBD: dynamically set values for dl_vlan,
+            #***  dl_vlan_pcp, nw_tos and dl_type (not done yet)
+            #*** Tested this with Pantou and it initially worked but then
+            #*** failed, possibly due to static setting of extra values,
+            #*** so backed it out.
+
+            #*** Temporary workaround to only do full match for non-SSH traffic
+            if pkt_ip4.src != 22 and pkt_ip4.dst != 22:
+                match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
+                        in_port=in_port,
+                        dl_vlan=0xffff,
+                        dl_vlan_pcp=0x00,
+                        nw_tos=0x00,
+                        dl_src=haddr_to_bin(eth.src),
+                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_type=0x0800,
+                        nw_src=self._ipv4_t2i(pkt_ip4.src),
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), 
+                        nw_proto=6,
+                        tp_src=pkt_tcp.src_port, 
+                        tp_dst=pkt_tcp.dst_port)
+            else:
+                match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 

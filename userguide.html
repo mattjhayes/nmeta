@@ -140,7 +140,7 @@ in YAML ("YAML Ain't Markup Language") format
 
 <p>Static classifiers match on attributes in packet headers, or on environmental attributes</p>
 
-<p>Supported attributes are</p>
+<p>Supported attributes are:</p>
 <table>
   <tr>
     <th>
@@ -271,6 +271,66 @@ in YAML ("YAML Ain't Markup Language") format
 <pre><code>identity_lldp_systemname_re: '.*\.audit\.example\.com'
 </code></pre>
 
+<p>Supported attributes are:</p>
+<table>
+  <tr>
+    <th>
+      Name
+    </th>
+    <th>
+      Description
+    </th>
+    <th>
+      Example(s)
+    </th>
+  </tr>
+  <tr>
+    <td>
+      identity_lldp_systemname
+    </td>
+    <td>
+      Exact match against a system name discovered via LLDP
+    </td>
+    <td>
+      identity_lldp_systemname: bob.example.com
+    </td>
+  </tr>
+  <tr>
+    <td>
+      identity_lldp_systemname_re
+    </td>
+    <td>
+      Regular expression match against a system name discovered via LLDP
+    </td>
+    <td>
+      identity_lldp_systemname_re: '.*\.audit\.example\.com'
+    </td>
+  </tr>
+  <tr>
+    <td>
+      identity_service_dns
+    </td>
+    <td>
+      Exact match of either IP address in a flow against a DNS domain
+    </td>
+    <td>
+      identity_service_dns: www.example.com
+    </td>
+  </tr>
+  <tr>
+    <td>
+      identity_service_dns_re
+    </td>
+    <td>
+      Regular expression match of either IP address in a flow against a DNS domain
+    </td>
+    <td>
+      identity_service_dns_re: '.*\.example\.com'
+    </td>
+  </tr>
+</table>
+
+
 <h3>
 <a id="statistical-classifiers" class="anchor" href="#statistical-classifiers" aria-hidden="true"><span class="octicon octicon-link"></span></a>Statistical Classifiers</h3>
 
@@ -312,16 +372,36 @@ in YAML ("YAML Ain't Markup Language") format
 <pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/
 </code></pre>
 
+<p>Return the Flow Metadata Table augmented with extra identity metadata:</p>
+
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/flowtable/augmented/
+</code></pre>
+
 <h3>
 <a id="participant-metadata-api" class="anchor" href="#participant-metadata-api" aria-hidden="true"><span class="octicon octicon-link"></span></a>Participant Metadata API Calls
 </h3>
 
-<p>Return the Identity NIC Table:</p>
+<p>Return the Identity MAC structure:</p>
+
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/mac/
+</code></pre>
+
+<p>Return the Identity IP structure:</p>
+
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/ip/
+</code></pre>
+
+<p>Return the Identity Service structure:</p>
+
+<pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/service/
+</code></pre>
+
+<p>Return the Identity NIC Table (old - will be deprecated at some stage):</p>
 
 <pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/nictable/
 </code></pre>
 
-<p>Return the Identity System Table:</p>
+<p>Return the Identity System Table (old - will be deprecated at some stage):</p>
 
 <pre><code>sudo python ~/nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/systemtable/
 </code></pre>
@@ -350,9 +430,16 @@ in YAML ("YAML Ain't Markup Language") format
   Logging
 </h1>
 
-<p>nmeta is configured to log to
-TBD</p>
+<p>
+  Logging is configured through the main policy is stored in the YAML file:
+</p>
 
+<pre><code>~/nmeta/config/main_policy.yaml
+</code></pre>
+
+<p>
+  Logging is separately configured for syslog and to the console and levels are configurable per module. The log format is also customisable.
+</p>
       </section>
     </div>
 

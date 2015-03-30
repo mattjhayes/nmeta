@@ -149,8 +149,122 @@
 </p>
 
 <p>
-  TBD: List of keys and values to use in log messages
+  Common keys and values to use in log messages:
 </p>
+<table>
+  <tr>
+    <th>
+      Attribute
+    </th>
+    <th>
+      Description
+    </th>
+    <th>
+      Values
+    </th>
+    <th>
+      Examples
+    </th>
+  </tr>
+  <tr>
+    <td>
+      event
+    </td>
+    <td>
+      main indicator as to type of message
+    </td>
+    <td>
+      &nbsp;
+    </td>
+    <td>
+      event=add_flow, event=pi_ipv4
+    </td>
+  </tr>
+  <tr>
+    <td>
+      ofv
+    </td>
+    <td>
+      OpenFlow version
+    </td>
+    <td>
+      &nbsp;
+    </td>
+    <td>
+      ofv=%s
+    </td>
+  </tr>
+  <tr>
+    <td>
+      match
+    </td>
+    <td>
+      A flow match object
+    </td>
+    <td>
+      &nbsp;
+    </td>
+    <td>
+      match=%s
+    </td>
+  </tr>
+  <tr>
+    <td>
+      match_type
+    </td>
+    <td>
+      Granularity of flow match
+    </td>
+    <td>
+      tcp, ip, eth
+    </td>
+    <td>
+      match_type=%s
+    </td>
+  </tr>
+  <tr>
+    <td>
+      actions
+    </td>
+    <td>
+      Actions to carry out for a flow match
+    </td>
+    <td>
+      &nbsp;
+    </td>
+    <td>
+      actions=%s
+    </td>
+  </tr>
+  <tr>
+    <td>
+      dpid
+    </td>
+    <td>
+      Datapath Identifier
+    </td>
+    <td>
+      &nbsp;
+    </td>
+    <td>
+      dpid=%s
+    </td>
+  </tr>
+  <tr>
+    <td>
+      ip_ver
+    </td>
+    <td>
+      IP version
+    </td>
+    <td>
+      4,6
+    </td>
+    <td>
+      ip_ver=4, ip_ver=6
+    </td>
+  </tr>
+</table>
 
 <p>
   TBD: Logging code examples

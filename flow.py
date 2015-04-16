@@ -89,6 +89,8 @@ class FlowMetadata(object):
         self.qos = qos.QoS(_config)
         #*** Do you want really verbose debugging?
         self.extra_debugging = 1
+        #*** Find out if we're augmenting flow metadata with identity metadata:
+        self.augment = _config.get_value('augment_flow_metadata_with_identity')
         
     def update_flowmetadata(self, msg, flow_actions):
         """
@@ -270,15 +272,25 @@ class FlowMetadata(object):
         self.logger.debug("Adding new record to flow metadata table")
         _pkt_eth = pkt.get_protocol(ethernet.ethernet)
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        _pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         _pkt_tcp = pkt.get_protocol(tcp.tcp)
         #*** Add timestamp:
         self._fm_table[self._fm_ref]["time_first"] = time.time()
         self._fm_table[self._fm_ref]["time_last"] = time.time()
-        if _pkt_ip4:
+        if _pkt_ip4 or _pkt_ip6:
             #*** Add IP info:
-            self._fm_table[self._fm_ref]["ip_A"] = _pkt_ip4.src
-            self._fm_table[self._fm_ref]["ip_B"] = _pkt_ip4.dst
-            self._fm_table[self._fm_ref]["ip_proto"] = _pkt_ip4.proto
+            if _pkt_ip4:
+                self._fm_table[self._fm_ref]["ip_A"] = _pkt_ip4.src
+                self._fm_table[self._fm_ref]["ip_B"] = _pkt_ip4.dst
+                self._fm_table[self._fm_ref]["ip_proto"] = _pkt_ip4.proto
+            if _pkt_ip6:
+                self._fm_table[self._fm_ref]["ip_A"] = _pkt_ip6.src
+                self._fm_table[self._fm_ref]["ip_B"] = _pkt_ip6.dst
+                self._fm_table[self._fm_ref]["ip_proto"] = _pkt_ip6.proto
+            if self.augment:
+                #*** Augment flow metadata with IP identity metadata:
+                #*** <TBD>
+                pass
             if _pkt_tcp:
                 #*** Add TCP info:
                 self._fm_table[self._fm_ref]["tcp_A"] = _pkt_tcp.src_port
@@ -319,7 +331,8 @@ class FlowMetadata(object):
         _packet_in_count = \
                    self._fm_table[table_ref]['number_of_packets_to_controller']
         if _packet_in_count:
-            self._fm_table[table_ref]["number_of_packets_to_controller"] = _packet_in_count + 1
+            self._fm_table[table_ref]["number_of_packets_to_controller"] = \
+                                           _packet_in_count + 1
         else:
             self._fm_table[table_ref]["number_of_packets_to_controller"] = 1
         #*** Want to add any extra parameters to the flow record here:

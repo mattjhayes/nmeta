@@ -79,7 +79,8 @@ CONFIG_TEMPLATE = \
         "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s",
     'console_log_enabled': 1,
     'console_format': "%(levelname)s: %(name)s %(funcName)s: %(message)s",
-    'event_rate_interval': 60
+    'event_rate_interval': 60,
+    'augment_flow_metadata_with_identity': 1
 }
 
 class Config(object):

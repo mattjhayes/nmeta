@@ -286,7 +286,7 @@ class FlowMetadata(object):
             if _pkt_ip6:
                 self._fm_table[self._fm_ref]["ip_A"] = _pkt_ip6.src
                 self._fm_table[self._fm_ref]["ip_B"] = _pkt_ip6.dst
-                self._fm_table[self._fm_ref]["ip_proto"] = _pkt_ip6.proto
+                self._fm_table[self._fm_ref]["ip_next_header"] = _pkt_ip6.nxt
             if self.augment:
                 #*** Augment flow metadata with IP identity metadata:
                 #*** <TBD>

@@ -50,8 +50,10 @@ import yaml
 
 #*** Describe supported syntax in main_policy.yaml so that it can be tested
 #*** for validity. Here are valid policy rule attributes:
-TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'match_type', 'conditions_list', 
-                                       'actions')
+TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment',
+                                   'match_type',
+                                   'conditions_list',
+                                   'actions')
 #*** Dictionary of valid conditions stanza attributes with type:
 TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'eth_dst': 'MACAddress', 
@@ -68,10 +70,17 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'statistical_qos_bandwidth_1': 'String',
                                'match_type': 'MatchType',
                                'conditions_list': 'PolicyConditions'}
-TC_CONFIG_ACTIONS = ('set_qos_tag', 'set_desc_tag', 'pass_return_tags')
-TC_CONFIG_MATCH_TYPES = ('any', 'all', 'statistical')
+TC_CONFIG_ACTIONS = ('set_qos_tag',
+                     'set_desc_tag',
+                     'pass_return_tags')
+TC_CONFIG_MATCH_TYPES = ('any',
+                         'all',
+                         'statistical')
 #*** Keys that must exist under 'identity' in the policy:
-IDENTITY_KEYS = ('arp', 'lldp', 'dns', 'dhcp')
+IDENTITY_KEYS = ('arp', 
+                 'lldp',
+                 'dns',
+                 'dhcp')
 
 class TrafficClassificationPolicy(object):
     """
@@ -377,6 +386,7 @@ class TrafficClassificationPolicy(object):
             pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
             if pkt_dhcp:
                 self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
+                #*** <TBD>
         if self._main_policy['identity']['dns'] == 1:
             #*** Check to see if it is an IPv4 DNS packet
             #***  and if so pass to the identity module to process

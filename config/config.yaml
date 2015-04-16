@@ -120,4 +120,7 @@ measure_buckets_tidyup_interval: 321
 #
 #*** Number of preceding seconds that events are averaged over:
 event_rate_interval: 60
-
+#
+#========== FLOW METADATA =============================
+# Turn this on to augment flow metadata table with identity metadata:
+augment_flow_metadata_with_identity: 1

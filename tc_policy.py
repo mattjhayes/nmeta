@@ -386,7 +386,9 @@ class TrafficClassificationPolicy(object):
             pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
             if pkt_dhcp:
                 self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
+                #*** Looking for presence of option 12 - host name:
                 #*** <TBD>
+                
         if self._main_policy['identity']['dns'] == 1:
             #*** Check to see if it is an IPv4 DNS packet
             #***  and if so pass to the identity module to process

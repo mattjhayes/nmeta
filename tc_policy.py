@@ -406,9 +406,10 @@ class TrafficClassificationPolicy(object):
                 if pkt_dhcp:
                     self.logger.debug("event=DHCP via dpkt dhcp=%s", pkt_dhcp)
                     if pkt_dhcp.opts:
-                        print "dhcp options are %s" % pkt_dhcp.opts
-                    if pkt_dhcp.DHCP_OPT_HOSTNAME:
-                        print "dhcp host name is %s" % pkt_dhcp.DHCP_OPT_HOSTNAME
+                        self.logger.debug("dhcp options are %s", pkt_dhcp.opts)
+                    if pkt_dhcp.opts.DHCP_OPT_HOSTNAME:
+                        self.logger.debug("dhcp host name is %s", 
+                                     pkt_dhcp.opts.DHCP_OPT_HOSTNAME)
 
         if self._main_policy['identity']['dns'] == 1:
             #*** Check to see if it is an IPv4 DNS packet

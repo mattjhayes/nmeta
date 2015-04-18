@@ -370,6 +370,9 @@ class TrafficClassificationPolicy(object):
         #*** context is future-proofing for when the system will support 
         #*** multiple contexts. For now just set to 'default':
         context = 'default'
+        pkt_tcp = pkt.get_protocol(tcp.tcp)
+        pkt_udp = pkt.get_protocol(udp.udp)
+
         if self._main_policy['identity']['arp'] == 1:
             #*** Check to see if it is an IPv4 ARP reply
             #***  and if so harvest the information:
@@ -380,6 +383,7 @@ class TrafficClassificationPolicy(object):
                     self.logger.debug("event=ARP reply arp=%s", pkt_arp)
                     self.identity.arp_reply_in \
                                 (pkt_arp.src_ip, pkt_arp.src_mac, context)
+
         if self._main_policy['identity']['dhcp'] == 1:
             #*** Check to see if it is an IPv4 DHCP ACK
             #***  and if so harvest the information:
@@ -407,8 +411,6 @@ class TrafficClassificationPolicy(object):
             #***  and if so pass to the identity module to process
             #*** At the time of writing there isn't a DNS parser in Ryu
             #***  so do some dodgy stuff here in the interim...
-            pkt_tcp = pkt.get_protocol(tcp.tcp)
-            pkt_udp = pkt.get_protocol(udp.udp)
             dns = 0
             if pkt_udp:
                 if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:

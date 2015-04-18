@@ -387,12 +387,8 @@ class TrafficClassificationPolicy(object):
         if self._main_policy['identity']['dhcp'] == 1:
             #*** Check to see if it is an IPv4 DHCP ACK
             #***  and if so harvest the information:
-            pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
-            if pkt_dhcp:
-                self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
-                #*** Looking for presence of option 12 - host name:
-                #*** <TBD>
-            #*** Test using dpkt as Ryu library doesn't appear to work???
+            pkt_dhcp = 0
+            #*** Use dpkt as Ryu library doesn't appear to work???
             if pkt_udp:
                 if pkt_udp.src_port == 67 or pkt_udp.dst_port == 67:
                     #*** Use dpkt to parse UDP DNS data:
@@ -404,11 +400,13 @@ class TrafficClassificationPolicy(object):
                             "Exception %s, %s, %s",
                              exc_type, exc_value, exc_traceback)
                 if pkt_dhcp:
-                    self.logger.debug("event=DHCP via dpkt dhcp=%s", pkt_dhcp)
                     if pkt_dhcp.opts:
-                        self.logger.debug("dhcp options are %s", pkt_dhcp.opts)
+                        self.logger.debug("dhcp options are present...")
                         for opt in pkt_dhcp.opts:
-                            self.logger.debug("dhcp option is %s", opt)
+                            if opt[0] == 12:
+                                dhcp_hostname = opt[1]
+                                self.logger.debug("dhcp host name is %s", 
+                                                          dhcp_hostname)
 
         if self._main_policy['identity']['dns'] == 1:
             #*** Check to see if it is an IPv4 DNS packet

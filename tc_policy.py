@@ -388,7 +388,20 @@ class TrafficClassificationPolicy(object):
                 self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
                 #*** Looking for presence of option 12 - host name:
                 #*** <TBD>
-                
+            #*** Test using dpkt as Ryu library doesn't appear to work???
+            if pkt_udp:
+                if pkt_udp.src_port == 67 or pkt_udp.dst_port == 67:
+                    #*** Use dpkt to parse UDP DNS data:
+                    try:
+                        pkt_dhcp = dpkt.dhcp.DHCP(pkt.protocols[-1])
+                    except:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        self.logger.error("DHCP extraction failed "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+                if pkt_dhcp:
+                    self.logger.debug("event=DHCP via dpkt dhcp=%s", pkt_dhcp)
+
         if self._main_policy['identity']['dns'] == 1:
             #*** Check to see if it is an IPv4 DNS packet
             #***  and if so pass to the identity module to process

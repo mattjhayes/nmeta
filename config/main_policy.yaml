@@ -41,3 +41,4 @@ identity:
     # Turn this on to collect DHCP information about address allocations and
     # hostnames:
     dhcp: 1
+

@@ -297,14 +297,15 @@ class FlowMetadata(object):
                 #*** Augment flow metadata with IP identity metadata:
                 id_ip_ref = self._nmeta.tc_policy.identity.id_ip
                 id_ip_ref.setdefault(ctx, {})
+                fm_id_ref = self._fm_table[self._fm_ref].setdefault('id', {})
                 if self._fm_table[self._fm_ref]["ip_A"]:
                     ip = self._fm_table[self._fm_ref]["ip_A"]
                     if ip in id_ip_ref[ctx]:
-                        ip['id'] = id_ip_ref[ctx][ip]
+                        fm_id_ref[ip] = id_ip_ref[ctx][ip]
                 if self._fm_table[self._fm_ref]["ip_B"]:
                     ip = self._fm_table[self._fm_ref]["ip_B"]
                     if ip in id_ip_ref[ctx]:
-                        ip['id'] = id_ip_ref[ctx][ip]
+                        fm_id_ref[ip] = id_ip_ref[ctx][ip]
             if _pkt_tcp:
                 #*** Add TCP info:
                 self._fm_table[self._fm_ref]["tcp_A"] = _pkt_tcp.src_port

@@ -269,6 +269,8 @@ class IdentityInspect(object):
             self.id_ip[ctx].setdefault(ip, {})
         #*** Ensure 'node' key exists:
         self.id_ip[ctx][ip].setdefault('node', {})
+        #*** Default the hostname:
+        self.id_ip[ctx][ip]['node'].setdefault(hostname, {})
         #*** Default the source key:
         self.id_ip[ctx][ip]['node'][hostname].setdefault('source', 'dhcp')
 

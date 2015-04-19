@@ -33,6 +33,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import arp
 from ryu.lib.packet import dhcp
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
 from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 
@@ -364,6 +365,7 @@ class TrafficClassificationPolicy(object):
         #*** Check to see if it is an IPv4 packet
         #*** and if so pass to the identity module to process:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         if pkt_ip4:
             self.identity.ip4_in(pkt)
         #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
@@ -387,10 +389,10 @@ class TrafficClassificationPolicy(object):
         if self._main_policy['identity']['dhcp'] == 1:
             #*** Check to see if it is an IPv4 DHCP ACK
             #***  and if so harvest the information:
-            pkt_dhcp = 0
             #*** Use dpkt as Ryu library doesn't appear to work???
             if pkt_udp:
                 if pkt_udp.src_port == 67 or pkt_udp.dst_port == 67:
+                    pkt_dhcp = 0
                     #*** Use dpkt to parse UDP DNS data:
                     try:
                         pkt_dhcp = dpkt.dhcp.DHCP(pkt.protocols[-1])
@@ -399,14 +401,26 @@ class TrafficClassificationPolicy(object):
                         self.logger.error("DHCP extraction failed "
                             "Exception %s, %s, %s",
                              exc_type, exc_value, exc_traceback)
-                if pkt_dhcp:
-                    if pkt_dhcp.opts:
-                        self.logger.debug("dhcp options are present...")
-                        for opt in pkt_dhcp.opts:
-                            if opt[0] == 12:
-                                dhcp_hostname = opt[1]
-                                self.logger.debug("dhcp host name is %s", 
+                    if pkt_dhcp:
+                        if pkt_dhcp.opts:
+                            #*** Iterate through options looking for 12:
+                            for opt in pkt_dhcp.opts:
+                                if opt[0] == 12:
+                                    #*** Found option 12 so grab the host name:
+                                    dhcp_hostname = opt[1]
+                                    self.logger.debug("dhcp host name is %s", 
                                                           dhcp_hostname)
+                                    if pkt_ip4:
+                                        ip = pkt_ip4.src
+                                    elif pkt_ip6:
+                                        ip = pkt_ip6.src
+                                    else:
+                                        ip = 0
+                                    #*** Call identity class with hostname etc:
+                                    self.identity.dhcp_in(pkt_eth.src,
+                                                          ip,
+                                                          hostname,
+                                                          ctx)
 
         if self._main_policy['identity']['dns'] == 1:
             #*** Check to see if it is an IPv4 DNS packet

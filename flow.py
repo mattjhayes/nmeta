@@ -40,7 +40,7 @@ class FlowMetadata(object):
     This class is instantiated by nmeta.py and provides methods to 
     add/remove/update/search flow metadata table entries
     """
-    def __init__(self, _config):
+    def __init__(self, _nmeta, _config):
         #*** Get logging config values from config class:
         _logging_level_s = _config.get_value \
                                     ('flow_logging_level_s')
@@ -91,6 +91,8 @@ class FlowMetadata(object):
         self.extra_debugging = 1
         #*** Find out if we're augmenting flow metadata with identity metadata:
         self.augment = _config.get_value('augment_flow_metadata_with_identity')
+        #*** Reference to call methods in nmeta module:
+        self._nmeta = _nmeta
         
     def update_flowmetadata(self, msg, flow_actions):
         """
@@ -269,6 +271,10 @@ class FlowMetadata(object):
         along with flow actions and add to the
         Flow Metadata (FM) table.
         """
+        #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
+        #*** context is future-proofing for when the system will support 
+        #*** multiple contexts. For now just set to 'default':
+        ctx = 'default'
         self.logger.debug("Adding new record to flow metadata table")
         _pkt_eth = pkt.get_protocol(ethernet.ethernet)
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
@@ -289,8 +295,16 @@ class FlowMetadata(object):
                 self._fm_table[self._fm_ref]["ip_next_header"] = _pkt_ip6.nxt
             if self.augment:
                 #*** Augment flow metadata with IP identity metadata:
-                #*** <TBD>
-                pass
+                id_ip_ref = self._nmeta.tc_policy.identity.id_ip
+                id_ip_ref.setdefault(ctx, {})
+                if self._fm_table[self._fm_ref]["ip_A"]:
+                    ip = self._fm_table[self._fm_ref]["ip_A"]
+                    if ip in id_ip_ref[ctx]:
+                        ip['id'] = id_ip_ref[ip]
+                if self._fm_table[self._fm_ref]["ip_B"]:
+                    ip = self._fm_table[self._fm_ref]["ip_B"]
+                    if ip in id_ip_ref[ctx]:
+                        ip['id'] = id_ip_ref[ip]
             if _pkt_tcp:
                 #*** Add TCP info:
                 self._fm_table[self._fm_ref]["tcp_A"] = _pkt_tcp.src_port

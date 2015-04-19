@@ -158,7 +158,7 @@ class NMeta(app_manager.RyuApp):
         self.measure_buckets_last_tidyup_time = time.time()
 
         #*** Instantiate Module Classes:
-        self.flowmetadata = flow.FlowMetadata(self.config)
+        self.flowmetadata = flow.FlowMetadata(self, self.config)
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.ca = controller_abstraction.ControllerAbstract(self.config)
         self.measure = measure.Measurement(self.config)

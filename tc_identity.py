@@ -261,6 +261,9 @@ class IdentityInspect(object):
         """
         #*** TBD - add lease time and ensure that request was properly acked
 
+        #*** If ip is 0.0.0.0 then just return, as not useful info:
+        if ip == '0.0.0.0':
+            return
         #*** Add to the id_ip structure:
         #*** Make sure keys exist:
         self.id_ip.setdefault(ctx, {})

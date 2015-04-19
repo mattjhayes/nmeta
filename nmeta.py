@@ -298,7 +298,7 @@ class NMeta(app_manager.RyuApp):
                 #*** Call abstraction layer to add IP flow record:
                 self.logger.debug("event=add_flow match_type=ip ip_src=%s "
                                   "ip_dst=%s ip_proto=%s ip_ver=6",
-                                  pkt_ip6.src, pkt_ip6.dst, pkt_ip6.proto)
+                                  pkt_ip6.src, pkt_ip6.dst, pkt_ip6.nxt)
                 _result = self.ca.add_flow_ip(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)

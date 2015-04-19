@@ -419,7 +419,7 @@ class TrafficClassificationPolicy(object):
                                     #*** Call identity class with hostname etc:
                                     self.identity.dhcp_in(pkt_eth.src,
                                                           ip,
-                                                          hostname,
+                                                          dhcp_hostname,
                                                           ctx)
 
         if self._main_policy['identity']['dns'] == 1:

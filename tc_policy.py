@@ -420,7 +420,7 @@ class TrafficClassificationPolicy(object):
                                     self.identity.dhcp_in(pkt_eth.src,
                                                           ip,
                                                           dhcp_hostname,
-                                                          ctx)
+                                                          context)
 
         if self._main_policy['identity']['dns'] == 1:
             #*** Check to see if it is an IPv4 DNS packet

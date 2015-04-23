@@ -47,7 +47,7 @@ console_format: "%(levelname)s: %(name)s %(funcName)s: %(message)s"
 #
 #*** Console Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_c: INFO
+nmeta_logging_level_c: DEBUG
 flow_logging_level_c: INFO
 qos_logging_level_c: INFO
 tc_policy_logging_level_c: DEBUG
@@ -55,7 +55,7 @@ tc_static_logging_level_c: INFO
 tc_identity_logging_level_c: DEBUG
 tc_payload_logging_level_c: INFO
 tc_statistical_logging_level_c: INFO
-ca_logging_level_c: INFO
+ca_logging_level_c: DEBUG
 measure_logging_level_c: INFO
 forwarding_logging_level_c: INFO
 api_logging_level_c: INFO

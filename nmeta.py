@@ -173,6 +173,8 @@ class NMeta(app_manager.RyuApp):
         A larger value can help avoid truncated packets
         """
         datapath = ev.msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
         self.logger.info("Setting config on switch "
                          "dpid=%s to OFPC_FRAG flag=%s and "
                          "miss_send_len=%s bytes",
@@ -190,6 +192,35 @@ class NMeta(app_manager.RyuApp):
                                      datapath,
                                      self.ofpc_frag,
                                      self.miss_send_len))
+
+        #*** Request that the switch send a description:
+        req = parser.OFPDescStatsRequest(datapath, 0)
+        datapath.send_msg(req)
+
+        if datapath.ofproto.OFP_VERSION == 4:
+            #** Install table-miss flow entry as some switches require it:
+            self.logger.info("Setting table-miss flow entry on switch "
+                         "dpid=%s", datapath.id)
+            match = parser.OFPMatch()
+            actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                                 actions)]
+            mod = parser.OFPFlowMod(datapath=datapath, priority=0,
+                                        match=match, instructions=inst)
+            datapath.send_msg(mod)
+
+    @set_ev_cls(ofp_event.EventOFPDescStatsReply, MAIN_DISPATCHER)
+    def desc_stats_reply_handler(self, ev):
+        """
+        Receive a reply from a switch to a description
+        statistics request
+        """
+        body = ev.msg.body
+        dpid = ev.msg.datapath.id
+        self.logger.info('event=DescStats Switch dpid=%s is mfr_desc="%s" '
+                      'hw_desc="%s" sw_desc="%s" serial_num="%s" dp_desc="%s"',
+                      dpid, body.mfr_desc, body.hw_desc, body.sw_desc,
+                      body.serial_num, body.dp_desc)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):

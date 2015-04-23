@@ -197,17 +197,19 @@ class NMeta(app_manager.RyuApp):
         req = parser.OFPDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
-        if datapath.ofproto.OFP_VERSION == 4:
-            #** Install table-miss flow entry as some switches require it:
-            self.logger.info("Setting table-miss flow entry on switch "
-                         "dpid=%s", datapath.id)
-            match = parser.OFPMatch()
-            actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
-            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                                 actions)]
-            mod = parser.OFPFlowMod(datapath=datapath, priority=0,
-                                        match=match, instructions=inst)
-            datapath.send_msg(mod)
+        #*** This was to install a send to controller flow for 
+        #***  OF13 switches but it breaks things badly...
+        #if datapath.ofproto.OFP_VERSION == 4:
+        #    #** Install table-miss flow entry as some switches require it:
+        #    self.logger.info("Setting table-miss flow entry on switch "
+        #                 "dpid=%s", datapath.id)
+        #    match = parser.OFPMatch()
+        #    actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)]
+        #    inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+        #                                         actions)]
+        #    mod = parser.OFPFlowMod(datapath=datapath, priority=0,
+        #                                match=match, instructions=inst)
+        #    datapath.send_msg(mod)
 
     @set_ev_cls(ofp_event.EventOFPDescStatsReply, MAIN_DISPATCHER)
     def desc_stats_reply_handler(self, ev):

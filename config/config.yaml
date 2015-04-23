@@ -28,7 +28,7 @@ syslog_format: "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s"
 nmeta_logging_level_s: INFO
 flow_logging_level_s: INFO
 qos_logging_level_s: INFO
-tc_policy_logging_level_s: DEBUG
+tc_policy_logging_level_s: INFO
 tc_static_logging_level_s: INFO
 tc_identity_logging_level_s: INFO
 tc_payload_logging_level_s: INFO
@@ -47,15 +47,15 @@ console_format: "%(levelname)s: %(name)s %(funcName)s: %(message)s"
 #
 #*** Console Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_c: DEBUG
+nmeta_logging_level_c: INFO
 flow_logging_level_c: INFO
 qos_logging_level_c: INFO
-tc_policy_logging_level_c: DEBUG
+tc_policy_logging_level_c: INFO
 tc_static_logging_level_c: INFO
 tc_identity_logging_level_c: DEBUG
 tc_payload_logging_level_c: INFO
 tc_statistical_logging_level_c: INFO
-ca_logging_level_c: DEBUG
+ca_logging_level_c: INFO
 measure_logging_level_c: INFO
 forwarding_logging_level_c: INFO
 api_logging_level_c: INFO

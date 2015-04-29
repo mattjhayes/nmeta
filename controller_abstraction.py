@@ -553,6 +553,7 @@ class ControllerAbstract(object):
         Sends a supplied packet out switch port(s) in specific queue 
         """
         ofproto = datapath.ofproto
+        dpid = msg.datapath.id
         #*** First build OF version specific list of actions:
         if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             try:
@@ -590,18 +591,36 @@ class ControllerAbstract(object):
                                 ofproto.OFP_VERSION)
             return 0
         #*** Now have we have actions, build the packet out message:
-        try:
-            #*** Assemble the switch/packet/actions ready to push:
-            out = datapath.ofproto_parser.OFPPacketOut(
-                datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
-                actions=actions)
-        except:
-            #*** Log the error and return 0:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("error=E1000004 "
-               "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
-                exc_type, exc_value, exc_traceback)
-            return 0 
+        if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+            #*** Assemble the switch/packet/actions ready to push.
+            #***  Use the buffered packet on the switch:
+            try:
+                out = datapath.ofproto_parser.OFPPacketOut(
+                    datapath=datapath, buffer_id=msg.buffer_id,
+                    in_port=in_port, actions=actions)
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000023 "
+                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
+        else:
+            #*** Assemble the switch/packet/actions ready to push.
+            #***  No buffered packet on the switch, so supply packet data:
+            self.logger.warning("No packet buffer dpid=%s", dpid)
+            data = msg.data
+            try:
+                out = datapath.ofproto_parser.OFPPacketOut(
+                    datapath=datapath, buffer_id=msg.buffer_id,
+                    in_port=in_port, actions=actions, data=data)
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000023 "
+                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
         try:
             #*** Tell the switch to send the packet:
             datapath.send_msg(out)
@@ -619,6 +638,7 @@ class ControllerAbstract(object):
         Sends a supplied packet out switch port(s) (nq = no queueing)
         """
         ofproto = datapath.ofproto
+        dpid = msg.datapath.id
         if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             try:
                 actions = [datapath.ofproto_parser.OFPActionOutput \
@@ -646,22 +666,39 @@ class ControllerAbstract(object):
                                 "Unsupported OpenFlow version %s",
                                 ofproto.OFP_VERSION)
             return 0
-                
         #*** Now have we have actions, build the packet out message:
+        if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+            #*** Assemble the switch/packet/actions ready to push.
+            #***  Use the buffered packet on the switch:
+            try:
+                out = datapath.ofproto_parser.OFPPacketOut(
+                    datapath=datapath, buffer_id=msg.buffer_id,
+                    in_port=in_port, actions=actions)
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000023 "
+                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
+        else:
+            #*** Assemble the switch/packet/actions ready to push.
+            #***  No buffered packet on the switch, so supply packet data:
+            self.logger.warning("No packet buffer dpid=%s", dpid)
+            data = msg.data
+            try:
+                out = datapath.ofproto_parser.OFPPacketOut(
+                    datapath=datapath, buffer_id=msg.buffer_id,
+                    in_port=in_port, actions=actions, data=data)
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000023 "
+                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
+        #*** Tell the switch to send the packet:
         try:
-            #*** Assemble the switch/packet/actions ready to push:
-            out = datapath.ofproto_parser.OFPPacketOut(
-                datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
-                actions=actions)
-        except:
-            #*** Log the error and return 0:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("error=E1000023 "
-               "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
-                exc_type, exc_value, exc_traceback)
-            return 0 
-        try:
-            #*** Tell the switch to send the packet:
             datapath.send_msg(out)
         except:
             #*** Log the error and return 0:

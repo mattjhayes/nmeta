@@ -169,48 +169,20 @@ class NMeta(app_manager.RyuApp):
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
         """
-        Set switch miss_send_len parameter in bytes.
-        A larger value can help avoid truncated packets
+        A switch has connected to the SDN controller.
+        We need to do some tasks to set the switch up properly
+        such as setting it's config for fragment handling
+        and table miss packet length and requesting the
+        switch description
         """
         datapath = ev.msg.datapath
         ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        self.logger.info("Setting config on switch "
-                         "dpid=%s to OFPC_FRAG flag=%s and "
-                         "miss_send_len=%s bytes",
-                          datapath.id, self.ofpc_frag, self.miss_send_len)
-        if datapath.ofproto.OFP_VERSION == 1:
-            _of_version = "1.0"
-        elif datapath.ofproto.OFP_VERSION == 4:
-            _of_version = "1.3"
-        else:
-            _of_version = "Unknown version " + \
-                            str(datapath.ofproto.OFP_VERSION)
-        self.logger.info("event=switch_msg dpid=%s "
-                         "ofv=%s", datapath.id, _of_version)
-        datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
-                                     datapath,
-                                     self.ofpc_frag,
-                                     self.miss_send_len))
 
-        #*** Request that the switch send a description:
-        req = parser.OFPDescStatsRequest(datapath, 0)
-        datapath.send_msg(req)
+        #*** Set config on the switch:
+        self.ca.set_switch_config(datapath, self.ofpc_frag, self.miss_send_len)
 
-        #*** OF1.3 switches need a table miss flow entry installed to buffer
-        #*** packet and send a packet-in message to the controller:
-        if datapath.ofproto.OFP_VERSION == 4:
-            #** Install table-miss flow entry as some switches require it:
-            self.logger.info("Setting table-miss flow entry on switch "
-                         "dpid=%s", datapath.id)
-            match = parser.OFPMatch()
-            actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER, 
-                                                     self.miss_send_len)]
-            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                                 actions)]
-            mod = parser.OFPFlowMod(datapath=datapath, priority=0,
-                                        match=match, instructions=inst)
-            datapath.send_msg(mod)
+        #*** Request the switch send us it's description:
+        self.ca.request_switch_desc(datapath)
 
     @set_ev_cls(ofp_event.EventOFPDescStatsReply, MAIN_DISPATCHER)
     def desc_stats_reply_handler(self, ev):
@@ -219,11 +191,16 @@ class NMeta(app_manager.RyuApp):
         statistics request
         """
         body = ev.msg.body
-        dpid = ev.msg.datapath.id
+        datapath = ev.msg.datapath
+        dpid = datapath.id
         self.logger.info('event=DescStats Switch dpid=%s is mfr_desc="%s" '
                       'hw_desc="%s" sw_desc="%s" serial_num="%s" dp_desc="%s"',
                       dpid, body.mfr_desc, body.hw_desc, body.sw_desc,
                       body.serial_num, body.dp_desc)
+        #*** Some switches need a table miss flow entry installed to buffer
+        #*** packet and send a packet-in message to the controller:
+        self.ca.set_switch_table_miss(datapath, self.miss_send_len,
+                                                           body.hw_desc)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):

@@ -548,6 +548,87 @@ class ControllerAbstract(object):
             actions = 0
         return actions
 
+    def get_friendly_of_version(self, ofproto):
+        """
+        Passed an OF Protocol object and return a
+        human-friendly version of the protocol
+        revision number
+        """
+        if ofproto.OFP_VERSION == 1:
+            _of_version = "1.0"
+        elif ofproto.OFP_VERSION == 4:
+            _of_version = "1.3"
+        else:
+            _of_version = "Unknown version " + \
+                            str(datapath.ofproto.OFP_VERSION)
+        return _of_version
+
+    def request_switch_desc(self, datapath):
+        """
+        Request that a switch send us it's description
+        data
+        """
+        parser = datapath.ofproto_parser
+        req = parser.OFPDescStatsRequest(datapath, 0)
+        datapath.send_msg(req)
+
+    def set_switch_table_miss(self, datapath, miss_send_len, hw_desc):
+        """
+        Set a table miss rule on table 0 to send packets to
+        the controller. This is required for OF versions higher
+        than v1.0. Do not set on OpenvSwitch as it causes packets
+        to be sent to controller with no buffer and OpenvSwitch
+        doesn't need this rule as it punts to the controller
+        regardless (contrary to specification?)
+        """
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        if hw_desc == "Open vSwitch":
+            self.logger.info("Switch dpid=%s is OpenvSwitch, so not setting "
+                                  "a table-miss rule to send to controller",
+                                  datapath.id)
+            return 1
+        if datapath.ofproto.OFP_VERSION == 4:
+            #** Install table-miss flow entry as some switches require it:
+            self.logger.info("Setting table-miss flow entry on switch "
+                         "dpid=%s", datapath.id)
+            match = parser.OFPMatch()
+            actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                                            miss_send_len)]
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                                 actions)]
+            mod = parser.OFPFlowMod(datapath=datapath, priority=0,
+                                        match=match, instructions=inst)
+            datapath.send_msg(mod)
+
+    def set_switch_config(self, datapath, config_flags, miss_send_len):
+        """
+        Set config on a switch including config flags that
+        instruct fragment handling behaviour and miss_send_len
+        which controls the number of bytes sent to the controller
+        when the output port is specified as the controller
+        """
+        of_ver = self.get_friendly_of_version(datapath.ofproto)
+        self.logger.info("event=switch_msg dpid=%s "
+                         "ofv=%s", datapath.id, of_ver)
+        self.logger.info("Setting config on switch "
+                         "dpid=%s to config_flags flag=%s and "
+                         "miss_send_len=%s bytes",
+                          datapath.id, config_flags, miss_send_len)
+        try:
+            datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
+                                     datapath,
+                                     config_flags,
+                                     miss_send_len))
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("error=E10000029 "
+                   "Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+            return 0
+        return 1
+
     def packet_out(self, datapath, msg, in_port, out_port, out_queue):
         """
         Sends a supplied packet out switch port(s) in specific queue 

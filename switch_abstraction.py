@@ -14,8 +14,7 @@
 #*** nmeta - Network Metadata - Abstractions of Controller for OpenFlow Calls
 
 """
-This module is part of the nmeta suite running on top of Ryu SDN controller
-to provide network identity and flow (traffic classification) metadata.
+This module is part of the nmeta suite running on top of Ryu SDN controller.
 It provides functions that abstract the details of OpenFlow calls, including
 differences between OpenFlow versions where practical
 """
@@ -68,7 +67,7 @@ OF_MATCH_COMPAT = {'dl_dst': {'1': 'dl_dst', '4': 'eth_dst'},
                  'vlan_vid': {'1': 'dl_vlan', '4': 'vlan_vid'},
                  }
 
-class ControllerAbstract(object):
+class SwitchAbstract(object):
     """
     This class is instantiated by various other modules
     and provides methods for interacting with switches
@@ -79,16 +78,16 @@ class ControllerAbstract(object):
     def __init__(self, _config):
         #*** Get logging config values from config class:
         _logging_level_s = _config.get_value \
-                                    ('ca_logging_level_s')
+                                    ('sa_logging_level_s')
         _logging_level_c = _config.get_value \
-                                    ('ca_logging_level_c')
-        _syslog_enabled = _config.get_value ('syslog_enabled')
-        _loghost = _config.get_value ('loghost')
-        _logport = _config.get_value ('logport')
-        _logfacility = _config.get_value ('logfacility')
-        _syslog_format = _config.get_value ('syslog_format')
-        _console_log_enabled = _config.get_value ('console_log_enabled')
-        _console_format = _config.get_value ('console_format')
+                                    ('sa_logging_level_c')
+        _syslog_enabled = _config.get_value('syslog_enabled')
+        _loghost = _config.get_value('loghost')
+        _logport = _config.get_value('logport')
+        _logfacility = _config.get_value('logfacility')
+        _syslog_format = _config.get_value('syslog_format')
+        _console_log_enabled = _config.get_value('console_log_enabled')
+        _console_format = _config.get_value('console_format')
         #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -131,13 +130,13 @@ class ControllerAbstract(object):
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
-        in_port=flow_actions['in_port']
-        idle_timeout=kwargs['idle_timeout']
-        hard_timeout=kwargs['hard_timeout']
-        buffer_id=kwargs['buffer_id']
-        priority=kwargs['priority']
+        in_port = flow_actions['in_port']
+        idle_timeout = kwargs['idle_timeout']
+        hard_timeout = kwargs['hard_timeout']
+        buffer_id = kwargs['buffer_id']
+        priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
-        if (pkt_tcp and pkt_ip4 and 
+        if (pkt_tcp and pkt_ip4 and
                      ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
             #*** TBD: Build an exact match to get maximum performance from
             #*** software switches by allowing them to install into
@@ -156,29 +155,29 @@ class ControllerAbstract(object):
                         dl_vlan_pcp=0x00,
                         nw_tos=0x00,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800,
                         nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), 
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
                         nw_proto=6,
-                        tp_src=pkt_tcp.src_port, 
+                        tp_src=pkt_tcp.src_port,
                         tp_dst=pkt_tcp.dst_port)
             else:
                 match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4-TCP "
                                   "match=%s", ofproto.OFP_VERSION, match)
-        elif (pkt_tcp and pkt_ip6 and 
+        elif (pkt_tcp and pkt_ip6 and
                        ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
                         nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
@@ -244,11 +243,11 @@ class ControllerAbstract(object):
         eth = pkt.get_protocol(ethernet.ethernet)
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        in_port=flow_actions['in_port']
-        idle_timeout=kwargs['idle_timeout']
-        hard_timeout=kwargs['hard_timeout']
-        buffer_id=kwargs['buffer_id']
-        priority=kwargs['priority']
+        in_port = flow_actions['in_port']
+        idle_timeout = kwargs['idle_timeout']
+        hard_timeout = kwargs['hard_timeout']
+        buffer_id = kwargs['buffer_id']
+        priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
         if (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
@@ -323,11 +322,11 @@ class ControllerAbstract(object):
         parser = datapath.ofproto_parser
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        in_port=flow_actions['in_port']
-        idle_timeout=kwargs['idle_timeout']
-        hard_timeout=kwargs['hard_timeout']
-        buffer_id=kwargs['buffer_id']
-        priority=kwargs['priority']
+        in_port = flow_actions['in_port']
+        idle_timeout = kwargs['idle_timeout']
+        hard_timeout = kwargs['hard_timeout']
+        buffer_id = kwargs['buffer_id']
+        priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
         if (eth.ethertype != 0x0800 and 
                    ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
@@ -560,7 +559,7 @@ class ControllerAbstract(object):
             _of_version = "1.3"
         else:
             _of_version = "Unknown version " + \
-                            str(datapath.ofproto.OFP_VERSION)
+                            str(ofproto.OFP_VERSION)
         return _of_version
 
     def request_switch_desc(self, datapath):

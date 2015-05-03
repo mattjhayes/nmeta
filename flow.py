@@ -33,7 +33,6 @@ from ryu.lib import addrconv
 #*** nmeta imports:
 import qos
 import nmisc
-import controller_abstraction
 
 class FlowMetadata(object):
     """
@@ -80,9 +79,6 @@ class FlowMetadata(object):
 
         #*** Instantiate the Flow Metadata (FM) Table:
         self._fm_table = nmisc.AutoVivification()
-        #*** Instantiate the Controller Abstraction class for calls to 
-        #*** OpenFlow Switches:
-        self.ca = controller_abstraction.ControllerAbstract(_config)
         #*** initialise Flow Metadata Table unique reference number:
         self._fm_ref = 1
         #*** Instantiate QoS class:

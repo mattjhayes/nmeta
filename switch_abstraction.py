@@ -14,8 +14,7 @@
 #*** nmeta - Network Metadata - Abstractions of Controller for OpenFlow Calls
 
 """
-This module is part of the nmeta suite running on top of Ryu SDN controller
-to provide network identity and flow (traffic classification) metadata.
+This module is part of the nmeta suite running on top of Ryu SDN controller.
 It provides functions that abstract the details of OpenFlow calls, including
 differences between OpenFlow versions where practical
 """
@@ -68,7 +67,7 @@ OF_MATCH_COMPAT = {'dl_dst': {'1': 'dl_dst', '4': 'eth_dst'},
                  'vlan_vid': {'1': 'dl_vlan', '4': 'vlan_vid'},
                  }
 
-class ControllerAbstract(object):
+class SwitchAbstract(object):
     """
     This class is instantiated by various other modules
     and provides methods for interacting with switches
@@ -79,16 +78,16 @@ class ControllerAbstract(object):
     def __init__(self, _config):
         #*** Get logging config values from config class:
         _logging_level_s = _config.get_value \
-                                    ('ca_logging_level_s')
+                                    ('sa_logging_level_s')
         _logging_level_c = _config.get_value \
-                                    ('ca_logging_level_c')
-        _syslog_enabled = _config.get_value ('syslog_enabled')
-        _loghost = _config.get_value ('loghost')
-        _logport = _config.get_value ('logport')
-        _logfacility = _config.get_value ('logfacility')
-        _syslog_format = _config.get_value ('syslog_format')
-        _console_log_enabled = _config.get_value ('console_log_enabled')
-        _console_format = _config.get_value ('console_format')
+                                    ('sa_logging_level_c')
+        _syslog_enabled = _config.get_value('syslog_enabled')
+        _loghost = _config.get_value('loghost')
+        _logport = _config.get_value('logport')
+        _logfacility = _config.get_value('logfacility')
+        _syslog_format = _config.get_value('syslog_format')
+        _console_log_enabled = _config.get_value('console_log_enabled')
+        _console_format = _config.get_value('console_format')
         #*** Set up Logging:
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -131,13 +130,13 @@ class ControllerAbstract(object):
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
-        in_port=flow_actions['in_port']
-        idle_timeout=kwargs['idle_timeout']
-        hard_timeout=kwargs['hard_timeout']
-        buffer_id=kwargs['buffer_id']
-        priority=kwargs['priority']
+        in_port = flow_actions['in_port']
+        idle_timeout = kwargs['idle_timeout']
+        hard_timeout = kwargs['hard_timeout']
+        buffer_id = kwargs['buffer_id']
+        priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
-        if (pkt_tcp and pkt_ip4 and 
+        if (pkt_tcp and pkt_ip4 and
                      ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
             #*** TBD: Build an exact match to get maximum performance from
             #*** software switches by allowing them to install into
@@ -156,29 +155,29 @@ class ControllerAbstract(object):
                         dl_vlan_pcp=0x00,
                         nw_tos=0x00,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800,
                         nw_src=self._ipv4_t2i(pkt_ip4.src),
-                        nw_dst=self._ipv4_t2i(pkt_ip4.dst), 
+                        nw_dst=self._ipv4_t2i(pkt_ip4.dst),
                         nw_proto=6,
-                        tp_src=pkt_tcp.src_port, 
+                        tp_src=pkt_tcp.src_port,
                         tp_dst=pkt_tcp.dst_port)
             else:
                 match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4-TCP "
                                   "match=%s", ofproto.OFP_VERSION, match)
-        elif (pkt_tcp and pkt_ip6 and 
+        elif (pkt_tcp and pkt_ip6 and
                        ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
                         nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
@@ -244,11 +243,11 @@ class ControllerAbstract(object):
         eth = pkt.get_protocol(ethernet.ethernet)
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        in_port=flow_actions['in_port']
-        idle_timeout=kwargs['idle_timeout']
-        hard_timeout=kwargs['hard_timeout']
-        buffer_id=kwargs['buffer_id']
-        priority=kwargs['priority']
+        in_port = flow_actions['in_port']
+        idle_timeout = kwargs['idle_timeout']
+        hard_timeout = kwargs['hard_timeout']
+        buffer_id = kwargs['buffer_id']
+        priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
         if (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
@@ -323,11 +322,11 @@ class ControllerAbstract(object):
         parser = datapath.ofproto_parser
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        in_port=flow_actions['in_port']
-        idle_timeout=kwargs['idle_timeout']
-        hard_timeout=kwargs['hard_timeout']
-        buffer_id=kwargs['buffer_id']
-        priority=kwargs['priority']
+        in_port = flow_actions['in_port']
+        idle_timeout = kwargs['idle_timeout']
+        hard_timeout = kwargs['hard_timeout']
+        buffer_id = kwargs['buffer_id']
+        priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
         if (eth.ethertype != 0x0800 and 
                    ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
@@ -548,11 +547,93 @@ class ControllerAbstract(object):
             actions = 0
         return actions
 
+    def get_friendly_of_version(self, ofproto):
+        """
+        Passed an OF Protocol object and return a
+        human-friendly version of the protocol
+        revision number
+        """
+        if ofproto.OFP_VERSION == 1:
+            _of_version = "1.0"
+        elif ofproto.OFP_VERSION == 4:
+            _of_version = "1.3"
+        else:
+            _of_version = "Unknown version " + \
+                            str(ofproto.OFP_VERSION)
+        return _of_version
+
+    def request_switch_desc(self, datapath):
+        """
+        Request that a switch send us it's description
+        data
+        """
+        parser = datapath.ofproto_parser
+        req = parser.OFPDescStatsRequest(datapath, 0)
+        datapath.send_msg(req)
+
+    def set_switch_table_miss(self, datapath, miss_send_len, hw_desc):
+        """
+        Set a table miss rule on table 0 to send packets to
+        the controller. This is required for OF versions higher
+        than v1.0. Do not set on OpenvSwitch as it causes packets
+        to be sent to controller with no buffer and OpenvSwitch
+        doesn't need this rule as it punts to the controller
+        regardless (contrary to specification?)
+        """
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        if hw_desc == "Open vSwitch":
+            self.logger.info("Switch dpid=%s is OpenvSwitch, so not setting "
+                                  "a table-miss rule to send to controller",
+                                  datapath.id)
+            return 1
+        if datapath.ofproto.OFP_VERSION == 4:
+            #** Install table-miss flow entry as some switches require it:
+            self.logger.info("Setting table-miss flow entry on switch "
+                         "dpid=%s", datapath.id)
+            match = parser.OFPMatch()
+            actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                                            miss_send_len)]
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                                 actions)]
+            mod = parser.OFPFlowMod(datapath=datapath, priority=0,
+                                        match=match, instructions=inst)
+            datapath.send_msg(mod)
+
+    def set_switch_config(self, datapath, config_flags, miss_send_len):
+        """
+        Set config on a switch including config flags that
+        instruct fragment handling behaviour and miss_send_len
+        which controls the number of bytes sent to the controller
+        when the output port is specified as the controller
+        """
+        of_ver = self.get_friendly_of_version(datapath.ofproto)
+        self.logger.info("event=switch_msg dpid=%s "
+                         "ofv=%s", datapath.id, of_ver)
+        self.logger.info("Setting config on switch "
+                         "dpid=%s to config_flags flag=%s and "
+                         "miss_send_len=%s bytes",
+                          datapath.id, config_flags, miss_send_len)
+        try:
+            datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
+                                     datapath,
+                                     config_flags,
+                                     miss_send_len))
+        except:
+            #*** Log the error and return 0:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("error=E10000029 "
+                   "Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+            return 0
+        return 1
+
     def packet_out(self, datapath, msg, in_port, out_port, out_queue):
         """
         Sends a supplied packet out switch port(s) in specific queue 
         """
         ofproto = datapath.ofproto
+        dpid = msg.datapath.id
         #*** First build OF version specific list of actions:
         if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             try:
@@ -590,18 +671,36 @@ class ControllerAbstract(object):
                                 ofproto.OFP_VERSION)
             return 0
         #*** Now have we have actions, build the packet out message:
-        try:
-            #*** Assemble the switch/packet/actions ready to push:
-            out = datapath.ofproto_parser.OFPPacketOut(
-                datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
-                actions=actions)
-        except:
-            #*** Log the error and return 0:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("error=E1000004 "
-               "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
-                exc_type, exc_value, exc_traceback)
-            return 0 
+        if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+            #*** Assemble the switch/packet/actions ready to push.
+            #***  Use the buffered packet on the switch:
+            try:
+                out = datapath.ofproto_parser.OFPPacketOut(
+                    datapath=datapath, buffer_id=msg.buffer_id,
+                    in_port=in_port, actions=actions)
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000023 "
+                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
+        else:
+            #*** Assemble the switch/packet/actions ready to push.
+            #***  No buffered packet on the switch, so supply packet data:
+            self.logger.warning("No packet buffer dpid=%s", dpid)
+            data = msg.data
+            try:
+                out = datapath.ofproto_parser.OFPPacketOut(
+                    datapath=datapath, buffer_id=msg.buffer_id,
+                    in_port=in_port, actions=actions, data=data)
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000023 "
+                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
         try:
             #*** Tell the switch to send the packet:
             datapath.send_msg(out)
@@ -619,6 +718,7 @@ class ControllerAbstract(object):
         Sends a supplied packet out switch port(s) (nq = no queueing)
         """
         ofproto = datapath.ofproto
+        dpid = msg.datapath.id
         if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             try:
                 actions = [datapath.ofproto_parser.OFPActionOutput \
@@ -646,22 +746,39 @@ class ControllerAbstract(object):
                                 "Unsupported OpenFlow version %s",
                                 ofproto.OFP_VERSION)
             return 0
-                
         #*** Now have we have actions, build the packet out message:
+        if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+            #*** Assemble the switch/packet/actions ready to push.
+            #***  Use the buffered packet on the switch:
+            try:
+                out = datapath.ofproto_parser.OFPPacketOut(
+                    datapath=datapath, buffer_id=msg.buffer_id,
+                    in_port=in_port, actions=actions)
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000023 "
+                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
+        else:
+            #*** Assemble the switch/packet/actions ready to push.
+            #***  No buffered packet on the switch, so supply packet data:
+            self.logger.warning("No packet buffer dpid=%s", dpid)
+            data = msg.data
+            try:
+                out = datapath.ofproto_parser.OFPPacketOut(
+                    datapath=datapath, buffer_id=msg.buffer_id,
+                    in_port=in_port, actions=actions, data=data)
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000023 "
+                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0 
+        #*** Tell the switch to send the packet:
         try:
-            #*** Assemble the switch/packet/actions ready to push:
-            out = datapath.ofproto_parser.OFPPacketOut(
-                datapath=datapath, buffer_id=msg.buffer_id, in_port=in_port,
-                actions=actions)
-        except:
-            #*** Log the error and return 0:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("error=E1000023 "
-               "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
-                exc_type, exc_value, exc_traceback)
-            return 0 
-        try:
-            #*** Tell the switch to send the packet:
             datapath.send_msg(out)
         except:
             #*** Log the error and return 0:

@@ -33,6 +33,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import arp
 from ryu.lib.packet import dhcp
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
 from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 
@@ -50,8 +51,10 @@ import yaml
 
 #*** Describe supported syntax in main_policy.yaml so that it can be tested
 #*** for validity. Here are valid policy rule attributes:
-TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment', 'match_type', 'conditions_list', 
-                                       'actions')
+TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment',
+                                   'match_type',
+                                   'conditions_list',
+                                   'actions')
 #*** Dictionary of valid conditions stanza attributes with type:
 TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'eth_dst': 'MACAddress', 
@@ -68,10 +71,17 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'statistical_qos_bandwidth_1': 'String',
                                'match_type': 'MatchType',
                                'conditions_list': 'PolicyConditions'}
-TC_CONFIG_ACTIONS = ('set_qos_tag', 'set_desc_tag', 'pass_return_tags')
-TC_CONFIG_MATCH_TYPES = ('any', 'all', 'statistical')
+TC_CONFIG_ACTIONS = ('set_qos_tag',
+                     'set_desc_tag',
+                     'pass_return_tags')
+TC_CONFIG_MATCH_TYPES = ('any',
+                         'all',
+                         'statistical')
 #*** Keys that must exist under 'identity' in the policy:
-IDENTITY_KEYS = ('arp', 'lldp', 'dns', 'dhcp')
+IDENTITY_KEYS = ('arp', 
+                 'lldp',
+                 'dns',
+                 'dhcp')
 
 class TrafficClassificationPolicy(object):
     """
@@ -355,12 +365,16 @@ class TrafficClassificationPolicy(object):
         #*** Check to see if it is an IPv4 packet
         #*** and if so pass to the identity module to process:
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         if pkt_ip4:
             self.identity.ip4_in(pkt)
         #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
         #*** context is future-proofing for when the system will support 
         #*** multiple contexts. For now just set to 'default':
         context = 'default'
+        pkt_tcp = pkt.get_protocol(tcp.tcp)
+        pkt_udp = pkt.get_protocol(udp.udp)
+
         if self._main_policy['identity']['arp'] == 1:
             #*** Check to see if it is an IPv4 ARP reply
             #***  and if so harvest the information:
@@ -371,19 +385,48 @@ class TrafficClassificationPolicy(object):
                     self.logger.debug("event=ARP reply arp=%s", pkt_arp)
                     self.identity.arp_reply_in \
                                 (pkt_arp.src_ip, pkt_arp.src_mac, context)
+
         if self._main_policy['identity']['dhcp'] == 1:
             #*** Check to see if it is an IPv4 DHCP ACK
             #***  and if so harvest the information:
-            pkt_dhcp = pkt.get_protocol(dhcp.dhcp)
-            if pkt_dhcp:
-                self.logger.debug("event=DHCP dhcp=%s", pkt_dhcp)
+            #*** Use dpkt as Ryu library doesn't appear to work???
+            if pkt_udp:
+                if pkt_udp.src_port == 67 or pkt_udp.dst_port == 67:
+                    pkt_dhcp = 0
+                    #*** Use dpkt to parse UDP DNS data:
+                    try:
+                        pkt_dhcp = dpkt.dhcp.DHCP(pkt.protocols[-1])
+                    except:
+                        exc_type, exc_value, exc_traceback = sys.exc_info()
+                        self.logger.error("DHCP extraction failed "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+                    if pkt_dhcp:
+                        if pkt_dhcp.opts:
+                            #*** Iterate through options looking for 12:
+                            for opt in pkt_dhcp.opts:
+                                if opt[0] == 12:
+                                    #*** Found option 12 so grab the host name:
+                                    dhcp_hostname = opt[1]
+                                    self.logger.debug("dhcp host name is %s", 
+                                                          dhcp_hostname)
+                                    if pkt_ip4:
+                                        ip = pkt_ip4.src
+                                    elif pkt_ip6:
+                                        ip = pkt_ip6.src
+                                    else:
+                                        ip = 0
+                                    #*** Call identity class with hostname etc:
+                                    self.identity.dhcp_in(pkt_eth.src,
+                                                          ip,
+                                                          dhcp_hostname,
+                                                          context)
+
         if self._main_policy['identity']['dns'] == 1:
             #*** Check to see if it is an IPv4 DNS packet
             #***  and if so pass to the identity module to process
             #*** At the time of writing there isn't a DNS parser in Ryu
             #***  so do some dodgy stuff here in the interim...
-            pkt_tcp = pkt.get_protocol(tcp.tcp)
-            pkt_udp = pkt.get_protocol(udp.udp)
             dns = 0
             if pkt_udp:
                 if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:

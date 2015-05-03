@@ -43,7 +43,6 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
-from ryu.exception import RyuException
 
 #*** Required for api module context:
 from ryu.app.wsgi import WSGIApplication
@@ -52,7 +51,7 @@ from ryu.app.wsgi import WSGIApplication
 import flow
 import tc_policy
 import config
-import controller_abstraction
+import switch_abstraction
 import measure
 import forwarding
 import api
@@ -158,9 +157,9 @@ class NMeta(app_manager.RyuApp):
         self.measure_buckets_last_tidyup_time = time.time()
 
         #*** Instantiate Module Classes:
-        self.flowmetadata = flow.FlowMetadata(self.config)
+        self.flowmetadata = flow.FlowMetadata(self, self.config)
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
-        self.ca = controller_abstraction.ControllerAbstract(self.config)
+        self.sa = switch_abstraction.SwitchAbstract(self.config)
         self.measure = measure.Measurement(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
         wsgi = kwargs['wsgi']
@@ -169,27 +168,38 @@ class NMeta(app_manager.RyuApp):
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
         """
-        Set switch miss_send_len parameter in bytes.
-        A larger value can help avoid truncated packets
+        A switch has connected to the SDN controller.
+        We need to do some tasks to set the switch up properly
+        such as setting it's config for fragment handling
+        and table miss packet length and requesting the
+        switch description
         """
         datapath = ev.msg.datapath
-        self.logger.info("Setting config on switch "
-                         "dpid=%s to OFPC_FRAG flag=%s and "
-                         "miss_send_len=%s bytes",
-                          datapath.id, self.ofpc_frag, self.miss_send_len)
-        if datapath.ofproto.OFP_VERSION == 1:
-            _of_version = "1.0"
-        elif datapath.ofproto.OFP_VERSION == 4:
-            _of_version = "1.3"
-        else:
-            _of_version = "Unknown version " + \
-                            str(datapath.ofproto.OFP_VERSION)
-        self.logger.info("event=switch_msg dpid=%s "
-                         "ofv=%s", datapath.id, _of_version)
-        datapath.send_msg(datapath.ofproto_parser.OFPSetConfig(
-                                     datapath,
-                                     self.ofpc_frag,
-                                     self.miss_send_len))
+        ofproto = datapath.ofproto
+        self.logger.info("In switch_connection_handler")
+        #*** Set config on the switch:
+        self.sa.set_switch_config(datapath, self.ofpc_frag, self.miss_send_len)
+
+        #*** Request the switch send us it's description:
+        self.sa.request_switch_desc(datapath)
+
+    @set_ev_cls(ofp_event.EventOFPDescStatsReply, MAIN_DISPATCHER)
+    def desc_stats_reply_handler(self, ev):
+        """
+        Receive a reply from a switch to a description
+        statistics request
+        """
+        body = ev.msg.body
+        datapath = ev.msg.datapath
+        dpid = datapath.id
+        self.logger.info('event=DescStats Switch dpid=%s is mfr_desc="%s" '
+                      'hw_desc="%s" sw_desc="%s" serial_num="%s" dp_desc="%s"',
+                      dpid, body.mfr_desc, body.hw_desc, body.sw_desc,
+                      body.serial_num, body.dp_desc)
+        #*** Some switches need a table miss flow entry installed to buffer
+        #*** packet and send a packet-in message to the controller:
+        self.sa.set_switch_table_miss(datapath, self.miss_send_len,
+                                                           body.hw_desc)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -218,7 +228,7 @@ class NMeta(app_manager.RyuApp):
         pkt_tcp = pkt.get_protocol(tcp.tcp)
 
         #*** Get the in port (OpenFlow version dependant call):
-        in_port = self.ca.get_in_port(msg, datapath, ofproto)
+        in_port = self.sa.get_in_port(msg, datapath, ofproto)
 
         #*** Only run this stanza if syslog or console logging set to DEBUG:
         if self.debug_on:
@@ -274,7 +284,7 @@ class NMeta(app_manager.RyuApp):
                                   "ip_dst=%s ip_ver=4 tcp_src=%s tcp_dst=%s",
                                   pkt_ip4.src, pkt_ip4.dst,
                                   pkt_tcp.src_port, pkt_tcp.dst_port)
-                _result = self.ca.add_flow_tcp(datapath, msg, flow_actions,
+                _result = self.sa.add_flow_tcp(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             elif pkt_tcp and pkt_ip6:
@@ -283,7 +293,7 @@ class NMeta(app_manager.RyuApp):
                                   "ip_dst=%s ip_ver=6 tcp_src=%s tcp_dst=%s",
                                   pkt_ip6.src, pkt_ip6.dst,
                                   pkt_tcp.src_port, pkt_tcp.dst_port)
-                _result = self.ca.add_flow_tcp(datapath, msg, flow_actions,
+                _result = self.sa.add_flow_tcp(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             elif pkt_ip4:
@@ -291,15 +301,15 @@ class NMeta(app_manager.RyuApp):
                 self.logger.debug("event=add_flow match_type=ip ip_src=%s "
                                   "ip_dst=%s ip_proto=%s ip_ver=4",
                                   pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
-                _result = self.ca.add_flow_ip(datapath, msg, flow_actions,
+                _result = self.sa.add_flow_ip(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             elif pkt_ip6:
                 #*** Call abstraction layer to add IP flow record:
                 self.logger.debug("event=add_flow match_type=ip ip_src=%s "
                                   "ip_dst=%s ip_proto=%s ip_ver=6",
-                                  pkt_ip6.src, pkt_ip6.dst, pkt_ip6.proto)
-                _result = self.ca.add_flow_ip(datapath, msg, flow_actions,
+                                  pkt_ip6.src, pkt_ip6.dst, pkt_ip6.nxt)
+                _result = self.sa.add_flow_ip(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             else:
@@ -307,7 +317,7 @@ class NMeta(app_manager.RyuApp):
                 self.logger.debug("event=add_flow match_type=eth eth_src=%s "
                                   "eth_dst=%s eth_type=%s",
                                   eth_src, eth_dst, eth.ethertype)
-                _result = self.ca.add_flow_eth(datapath, msg, flow_actions,
+                _result = self.sa.add_flow_eth(datapath, msg, flow_actions,
                                   priority=0, buffer_id=None, idle_timeout=5,
                                   hard_timeout=0)
             self.logger.debug("event=add_flow result=%s", _result)
@@ -316,7 +326,7 @@ class NMeta(app_manager.RyuApp):
             self.measure.record_rate_event('add_flow')
 
             #*** Send Packet Out:
-            packet_out_result = self.ca.packet_out(datapath, msg, in_port,
+            packet_out_result = self.sa.packet_out(datapath, msg, in_port,
                                 out_port, flow_actions['out_queue'])
 
             #*** Record Measurements:
@@ -325,7 +335,7 @@ class NMeta(app_manager.RyuApp):
             self.measure.record_metric('packet_delta', pi_delta_time)
         else:
             #*** It's a packet that's flooded, so send without specific queue:
-            packet_out_result = self.ca.packet_out_nq(datapath, msg, in_port,
+            packet_out_result = self.sa.packet_out_nq(datapath, msg, in_port,
                                 out_port)
 
             #*** Record Measurements:

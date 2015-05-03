@@ -33,14 +33,13 @@ from ryu.lib import addrconv
 #*** nmeta imports:
 import qos
 import nmisc
-import controller_abstraction
 
 class FlowMetadata(object):
     """
     This class is instantiated by nmeta.py and provides methods to 
     add/remove/update/search flow metadata table entries
     """
-    def __init__(self, _config):
+    def __init__(self, _nmeta, _config):
         #*** Get logging config values from config class:
         _logging_level_s = _config.get_value \
                                     ('flow_logging_level_s')
@@ -80,15 +79,16 @@ class FlowMetadata(object):
 
         #*** Instantiate the Flow Metadata (FM) Table:
         self._fm_table = nmisc.AutoVivification()
-        #*** Instantiate the Controller Abstraction class for calls to 
-        #*** OpenFlow Switches:
-        self.ca = controller_abstraction.ControllerAbstract(_config)
         #*** initialise Flow Metadata Table unique reference number:
         self._fm_ref = 1
         #*** Instantiate QoS class:
         self.qos = qos.QoS(_config)
         #*** Do you want really verbose debugging?
         self.extra_debugging = 1
+        #*** Find out if we're augmenting flow metadata with identity metadata:
+        self.augment = _config.get_value('augment_flow_metadata_with_identity')
+        #*** Reference to call methods in nmeta module:
+        self._nmeta = _nmeta
         
     def update_flowmetadata(self, msg, flow_actions):
         """
@@ -267,18 +267,41 @@ class FlowMetadata(object):
         along with flow actions and add to the
         Flow Metadata (FM) table.
         """
+        #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
+        #*** context is future-proofing for when the system will support 
+        #*** multiple contexts. For now just set to 'default':
+        ctx = 'default'
         self.logger.debug("Adding new record to flow metadata table")
         _pkt_eth = pkt.get_protocol(ethernet.ethernet)
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        _pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         _pkt_tcp = pkt.get_protocol(tcp.tcp)
         #*** Add timestamp:
         self._fm_table[self._fm_ref]["time_first"] = time.time()
         self._fm_table[self._fm_ref]["time_last"] = time.time()
-        if _pkt_ip4:
+        if _pkt_ip4 or _pkt_ip6:
             #*** Add IP info:
-            self._fm_table[self._fm_ref]["ip_A"] = _pkt_ip4.src
-            self._fm_table[self._fm_ref]["ip_B"] = _pkt_ip4.dst
-            self._fm_table[self._fm_ref]["ip_proto"] = _pkt_ip4.proto
+            if _pkt_ip4:
+                self._fm_table[self._fm_ref]["ip_A"] = _pkt_ip4.src
+                self._fm_table[self._fm_ref]["ip_B"] = _pkt_ip4.dst
+                self._fm_table[self._fm_ref]["ip_proto"] = _pkt_ip4.proto
+            if _pkt_ip6:
+                self._fm_table[self._fm_ref]["ip_A"] = _pkt_ip6.src
+                self._fm_table[self._fm_ref]["ip_B"] = _pkt_ip6.dst
+                self._fm_table[self._fm_ref]["ip_next_header"] = _pkt_ip6.nxt
+            if self.augment:
+                #*** Augment flow metadata with IP identity metadata:
+                id_ip_ref = self._nmeta.tc_policy.identity.id_ip
+                id_ip_ref.setdefault(ctx, {})
+                fm_id_ref = self._fm_table[self._fm_ref].setdefault('id', {})
+                if self._fm_table[self._fm_ref]["ip_A"]:
+                    ip = self._fm_table[self._fm_ref]["ip_A"]
+                    if ip in id_ip_ref[ctx]:
+                        fm_id_ref[ip] = id_ip_ref[ctx][ip]
+                if self._fm_table[self._fm_ref]["ip_B"]:
+                    ip = self._fm_table[self._fm_ref]["ip_B"]
+                    if ip in id_ip_ref[ctx]:
+                        fm_id_ref[ip] = id_ip_ref[ctx][ip]
             if _pkt_tcp:
                 #*** Add TCP info:
                 self._fm_table[self._fm_ref]["tcp_A"] = _pkt_tcp.src_port
@@ -319,7 +342,8 @@ class FlowMetadata(object):
         _packet_in_count = \
                    self._fm_table[table_ref]['number_of_packets_to_controller']
         if _packet_in_count:
-            self._fm_table[table_ref]["number_of_packets_to_controller"] = _packet_in_count + 1
+            self._fm_table[table_ref]["number_of_packets_to_controller"] = \
+                                           _packet_in_count + 1
         else:
             self._fm_table[table_ref]["number_of_packets_to_controller"] = 1
         #*** Want to add any extra parameters to the flow record here:

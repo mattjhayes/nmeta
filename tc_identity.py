@@ -253,6 +253,30 @@ class IdentityInspect(object):
                                        "properly")
             return(0)
 
+    def dhcp_in(self, mac, ip, hostname, ctx):
+        """
+        Passed a MAC address, IP address, DHCP host name
+        (from option 12), and a context
+        and add to relevant metadata
+        """
+        #*** TBD - add lease time and ensure that request was properly acked
+
+        #*** If ip is 0.0.0.0 then just return, as not useful info:
+        if ip == '0.0.0.0':
+            return
+        #*** Add to the id_ip structure:
+        #*** Make sure keys exist:
+        self.id_ip.setdefault(ctx, {})
+        if not ip in self.id_ip[ctx]:
+            #*** IP not in table, add it:
+            self.id_ip[ctx].setdefault(ip, {})
+        #*** Ensure 'node' key exists:
+        self.id_ip[ctx][ip].setdefault('node', {})
+        #*** Default the hostname:
+        self.id_ip[ctx][ip]['node'].setdefault(hostname, {})
+        #*** Default the source key:
+        self.id_ip[ctx][ip]['node'][hostname].setdefault('source', 'dhcp')
+
     def dns_reply_in(self, queries, answers, ctx):
         """
         Passed a DNS parameters and a context
@@ -276,7 +300,7 @@ class IdentityInspect(object):
                 #*** Make sure context key exists:
                 self.id_ip.setdefault(ctx, {})
                 if not answer_ip in self.id_ip[ctx]:
-                    #*** MAC not in table, add it:
+                    #*** IP not in table, add it:
                     self.id_ip[ctx].setdefault(answer_ip, {})
                 #*** Ensure 'service' key exists:
                 self.id_ip[ctx][answer_ip].setdefault('service', {})

@@ -55,10 +55,10 @@ CONFIG_TEMPLATE = \
     'tc_identity_logging_level_c': 'INFO',
     'tc_payload_logging_level_c': 'INFO',
     'tc_statistical_logging_level_c': 'INFO',
-    'ca_logging_level_c': 'INFO',
+    'sa_logging_level_c': 'INFO',
     'measure_logging_level_c': 'INFO',
-    'forwarding_logging_level_c': 'DEBUG',
-    'api_logging_level_c': 'DEBUG',
+    'forwarding_logging_level_c': 'INFO',
+    'api_logging_level_c': 'INFO',
     'nmeta_logging_level_s': 'INFO',
     'flow_logging_level_s': 'INFO',
     'qos_logging_level_s': 'INFO',
@@ -67,10 +67,10 @@ CONFIG_TEMPLATE = \
     'tc_identity_logging_level_s': 'INFO',
     'tc_payload_logging_level_s': 'INFO',
     'tc_statistical_logging_level_s': 'INFO',
-    'ca_logging_level_s': 'INFO',
+    'sa_logging_level_s': 'INFO',
     'measure_logging_level_s': 'INFO',
-    'forwarding_logging_level_s': 'DEBUG',
-    'api_logging_level_s': 'DEBUG',
+    'forwarding_logging_level_s': 'INFO',
+    'api_logging_level_s': 'INFO',
     'syslog_enabled': 0,
     'loghost': 'localhost',
     'logport': 514,
@@ -79,7 +79,8 @@ CONFIG_TEMPLATE = \
         "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s",
     'console_log_enabled': 1,
     'console_format': "%(levelname)s: %(name)s %(funcName)s: %(message)s",
-    'event_rate_interval': 60
+    'event_rate_interval': 60,
+    'augment_flow_metadata_with_identity': 1
 }
 
 class Config(object):

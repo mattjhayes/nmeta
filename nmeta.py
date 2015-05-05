@@ -212,9 +212,8 @@ class NMeta(app_manager.RyuApp):
         #*** Record the event for measurements:
         self.measure.record_rate_event('packet_in')
 
-        #*** Extract variables:
+        #*** Extract parameters:
         msg = ev.msg
-
         datapath = msg.datapath
         dpid = datapath.id
         ofproto = datapath.ofproto

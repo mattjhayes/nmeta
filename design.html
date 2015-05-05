@@ -49,8 +49,25 @@
   <a id="nmeta---network-metadata" class="anchor" href="#nmeta---network-metadata" aria-hidden="true"><span class="octicon octicon-link"></span></a>
   Architecture and Design
 </h1>
+<h3>
+  <a id="contents" class="anchor" href="#contents" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Contents:
+</h3>
+<p>
+  <a href="#overview">Overview</a>
+  <br>
+  <a href="#identity-metadata-structure">Identity Metadata Structure</a>
+<h2>
+  <a id="overview" class="anchor" href="#overview" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Overview
+</h2>
+<p>
+  Nmeta is an application that sits atop the Ryu SDN controller.
+<p>
 <p>Here's an overview of how nmeta processes packets:</p>
-<p><img src="images/system/nmeta_logical_1.png" alt="System Overview 1"></p>
+<p>
+  <img src="images/system/nmeta_logical_1.png" alt="System Overview 1">
+</p>
 
 <p>Here are the (simplified) steps for processing a packet that does not have switch flow table entries:</p>
 <ol>
@@ -58,16 +75,58 @@
   <li>The Ryu SDN controller receives the packet-in event and calls the nmeta module</li>
   <li>The nmeta module calls the tc_policy module which runs the packet past a policy to determine if there are any actions</li>
   <li>The tc_policy module sends the packet back to the nmeta module with any actions</li>
+  <li>The nmeta module calls the forwarding module to make a forwarding decision</li>
   <li>The nmeta module sends the packet and any actions to the flow module</li>
   <li>The flow module both stores flow metadata acts as an interface to consumers of the data. It provides information back to the nmeta module about any special treatment for the packet</li>
   <li>The nmeta module sends (via Ryu) instructions to the switch on sending the packet out and installing a flow table entry (in some cases)</li>
   <li>The switch sends the packet out, and installs a flow table entry (if instructed to)</li>
 </ol>
-
 <p>And a more detailed view:</p>
 <p><a href="design-image-logical.html" target="_blank"><img src="images/system/nmeta_logical_2.png" alt="System Overview 2"></a></p>
 <em>(Click to Enlarge)</em>
-<p>*** Under Construction!!! ***</p>
+<p>
+  Points to note in the above diagram:
+  <ul>
+    <li>
+      Maintenance of data structures that hold dynamic state is triggered from the nmeta.py module. This is too prevent them from becoming too large over time as data accumulates.
+    </li>
+    <li>
+      The switch_abstraction.py module in the nmeta Core region provides an abstraction layer from specific switch implementation details
+    </li>
+    <li>
+      The api.py module in the nmeta Core region provides a RESTful API interface
+    </li>
+  </ul>
+</p>
+
+<h2>
+  <a id="identity-metadata-structure" class="anchor" href="#identity-metadata-structure" aria-hidden="true"><span class="octicon octicon-link"></span></a>
+  Identity Metadata Structure
+</h2>
+<p>
+  Identity metadata can be used in traffic classification of flows, and also other purposes such as general visibility of network participants.
+</p>
+<p>
+  Principles:
+  <ul>
+    <li>Optimise data structures for fast lookup, to maximise traffic classification efficiency (when rules reference identity metadata)
+    <li>The consumer of the identity metadata is responsible for the trustworthiness and validity of the data
+    <li>Identity metadata records provide attribution of data source and expiry time so that consumer can make informed decisions (i.e. LLDP metadata may not be very trustworthy as it is a clear text protocol with no authentication, however 802.1x is more trustworthy)
+  </ul>
+  Current sources of identity metadata:
+  <ul>
+    <li>LLDP advertisements
+    <li>DHCP offers / ACKs
+    <li>DNS answers
+    <li>Packet-in events (IP address etc)
+  </ul>
+</p>
+<p>
+  Identity metadata is stored in a set of nested data structures (note that both the structure and diagram are currently under development):
+</p>
+<p>
+  <img src="images/system/identity_metadata_structure.png" alt="Identity Metadata Structures">
+</p>
 
       </section>
     </div>

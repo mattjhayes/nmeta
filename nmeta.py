@@ -212,9 +212,8 @@ class NMeta(app_manager.RyuApp):
         #*** Record the event for measurements:
         self.measure.record_rate_event('packet_in')
 
-        #*** Extract variables:
+        #*** Extract parameters:
         msg = ev.msg
-
         datapath = msg.datapath
         dpid = datapath.id
         ofproto = datapath.ofproto
@@ -269,11 +268,14 @@ class NMeta(app_manager.RyuApp):
         out_port = self.forwarding.basic_switch(ev, in_port)
 
         #*** Accumulate extra information in the flow_actions dictionary:
-        flow_actions['in_port'] = in_port
-        flow_actions['out_port'] = out_port
+        flow_actions.setdefault('datapath', {})
+        flow_actions['datapath'].setdefault(dpid, {})
+        flow_actions['datapath'][dpid]['in_port'] = in_port
+        flow_actions['datapath'][dpid]['out_port'] = out_port
 
         #*** Update Flow Metadata Table and add QoS queue:
         flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
+        out_queue = flow_actions['datapath'][dpid].setdefault('out_queue', 0)
 
         #*** Do some add flow magic, but only if not a flooded packet:
         #*** Prefer to do fine-grained match where possible:
@@ -284,42 +286,47 @@ class NMeta(app_manager.RyuApp):
                                   "ip_dst=%s ip_ver=4 tcp_src=%s tcp_dst=%s",
                                   pkt_ip4.src, pkt_ip4.dst,
                                   pkt_tcp.src_port, pkt_tcp.dst_port)
-                _result = self.sa.add_flow_tcp(datapath, msg, flow_actions,
-                                  priority=0, buffer_id=None, idle_timeout=5,
-                                  hard_timeout=0)
+                _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
+                                  out_port=out_port, out_queue=out_queue,
+                                  priority=0, buffer_id=None,
+                                  idle_timeout=5, hard_timeout=0)
             elif pkt_tcp and pkt_ip6:
                 #*** Call abstraction layer to add TCP flow record:
                 self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
                                   "ip_dst=%s ip_ver=6 tcp_src=%s tcp_dst=%s",
                                   pkt_ip6.src, pkt_ip6.dst,
                                   pkt_tcp.src_port, pkt_tcp.dst_port)
-                _result = self.sa.add_flow_tcp(datapath, msg, flow_actions,
-                                  priority=0, buffer_id=None, idle_timeout=5,
-                                  hard_timeout=0)
+                _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
+                                  out_port=out_port, out_queue=out_queue,
+                                  priority=0, buffer_id=None,
+                                  idle_timeout=5, hard_timeout=0)
             elif pkt_ip4:
                 #*** Call abstraction layer to add IP flow record:
                 self.logger.debug("event=add_flow match_type=ip ip_src=%s "
                                   "ip_dst=%s ip_proto=%s ip_ver=4",
                                   pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
-                _result = self.sa.add_flow_ip(datapath, msg, flow_actions,
-                                  priority=0, buffer_id=None, idle_timeout=5,
-                                  hard_timeout=0)
+                _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
+                                  out_port=out_port, out_queue=out_queue,
+                                  priority=0, buffer_id=None,
+                                  idle_timeout=5, hard_timeout=0)
             elif pkt_ip6:
                 #*** Call abstraction layer to add IP flow record:
                 self.logger.debug("event=add_flow match_type=ip ip_src=%s "
                                   "ip_dst=%s ip_proto=%s ip_ver=6",
                                   pkt_ip6.src, pkt_ip6.dst, pkt_ip6.nxt)
-                _result = self.sa.add_flow_ip(datapath, msg, flow_actions,
-                                  priority=0, buffer_id=None, idle_timeout=5,
-                                  hard_timeout=0)
+                _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
+                                  out_port=out_port, out_queue=out_queue,
+                                  priority=0, buffer_id=None,
+                                  idle_timeout=5, hard_timeout=0)
             else:
                 #*** Call abstraction layer to add Ethernet flow record:
                 self.logger.debug("event=add_flow match_type=eth eth_src=%s "
                                   "eth_dst=%s eth_type=%s",
                                   eth_src, eth_dst, eth.ethertype)
-                _result = self.sa.add_flow_eth(datapath, msg, flow_actions,
-                                  priority=0, buffer_id=None, idle_timeout=5,
-                                  hard_timeout=0)
+                _result = self.sa.add_flow_eth(datapath, msg, in_port=in_port,
+                                  out_port=out_port, out_queue=out_queue,
+                                  priority=0, buffer_id=None,
+                                  idle_timeout=5, hard_timeout=0)
             self.logger.debug("event=add_flow result=%s", _result)
 
             #*** Record the event for measurements:
@@ -327,7 +334,7 @@ class NMeta(app_manager.RyuApp):
 
             #*** Send Packet Out:
             packet_out_result = self.sa.packet_out(datapath, msg, in_port,
-                                out_port, flow_actions['out_queue'])
+                                out_port, out_queue)
 
             #*** Record Measurements:
             self.measure.record_rate_event('packet_out')

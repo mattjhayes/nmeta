@@ -101,6 +101,7 @@ class FlowMetadata(object):
         3) Return updated actions
         """
         pkt = packet.Packet(msg.data)
+        dpid = msg.datapath.id
         #*** check if packet is part of a flow already in the FM table:
         _table_ref = self._fm_check(pkt)
         if _table_ref:
@@ -113,7 +114,7 @@ class FlowMetadata(object):
         #***  should be applied:
         out_queue = self.qos.check_policy(flow_actions['actions'])
         self.logger.debug("out_queue=%s", out_queue)
-        flow_actions['out_queue'] = out_queue
+        flow_actions['datapath'][dpid]['out_queue'] = out_queue
         #*** Return the updated flow actions:
         return flow_actions
 

@@ -113,15 +113,10 @@ class SwitchAbstract(object):
             #*** Add console log handler to logger:
             self.logger.addHandler(self.console_handler)
 
-    def add_flow_tcp(self, datapath, msg, flow_actions, **kwargs):
+    def add_flow_tcp(self, datapath, msg, **kwargs):
         """
         Add a TCP flow table entry to a switch.
         Returns 1 for success or 0 for any type of error
-        Required kwargs are:
-            priority (0)
-            buffer_id (None)
-            idle_timeout (5)
-            hard_timeout (0)
         """
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -130,7 +125,9 @@ class SwitchAbstract(object):
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
-        in_port = flow_actions['in_port']
+        in_port = kwargs['in_port']
+        out_port = kwargs['out_port']
+        out_queue = kwargs['out_queue']
         idle_timeout = kwargs['idle_timeout']
         hard_timeout = kwargs['hard_timeout']
         buffer_id = kwargs['buffer_id']
@@ -216,7 +213,7 @@ class SwitchAbstract(object):
             return 0
         #*** Get the actions to install for the match:
         actions = self.get_actions(datapath, ofproto.OFP_VERSION,
-                        flow_actions['out_port'], flow_actions['out_queue'])
+                        out_port, out_queue)
         self.logger.debug("actions=%s", actions)
         #*** Now have a match and actions so call add_flow to instantiate it:
         _result = self.add_flow(datapath, match, actions,
@@ -226,15 +223,10 @@ class SwitchAbstract(object):
         self.logger.debug("result is %s", _result)
         return _result
 
-    def add_flow_ip(self, datapath, msg, flow_actions, **kwargs):
+    def add_flow_ip(self, datapath, msg, **kwargs):
         """
         Add an IP (v4 or v6) flow table entry to a switch.
         Returns 1 for success or 0 for any type of error
-        Required kwargs are:
-            priority (0)
-            buffer_id (None)
-            idle_timeout (5)
-            hard_timeout (0)
         Uses IP protocol number to prevent matching on TCP flows
         """
         ofproto = datapath.ofproto
@@ -243,7 +235,9 @@ class SwitchAbstract(object):
         eth = pkt.get_protocol(ethernet.ethernet)
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        in_port = flow_actions['in_port']
+        in_port = kwargs['in_port']
+        out_port = kwargs['out_port']
+        out_queue = kwargs['out_queue']
         idle_timeout = kwargs['idle_timeout']
         hard_timeout = kwargs['hard_timeout']
         buffer_id = kwargs['buffer_id']
@@ -296,7 +290,7 @@ class SwitchAbstract(object):
             return 0
         #*** Get the actions to install for the match:
         actions = self.get_actions(datapath, ofproto.OFP_VERSION,
-                        flow_actions['out_port'], flow_actions['out_queue'])
+                        out_port, out_queue)
         self.logger.debug("actions=%s", actions)
         #*** Now have a match and actions so call add_flow to instantiate it:
         _result = self.add_flow(datapath, match, actions,
@@ -306,15 +300,10 @@ class SwitchAbstract(object):
         self.logger.debug("result is %s", _result)
         return _result
 
-    def add_flow_eth(self, datapath, msg, flow_actions, **kwargs):
+    def add_flow_eth(self, datapath, msg, **kwargs):
         """
         Add an ethernet (non-IP) flow table entry to a switch.
         Returns 1 for success or 0 for any type of error
-        Required kwargs are:
-            priority (0)
-            buffer_id (None)
-            idle_timeout (5)
-            hard_timeout (0)
         Uses Ethertype in match to prevent matching against IPv4 
         or IPv6 flows
         """
@@ -322,7 +311,9 @@ class SwitchAbstract(object):
         parser = datapath.ofproto_parser
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        in_port = flow_actions['in_port']
+        in_port = kwargs['in_port']
+        out_port = kwargs['out_port']
+        out_queue = kwargs['out_queue']
         idle_timeout = kwargs['idle_timeout']
         hard_timeout = kwargs['hard_timeout']
         buffer_id = kwargs['buffer_id']
@@ -353,7 +344,7 @@ class SwitchAbstract(object):
             return 0
         #*** Get the actions to install for the match:
         actions = self.get_actions(datapath, ofproto.OFP_VERSION,
-                        flow_actions['out_port'], flow_actions['out_queue'])
+                        out_port, out_queue)
         self.logger.debug("actions=%s", actions)
         #*** Now have a match and actions so call add_flow to instantiate it:
         _result = self.add_flow(datapath, match, actions,

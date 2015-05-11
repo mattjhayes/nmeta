@@ -175,8 +175,8 @@ class SwitchAbstract(object):
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst),
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
+                        dl_type=0x0800, nw_src=pkt_ip6.src,
+                        nw_dst=pkt_ip6.dst, nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6-TCP "
                                  "match=%s", ofproto.OFP_VERSION, match)
@@ -201,8 +201,8 @@ class SwitchAbstract(object):
                         in_port=in_port,
                         dl_src=eth.src,
                         dl_dst=eth.dst, 
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
+                        dl_type=0x0800, nw_src=pkt_ip6.src,
+                        nw_dst=pkt_ip6.dst, nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6-TCP "
                                    "match=%s", ofproto.OFP_VERSION, match)
@@ -258,8 +258,8 @@ class SwitchAbstract(object):
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst),
+                        dl_type=0x0800, nw_src=pkt_ip6.src,
+                        nw_dst=pkt_ip6.dst,
                         nw_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6 match=%s",
                                   ofproto.OFP_VERSION, match)
@@ -278,8 +278,8 @@ class SwitchAbstract(object):
                         in_port=in_port,
                         dl_src=eth.src,
                         dl_dst=eth.dst, 
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst),
+                        dl_type=0x0800, nw_src=pkt_ip6.src,
+                        nw_dst=pkt_ip6.dst,
                         ip_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6 match=%s",
                                   ofproto.OFP_VERSION, match)
@@ -790,11 +790,3 @@ class SwitchAbstract(object):
         assert isinstance(ip_text, str)
         return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
 
-    def _ipv6_t2i(self, ip_text):
-        """
-        Turns an IPv6 address in text format into an integer.
-        """
-        if ip_text == 0:
-            return ip_text
-        assert isinstance(ip_text, str)
-        return struct.unpack('!I', addrconv.ipv6.text_to_bin(ip_text))[0]

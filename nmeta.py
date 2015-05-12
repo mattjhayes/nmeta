@@ -41,7 +41,6 @@ from ryu.lib.packet import packet
 from ryu.lib import addrconv
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
-from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 
 #*** Required for api module context:
@@ -175,7 +174,6 @@ class NMeta(app_manager.RyuApp):
         switch description
         """
         datapath = ev.msg.datapath
-        ofproto = datapath.ofproto
         self.logger.info("In switch_connection_handler")
         #*** Set config on the switch:
         self.sa.set_switch_config(datapath, self.ofpc_frag, self.miss_send_len)
@@ -223,7 +221,6 @@ class NMeta(app_manager.RyuApp):
         eth_dst = eth.dst
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        pkt_udp = pkt.get_protocol(udp.udp)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
 
         #*** Get the in port (OpenFlow version dependant call):
@@ -333,8 +330,7 @@ class NMeta(app_manager.RyuApp):
             self.measure.record_rate_event('add_flow')
 
             #*** Send Packet Out:
-            packet_out_result = self.sa.packet_out(datapath, msg, in_port,
-                                out_port, out_queue)
+            self.sa.packet_out(datapath, msg, in_port, out_port, out_queue)
 
             #*** Record Measurements:
             self.measure.record_rate_event('packet_out')
@@ -437,6 +433,10 @@ def _port_status_handler(self, ev):
 
 #*** Borrowed from rest_router.py code:
 def ipv4_text_to_int(ip_text):
+    """
+    Takes an IP address string and translates it
+    to an unsigned integer
+    """
     if ip_text == 0:
         return ip_text
     assert isinstance(ip_text, str)

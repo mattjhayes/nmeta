@@ -217,11 +217,6 @@ class NMeta(app_manager.RyuApp):
         ofproto = datapath.ofproto
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        eth_src = eth.src
-        eth_dst = eth.dst
-        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)
 
         #*** Get the in port (OpenFlow version dependant call):
         in_port = self.sa.get_in_port(msg, datapath, ofproto)
@@ -248,31 +243,24 @@ class NMeta(app_manager.RyuApp):
         flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
         out_queue = flow_actions['datapath'][dpid].setdefault('out_queue', 0)
 
-        #*** Do some add flow magic, but only if not a flooded packet:
-        #*** Prefer to do fine-grained match where possible:
         if out_port != ofproto.OFPP_FLOOD:
+            #*** Do some add flow magic, but only if not a flooded packet:
+            #*** Prefer to do fine-grained match where possible:
             _add_flow_result = self._add_flow(ev, in_port, out_port, out_queue)
             self.logger.debug("event=add_flow result=%s", _add_flow_result)
-
             #*** Record the event for measurements:
             self.measure.record_rate_event('add_flow')
-
             #*** Send Packet Out:
-            self.sa.packet_out(datapath, msg, in_port, out_port, out_queue)
-
-            #*** Record Measurements:
-            self.measure.record_rate_event('packet_out')
-            pi_delta_time = time.time() - pi_start_time
-            self.measure.record_metric('packet_delta', pi_delta_time)
+            self.sa.packet_out(datapath, msg, in_port, out_port, out_queue, 0)
         else:
-            #*** It's a packet that's flooded, so send without specific queue:
-            packet_out_result = self.sa.packet_out_nq(datapath, msg, in_port,
-                                out_port)
+            #*** It's a packet that's flooded, so send without specific queue
+            #*** and with no queue option set:
+            self.sa.packet_out(datapath, msg, in_port, out_port, 0, 1)
 
-            #*** Record Measurements:
-            self.measure.record_rate_event('packet_out')
-            pi_delta_time = time.time() - pi_start_time
-            self.measure.record_metric('packet_delta', pi_delta_time)
+        #*** Record Measurements:
+        self.measure.record_rate_event('packet_out')
+        pi_delta_time = time.time() - pi_start_time
+        self.measure.record_metric('packet_delta', pi_delta_time)
 
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:
@@ -330,8 +318,6 @@ class NMeta(app_manager.RyuApp):
         #*** Extract parameters:
         msg = ev.msg
         datapath = msg.datapath
-        dpid = datapath.id
-        ofproto = datapath.ofproto
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
         eth_src = eth.src
@@ -399,7 +385,6 @@ class NMeta(app_manager.RyuApp):
         msg = ev.msg
         datapath = msg.datapath
         dpid = datapath.id
-        ofproto = datapath.ofproto
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
         eth_src = eth.src

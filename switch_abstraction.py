@@ -96,7 +96,7 @@ class SwitchAbstract(object):
         if _syslog_enabled:
             #*** Log to syslog on host specified in config.yaml:
             self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
+                                                _loghost, _logport),
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
@@ -180,27 +180,27 @@ class SwitchAbstract(object):
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6-TCP "
                                  "match=%s", ofproto.OFP_VERSION, match)
-        elif (pkt_tcp and pkt_ip4 and 
+        elif (pkt_tcp and pkt_ip4 and
                        ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
             #*** Note OF1.3 needs eth src and dest in ascii not bin
-            #*** and tcp vs udp protocol specific attributes: 
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            #*** and tcp vs udp protocol specific attributes:
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=eth.src,
-                        dl_dst=eth.dst, 
+                        dl_dst=eth.dst,
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4-TCP "
                                  "match=%s", ofproto.OFP_VERSION, match)
-        elif (pkt_tcp and pkt_ip6 and 
+        elif (pkt_tcp and pkt_ip6 and
                        ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
             #*** Note OF1.3 needs eth src and dest in ascii not bin
-            #*** and tcp vs udp protocol specific attributes: 
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            #*** and tcp vs udp protocol specific attributes:
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=eth.src,
-                        dl_dst=eth.dst, 
+                        dl_dst=eth.dst,
                         dl_type=0x0800, nw_src=pkt_ip6.src,
                         nw_dst=pkt_ip6.dst, nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
@@ -243,17 +243,17 @@ class SwitchAbstract(object):
         buffer_id = kwargs['buffer_id']
         priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
-        if (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+        if pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst),
                         nw_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4 match=%s",
                                   ofproto.OFP_VERSION, match)
-        elif (pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+        elif pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
@@ -263,7 +263,7 @@ class SwitchAbstract(object):
                         nw_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6 match=%s",
                                   ofproto.OFP_VERSION, match)
-        elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+        elif pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
                         in_port=in_port,
                         dl_src=eth.src,
@@ -273,7 +273,7 @@ class SwitchAbstract(object):
                         ip_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4 match=%s",
                                   ofproto.OFP_VERSION, match)
-        elif (pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+        elif pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
                         in_port=in_port,
                         dl_src=eth.src,
@@ -619,9 +619,11 @@ class SwitchAbstract(object):
             return 0
         return 1
 
-    def packet_out(self, datapath, msg, in_port, out_port, out_queue):
+    def packet_out(self, datapath, msg, in_port, out_port, out_queue, nq=0):
         """
-        Sends a supplied packet out switch port(s) in specific queue 
+        Sends a supplied packet out switch port(s) in specific queue.
+        Set nq=1 if want no queueing specified (i.e. for a flooded
+        packet)
         """
         ofproto = datapath.ofproto
         dpid = msg.datapath.id
@@ -643,6 +645,18 @@ class SwitchAbstract(object):
                    "actions v01 Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
                 return 0 
+        elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION and not nq:
+            #*** Packet out with no queue (nq):
+            try:
+                actions = [datapath.ofproto_parser.OFPActionOutput \
+                             (out_port, 0)]
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000025 "
+                    "actions exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0
         elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
             try:
                 #*** Note: out_port must come last!
@@ -699,82 +713,6 @@ class SwitchAbstract(object):
             #*** Log the error and return 0:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.logger.error("error=E1000005 "
-               "datapath.send_msg Exception %s, %s, %s",
-                exc_type, exc_value, exc_traceback)
-            return 0 
-        return 1
-
-    def packet_out_nq(self, datapath, msg, in_port, out_port):
-        """
-        Sends a supplied packet out switch port(s) (nq = no queueing)
-        """
-        ofproto = datapath.ofproto
-        dpid = msg.datapath.id
-        if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
-            try:
-                actions = [datapath.ofproto_parser.OFPActionOutput \
-                             (out_port, )]
-            except:
-                #*** Log the error and return 0:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("error=E1000022 "
-                    "actions exception %s, %s, %s",
-                    exc_type, exc_value, exc_traceback)
-                return 0
-        elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
-            try:
-                actions = [datapath.ofproto_parser.OFPActionOutput \
-                             (out_port, 0)]
-            except:
-                #*** Log the error and return 0:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("error=E1000025 "
-                    "actions exception %s, %s, %s",
-                    exc_type, exc_value, exc_traceback)
-                return 0
-        else:
-            self.logger.error("error=E1000026 "
-                                "Unsupported OpenFlow version %s",
-                                ofproto.OFP_VERSION)
-            return 0
-        #*** Now have we have actions, build the packet out message:
-        if msg.buffer_id != ofproto.OFP_NO_BUFFER:
-            #*** Assemble the switch/packet/actions ready to push.
-            #***  Use the buffered packet on the switch:
-            try:
-                out = datapath.ofproto_parser.OFPPacketOut(
-                    datapath=datapath, buffer_id=msg.buffer_id,
-                    in_port=in_port, actions=actions)
-            except:
-                #*** Log the error and return 0:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("error=E1000023 "
-                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
-                    exc_type, exc_value, exc_traceback)
-                return 0 
-        else:
-            #*** Assemble the switch/packet/actions ready to push.
-            #***  No buffered packet on the switch, so supply packet data:
-            self.logger.warning("No packet buffer dpid=%s", dpid)
-            data = msg.data
-            try:
-                out = datapath.ofproto_parser.OFPPacketOut(
-                    datapath=datapath, buffer_id=msg.buffer_id,
-                    in_port=in_port, actions=actions, data=data)
-            except:
-                #*** Log the error and return 0:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("error=E1000023 "
-                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
-                    exc_type, exc_value, exc_traceback)
-                return 0 
-        #*** Tell the switch to send the packet:
-        try:
-            datapath.send_msg(out)
-        except:
-            #*** Log the error and return 0:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("error=E1000024 "
                "datapath.send_msg Exception %s, %s, %s",
                 exc_type, exc_value, exc_traceback)
             return 0 

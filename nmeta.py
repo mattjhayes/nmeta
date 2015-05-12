@@ -41,7 +41,6 @@ from ryu.lib.packet import packet
 from ryu.lib import addrconv
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
-from ryu.lib.packet import udp
 from ryu.lib.packet import tcp
 
 #*** Required for api module context:
@@ -175,7 +174,6 @@ class NMeta(app_manager.RyuApp):
         switch description
         """
         datapath = ev.msg.datapath
-        ofproto = datapath.ofproto
         self.logger.info("In switch_connection_handler")
         #*** Set config on the switch:
         self.sa.set_switch_config(datapath, self.ofpc_frag, self.miss_send_len)
@@ -219,45 +217,13 @@ class NMeta(app_manager.RyuApp):
         ofproto = datapath.ofproto
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        eth_src = eth.src
-        eth_dst = eth.dst
-        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        pkt_udp = pkt.get_protocol(udp.udp)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)
 
         #*** Get the in port (OpenFlow version dependant call):
         in_port = self.sa.get_in_port(msg, datapath, ofproto)
 
-        #*** Only run this stanza if syslog or console logging set to DEBUG:
+        #*** Extra debug if syslog or console logging set to DEBUG:
         if self.debug_on:
-            #*** Some debug about the Packet In:
-            if pkt_ip4 and pkt_tcp:
-                self.logger.debug("event=pi_ipv4_tcp dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
-                                  "tcp_dst=%s",
-                                  dpid, in_port, pkt_ip4.src, pkt_ip4.dst,
-                                  pkt_tcp.src_port, pkt_tcp.dst_port)
-            elif pkt_ip6 and pkt_tcp:
-                self.logger.debug("event=pi_ipv6_tcp dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
-                                  "tcp_dst=%s",
-                                  dpid, in_port, pkt_ip6.src, pkt_ip6.dst,
-                                  pkt_tcp.src_port, pkt_tcp.dst_port)
-            elif pkt_ip4:
-                self.logger.debug("event=pi_ipv4 dpid="
-                                  "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
-                                  dpid, in_port,
-                                  pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
-            elif pkt_ip6:
-                self.logger.debug("event=pi_ipv6 dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s",
-                                  dpid, in_port,
-                                  pkt_ip6.src, pkt_ip6.dst)
-            else:
-                self.logger.debug("event=pi_other dpid=%s "
-                                "in_port=%s eth_src=%s eth_dst=%s eth_type=%s",
-                                dpid, in_port, eth_src, eth_dst, eth.ethertype)
+            self._packet_in_debug(ev, in_port)
 
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches
@@ -277,78 +243,24 @@ class NMeta(app_manager.RyuApp):
         flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
         out_queue = flow_actions['datapath'][dpid].setdefault('out_queue', 0)
 
-        #*** Do some add flow magic, but only if not a flooded packet:
-        #*** Prefer to do fine-grained match where possible:
         if out_port != ofproto.OFPP_FLOOD:
-            if pkt_tcp and pkt_ip4:
-                #*** Call abstraction layer to add TCP flow record:
-                self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
-                                  "ip_dst=%s ip_ver=4 tcp_src=%s tcp_dst=%s",
-                                  pkt_ip4.src, pkt_ip4.dst,
-                                  pkt_tcp.src_port, pkt_tcp.dst_port)
-                _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
-                                  out_port=out_port, out_queue=out_queue,
-                                  priority=0, buffer_id=None,
-                                  idle_timeout=5, hard_timeout=0)
-            elif pkt_tcp and pkt_ip6:
-                #*** Call abstraction layer to add TCP flow record:
-                self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
-                                  "ip_dst=%s ip_ver=6 tcp_src=%s tcp_dst=%s",
-                                  pkt_ip6.src, pkt_ip6.dst,
-                                  pkt_tcp.src_port, pkt_tcp.dst_port)
-                _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
-                                  out_port=out_port, out_queue=out_queue,
-                                  priority=0, buffer_id=None,
-                                  idle_timeout=5, hard_timeout=0)
-            elif pkt_ip4:
-                #*** Call abstraction layer to add IP flow record:
-                self.logger.debug("event=add_flow match_type=ip ip_src=%s "
-                                  "ip_dst=%s ip_proto=%s ip_ver=4",
-                                  pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
-                _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
-                                  out_port=out_port, out_queue=out_queue,
-                                  priority=0, buffer_id=None,
-                                  idle_timeout=5, hard_timeout=0)
-            elif pkt_ip6:
-                #*** Call abstraction layer to add IP flow record:
-                self.logger.debug("event=add_flow match_type=ip ip_src=%s "
-                                  "ip_dst=%s ip_proto=%s ip_ver=6",
-                                  pkt_ip6.src, pkt_ip6.dst, pkt_ip6.nxt)
-                _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
-                                  out_port=out_port, out_queue=out_queue,
-                                  priority=0, buffer_id=None,
-                                  idle_timeout=5, hard_timeout=0)
-            else:
-                #*** Call abstraction layer to add Ethernet flow record:
-                self.logger.debug("event=add_flow match_type=eth eth_src=%s "
-                                  "eth_dst=%s eth_type=%s",
-                                  eth_src, eth_dst, eth.ethertype)
-                _result = self.sa.add_flow_eth(datapath, msg, in_port=in_port,
-                                  out_port=out_port, out_queue=out_queue,
-                                  priority=0, buffer_id=None,
-                                  idle_timeout=5, hard_timeout=0)
-            self.logger.debug("event=add_flow result=%s", _result)
-
+            #*** Do some add flow magic, but only if not a flooded packet:
+            #*** Prefer to do fine-grained match where possible:
+            _add_flow_result = self._add_flow(ev, in_port, out_port, out_queue)
+            self.logger.debug("event=add_flow result=%s", _add_flow_result)
             #*** Record the event for measurements:
             self.measure.record_rate_event('add_flow')
-
             #*** Send Packet Out:
-            packet_out_result = self.sa.packet_out(datapath, msg, in_port,
-                                out_port, out_queue)
-
-            #*** Record Measurements:
-            self.measure.record_rate_event('packet_out')
-            pi_delta_time = time.time() - pi_start_time
-            self.measure.record_metric('packet_delta', pi_delta_time)
+            self.sa.packet_out(datapath, msg, in_port, out_port, out_queue, 0)
         else:
-            #*** It's a packet that's flooded, so send without specific queue:
-            packet_out_result = self.sa.packet_out_nq(datapath, msg, in_port,
-                                out_port)
+            #*** It's a packet that's flooded, so send without specific queue
+            #*** and with no queue option set:
+            self.sa.packet_out(datapath, msg, in_port, out_port, 0, 1)
 
-            #*** Record Measurements:
-            self.measure.record_rate_event('packet_out')
-            pi_delta_time = time.time() - pi_start_time
-            self.measure.record_metric('packet_delta', pi_delta_time)
+        #*** Record Measurements:
+        self.measure.record_rate_event('packet_out')
+        pi_delta_time = time.time() - pi_start_time
+        self.measure.record_metric('packet_delta', pi_delta_time)
 
         #*** Now check if table maintenance is needed:
         #*** Flow Metadata (FM) table maintenance:
@@ -398,6 +310,118 @@ class NMeta(app_manager.RyuApp):
                                      self.measure_buckets_max_age)
             self.measure_buckets_last_tidyup_time = _time
 
+    def _add_flow(self, ev, in_port, out_port, out_queue):
+        """
+        Add a flow entry to a switch
+        Prefer to do fine-grained match where possible
+        """
+        #*** Extract parameters:
+        msg = ev.msg
+        datapath = msg.datapath
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+        eth_src = eth.src
+        eth_dst = eth.dst
+        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
+        pkt_tcp = pkt.get_protocol(tcp.tcp)
+        #*** Install a flow entry based on type of flow:
+        if pkt_tcp and pkt_ip4:
+            #*** Call abstraction layer to add TCP flow record:
+            self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
+                              "ip_dst=%s ip_ver=4 tcp_src=%s tcp_dst=%s",
+                              pkt_ip4.src, pkt_ip4.dst,
+                              pkt_tcp.src_port, pkt_tcp.dst_port)
+            _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
+                              out_port=out_port, out_queue=out_queue,
+                              priority=0, buffer_id=None,
+                              idle_timeout=5, hard_timeout=0)
+        elif pkt_tcp and pkt_ip6:
+            #*** Call abstraction layer to add TCP flow record:
+            self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
+                              "ip_dst=%s ip_ver=6 tcp_src=%s tcp_dst=%s",
+                              pkt_ip6.src, pkt_ip6.dst,
+                              pkt_tcp.src_port, pkt_tcp.dst_port)
+            _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
+                              out_port=out_port, out_queue=out_queue,
+                              priority=0, buffer_id=None,
+                              idle_timeout=5, hard_timeout=0)
+        elif pkt_ip4:
+            #*** Call abstraction layer to add IP flow record:
+            self.logger.debug("event=add_flow match_type=ip ip_src=%s "
+                              "ip_dst=%s ip_proto=%s ip_ver=4",
+                              pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
+            _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
+                              out_port=out_port, out_queue=out_queue,
+                              priority=0, buffer_id=None,
+                              idle_timeout=5, hard_timeout=0)
+        elif pkt_ip6:
+            #*** Call abstraction layer to add IP flow record:
+            self.logger.debug("event=add_flow match_type=ip ip_src=%s "
+                              "ip_dst=%s ip_proto=%s ip_ver=6",
+                              pkt_ip6.src, pkt_ip6.dst, pkt_ip6.nxt)
+            _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
+                              out_port=out_port, out_queue=out_queue,
+                              priority=0, buffer_id=None,
+                              idle_timeout=5, hard_timeout=0)
+        else:
+            #*** Call abstraction layer to add Ethernet flow record:
+            self.logger.debug("event=add_flow match_type=eth eth_src=%s "
+                              "eth_dst=%s eth_type=%s",
+                              eth_src, eth_dst, eth.ethertype)
+            _result = self.sa.add_flow_eth(datapath, msg, in_port=in_port,
+                              out_port=out_port, out_queue=out_queue,
+                              priority=0, buffer_id=None,
+                              idle_timeout=5, hard_timeout=0)
+        return _result
+
+
+    def _packet_in_debug(self, ev, in_port):
+        """
+        Generate a debug message describing the packet
+        in event
+        """
+        #*** Extract parameters:
+        msg = ev.msg
+        datapath = msg.datapath
+        dpid = datapath.id
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
+        eth_src = eth.src
+        eth_dst = eth.dst
+        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
+        pkt_tcp = pkt.get_protocol(tcp.tcp)
+
+        #*** Some debug about the Packet In:
+        if pkt_ip4 and pkt_tcp:
+            self.logger.debug("event=pi_ipv4_tcp dpid=%s "
+                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
+                                  "tcp_dst=%s",
+                                  dpid, in_port, pkt_ip4.src, pkt_ip4.dst,
+                                  pkt_tcp.src_port, pkt_tcp.dst_port)
+        elif pkt_ip6 and pkt_tcp:
+            self.logger.debug("event=pi_ipv6_tcp dpid=%s "
+                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
+                                  "tcp_dst=%s",
+                                  dpid, in_port, pkt_ip6.src, pkt_ip6.dst,
+                                  pkt_tcp.src_port, pkt_tcp.dst_port)
+        elif pkt_ip4:
+            self.logger.debug("event=pi_ipv4 dpid="
+                                  "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
+                                  dpid, in_port,
+                                  pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
+        elif pkt_ip6:
+            self.logger.debug("event=pi_ipv6 dpid=%s "
+                                  "in_port=%s ip_src=%s ip_dst=%s",
+                                  dpid, in_port,
+                                  pkt_ip6.src, pkt_ip6.dst)
+        else:
+            self.logger.debug("event=pi_other dpid=%s "
+                                "in_port=%s eth_src=%s eth_dst=%s eth_type=%s",
+                                dpid, in_port, eth_src, eth_dst, eth.ethertype)
+
+
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
     def error_msg_handler(self, ev):
@@ -437,6 +461,10 @@ def _port_status_handler(self, ev):
 
 #*** Borrowed from rest_router.py code:
 def ipv4_text_to_int(ip_text):
+    """
+    Takes an IP address string and translates it
+    to an unsigned integer
+    """
     if ip_text == 0:
         return ip_text
     assert isinstance(ip_text, str)

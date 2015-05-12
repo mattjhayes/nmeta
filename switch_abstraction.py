@@ -96,7 +96,7 @@ class SwitchAbstract(object):
         if _syslog_enabled:
             #*** Log to syslog on host specified in config.yaml:
             self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
+                                                _loghost, _logport),
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
@@ -113,15 +113,10 @@ class SwitchAbstract(object):
             #*** Add console log handler to logger:
             self.logger.addHandler(self.console_handler)
 
-    def add_flow_tcp(self, datapath, msg, flow_actions, **kwargs):
+    def add_flow_tcp(self, datapath, msg, **kwargs):
         """
         Add a TCP flow table entry to a switch.
         Returns 1 for success or 0 for any type of error
-        Required kwargs are:
-            priority (0)
-            buffer_id (None)
-            idle_timeout (5)
-            hard_timeout (0)
         """
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -130,7 +125,9 @@ class SwitchAbstract(object):
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
-        in_port = flow_actions['in_port']
+        in_port = kwargs['in_port']
+        out_port = kwargs['out_port']
+        out_queue = kwargs['out_queue']
         idle_timeout = kwargs['idle_timeout']
         hard_timeout = kwargs['hard_timeout']
         buffer_id = kwargs['buffer_id']
@@ -178,34 +175,34 @@ class SwitchAbstract(object):
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst),
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
+                        dl_type=0x0800, nw_src=pkt_ip6.src,
+                        nw_dst=pkt_ip6.dst, nw_proto=6,
                         tp_src=pkt_tcp.src_port, tp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6-TCP "
                                  "match=%s", ofproto.OFP_VERSION, match)
-        elif (pkt_tcp and pkt_ip4 and 
+        elif (pkt_tcp and pkt_ip4 and
                        ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
             #*** Note OF1.3 needs eth src and dest in ascii not bin
-            #*** and tcp vs udp protocol specific attributes: 
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            #*** and tcp vs udp protocol specific attributes:
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=eth.src,
-                        dl_dst=eth.dst, 
+                        dl_dst=eth.dst,
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst), nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4-TCP "
                                  "match=%s", ofproto.OFP_VERSION, match)
-        elif (pkt_tcp and pkt_ip6 and 
+        elif (pkt_tcp and pkt_ip6 and
                        ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
             #*** Note OF1.3 needs eth src and dest in ascii not bin
-            #*** and tcp vs udp protocol specific attributes: 
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            #*** and tcp vs udp protocol specific attributes:
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=eth.src,
-                        dl_dst=eth.dst, 
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst), nw_proto=6,
+                        dl_dst=eth.dst,
+                        dl_type=0x0800, nw_src=pkt_ip6.src,
+                        nw_dst=pkt_ip6.dst, nw_proto=6,
                         tcp_src=pkt_tcp.src_port, tcp_dst=pkt_tcp.dst_port)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6-TCP "
                                    "match=%s", ofproto.OFP_VERSION, match)
@@ -216,7 +213,7 @@ class SwitchAbstract(object):
             return 0
         #*** Get the actions to install for the match:
         actions = self.get_actions(datapath, ofproto.OFP_VERSION,
-                        flow_actions['out_port'], flow_actions['out_queue'])
+                        out_port, out_queue)
         self.logger.debug("actions=%s", actions)
         #*** Now have a match and actions so call add_flow to instantiate it:
         _result = self.add_flow(datapath, match, actions,
@@ -226,15 +223,10 @@ class SwitchAbstract(object):
         self.logger.debug("result is %s", _result)
         return _result
 
-    def add_flow_ip(self, datapath, msg, flow_actions, **kwargs):
+    def add_flow_ip(self, datapath, msg, **kwargs):
         """
         Add an IP (v4 or v6) flow table entry to a switch.
         Returns 1 for success or 0 for any type of error
-        Required kwargs are:
-            priority (0)
-            buffer_id (None)
-            idle_timeout (5)
-            hard_timeout (0)
         Uses IP protocol number to prevent matching on TCP flows
         """
         ofproto = datapath.ofproto
@@ -243,33 +235,35 @@ class SwitchAbstract(object):
         eth = pkt.get_protocol(ethernet.ethernet)
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        in_port = flow_actions['in_port']
+        in_port = kwargs['in_port']
+        out_port = kwargs['out_port']
+        out_queue = kwargs['out_queue']
         idle_timeout = kwargs['idle_timeout']
         hard_timeout = kwargs['hard_timeout']
         buffer_id = kwargs['buffer_id']
         priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
-        if (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+        if pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst),
                         nw_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4 match=%s",
                                   ofproto.OFP_VERSION, match)
-        elif (pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
+        elif pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst), 
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst),
+                        dl_type=0x0800, nw_src=pkt_ip6.src,
+                        nw_dst=pkt_ip6.dst,
                         nw_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6 match=%s",
                                   ofproto.OFP_VERSION, match)
-        elif (pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+        elif pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
                         in_port=in_port,
                         dl_src=eth.src,
@@ -279,13 +273,13 @@ class SwitchAbstract(object):
                         ip_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4 match=%s",
                                   ofproto.OFP_VERSION, match)
-        elif (pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
+        elif pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
             match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
                         in_port=in_port,
                         dl_src=eth.src,
                         dl_dst=eth.dst, 
-                        dl_type=0x0800, nw_src=self._ipv6_t2i(pkt_ip6.src),
-                        nw_dst=self._ipv6_t2i(pkt_ip6.dst),
+                        dl_type=0x0800, nw_src=pkt_ip6.src,
+                        nw_dst=pkt_ip6.dst,
                         ip_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6 match=%s",
                                   ofproto.OFP_VERSION, match)
@@ -296,7 +290,7 @@ class SwitchAbstract(object):
             return 0
         #*** Get the actions to install for the match:
         actions = self.get_actions(datapath, ofproto.OFP_VERSION,
-                        flow_actions['out_port'], flow_actions['out_queue'])
+                        out_port, out_queue)
         self.logger.debug("actions=%s", actions)
         #*** Now have a match and actions so call add_flow to instantiate it:
         _result = self.add_flow(datapath, match, actions,
@@ -306,15 +300,10 @@ class SwitchAbstract(object):
         self.logger.debug("result is %s", _result)
         return _result
 
-    def add_flow_eth(self, datapath, msg, flow_actions, **kwargs):
+    def add_flow_eth(self, datapath, msg, **kwargs):
         """
         Add an ethernet (non-IP) flow table entry to a switch.
         Returns 1 for success or 0 for any type of error
-        Required kwargs are:
-            priority (0)
-            buffer_id (None)
-            idle_timeout (5)
-            hard_timeout (0)
         Uses Ethertype in match to prevent matching against IPv4 
         or IPv6 flows
         """
@@ -322,7 +311,9 @@ class SwitchAbstract(object):
         parser = datapath.ofproto_parser
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-        in_port = flow_actions['in_port']
+        in_port = kwargs['in_port']
+        out_port = kwargs['out_port']
+        out_queue = kwargs['out_queue']
         idle_timeout = kwargs['idle_timeout']
         hard_timeout = kwargs['hard_timeout']
         buffer_id = kwargs['buffer_id']
@@ -353,7 +344,7 @@ class SwitchAbstract(object):
             return 0
         #*** Get the actions to install for the match:
         actions = self.get_actions(datapath, ofproto.OFP_VERSION,
-                        flow_actions['out_port'], flow_actions['out_queue'])
+                        out_port, out_queue)
         self.logger.debug("actions=%s", actions)
         #*** Now have a match and actions so call add_flow to instantiate it:
         _result = self.add_flow(datapath, match, actions,
@@ -628,9 +619,11 @@ class SwitchAbstract(object):
             return 0
         return 1
 
-    def packet_out(self, datapath, msg, in_port, out_port, out_queue):
+    def packet_out(self, datapath, msg, in_port, out_port, out_queue, nq=0):
         """
-        Sends a supplied packet out switch port(s) in specific queue 
+        Sends a supplied packet out switch port(s) in specific queue.
+        Set nq=1 if want no queueing specified (i.e. for a flooded
+        packet)
         """
         ofproto = datapath.ofproto
         dpid = msg.datapath.id
@@ -652,6 +645,18 @@ class SwitchAbstract(object):
                    "actions v01 Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
                 return 0 
+        elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION and not nq:
+            #*** Packet out with no queue (nq):
+            try:
+                actions = [datapath.ofproto_parser.OFPActionOutput \
+                             (out_port, 0)]
+            except:
+                #*** Log the error and return 0:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("error=E1000025 "
+                    "actions exception %s, %s, %s",
+                    exc_type, exc_value, exc_traceback)
+                return 0
         elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
             try:
                 #*** Note: out_port must come last!
@@ -713,82 +718,6 @@ class SwitchAbstract(object):
             return 0 
         return 1
 
-    def packet_out_nq(self, datapath, msg, in_port, out_port):
-        """
-        Sends a supplied packet out switch port(s) (nq = no queueing)
-        """
-        ofproto = datapath.ofproto
-        dpid = msg.datapath.id
-        if ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
-            try:
-                actions = [datapath.ofproto_parser.OFPActionOutput \
-                             (out_port, )]
-            except:
-                #*** Log the error and return 0:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("error=E1000022 "
-                    "actions exception %s, %s, %s",
-                    exc_type, exc_value, exc_traceback)
-                return 0
-        elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
-            try:
-                actions = [datapath.ofproto_parser.OFPActionOutput \
-                             (out_port, 0)]
-            except:
-                #*** Log the error and return 0:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("error=E1000025 "
-                    "actions exception %s, %s, %s",
-                    exc_type, exc_value, exc_traceback)
-                return 0
-        else:
-            self.logger.error("error=E1000026 "
-                                "Unsupported OpenFlow version %s",
-                                ofproto.OFP_VERSION)
-            return 0
-        #*** Now have we have actions, build the packet out message:
-        if msg.buffer_id != ofproto.OFP_NO_BUFFER:
-            #*** Assemble the switch/packet/actions ready to push.
-            #***  Use the buffered packet on the switch:
-            try:
-                out = datapath.ofproto_parser.OFPPacketOut(
-                    datapath=datapath, buffer_id=msg.buffer_id,
-                    in_port=in_port, actions=actions)
-            except:
-                #*** Log the error and return 0:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("error=E1000023 "
-                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
-                    exc_type, exc_value, exc_traceback)
-                return 0 
-        else:
-            #*** Assemble the switch/packet/actions ready to push.
-            #***  No buffered packet on the switch, so supply packet data:
-            self.logger.warning("No packet buffer dpid=%s", dpid)
-            data = msg.data
-            try:
-                out = datapath.ofproto_parser.OFPPacketOut(
-                    datapath=datapath, buffer_id=msg.buffer_id,
-                    in_port=in_port, actions=actions, data=data)
-            except:
-                #*** Log the error and return 0:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("error=E1000023 "
-                   "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
-                    exc_type, exc_value, exc_traceback)
-                return 0 
-        #*** Tell the switch to send the packet:
-        try:
-            datapath.send_msg(out)
-        except:
-            #*** Log the error and return 0:
-            exc_type, exc_value, exc_traceback = sys.exc_info()
-            self.logger.error("error=E1000024 "
-               "datapath.send_msg Exception %s, %s, %s",
-                exc_type, exc_value, exc_traceback)
-            return 0 
-        return 1
-
     def _ipv4_t2i(self, ip_text):
         """
         Turns an IPv4 address in text format into an integer.
@@ -799,11 +728,3 @@ class SwitchAbstract(object):
         assert isinstance(ip_text, str)
         return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
 
-    def _ipv6_t2i(self, ip_text):
-        """
-        Turns an IPv6 address in text format into an integer.
-        """
-        if ip_text == 0:
-            return ip_text
-        assert isinstance(ip_text, str)
-        return struct.unpack('!I', addrconv.ipv6.text_to_bin(ip_text))[0]

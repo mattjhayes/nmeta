@@ -31,7 +31,6 @@ import os
 #*** Packet-related imports:
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import arp
-from ryu.lib.packet import dhcp
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import udp
@@ -57,11 +56,11 @@ TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment',
                                    'actions')
 #*** Dictionary of valid conditions stanza attributes with type:
 TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
-                               'eth_dst': 'MACAddress', 
-                               'ip_src': 'IPAddressSpace', 
+                               'eth_dst': 'MACAddress',
+                               'ip_src': 'IPAddressSpace',
                                'ip_dst': 'IPAddressSpace',
-                               'tcp_src': 'PortNumber', 
-                               'tcp_dst': 'PortNumber', 
+                               'tcp_src': 'PortNumber',
+                               'tcp_dst': 'PortNumber',
                                'eth_type': 'EtherType',
                                'identity_lldp_systemname': 'String',
                                'identity_lldp_systemname_re': 'String',
@@ -78,7 +77,7 @@ TC_CONFIG_MATCH_TYPES = ('any',
                          'all',
                          'statistical')
 #*** Keys that must exist under 'identity' in the policy:
-IDENTITY_KEYS = ('arp', 
+IDENTITY_KEYS = ('arp',
                  'lldp',
                  'dns',
                  'dhcp')
@@ -110,7 +109,7 @@ class TrafficClassificationPolicy(object):
         if _syslog_enabled:
             #*** Log to syslog on host specified in config.yaml:
             self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
+                                                _loghost, _logport),
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
@@ -241,14 +240,14 @@ class TrafficClassificationPolicy(object):
         errors during packet checks. Can recurse for nested policy conditions.
         """
         #*** Use this to check if there is a match_type in stanza. Note can't
-        #*** check for more than one occurrence as dictionary will just 
+        #*** check for more than one occurrence as dictionary will just
         #*** keep attribute and overwrite value. Also note that recursive
         #*** instances use same variable due to scoping:
         self.has_match_type = 0
         #*** Check conditions are valid:
         for policy_condition in policy_conditions.keys():
             #*** Check policy condition attribute is valid:
-            if not (policy_condition in TC_CONFIG_CONDITIONS or 
+            if not (policy_condition in TC_CONFIG_CONDITIONS or
                      policy_condition[0:10] == 'conditions'):
                 self.logger.critical("The following PolicyCondition attribute"
                 " is invalid: %s", policy_condition)
@@ -557,8 +556,8 @@ class TrafficClassificationPolicy(object):
                 _payload_dict = self.payload.check_payload(policy_attr,
                                          policy_value, pkt)
                 if _payload_dict["match"]:
-                        _match = True
-                        _result_dict["continue_to_inspect"] = \
+                    _match = True
+                    _result_dict["continue_to_inspect"] = \
                                      _payload_dict["continue_to_inspect"]
             elif policy_attr_type == "conditions_list":
                 #*** Do a recursive call on nested conditions:

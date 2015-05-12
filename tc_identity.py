@@ -265,6 +265,9 @@ class IdentityInspect(object):
         if ip == '0.0.0.0':
             return
         #*** Add to the id_ip structure:
+        self.logger.debug("Adding dhcp hostname=%s ip=%s mac=%s ctx=%s to "
+                                "id_ip structure", 
+                                hostname, ip, mac, ctx)
         #*** Make sure keys exist:
         self.id_ip.setdefault(ctx, {})
         if not ip in self.id_ip[ctx]:

@@ -334,7 +334,7 @@ class NMeta(app_manager.RyuApp):
                               pkt_tcp.src_port, pkt_tcp.dst_port)
             _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
                               out_port=out_port, out_queue=out_queue,
-                              priority=0, buffer_id=None,
+                              priority=1, buffer_id=None,
                               idle_timeout=5, hard_timeout=0)
         elif pkt_tcp and pkt_ip6:
             #*** Call abstraction layer to add TCP flow record:
@@ -344,7 +344,7 @@ class NMeta(app_manager.RyuApp):
                               pkt_tcp.src_port, pkt_tcp.dst_port)
             _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
                               out_port=out_port, out_queue=out_queue,
-                              priority=0, buffer_id=None,
+                              priority=1, buffer_id=None,
                               idle_timeout=5, hard_timeout=0)
         elif pkt_ip4:
             #*** Call abstraction layer to add IP flow record:
@@ -353,7 +353,7 @@ class NMeta(app_manager.RyuApp):
                               pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
             _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
                               out_port=out_port, out_queue=out_queue,
-                              priority=0, buffer_id=None,
+                              priority=1, buffer_id=None,
                               idle_timeout=5, hard_timeout=0)
         elif pkt_ip6:
             #*** Call abstraction layer to add IP flow record:
@@ -362,7 +362,7 @@ class NMeta(app_manager.RyuApp):
                               pkt_ip6.src, pkt_ip6.dst, pkt_ip6.nxt)
             _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
                               out_port=out_port, out_queue=out_queue,
-                              priority=0, buffer_id=None,
+                              priority=1, buffer_id=None,
                               idle_timeout=5, hard_timeout=0)
         else:
             #*** Call abstraction layer to add Ethernet flow record:
@@ -371,7 +371,7 @@ class NMeta(app_manager.RyuApp):
                               eth_src, eth_dst, eth.ethertype)
             _result = self.sa.add_flow_eth(datapath, msg, in_port=in_port,
                               out_port=out_port, out_queue=out_queue,
-                              priority=0, buffer_id=None,
+                              priority=1, buffer_id=None,
                               idle_timeout=5, hard_timeout=0)
         return _result
 

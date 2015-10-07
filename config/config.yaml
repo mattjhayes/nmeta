@@ -119,7 +119,7 @@ measure_buckets_tidyup_interval: 321
 #*** nmeta performance etc.
 #
 #*** Number of preceding seconds that events are averaged over:
-event_rate_interval: 60
+event_rate_interval: 1
 #
 #========== FLOW METADATA =============================
 # Turn this on to augment flow metadata table with identity metadata:

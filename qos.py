@@ -40,7 +40,7 @@ QOS_DEFAULT_QUEUE = 0
 
 class QoS(object):
     """
-    This class is instantiated by flow.py and provides methods to 
+    This class is instantiated by flow.py and provides methods to
     add evaluate flow metadata, DPIDs and forwarding decisions and
     generate a QoS treatment action (i.e. set output queue).
     It also ingests a YAML-format QoS configuration file that contains
@@ -68,7 +68,7 @@ class QoS(object):
         if _syslog_enabled:
             #*** Log to syslog on host specified in config.yaml:
             self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
+                                                _loghost, _logport),
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
@@ -101,49 +101,50 @@ class QoS(object):
             with open(self.fullpathname, 'r') as filename:
                 self._qos_policy = yaml.load(filename)
         except (IOError, OSError) as exception:
-            self.logger.error("Failed to open policy file=%s exception=%s", 
-                                           self.fullpathname, exception)  
-            sys.exit("Exiting qos module. Please create qos config file")  
+            self.logger.error("Failed to open policy file=%s exception=%s",
+                                           self.fullpathname, exception)
+            sys.exit("Exiting qos module. Please create qos config file")
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
-        self.validate_policy() 
+        self.validate_policy()
 
     def validate_policy(self):
         """
         Check Quality of Service (QoS) policy to ensure that it is in
         correct format so that it won't cause unexpected errors during
-        packet checks. 
+        packet checks.
         """
         self.logger.debug("Validating QoS Policy...")
         for policy_rule in self._qos_policy.keys():
             self.logger.debug("Validating PolicyRule=%s", policy_rule)
-            #*** Test for unsupported PolicyRule attributes:            
+            #*** Test for unsupported PolicyRule attributes:
             for policy_rule_parameter in self._qos_policy[policy_rule].keys():
-                if not (policy_rule_parameter in 
+
+                if not (policy_rule_parameter in
                        QOS_CONFIG_POLICYRULE_ATTRIBUTES):
                     self.logger.critical("The "
                                          "following PolicyRule attribute is "
                                          "invalid: %s ", policy_rule_parameter)
                     sys.exit("Exiting nmeta. Please fix error in "
                              "qos_policy.yaml file")
-                #*** Each policy_rule in qos_policy.yaml file must contain an                
+                #*** Each policy_rule in qos_policy.yaml file must contain an
                 #*** attribute 'output_queue' with a valid value:
-                if not (QOS_TREATMENT in 
+                if not (QOS_TREATMENT in
                         self._qos_policy[policy_rule].keys()):
                     self.logger.critical("The "
                                          "PolicyRule %s is missing attribute "
                                          " %s ", policy_rule, QOS_TREATMENT)
                     sys.exit("Exiting nmeta. Please fix error in "
-                             "qos_policy.yaml file")      
-                #*** Each policy_rule in qos_policy.yaml file must contain an                
+                             "qos_policy.yaml file")
+                #*** Each policy_rule in qos_policy.yaml file must contain an
                 #*** attribute 'QoS_treatment' with a valid value:
-                if not (QOS_POLICY_TAG in 
+                if not (QOS_POLICY_TAG in
                         self._qos_policy[policy_rule].keys()):
                     self.logger.critical("The "
                                          "PolicyRule %s is missing attribute "
                                          " %s ", policy_rule, QOS_POLICY_TAG)
                     sys.exit("Exiting nmeta. Please fix error in "
-                             "qos_policy.yaml file")                              
+                             "qos_policy.yaml file")
 
     def check_policy(self, flow_actions):
         """
@@ -152,14 +153,20 @@ class QoS(object):
         """
         if flow_actions:
             #*** Iterate through the QoS Policy Policy Rules:
+            self.logger.debug("checking policy against flow_actions=%s",
+                                                flow_actions)
             for policy_rule in self._qos_policy.keys():
+                self.logger.debug("checking policy_rule=%s", policy_rule)
                 if QOS_FLOW_ACTION in flow_actions:
-                    result = self._check_policy_rule(flow_actions, 
+                    result = self._check_policy_rule(flow_actions,
                                                     policy_rule)
+                    self.logger.debug("result=%s", result)
                     #*** Return the QoS output queue to use if we had a hit:
                     if result:
                         return(result)
         #*** No result, so return default queue value:
+        self.logger.debug("No result, so returning default queue value %s",
+                                            QOS_DEFAULT_QUEUE)
         return(QOS_DEFAULT_QUEUE)
 
     def _check_policy_rule(self, flow_actions, policy_rule):
@@ -189,4 +196,4 @@ class QoS(object):
             #*** Matched QoS Treatment Type so return the Output Queue:
             return(qp_output_queue)
         else:
-            return(0) 
+            return(0)

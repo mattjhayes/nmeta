@@ -40,8 +40,8 @@ import nmisc
 
 class IdentityInspect(object):
     """
-    This class is instantiated by tc_policy.py 
-    (class: TrafficClassificationPolicy) and provides methods to 
+    This class is instantiated by tc_policy.py
+    (class: TrafficClassificationPolicy) and provides methods to
     ingest identity updates and query identities
     """
     def __init__(self, _config):
@@ -65,7 +65,7 @@ class IdentityInspect(object):
         if _syslog_enabled:
             #*** Log to syslog on host specified in config.yaml:
             self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
+                                                _loghost, _logport),
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
@@ -136,12 +136,12 @@ class IdentityInspect(object):
                 #*** Didn't match that LLDP Chassis ID so return false:
                 return False
 
-        elif ((policy_attr == "identity_lldp_systemname") or 
+        elif ((policy_attr == "identity_lldp_systemname") or
               (policy_attr == "identity_lldp_systemname_re")):
             sys_ref = self._get_sys_ref_by_systemname(policy_attr,
                                                            policy_value)
             if sys_ref:
-                #*** Have matched a record with that system name, now check 
+                #*** Have matched a record with that system name, now check
                 #*** if the packet relates to that system:
                 nic_ref = self._get_sys_nic_ref(sys_ref)
                 if nic_ref:
@@ -246,11 +246,12 @@ class IdentityInspect(object):
                 self._sys_identity_table[_table_ref]['time_last'] = time.time()
             else:
                 #*** Add a new record to the System table:
-                self._set_sys_record_new_chassisid(_chassis_id_text, 
+                self._set_sys_record_new_chassisid(_chassis_id_text,
                                                _system_name, pkt, dpid, inport)
         else:
             self.logger.warning("Passed an LLDP packet that did not parse "
                                        "properly")
+            self.logger.debug("Problem LLDP pkt=%s", pkt)
             return(0)
 
     def dhcp_in(self, mac, ip, hostname, ctx):
@@ -266,7 +267,7 @@ class IdentityInspect(object):
             return
         #*** Add to the id_ip structure:
         self.logger.debug("Adding dhcp hostname=%s ip=%s mac=%s ctx=%s to "
-                                "id_ip structure", 
+                                "id_ip structure",
                                 hostname, ip, mac, ctx)
         #*** Make sure keys exist:
         self.id_ip.setdefault(ctx, {})
@@ -298,7 +299,7 @@ class IdentityInspect(object):
                 answer_name = answer.name
                 answer_ttl = answer.ttl
                 self.logger.debug("dns_answer_name=%s dns_answer_A=%s "
-                                "answer_ttl=%s", 
+                                "answer_ttl=%s",
                                 answer_name, answer_ip, answer_ttl)
                 #*** Make sure context key exists:
                 self.id_ip.setdefault(ctx, {})
@@ -337,7 +338,7 @@ class IdentityInspect(object):
                 #*** DNS CNAME Record:
                 answer_cname = answer.cname
                 answer_name = answer.name
-                self.logger.debug("dns_answer_name=%s dns_answer_CNAME=%s", 
+                self.logger.debug("dns_answer_name=%s dns_answer_CNAME=%s",
                                 answer_name, answer_cname)
                 svc_ctx = self.id_service.setdefault(ctx, {})
                 svc_cname = svc_ctx.setdefault(answer_cname, {})
@@ -438,7 +439,7 @@ class IdentityInspect(object):
 
     def maintain_identity_tables(self):
         """
-        Deletes old entries from Identity NIC and 
+        Deletes old entries from Identity NIC and
         System tables.
         This function is passed maximum age values
         and deletes any entries in the
@@ -485,7 +486,7 @@ class IdentityInspect(object):
                 for ip in mac_ctx_mac['ip']:
                     mac_ctx_mac_ip = mac_ctx_mac['ip'][ip]
                     last_seen = mac_ctx_mac_ip['last_seen']
-                    #*** Has the ARP not been seen for more than max age?: 
+                    #*** Has the ARP not been seen for more than max age?:
                     if (last_seen + self.arp_max) < _time:
                         #*** Mark for deletion:
                         del_dict = {'ctx': ctx, 'mac': mac, 'ip': ip}
@@ -524,7 +525,7 @@ class IdentityInspect(object):
                             ttl = ip_ctx_ip_svc['ttl']
                             if (last_seen + ttl) < _time:
                                 #*** Mark for deletion:
-                                del_dict = {'ctx': ctx, 'ip': ip, 
+                                del_dict = {'ctx': ctx, 'ip': ip,
                                                  'service': service}
                                 _for_deletion.append(del_dict)
                                 self.logger.debug("marking IP del_dict=%s "
@@ -546,7 +547,7 @@ class IdentityInspect(object):
     def _get_sys_ref_by_chassisid(self, chassis_id_text):
         """
         Passed a Chassis ID in text format and check to
-        see if it already exists in the system identity table. 
+        see if it already exists in the system identity table.
         If it does, return the table reference otherwise
         return 0
         """
@@ -555,15 +556,15 @@ class IdentityInspect(object):
                                 ['chassis_id']):
                 return(table_ref)
         return(0)
-        
+
     def _get_sys_ref_by_systemname(self, policy_attr, systemname):
         """
         Passed a system name in text format and check to
-        see if it already exists in the system identity table. 
+        see if it already exists in the system identity table.
         If it does, return the table reference otherwise
         return 0
         """
-        if policy_attr == 'identity_lldp_systemname': 
+        if policy_attr == 'identity_lldp_systemname':
             for table_ref in self._sys_identity_table:
                 if (systemname == self._sys_identity_table[table_ref] \
                                             ['system_name']):
@@ -576,15 +577,15 @@ class IdentityInspect(object):
                     return(table_ref)
             return(0)
         else:
-            return(0)           
-        
+            return(0)
+
     def _get_nic_ref_by_MAC(self, mac_addr):
         """
         Check for a matching NIC record in NIC identity table.
         Passed a MAC address
         Check if the MAC address is recorded in the
         table and if so, return the table reference.
-        """       
+        """
         for table_ref in self._nic_identity_table:
             if (mac_addr == self._nic_identity_table[table_ref]['mac_addr']):
                 self.logger.debug("Matched on nic table_ref id=%s", table_ref)
@@ -599,7 +600,7 @@ class IdentityInspect(object):
         """
         result = self._nic_identity_table[table_ref]['mac_addr']
         return(result)
-        
+
     def _get_nic_ip4_addr(self, table_ref):
         """
         Check for existence of an IPv4 address in NIC identity table
@@ -611,13 +612,13 @@ class IdentityInspect(object):
 
     def _get_sys_nic_ref(self, sys_ref):
         """
-        Return reference to a NIC table (if it exists) from a 
+        Return reference to a NIC table (if it exists) from a
         system identity table entry, otherwise return 0
         """
         result = self._sys_identity_table[sys_ref]['nic_table_ref']
         return(result)
-        
-    def _set_sys_record_new_chassisid(self, chassis_id_text, system_name, pkt, 
+
+    def _set_sys_record_new_chassisid(self, chassis_id_text, system_name, pkt,
                                                       dpid, inport):
         """
         Record a new system identity into the system identity table.
@@ -642,16 +643,16 @@ class IdentityInspect(object):
             'nic_table_ref' : _nic_table_ref,
             'time_first' : time.time(),
             'time_last' : time.time()
-        }         
-        #*** Update the NIC table ref with a reference back to the system 
+        }
+        #*** Update the NIC table ref with a reference back to the system
         #*** identity table:
         self._set_nic_record_add_sys_ref(_nic_table_ref, self._sys_id_ref)
         self.logger.debug("Adding new sys identity table entry: %s ref: %s",
-                          self._sys_identity_table[self._sys_id_ref], 
+                          self._sys_identity_table[self._sys_id_ref],
                           self._sys_id_ref)
         #*** increment table ref:
         self._sys_id_ref += 1
-        
+
     def _set_nic_record_new(self, pkt, dpid, inport):
         """
         Create a new NIC identity record and return
@@ -673,23 +674,23 @@ class IdentityInspect(object):
         #*** record table ref:
         table_ref = self._nic_id_ref
         self.logger.debug("Adding new NIC identity table entry: %s ref: %s",
-                          self._nic_identity_table[table_ref], table_ref)        
+                          self._nic_identity_table[table_ref], table_ref)
         #*** increment table ref:
         self._nic_id_ref += 1
         #*** return a reference to the table row:
         return(table_ref)
-        
+
     def _set_nic_record_add_sys_ref(self, nic_ref, sys_ref):
         """
         Update an existing NIC identity record with a sys identity
         table reference
         """
         self._nic_identity_table[nic_ref]['sys_ref'] = sys_ref
-        self.logger.debug("Adding sys_ref: %s to nic_ref: %s", 
+        self.logger.debug("Adding sys_ref: %s to nic_ref: %s",
                                          sys_ref, nic_ref)
         #*** Update timestamp:
         self._nic_identity_table[nic_ref]['time_last'] = time.time()
-        
+
     def _set_nic_record_add_IP4_addr(self, nic_ref, ip4_addr):
         """
         Update an existing NIC identity record with an IPv4
@@ -698,5 +699,5 @@ class IdentityInspect(object):
         self._nic_identity_table[nic_ref]['ip4_addr'] = ip4_addr
         self.logger.debug("Adding ip4_addr: %s to nic_ref: %s", ip4_addr, nic_ref)
         #*** Update timestamp:
-        self._nic_identity_table[nic_ref]['time_last'] = time.time()       
+        self._nic_identity_table[nic_ref]['time_last'] = time.time()
 

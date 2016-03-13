@@ -11,7 +11,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#*** nmeta - Network Metadata - Traffic Classification Statistical 
+#*** nmeta - Network Metadata - Traffic Classification Statistical
 #***                                 Class and Methods
 
 """
@@ -37,8 +37,8 @@ import nmisc
 
 class StatisticalInspect(object):
     """
-    This class is instantiated by tc_policy.py 
-    (class: TrafficClassificationPolicy) and provides methods to 
+    This class is instantiated by tc_policy.py
+    (class: TrafficClassificationPolicy) and provides methods to
     run statistical traffic classification matches
     """
     def __init__(self, _config):
@@ -62,7 +62,7 @@ class StatisticalInspect(object):
         if _syslog_enabled:
             #*** Log to syslog on host specified in config.yaml:
             self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
+                                                _loghost, _logport),
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
@@ -85,15 +85,15 @@ class StatisticalInspect(object):
         self._fcip_ref = 1
         #*** Do you want really verbose debugging?
         self.extra_debugging = 1
-        
+
     def check_statistical(self, policy_attr, policy_value, pkt):
         """
         Passed a statistical classification attribute, value and packet and
-        return a dictionary containing attributes 'valid', 
+        return a dictionary containing attributes 'valid',
         'continue_to_inspect' and 'actions' with appropriate values set.
         """
-        self.logger.debug("check_statistical was "
-                           "called")
+        self.logger.debug("check_statistical was called policy_attr=%s "
+                            "policy_value=%s", policy_attr, policy_value)
         if policy_attr == "statistical_qos_bandwidth_1":
             #*** call the function for this particular statistical classifier
             results_dict = self._statistical_qos_bandwidth_1(pkt)
@@ -101,51 +101,54 @@ class StatisticalInspect(object):
         else:
             self.logger.error("Policy attribute "
                               "%s did not match", policy_attr)
-            return {'valid':False, 'continue_to_inspect':False, 
-                     'actions':'none'}        
+            return {'valid':False, 'continue_to_inspect':False,
+                     'actions':'none'}
         return False
 
     def _statistical_qos_bandwidth_1(self, pkt):
         """
         A really basic statistical classifier to demonstrate ability
-        to differentiate 'bandwidth hog' flows from ones that are 
+        to differentiate 'bandwidth hog' flows from ones that are
         more interactive so that appropriate classification metadata
         can be passed to QoS for differential treatment.
-        This function is passed a packet and returns a dictionary of 
+        This function is passed a packet and returns a dictionary of
         results. Only works on TCP.
         """
-        #*** Maximum packets to accumulate in a flow before making a 
+        self.logger.debug("In _statistical_qos_bandwidth_1")
+        #*** Maximum packets to accumulate in a flow before making a
         #***  classification:
         _max_packets = 5
         #*** Thresholds used in calculations:
         _max_packet_size_threshold = 1200
-        _interpacket_ratio_threshold = 0.25
+        _interpacket_ratio_threshold = 0.62
         #*** Initialise variables
         _continue_to_inspect = True
         _actions = 0
-        _pkt_tcp = pkt.get_protocol(tcp.tcp)        
+        _pkt_tcp = pkt.get_protocol(tcp.tcp)
         if not _pkt_tcp:
-            return {'valid':True, 'continue_to_inspect':False, 
+            #self.logger.debug("not TCP so do not inspect further, no actions")
+            return {'valid':True, 'continue_to_inspect':False,
                     'actions':_actions}
         #*** It is TCP, check if it's part of a flow we're already classifying:
         _table_ref = self._fcip_check(pkt)
-        self.logger.debug("Table ref is %s", _table_ref)          
+        self.logger.debug("Table ref is %s", _table_ref)
         if _table_ref:
             #*** It's a flow that we are classifying. Update the table and
             #*** check if we have enough data to make a classification.
             #*** Check that the flow hasn't been finalised:
             if not self._fcip_is_finalised(_table_ref):
                 #*** Not finalised so add to table row:
+                self.logger.debug("Not finalised, adding to existing entry")
                 _flow_packet_count = self._fcip_add_to_existing(pkt, _table_ref)
                 #*** Note that _flow_packet_count will be 0 if a duplicate packet
                 if _flow_packet_count > (_max_packets - 1):
                     #*** Reached our maximum packet count so do some classification:
                     self.logger.debug("Reached max packets count")
-                    #*** Set the flow to be finalised so no more packets will be added: 
+                    #*** Set the flow to be finalised so no more packets will be added:
                     self._fcip_finalise(_table_ref)
                     #*** Set result value to say that flow can be installed to switch now
                     #*** as we don't need to see any more packets to classify it:
-                    _continue_to_inspect = False                        
+                    _continue_to_inspect = False
                     #*** Call functions to get statistics to make decisions on:
                     _max_packet_size = self._calc_max_packet_size(_table_ref)
                     _max_interpacket_interval = self._calc_max_interpacket_interval(_table_ref)
@@ -160,10 +163,10 @@ class StatisticalInspect(object):
                     self.logger.debug("_max_packet_size is %s", _max_packet_size)
                     self.logger.debug("_interpacket_ratio is %s", _interpacket_ratio)
                     #*** Decide actions based on the statistics:
-                    if (_max_packet_size > _max_packet_size_threshold and 
+                    if (_max_packet_size > _max_packet_size_threshold and
                             _interpacket_ratio < _interpacket_ratio_threshold):
-                        #*** This traffic looks like a bandwidth hog so set to low priority:
-                        _actions = { 'set_qos_tag': "QoS_treatment=low_priority" }
+                        #*** This traffic looks like a bandwidth hog so set to constrained bandwidth:
+                        _actions = { 'set_qos_tag': "QoS_treatment=constrained_bw" }
                     else:
                         #*** Doesn't look like bandwidth hog so default priority:
                         _actions = { 'set_qos_tag': "QoS_treatment=default_priority" }
@@ -171,18 +174,26 @@ class StatisticalInspect(object):
                     #*** Install actions into table so that subsequent packets of same flow
                     #*** get same actions when seeing finalised entry:
                     self._fcip_table[_table_ref]["actions"] = _actions
+                else:
+                    self.logger.debug("Not at max packet count, count=%s",
+                                        _flow_packet_count)
             else:
                 #*** It's a finalised flow so we don't want to touch it,
                 #*** but we do want to grab the actions if there are any
                 _actions = self._fcip_table[_table_ref]["actions"]
-                return {'valid':True, 'continue_to_inspect':False, 
+                self.logger.debug("Flow finalised, returning actions=%s",
+                                    _actions)
+                return {'valid':True, 'continue_to_inspect':False,
                 'actions':_actions}
         else:
             #*** It's not a flow we're classifying so start a new entry:
+            self.logger.debug("Adding new FCIP entry")
             self._fcip_add_new(pkt)
-        return {'valid':True, 'continue_to_inspect':_continue_to_inspect, 
+        self.logger.debug("Returning with continue_to_inspect=%s action=%s",
+                                _continue_to_inspect, _actions)
+        return {'valid':True, 'continue_to_inspect':_continue_to_inspect,
                     'actions':_actions}
-            
+
     def _calc_max_packet_size(self, table_ref):
         """
         Review packet sizes in a flow and return the largest one
@@ -206,9 +217,11 @@ class StatisticalInspect(object):
         _first_reverse = 0
         _max_forward = 0
         _max_reverse = 0
+        _forward_ratio = 0
+        _reverse_ratio = 0
         for _packet_number in self._fcip_table[table_ref]["window_size"]:
             _size = self._fcip_table[table_ref]["window_size"][_packet_number]
-            _direction = self._fcip_table[table_ref]["direction"][_packet_number]            
+            _direction = self._fcip_table[table_ref]["direction"][_packet_number]
             if _direction == "forward":
                 if not _first_forward:
                     _first_forward = _size
@@ -233,7 +246,7 @@ class StatisticalInspect(object):
 
     def _calc_max_interpacket_interval(self, table_ref):
         """
-        Review packet arrival times for each direction in 
+        Review packet arrival times for each direction in
         a flow and return the size of the largest inter-
         packet interval (from either direction) in seconds
         """
@@ -279,7 +292,7 @@ class StatisticalInspect(object):
 
     def _calc_min_interpacket_interval(self, table_ref):
         """
-        Review packet arrival times for each direction in 
+        Review packet arrival times for each direction in
         a flow and return the size of the smallest inter-
         packet interval (from either direction) in seconds
         """
@@ -322,10 +335,10 @@ class StatisticalInspect(object):
             return 0
         else:
             return _min_interpacket
-            
+
     def _calc_last_interpacket_interval(self, table_ref):
         """
-        Interval from last packet arrival times for same  
+        Interval from last packet arrival times for same
         direction in flow in seconds
         """
         _previous_reverse = 0
@@ -350,7 +363,7 @@ class StatisticalInspect(object):
                 #*** should never hit this...
                 self.logger.error("Strange condition encountered")
         return _interpacket_interval
-            
+
     def _fcip_finalise(self, table_ref):
         """
         Passed a table row (flow reference) and set it as finalised
@@ -360,7 +373,7 @@ class StatisticalInspect(object):
 
     def _fcip_is_finalised(self, table_ref):
         """
-        Passed a table row (flow reference) and check if it has 
+        Passed a table row (flow reference) and check if it has
         finalised set. Return True (1) if it does and False (0)
         if it doesn't
         """
@@ -377,7 +390,7 @@ class StatisticalInspect(object):
         Returns a table reference if it is in the table
         """
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        _pkt_tcp = pkt.get_protocol(tcp.tcp) 
+        _pkt_tcp = pkt.get_protocol(tcp.tcp)
         _ip_A = _pkt_ip4.src
         _ip_B = _pkt_ip4.dst
         _tcp_A = _pkt_tcp.src_port
@@ -395,12 +408,12 @@ class StatisticalInspect(object):
                     self.logger.debug("Matched a flow "
                                       "we're already classifying...")
                     return _table_ref
-                
+
     def _fcip_check_ip(self, table_ref, ip_A, ip_B):
         """
         Checks if a source/destination IP addresses match against
         a given table entry in either order.
-        Returns 'forward' for a direct match, 'reverse' for a 
+        Returns 'forward' for a direct match, 'reverse' for a
         transposed match and False (0) for no match
         """
         if (ip_A == self._fcip_table[table_ref]["ip_A"]
@@ -415,14 +428,14 @@ class StatisticalInspect(object):
     def _fcip_check_tcp(self, table_ref, ip_match, tcp_A, tcp_B):
         """
         Checks if source/destination tcp ports match against
-        a given table entry same order that IP addresses matched 
+        a given table entry same order that IP addresses matched
         in.
         .
         Also deduplicates for same packet passing through multiple
         switches by checking the TCP acknowledgement number
         .
         Returns True (1) for a match and False (0) for no match
-        """        
+        """
         if (ip_match == 'forward' and tcp_A == self._fcip_table[table_ref]["tcp_A"]
             and tcp_B == self._fcip_table[table_ref]["tcp_B"]):
                 return True
@@ -431,14 +444,14 @@ class StatisticalInspect(object):
                 return True
         else:
             return False
-            
+
     def _fcip_add_new(self, pkt):
         """
         Passed a packet that is a new flow and add to the
         Flow Classification In Progress (FCIP) table.
-        """        
+        """
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        _pkt_tcp = pkt.get_protocol(tcp.tcp) 
+        _pkt_tcp = pkt.get_protocol(tcp.tcp)
         #*** Direction for first packet is always forward:
         self._fcip_table[self._fcip_ref]["direction"][1] = "forward"
         #*** Initial setting of variable that stops more packets being added:
@@ -449,7 +462,7 @@ class StatisticalInspect(object):
         self._fcip_table[self._fcip_ref]["ip_A"] = _pkt_ip4.src
         self._fcip_table[self._fcip_ref]["ip_B"] = _pkt_ip4.dst
         self._fcip_table[self._fcip_ref]["tcp_A"] = _pkt_tcp.src_port
-        self._fcip_table[self._fcip_ref]["tcp_B"] = _pkt_tcp.dst_port        
+        self._fcip_table[self._fcip_ref]["tcp_B"] = _pkt_tcp.dst_port
         #*** This could do with improvement - would be subject to variability
         #*** due to time taken for packet to reach the controller and
         #*** processing time on the controller. But, it'll do for the moment:
@@ -471,7 +484,7 @@ class StatisticalInspect(object):
         #*** Number of packets is 1 as this is the first packet in the flow:
         self._fcip_table[self._fcip_ref]["number_of_packets"] = 1
         if self.extra_debugging:
-            self.logger.debug("added new: %s", 
+            self.logger.debug("added new: %s",
                                self._fcip_table[self._fcip_ref])
         #*** increment table ref ready for next time we use it:
         self._fcip_ref += 1
@@ -483,7 +496,7 @@ class StatisticalInspect(object):
         Flow Classification In Progress (FCIP) table.
         Return the packet number of this packet in
         the flow.
-        """        
+        """
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         _pkt_tcp = pkt.get_protocol(tcp.tcp)
         _ip_A = _pkt_ip4.src
@@ -498,7 +511,7 @@ class StatisticalInspect(object):
         #*** Work out what packet number we are in the flow:
         _packet_number = self._fcip_table[table_ref]["number_of_packets"]
         _packet_number += 1
-        self.logger.debug("_packet_number is %s", _packet_number)        
+        self.logger.debug("_packet_number is %s", _packet_number)
         #*** Update number of packets:
         self._fcip_table[table_ref]["number_of_packets"] = _packet_number
         #*** Work out directionality and add to the table:
@@ -529,7 +542,7 @@ class StatisticalInspect(object):
         self._fcip_table[table_ref]["ack"][_packet_number] = _pkt_tcp.ack
         self._fcip_table[table_ref]["bits"][_packet_number] = _pkt_tcp.bits
         if self.extra_debugging:
-            self.logger.debug("updated with packet %s: %s", 
+            self.logger.debug("updated with packet %s: %s",
                               _packet_number, self._fcip_table[table_ref])
             #*** Extra data for easy recording of statistical results for analysis charts:
             _max_packet_size = self._calc_max_packet_size(table_ref)
@@ -541,7 +554,7 @@ class StatisticalInspect(object):
             _calc_last_interpacket_interval = self._calc_last_interpacket_interval(table_ref)
             self._fcip_table[table_ref]["last_interpacket"][_packet_number] = _calc_last_interpacket_interval
         return _packet_number
-        
+
     def _fcip_check_duplicate(self, pkt, table_ref):
         """
         Passed a packet that is in a flow that we are
@@ -551,7 +564,7 @@ class StatisticalInspect(object):
         any of the packets already included in this table
         row and if it is a duplicate return True otherwise
         False
-        """        
+        """
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         _pkt_tcp = pkt.get_protocol(tcp.tcp)
         #*** iterate through table row checking for duplicate values
@@ -563,7 +576,7 @@ class StatisticalInspect(object):
                     self.logger.debug("DUPLICATE PACKET")
                 return True
         return False
-        
+
     def _tcp_syn_flag(self, bits):
         """
         Passed the bits field (more commonly known as TCP Flags)
@@ -574,7 +587,7 @@ class StatisticalInspect(object):
             return True
         else:
             return False
-        
+
     def _tcp_window_scale(self, option):
         """
         Passed a TCP options field
@@ -597,7 +610,7 @@ class StatisticalInspect(object):
                 #*** 1 Byte No-Operation (NOP) so just increment position:
                 _position += 1
             elif _type == 3:
-                #*** Have matched the Window scale that we want, 
+                #*** Have matched the Window scale that we want,
                 #***  now get the value:
                 _position += 2
                 if self.extra_debugging:

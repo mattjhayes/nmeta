@@ -1,16 +1,19 @@
-#*** Main Policy for nmeta - Static Regression Test
+#*** Main Policy for nmeta - Identity Regression Test
 #*** Written in YAML
+#
+# Load Generator (lg1) has it's bandwidth constrained
 #
 tc_rules:
     # Traffic Classification Rulesets and Rules
     tc_ruleset_1:
-        - comment: Control Static Rule that doesn't do anything
+        - comment: Constrained Bandwidth Traffic
           match_type: any
           conditions_list:
               - match_type: any
-                tcp_src: 123
+                identity_lldp_systemname_re: 'lg.*\.example\.com'
           actions:
-              set_desc_tag: description="Foo"
+            set_qos_tag: QoS_treatment=constrained_bw
+            set_desc_tag: description="Constrained Bandwidth Traffic"
 #
 identity:
     # Control how identity information is collected

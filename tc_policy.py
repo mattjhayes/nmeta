@@ -368,7 +368,7 @@ class TrafficClassificationPolicy(object):
         if pkt_ip4:
             self.identity.ip4_in(pkt)
         #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
-        #*** context is future-proofing for when the system will support 
+        #*** context is future-proofing for when the system will support
         #*** multiple contexts. For now just set to 'default':
         context = 'default'
         pkt_tcp = pkt.get_protocol(tcp.tcp)
@@ -407,7 +407,7 @@ class TrafficClassificationPolicy(object):
                                 if opt[0] == 12:
                                     #*** Found option 12 so grab the host name:
                                     dhcp_hostname = opt[1]
-                                    self.logger.debug("dhcp host name is %s", 
+                                    self.logger.debug("dhcp host name is %s",
                                                           dhcp_hostname)
                                     if pkt_ip4:
                                         ip = pkt_ip4.src
@@ -456,21 +456,30 @@ class TrafficClassificationPolicy(object):
             #*** Check the rule:
             _result_dict = self._check_rule(pkt, tc_rule, context)
             if _result_dict['match']:
-                self.logger.debug("Matched policy rule")
+                #self.logger.debug("Matched policy rule, _result_dict=%s",
+                #                                _result_dict)
                 #*** Need to merge the actions configured on the rule
                 #*** with those returned by the classifiers
                 #*** Do type inspection to ensure only dealing with non-Null
                 #*** items. There has to be a better way...!!!?
-                if (isinstance(tc_rule['actions'], dict) and 
+                self.logger.debug("tc_rule['actions']=%s, "
+                                    "_result_dict['actions']=%s",
+                                    tc_rule['actions'],
+                                    _result_dict['actions'])
+                if (isinstance(tc_rule['actions'], dict) and
                         isinstance(_result_dict['actions'], dict)):
-                    _merged_actions = dict(tc_rule['actions'].items() 
+                    _merged_actions = dict(tc_rule['actions'].items()
                                         + _result_dict['actions'].items())
+                    self.logger.debug("#1 _merged_actions=%s", _merged_actions)
                 elif isinstance(tc_rule['actions'], dict):
                     _merged_actions = tc_rule['actions']
+                    self.logger.debug("#2 _merged_actions=%s", _merged_actions)
                 elif isinstance(_result_dict['actions'], dict):
                     _merged_actions = _result_dict['actions']
+                    self.logger.debug("#3 _merged_actions=%s", _merged_actions)
                 else:
                     _merged_actions = False
+                    self.logger.debug("#4 _merged_actions=%s", _merged_actions)
                 _result_dict['actions'] = _merged_actions
                 self.logger.debug("returning result=%s", _result_dict)
                 return _result_dict
@@ -492,7 +501,12 @@ class TrafficClassificationPolicy(object):
         #*** Iterate through the conditions list:
         for condition_stanza in rule['conditions_list']:
             _result = self._check_conditions(pkt, condition_stanza, ctx)
+            #self.logger.debug("_result=%s", _result)
             _match = _result['match']
+            #*** Carry over actions from pass_return_tag classifiers if any:
+            if _result['actions'] != 'False':
+                #self.logger.debug("Passing actions from classifier")
+                _result_dict['actions'] = _result['actions']
             #*** Decide what to do based on match result and match type:
             if _match and self.rule_match_type == "any":
                 _result_dict['match'] = True
@@ -515,14 +529,14 @@ class TrafficClassificationPolicy(object):
             #*** Unexpected result:
             self.logger.error("Unexpected result at "
                 "end of loop through attributes. policy_attr=%s, _match=%s, "
-                "self.match_type=%s", policy_attr, _match, 
+                "self.match_type=%s", policy_attr, _match,
                  self.rule_match_type)
             _result_dict['match'] = False
             return _result_dict
 
     def _check_conditions(self, pkt, conditions, ctx):
         """
-        Passed a packet-in packet and a conditions stanza (part of a 
+        Passed a packet-in packet and a conditions stanza (part of a
         conditions list).
         Check to see if packet matches conditions as per the
         match type, and if so return in the dictionary attribute "match" with
@@ -550,8 +564,15 @@ class TrafficClassificationPolicy(object):
             _match = False
             #*** Main if/elif/else check on condition attribute type:
             if policy_attr_type == "identity":
-                _match = self.identity.check_identity(policy_attr, 
+                _match = self.identity.check_identity(policy_attr,
                                              policy_value, pkt, ctx)
+            elif policy_attr == "statistical_qos_bandwidth_1":
+                _match = self.statistical.check_statistical(policy_attr,
+                                                            policy_value, pkt)
+                self.logger.debug("statistical_qos_bandwidth_1 _match=%s",
+                                                            _match)
+                #*** Need this line for any classifier that returns actions:
+                _result_dict['actions'] = _match['actions']
             elif policy_attr_type == "payload":
                 _payload_dict = self.payload.check_payload(policy_attr,
                                          policy_value, pkt)

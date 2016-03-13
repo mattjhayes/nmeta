@@ -1,16 +1,28 @@
-#*** Main Policy for nmeta - Static Regression Test
+#*** Main Policy for nmeta
 #*** Written in YAML
 #
 tc_rules:
     # Traffic Classification Rulesets and Rules
     tc_ruleset_1:
-        - comment: Control Static Rule that doesn't do anything
+        - comment: OpenFlow Protocol Traffic
           match_type: any
           conditions_list:
               - match_type: any
-                tcp_src: 123
+                tcp_src: 6633
+                tcp_dst: 6633
           actions:
-              set_desc_tag: description="Foo"
+              set_qos_tag: QoS_treatment=system_priority
+              set_desc_tag: description="OpenFlow Protocol Traffic"
+        - comment: YouTube Video Streaming
+          match_type: all
+          conditions_list:
+              - match_type: any
+                tcp_src: 443
+                tcp_dst: 443
+              - match_type: any
+                identity_service_dns_re: '.*\.youtube\.com'
+          actions:
+              set_desc_tag: description="YouTube Streaming Traffic"
 #
 identity:
     # Control how identity information is collected
@@ -29,4 +41,5 @@ identity:
     # Turn this on to collect DHCP information about address allocations and
     # hostnames:
     dhcp: 1
+
 

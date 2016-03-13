@@ -229,6 +229,7 @@ class NMeta(app_manager.RyuApp):
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does return a dictionary of actions:
         flow_actions = self.tc_policy.check_policy(pkt, dpid, in_port)
+        self.logger.debug("flow_actions=%s", flow_actions)
 
         #*** Call Forwarding module to carry out forwarding functions:
         out_port = self.forwarding.basic_switch(ev, in_port)
@@ -241,6 +242,7 @@ class NMeta(app_manager.RyuApp):
 
         #*** Update Flow Metadata Table and add QoS queue:
         flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
+        self.logger.debug("revised flow_actions=%s", flow_actions)
         out_queue = flow_actions['datapath'][dpid].setdefault('out_queue', 0)
 
         if out_port != ofproto.OFPP_FLOOD:
@@ -325,6 +327,7 @@ class NMeta(app_manager.RyuApp):
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
+        self.logger.debug("event=add_flow out_queue=%s", out_queue)
         #*** Install a flow entry based on type of flow:
         if pkt_tcp and pkt_ip4:
             #*** Call abstraction layer to add TCP flow record:

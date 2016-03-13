@@ -87,7 +87,7 @@ class RESTAPIController(ControllerBase):
         """
         nmeta = self.nmeta_parent_self
         _results = {}
-        #*** context is future-proofing for when the system will support 
+        #*** context is future-proofing for when the system will support
         #*** multiple contexts. For now just set to 'default':
         context = 'default'
         if context in nmeta.tc_policy.identity.id_mac:
@@ -115,8 +115,16 @@ class RESTAPIController(ControllerBase):
         REST API function that returns event rates (per second averages)
         """
         nmeta = self.nmeta_parent_self
-        event_rates = nmeta.measure.get_event_rates()
-        return event_rates
+        _event_rates_dict = nmeta.measure.get_event_rates()
+        _result_dict = {}
+        _event_types = ['packet_in', 'add_flow', 'packet_out']
+        #*** Check that each key is present and if not add with value 0:
+        for _event_type in _event_types:
+            if _event_type in _event_rates_dict:
+                _result_dict[_event_type] = _event_rates_dict[_event_type]
+            else:
+                _result_dict[_event_type] = 0
+        return _result_dict
 
     @rest_command
     def get_packet_time(self, req, **kwargs):
@@ -126,9 +134,21 @@ class RESTAPIController(ControllerBase):
         time queued in OS or Ryu
         """
         nmeta = self.nmeta_parent_self
-        packet_processing_stats = nmeta.measure.get_event_metric_stats \
-                        ('packet_delta')
-        return packet_processing_stats
+        _result_dict = {}
+        _metrics = ['number_of_buckets', 'min_min', 'avg', \
+                    'number_of_measurements', 'max_max', \
+                    'bucket_size_seconds']
+        _pkt_dict = nmeta.measure.get_event_metric_stats('packet_delta')
+        for _metric in _metrics:
+            if 'packet_delta' in _pkt_dict:
+                if _metric in _pkt_dict['packet_delta']:
+                    _result_dict[_metric] = \
+                                _pkt_dict['packet_delta'][_metric]
+                else:
+                    _result_dict[_metric] = 0
+            else:
+                _result_dict[_metric] = 0
+        return _result_dict
 
     @rest_command
     def list_flow_table(self, req, **kwargs):

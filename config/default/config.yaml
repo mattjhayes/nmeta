@@ -32,7 +32,7 @@ tc_policy_logging_level_s: INFO
 tc_static_logging_level_s: INFO
 tc_identity_logging_level_s: INFO
 tc_payload_logging_level_s: INFO
-tc_statistical_logging_level_s: INFO
+tc_statistical_logging_level_s: DEBUG
 sa_logging_level_s: INFO
 measure_logging_level_s: INFO
 forwarding_logging_level_s: INFO
@@ -47,18 +47,18 @@ console_format: "%(levelname)s: %(name)s %(funcName)s: %(message)s"
 #
 #*** Console Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_c: DEBUG
-flow_logging_level_c: DEBUG
-qos_logging_level_c: DEBUG
-tc_policy_logging_level_c: DEBUG
-tc_static_logging_level_c: DEBUG
-tc_identity_logging_level_c: DEBUG
-tc_payload_logging_level_c: DEBUG
-tc_statistical_logging_level_c: DEBUG
-sa_logging_level_c: DEBUG
-measure_logging_level_c: DEBUG
-forwarding_logging_level_c: DEBUG
-api_logging_level_c: DEBUG
+nmeta_logging_level_c: INFO
+flow_logging_level_c: INFO
+qos_logging_level_c: INFO
+tc_policy_logging_level_c: INFO
+tc_static_logging_level_c: INFO
+tc_identity_logging_level_c: INFO
+tc_payload_logging_level_c: INFO
+tc_statistical_logging_level_c: INFO
+sa_logging_level_c: INFO
+measure_logging_level_c: INFO
+forwarding_logging_level_c: INFO
+api_logging_level_c: INFO
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds
@@ -119,8 +119,9 @@ measure_buckets_tidyup_interval: 321
 #*** nmeta performance etc.
 #
 #*** Number of preceding seconds that events are averaged over:
-event_rate_interval: 1
+event_rate_interval: 60
 #
 #========== FLOW METADATA =============================
 # Turn this on to augment flow metadata table with identity metadata:
 augment_flow_metadata_with_identity: 1
+

@@ -1,14 +1,14 @@
-#*** Quality of Service (QoS) Policy for nmeta regression tests
+#*** Quality of Service (QoS) Policy for nmeta
 #*** Written in YAML
 #*** Version 0.4
 #
 'PolicyRule 0':
-    comment: Default traffic
-    QoS_treatment: default_priority
+    comment: OpenFlow traffic
+    QoS_treatment: system_priority
     output_queue: 0
 'PolicyRule 1':
-    comment: Constrained Bandwidth
-    QoS_treatment: constrained_bw
+    comment: Default priority traffic
+    QoS_treatment: default_priority
     output_queue: 1
 'PolicyRule 2':
     comment: High priority traffic

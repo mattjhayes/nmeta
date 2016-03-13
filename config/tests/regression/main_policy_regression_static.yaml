@@ -4,13 +4,15 @@
 tc_rules:
     # Traffic Classification Rulesets and Rules
     tc_ruleset_1:
-        - comment: Control Static Rule that doesn't do anything
+        - comment: Constrained Bandwidth Traffic
           match_type: any
           conditions_list:
               - match_type: any
-                tcp_src: 123
+                tcp_src: 1234
+                tcp_dst: 1234
           actions:
-              set_desc_tag: description="Foo"
+            set_qos_tag: QoS_treatment=constrained_bw
+            set_desc_tag: description="Constrained Bandwidth Traffic"
 #
 identity:
     # Control how identity information is collected

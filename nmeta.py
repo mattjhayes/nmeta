@@ -197,7 +197,7 @@ class NMeta(app_manager.RyuApp):
         #*** Some switches need a table miss flow entry installed to buffer
         #*** packet and send a packet-in message to the controller:
         self.sa.set_switch_table_miss(datapath, self.miss_send_len,
-                                                           body.hw_desc)
+                                                    body.hw_desc, body.sw_desc)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):

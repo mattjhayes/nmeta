@@ -34,6 +34,9 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
 
+#*** For OVS version comparisons:
+from distutils.version import LooseVersion
+
 #*** This dictionary is used to check validity of flow match attributes
 #*** per OpenFlow version, and provides alternates for different versions
 #*** where there is complete compatibility.
@@ -254,30 +257,30 @@ class SwitchAbstract(object):
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4 match=%s",
                                   ofproto.OFP_VERSION, match)
         elif pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION:
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
-                        dl_dst=haddr_to_bin(eth.dst), 
+                        dl_dst=haddr_to_bin(eth.dst),
                         dl_type=0x0800, nw_src=pkt_ip6.src,
                         nw_dst=pkt_ip6.dst,
                         nw_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv6 match=%s",
                                   ofproto.OFP_VERSION, match)
         elif pkt_ip4 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=eth.src,
-                        dl_dst=eth.dst, 
+                        dl_dst=eth.dst,
                         dl_type=0x0800, nw_src=self._ipv4_t2i(pkt_ip4.src),
                         nw_dst=self._ipv4_t2i(pkt_ip4.dst),
                         ip_proto=pkt_ip4.proto)
             self.logger.debug("event=add_flow ofv=%s match_type=IPv4 match=%s",
                                   ofproto.OFP_VERSION, match)
         elif pkt_ip6 and ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION:
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=eth.src,
-                        dl_dst=eth.dst, 
+                        dl_dst=eth.dst,
                         dl_type=0x0800, nw_src=pkt_ip6.src,
                         nw_dst=pkt_ip6.dst,
                         ip_proto=pkt_ip4.proto)
@@ -304,7 +307,7 @@ class SwitchAbstract(object):
         """
         Add an ethernet (non-IP) flow table entry to a switch.
         Returns 1 for success or 0 for any type of error
-        Uses Ethertype in match to prevent matching against IPv4 
+        Uses Ethertype in match to prevent matching against IPv4
         or IPv6 flows
         """
         ofproto = datapath.ofproto
@@ -319,18 +322,18 @@ class SwitchAbstract(object):
         buffer_id = kwargs['buffer_id']
         priority = kwargs['priority']
         #*** Build a match that is dependant on the IP and OpenFlow versions:
-        if (eth.ethertype != 0x0800 and 
+        if (eth.ethertype != 0x0800 and
                    ofproto.OFP_VERSION == ofproto_v1_0.OFP_VERSION):
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=haddr_to_bin(eth.src),
                         dl_dst=haddr_to_bin(eth.dst),
                         dl_type=eth.ethertype)
             self.logger.debug("event=add_flow ofv=%s match_type=Non-IP "
                                   "match=%s", ofproto.OFP_VERSION, match)
-        elif (eth.ethertype != 0x0800 and 
+        elif (eth.ethertype != 0x0800 and
                    ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION):
-            match = self.get_flow_match(datapath, ofproto.OFP_VERSION, 
+            match = self.get_flow_match(datapath, ofproto.OFP_VERSION,
                         in_port=in_port,
                         dl_src=eth.src,
                         dl_dst=eth.dst,
@@ -480,7 +483,7 @@ class SwitchAbstract(object):
                     return 0
             else:
                 #*** Key doesn't exist so log the error and return 0:
-                self.logger.error("event=match_failed attr=%s", 
+                self.logger.error("event=match_failed attr=%s",
                                        OF_MATCH_COMPAT[key])
                 return 0
         #*** We now have a compatible kwargs dict build a match:
@@ -507,7 +510,7 @@ class SwitchAbstract(object):
             inport = msg.in_port
             return inport
         else:
-            self.logger.error("Unsupported_OpenFlow_Version=%s", 
+            self.logger.error("Unsupported_OpenFlow_Version=%s",
                                       datapath.ofproto.OFP_VERSION)
             return 0
 
@@ -533,7 +536,7 @@ class SwitchAbstract(object):
                     datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
         else:
             self.logger.error("error=E1000006 Unhandled"
-                    " OF version ofv=%s means no action will be installed", 
+                    " OF version ofv=%s means no action will be installed",
                     ofv)
             actions = 0
         return actions
@@ -562,22 +565,29 @@ class SwitchAbstract(object):
         req = parser.OFPDescStatsRequest(datapath, 0)
         datapath.send_msg(req)
 
-    def set_switch_table_miss(self, datapath, miss_send_len, hw_desc):
+    def set_switch_table_miss(self, datapath, miss_send_len, hw_desc, sw_desc):
         """
         Set a table miss rule on table 0 to send packets to
         the controller. This is required for OF versions higher
-        than v1.0. Do not set on OpenvSwitch as it causes packets
+        than v1.0. Do not set on older OpenvSwitch as it causes packets
         to be sent to controller with no buffer and OpenvSwitch
         doesn't need this rule as it punts to the controller
         regardless (contrary to specification?)
+        Note: OVS 2.5.0 doesn't do this, but not sure what point fix
+        was applied to OVS, somewhere between 2.0.2 and 2.5.0
         """
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         if hw_desc == "Open vSwitch":
-            self.logger.info("Switch dpid=%s is OpenvSwitch, so not setting "
-                                  "a table-miss rule to send to controller",
+            if LooseVersion(sw_desc) < LooseVersion("2.5.0"):
+                self.logger.info("Switch dpid=%s is OpenvSwitch, so not "
+                                  "setting a table-miss rule to send to "
+                                  "controller",
                                   datapath.id)
-            return 1
+                return 1
+            else:
+                self.logger.info("Switch dpid=%s is OpenvSwitch but more "
+                    "recent so will add table miss rule", datapath.id)
         if datapath.ofproto.OFP_VERSION == 4:
             #** Install table-miss flow entry as some switches require it:
             self.logger.info("Setting table-miss flow entry on switch "
@@ -634,7 +644,7 @@ class SwitchAbstract(object):
                 #*** OVS (or more probably the writer of this code failed to
                 #*** properly understand the standard). The OFPActionEnqueue
                 #*** action does not result in the packet being sent, i.e.:
-                #actions = [datapath.ofproto_parser.OFPActionEnqueue(out_port, 
+                #actions = [datapath.ofproto_parser.OFPActionEnqueue(out_port,
                 #            out_queue)]
                 #*** This works, but doesn't specify a queue:
                 actions = [datapath.ofproto_parser.OFPActionOutput(out_port, )]
@@ -644,7 +654,7 @@ class SwitchAbstract(object):
                 self.logger.error("error=E1000001 "
                    "actions v01 Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
-                return 0 
+                return 0
         elif ofproto.OFP_VERSION == ofproto_v1_3.OFP_VERSION and not nq:
             #*** Packet out with no queue (nq):
             try:
@@ -669,7 +679,7 @@ class SwitchAbstract(object):
                 self.logger.error("error=E1000002 "
                    "actions v03 Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
-                return 0 
+                return 0
         else:
             self.logger.error("error=E1000003 "
                                 "Unsupported OpenFlow version %s",
@@ -689,7 +699,7 @@ class SwitchAbstract(object):
                 self.logger.error("error=E1000023 "
                    "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
-                return 0 
+                return 0
         else:
             #*** Assemble the switch/packet/actions ready to push.
             #***  No buffered packet on the switch, so supply packet data:
@@ -705,7 +715,7 @@ class SwitchAbstract(object):
                 self.logger.error("error=E1000023 "
                    "datapath.ofproto_parser.OFPPacketOut Exception %s, %s, %s",
                     exc_type, exc_value, exc_traceback)
-                return 0 
+                return 0
         try:
             #*** Tell the switch to send the packet:
             datapath.send_msg(out)
@@ -715,7 +725,7 @@ class SwitchAbstract(object):
             self.logger.error("error=E1000005 "
                "datapath.send_msg Exception %s, %s, %s",
                 exc_type, exc_value, exc_traceback)
-            return 0 
+            return 0
         return 1
 
     def _ipv4_t2i(self, ip_text):

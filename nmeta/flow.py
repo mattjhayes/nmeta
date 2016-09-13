@@ -36,7 +36,7 @@ import nmisc
 
 class FlowMetadata(object):
     """
-    This class is instantiated by nmeta.py and provides methods to 
+    This class is instantiated by nmeta.py and provides methods to
     add/remove/update/search flow metadata table entries
     """
     def __init__(self, _nmeta, _config):
@@ -60,7 +60,7 @@ class FlowMetadata(object):
         if _syslog_enabled:
             #*** Log to syslog on host specified in config.yaml:
             self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
+                                                _loghost, _logport),
                                                 facility=_logfacility)
             syslog_formatter = logging.Formatter(_syslog_format)
             self.syslog_handler.setFormatter(syslog_formatter)
@@ -89,15 +89,15 @@ class FlowMetadata(object):
         self.augment = _config.get_value('augment_flow_metadata_with_identity')
         #*** Reference to call methods in nmeta module:
         self._nmeta = _nmeta
-        
+
     def update_flowmetadata(self, msg, flow_actions):
         """
         Passed a message and actions assigned by
         Traffic Classification and Forwarding modules.
         Do the following:
         1) Update Flow Metadata Table
-        2) Check QoS to see if special queueing should be applied. 
-           If so update the actions
+        2) Check QoS to see if special queueing should be applied.
+        If so update the actions
         3) Return updated actions
         """
         pkt = packet.Packet(msg.data)
@@ -170,10 +170,10 @@ class FlowMetadata(object):
                 _ip_match = self._fm_check_ip(_table_ref, pkt)
                 if _ip_match:
                     #*** Matched IP address pair in either direction
-                    #*** Now check for TCP port match (with consideration 
+                    #*** Now check for TCP port match (with consideration
                     #*** to directionality):
                     if _pkt_tcp:
-                        _tcp_match = self._fm_check_tcp(_table_ref, 
+                        _tcp_match = self._fm_check_tcp(_table_ref,
                                                          _ip_match, pkt)
                         if _tcp_match:
                             #*** Matched IP and TCP parameters so return
@@ -186,7 +186,7 @@ class FlowMetadata(object):
                         #*** return the table ref, but needs work in future....
                         return _table_ref
             elif _pkt_eth:
-                #*** Non-IP packet, check if it matches on src and dest MAC 
+                #*** Non-IP packet, check if it matches on src and dest MAC
                 #*** and ethertype
                 _eth_match = self._fm_check_eth(_table_ref, pkt)
                 if _eth_match:
@@ -194,22 +194,22 @@ class FlowMetadata(object):
             else:
                 #*** We shouldn't ever hit this condition. Just log that
                 #*** some weirdness went on
-                self.logger.warning("observed non-ethernet packet")  
+                self.logger.warning("observed non-ethernet packet")
                 return False
         #*** No match iterating through FM table so return false:
         return False
-                
+
     def _fm_check_eth(self, table_ref, pkt):
         """
         Checks if packet source/destination MAC addresses match against
         a given table entry in either order as well as the ethertype
-        Returns 'forward' for a direct match, 'reverse' for a 
+        Returns 'forward' for a direct match, 'reverse' for a
         transposed match and False (0) for no match
         """
-        _pkt_eth = pkt.get_protocol(ethernet.ethernet) 
+        _pkt_eth = pkt.get_protocol(ethernet.ethernet)
         _eth_A = _pkt_eth.src
         _eth_B = _pkt_eth.dst
-        _ethertype = _pkt_eth.ethertype        
+        _ethertype = _pkt_eth.ethertype
         if (_eth_A == self._fm_table[table_ref]["eth_A"]
             and _eth_B == self._fm_table[table_ref]["eth_B"]
             and _ethertype == self._fm_table[table_ref]["ethertype"]):
@@ -225,7 +225,7 @@ class FlowMetadata(object):
         """
         Checks if a source/destination IP addresses match against
         a given table entry in either order.
-        Returns 'forward' for a direct match, 'reverse' for a 
+        Returns 'forward' for a direct match, 'reverse' for a
         transposed match and False (0) for no match
         """
         _pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
@@ -243,11 +243,11 @@ class FlowMetadata(object):
     def _fm_check_tcp(self, table_ref, ip_match, pkt):
         """
         Checks if source/destination tcp ports match against
-        a given table entry same order that IP addresses matched 
+        a given table entry same order that IP addresses matched
         in.
         .
         Returns True (1) for a match and False (0) for no match
-        """ 
+        """
         _pkt_tcp = pkt.get_protocol(tcp.tcp)
         _tcp_A = _pkt_tcp.src_port
         _tcp_B = _pkt_tcp.dst_port
@@ -261,15 +261,15 @@ class FlowMetadata(object):
             return True
         else:
             return False
-            
+
     def _fm_add_new(self, pkt, flow_actions):
         """
-        Passed a packet that is a new flow 
+        Passed a packet that is a new flow
         along with flow actions and add to the
         Flow Metadata (FM) table.
         """
         #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
-        #*** context is future-proofing for when the system will support 
+        #*** context is future-proofing for when the system will support
         #*** multiple contexts. For now just set to 'default':
         ctx = 'default'
         self.logger.debug("Adding new record to flow metadata table")
@@ -307,10 +307,10 @@ class FlowMetadata(object):
                 #*** Add TCP info:
                 self._fm_table[self._fm_ref]["tcp_A"] = _pkt_tcp.src_port
                 self._fm_table[self._fm_ref]["tcp_B"] = _pkt_tcp.dst_port
-            #*** Need to add other attribute/values here for different 
+            #*** Need to add other attribute/values here for different
             #***  protocol types: <TBD>
         elif _pkt_eth:
-            #*** Add layer-2 as non-IP traffic so local to a subnet 
+            #*** Add layer-2 as non-IP traffic so local to a subnet
             #*** and therefore it is significant:
             self._fm_table[self._fm_ref]["eth_A"] = _pkt_eth.src
             self._fm_table[self._fm_ref]["eth_B"] = _pkt_eth.dst
@@ -321,8 +321,8 @@ class FlowMetadata(object):
             self.logger.warning("observed non ethernet packet")
         #*** Need to add in what (if any) classification has been made:
         if flow_actions:
-            self._fm_table[self._fm_ref]["flow_actions"] = flow_actions 
-        #*** Number of packets seen by controller is 1 as this is the first 
+            self._fm_table[self._fm_ref]["flow_actions"] = flow_actions
+        #*** Number of packets seen by controller is 1 as this is the first
         #***  packet in the flow:
         self._fm_table[self._fm_ref]["number_of_packets_to_controller"] = 1
         if self.extra_debugging:

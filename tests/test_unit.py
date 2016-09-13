@@ -1,8 +1,16 @@
 """
-Nmeta Unit Tests 
-.
-To run, type in nosetests in the nmeta directory
+Nmeta Unit Tests
+
+Uses pytest, install with:
+    sudo apt-get install python-pytest
+
+To run test, in this directory type in:
+    py.test -v
 """
+
+import sys
+#*** Handle tests being in different directory branch to app code:
+sys.path.insert(0, '../nmeta')
 
 import tc_policy
 import config

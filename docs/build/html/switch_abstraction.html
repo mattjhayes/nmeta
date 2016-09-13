@@ -1,0 +1,247 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>switch_abstraction module &#8212; nmeta 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="nmeta 0.2.0 documentation" href="index.html" />
+    <link rel="up" title="nmeta" href="modules.html" />
+    <link rel="next" title="tc_identity module" href="tc_identity.html" />
+    <link rel="prev" title="qos module" href="qos.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-switch_abstraction">
+<span id="switch-abstraction-module"></span><h1>switch_abstraction module<a class="headerlink" href="#module-switch_abstraction" title="Permalink to this headline">¶</a></h1>
+<p>This module is part of the nmeta suite running on top of Ryu SDN controller.
+It provides functions that abstract the details of OpenFlow calls, including
+differences between OpenFlow versions where practical</p>
+<dl class="class">
+<dt id="switch_abstraction.SwitchAbstract">
+<em class="property">class </em><code class="descclassname">switch_abstraction.</code><code class="descname">SwitchAbstract</code><span class="sig-paren">(</span><em>_config</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>This class is instantiated by various other modules
+and provides methods for interacting with switches
+that are safe to use without need to for the calling
+program to know calls specific to the version of
+OpenFlow that the switch runs (where practical...)</p>
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.add_flow">
+<code class="descname">add_flow</code><span class="sig-paren">(</span><em>datapath</em>, <em>match</em>, <em>actions</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.add_flow" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a flow table entry to a switch.
+Returns 1 for success or 0 for any type of error</p>
+<dl class="docutils">
+<dt>Required kwargs are:</dt>
+<dd>priority (0)
+buffer_id (None)
+idle_timeout (5)
+hard_timeout (0)</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.add_flow_eth">
+<code class="descname">add_flow_eth</code><span class="sig-paren">(</span><em>datapath</em>, <em>msg</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.add_flow_eth" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an ethernet (non-IP) flow table entry to a switch.
+Returns 1 for success or 0 for any type of error
+Uses Ethertype in match to prevent matching against IPv4
+or IPv6 flows</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.add_flow_ip">
+<code class="descname">add_flow_ip</code><span class="sig-paren">(</span><em>datapath</em>, <em>msg</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.add_flow_ip" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add an IP (v4 or v6) flow table entry to a switch.
+Returns 1 for success or 0 for any type of error
+Uses IP protocol number to prevent matching on TCP flows</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.add_flow_tcp">
+<code class="descname">add_flow_tcp</code><span class="sig-paren">(</span><em>datapath</em>, <em>msg</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.add_flow_tcp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add a TCP flow table entry to a switch.
+Returns 1 for success or 0 for any type of error</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.get_actions">
+<code class="descname">get_actions</code><span class="sig-paren">(</span><em>datapath</em>, <em>ofv</em>, <em>out_port</em>, <em>out_queue</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.get_actions" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a datapath, an OpenFlow version an out port,
+an out queue and flood port # and build and return an
+appropriate set of actions for this</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.get_flow_match">
+<code class="descname">get_flow_match</code><span class="sig-paren">(</span><em>datapath</em>, <em>ofproto</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.get_flow_match" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a OF protocol version and a Flow Match keyword arguments dict
+and return an OF match tailored for the OF version
+otherwise 0 (false) if compatibility not possible.
+TBD: validating values...</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.get_friendly_of_version">
+<code class="descname">get_friendly_of_version</code><span class="sig-paren">(</span><em>ofproto</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.get_friendly_of_version" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed an OF Protocol object and return a
+human-friendly version of the protocol
+revision number</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.get_in_port">
+<code class="descname">get_in_port</code><span class="sig-paren">(</span><em>msg</em>, <em>datapath</em>, <em>ofproto</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.get_in_port" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a msg, datapath and OF protocol version
+and return the port that the
+packet came in on (version specific)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.packet_out">
+<code class="descname">packet_out</code><span class="sig-paren">(</span><em>datapath</em>, <em>msg</em>, <em>in_port</em>, <em>out_port</em>, <em>out_queue</em>, <em>nq=0</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.packet_out" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sends a supplied packet out switch port(s) in specific queue.
+Set nq=1 if want no queueing specified (i.e. for a flooded
+packet)</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.request_switch_desc">
+<code class="descname">request_switch_desc</code><span class="sig-paren">(</span><em>datapath</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.request_switch_desc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request that a switch send us it&#8217;s description
+data</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.set_switch_config">
+<code class="descname">set_switch_config</code><span class="sig-paren">(</span><em>datapath</em>, <em>config_flags</em>, <em>miss_send_len</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.set_switch_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set config on a switch including config flags that
+instruct fragment handling behaviour and miss_send_len
+which controls the number of bytes sent to the controller
+when the output port is specified as the controller</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="switch_abstraction.SwitchAbstract.set_switch_table_miss">
+<code class="descname">set_switch_table_miss</code><span class="sig-paren">(</span><em>datapath</em>, <em>miss_send_len</em>, <em>hw_desc</em>, <em>sw_desc</em><span class="sig-paren">)</span><a class="headerlink" href="#switch_abstraction.SwitchAbstract.set_switch_table_miss" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set a table miss rule on table 0 to send packets to
+the controller. This is required for OF versions higher
+than v1.0. Do not set on older OpenvSwitch as it causes packets
+to be sent to controller with no buffer and OpenvSwitch
+doesn&#8217;t need this rule as it punts to the controller
+regardless (contrary to specification?)
+Note: OVS 2.5.0 doesn&#8217;t do this, but not sure what point fix
+was applied to OVS, somewhere between 2.0.2 and 2.5.0</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">nmeta</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="api.html">api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html">config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dns_experimental.html">dns_experimental module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flow.html">flow module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="forwarding.html">forwarding module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lldp-fixed.html">lldp-fixed module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="measure.html">measure module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmeta.html">nmeta module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmisc.html">nmisc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qos.html">qos module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">switch_abstraction module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_identity.html">tc_identity module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_payload.html">tc_payload module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_policy.html">tc_policy module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_static.html">tc_static module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_statistical.html">tc_statistical module</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">nmeta</a><ul>
+      <li>Previous: <a href="qos.html" title="previous chapter">qos module</a></li>
+      <li>Next: <a href="tc_identity.html" title="next chapter">tc_identity module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/switch_abstraction.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Matthew John Hayes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/switch_abstraction.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

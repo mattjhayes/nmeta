@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>tc_static module &#8212; nmeta 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="nmeta 0.2.0 documentation" href="index.html" />
+    <link rel="up" title="nmeta" href="modules.html" />
+    <link rel="next" title="tc_statistical module" href="tc_statistical.html" />
+    <link rel="prev" title="tc_policy module" href="tc_policy.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-tc_static">
+<span id="tc-static-module"></span><h1>tc_static module<a class="headerlink" href="#module-tc_static" title="Permalink to this headline">¶</a></h1>
+<p>This module is part of the nmeta suite running on top of Ryu SDN controller
+to provide network identity and flow (traffic classification) metadata</p>
+<dl class="class">
+<dt id="tc_static.StaticInspect">
+<em class="property">class </em><code class="descclassname">tc_static.</code><code class="descname">StaticInspect</code><span class="sig-paren">(</span><em>_config</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>This class is instantiated by tc_policy.py 
+(class: TrafficClassificationPolicy) and provides methods to 
+query static traffic classification matches</p>
+<dl class="method">
+<dt id="tc_static.StaticInspect.check_static">
+<code class="descname">check_static</code><span class="sig-paren">(</span><em>policy_attr</em>, <em>policy_value</em>, <em>pkt</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect.check_static" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a static classification attribute, value and packet and
+return 1 for is match and 0 for not a match or any type of error</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_static.StaticInspect.is_match_ethertype">
+<code class="descname">is_match_ethertype</code><span class="sig-paren">(</span><em>value_to_check1</em>, <em>value_to_check2</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect.is_match_ethertype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a two prospective EtherTypes and check to
+see if they are the same.
+Return 1 for both the same EtherType and 0 for different
+Values can be hex or decimal and are 2 bytes in length</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_static.StaticInspect.is_match_ip_space">
+<code class="descname">is_match_ip_space</code><span class="sig-paren">(</span><em>ip_addr</em>, <em>ip_space</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect.is_match_ip_space" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed an IP address and an IP address space and check
+if the IP address belongs to the IP address space.
+If it does return 1 otherwise return 0</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_static.StaticInspect.is_match_macaddress">
+<code class="descname">is_match_macaddress</code><span class="sig-paren">(</span><em>value_to_check1</em>, <em>value_to_check2</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect.is_match_macaddress" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a two prospective MAC addresses and check to
+see if they are the same address.
+Return 1 for both the same MAC address and 0 for different</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_static.StaticInspect.is_valid_ethertype">
+<code class="descname">is_valid_ethertype</code><span class="sig-paren">(</span><em>value_to_check</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect.is_valid_ethertype" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a prospective EtherType and check that
+it is valid. Can be hex (0x*) or decimal
+Return 1 for is valid IP address and 0 for not valid</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_static.StaticInspect.is_valid_ip_space">
+<code class="descname">is_valid_ip_space</code><span class="sig-paren">(</span><em>value_to_check</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect.is_valid_ip_space" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a prospective IP address and check that
+it is valid. Can be IPv4 or IPv6 and can be range or have CIDR mask
+Return 1 for is valid IP address and 0 for not valid</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_static.StaticInspect.is_valid_macaddress">
+<code class="descname">is_valid_macaddress</code><span class="sig-paren">(</span><em>value_to_check</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect.is_valid_macaddress" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a prospective MAC address and check that
+it is valid.
+Return 1 for is valid IP address and 0 for not valid</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_static.StaticInspect.is_valid_transport_port">
+<code class="descname">is_valid_transport_port</code><span class="sig-paren">(</span><em>value_to_check</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_static.StaticInspect.is_valid_transport_port" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a prospective TCP or UDP port number and check that
+it is an integer in the correct range.
+Return 1 for is valid port number and 0 for not valid port
+number</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">nmeta</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="api.html">api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html">config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dns_experimental.html">dns_experimental module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flow.html">flow module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="forwarding.html">forwarding module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lldp-fixed.html">lldp-fixed module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="measure.html">measure module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmeta.html">nmeta module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmisc.html">nmisc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qos.html">qos module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="switch_abstraction.html">switch_abstraction module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_identity.html">tc_identity module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_payload.html">tc_payload module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_policy.html">tc_policy module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">tc_static module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_statistical.html">tc_statistical module</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">nmeta</a><ul>
+      <li>Previous: <a href="tc_policy.html" title="previous chapter">tc_policy module</a></li>
+      <li>Next: <a href="tc_statistical.html" title="next chapter">tc_statistical module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/tc_static.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Matthew John Hayes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/tc_static.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

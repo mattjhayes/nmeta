@@ -1,0 +1,221 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>tc_identity module &#8212; nmeta 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="nmeta 0.2.0 documentation" href="index.html" />
+    <link rel="up" title="nmeta" href="modules.html" />
+    <link rel="next" title="tc_payload module" href="tc_payload.html" />
+    <link rel="prev" title="switch_abstraction module" href="switch_abstraction.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-tc_identity">
+<span id="tc-identity-module"></span><h1>tc_identity module<a class="headerlink" href="#module-tc_identity" title="Permalink to this headline">¶</a></h1>
+<p>This module is part of the nmeta suite running on top of Ryu SDN controller
+to provide network identity and flow (traffic classification) metadata</p>
+<dl class="class">
+<dt id="tc_identity.IdentityInspect">
+<em class="property">class </em><code class="descclassname">tc_identity.</code><code class="descname">IdentityInspect</code><span class="sig-paren">(</span><em>_config</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>This class is instantiated by tc_policy.py
+(class: TrafficClassificationPolicy) and provides methods to
+ingest identity updates and query identities</p>
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.arp_reply_in">
+<code class="descname">arp_reply_in</code><span class="sig-paren">(</span><em>arped_ip</em>, <em>arped_mac</em>, <em>ctx</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.arp_reply_in" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed an IPv4 ARP reply MAC and IPv4 address and a context
+and add to relevant metadata</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.check_identity">
+<code class="descname">check_identity</code><span class="sig-paren">(</span><em>policy_attr</em>, <em>policy_value</em>, <em>pkt</em>, <em>ctx</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.check_identity" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed an identity attribute, value and packet and
+return True or False based on whether or not the packet strongly
+correlates to the identity attribute/value</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.dhcp_in">
+<code class="descname">dhcp_in</code><span class="sig-paren">(</span><em>mac</em>, <em>ip</em>, <em>hostname</em>, <em>ctx</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.dhcp_in" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a MAC address, IP address, DHCP host name
+(from option 12), and a context
+and add to relevant metadata</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.dns_reply_in">
+<code class="descname">dns_reply_in</code><span class="sig-paren">(</span><em>queries</em>, <em>answers</em>, <em>ctx</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.dns_reply_in" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a DNS parameters and a context
+and add to relevant metadata</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.get_augmented_fm_table">
+<code class="descname">get_augmented_fm_table</code><span class="sig-paren">(</span><em>_flows</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.get_augmented_fm_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the flow metadata table augmented with
+appropriate identity metadata</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.get_identity_nic_table">
+<code class="descname">get_identity_nic_table</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.get_identity_nic_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the Identity NIC table</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.get_identity_system_table">
+<code class="descname">get_identity_system_table</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.get_identity_system_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the Identity System table</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.ip4_in">
+<code class="descname">ip4_in</code><span class="sig-paren">(</span><em>pkt</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.ip4_in" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed an IPv4 packet
+and update NIC identity table (if required) with the IPv4
+address if the MAC address matches an entry</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.lldp_in">
+<code class="descname">lldp_in</code><span class="sig-paren">(</span><em>pkt</em>, <em>dpid</em>, <em>inport</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.lldp_in" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed an lldp packet, a Data Path ID (dpid) and in port
+and update identity tables (if required) with this identity
+information</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.maintain_identity_tables">
+<code class="descname">maintain_identity_tables</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.maintain_identity_tables" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes old entries from Identity NIC and
+System tables.
+This function is passed maximum age values
+and deletes any entries in the
+tables that have a time_last that is
+older than that when compared to
+current time</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="tc_identity.IdentityInspect.valid_id_ip_service">
+<code class="descname">valid_id_ip_service</code><span class="sig-paren">(</span><em>ctx</em>, <em>ip</em>, <em>service</em><span class="sig-paren">)</span><a class="headerlink" href="#tc_identity.IdentityInspect.valid_id_ip_service" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed variables to look up a service in id_ip structure.
+Check that this service is valid (i.e. not stale)
+Return boolean</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">nmeta</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="api.html">api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html">config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dns_experimental.html">dns_experimental module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flow.html">flow module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="forwarding.html">forwarding module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lldp-fixed.html">lldp-fixed module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="measure.html">measure module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmeta.html">nmeta module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmisc.html">nmisc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qos.html">qos module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="switch_abstraction.html">switch_abstraction module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">tc_identity module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_payload.html">tc_payload module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_policy.html">tc_policy module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_static.html">tc_static module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_statistical.html">tc_statistical module</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">nmeta</a><ul>
+      <li>Previous: <a href="switch_abstraction.html" title="previous chapter">switch_abstraction module</a></li>
+      <li>Next: <a href="tc_payload.html" title="next chapter">tc_payload module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/tc_identity.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Matthew John Hayes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/tc_identity.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

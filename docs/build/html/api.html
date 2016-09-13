@@ -1,0 +1,298 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>api module &#8212; nmeta 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="nmeta 0.2.0 documentation" href="index.html" />
+    <link rel="up" title="nmeta" href="modules.html" />
+    <link rel="next" title="config module" href="config.html" />
+    <link rel="prev" title="nmeta" href="modules.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-api">
+<span id="api-module"></span><h1>api module<a class="headerlink" href="#module-api" title="Permalink to this headline">¶</a></h1>
+<p>This module is part of the nmeta suite running on top of Ryu SDN
+controller to provide network identity and flow metadata.
+It provides methods for RESTful API connectivity.</p>
+<dl class="class">
+<dt id="api.Api">
+<em class="property">class </em><code class="descclassname">api.</code><code class="descname">Api</code><span class="sig-paren">(</span><em>_nmeta</em>, <em>_config</em>, <em>_wsgi</em><span class="sig-paren">)</span><a class="headerlink" href="#api.Api" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>This class is instantiated by nmeta.py and provides methods
+for RESTful API connectivity.</p>
+<dl class="attribute">
+<dt id="api.Api.IP_PATTERN">
+<code class="descname">IP_PATTERN</code><em class="property"> = '\\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\\.|$){4}\\b'</em><a class="headerlink" href="#api.Api.IP_PATTERN" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_data_size_rows">
+<code class="descname">url_data_size_rows</code><em class="property"> = '/nmeta/measurement/tablesize/rows/'</em><a class="headerlink" href="#api.Api.url_data_size_rows" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_flowtable">
+<code class="descname">url_flowtable</code><em class="property"> = '/nmeta/flowtable/'</em><a class="headerlink" href="#api.Api.url_flowtable" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_flowtable_augmented">
+<code class="descname">url_flowtable_augmented</code><em class="property"> = '/nmeta/flowtable/augmented/'</em><a class="headerlink" href="#api.Api.url_flowtable_augmented" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_flowtable_by_ip">
+<code class="descname">url_flowtable_by_ip</code><em class="property"> = '/nmeta/flowtable/{ip}'</em><a class="headerlink" href="#api.Api.url_flowtable_by_ip" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_identity_ip">
+<code class="descname">url_identity_ip</code><em class="property"> = '/nmeta/identity/ip/'</em><a class="headerlink" href="#api.Api.url_identity_ip" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_identity_mac">
+<code class="descname">url_identity_mac</code><em class="property"> = '/nmeta/identity/mac/'</em><a class="headerlink" href="#api.Api.url_identity_mac" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_identity_nic_table">
+<code class="descname">url_identity_nic_table</code><em class="property"> = '/nmeta/identity/nictable/'</em><a class="headerlink" href="#api.Api.url_identity_nic_table" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_identity_service">
+<code class="descname">url_identity_service</code><em class="property"> = '/nmeta/identity/service/'</em><a class="headerlink" href="#api.Api.url_identity_service" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_identity_system_table">
+<code class="descname">url_identity_system_table</code><em class="property"> = '/nmeta/identity/systemtable/'</em><a class="headerlink" href="#api.Api.url_identity_system_table" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_measure_event_rates">
+<code class="descname">url_measure_event_rates</code><em class="property"> = '/nmeta/measurement/eventrates/'</em><a class="headerlink" href="#api.Api.url_measure_event_rates" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="api.Api.url_measure_pkt_time">
+<code class="descname">url_measure_pkt_time</code><em class="property"> = '/nmeta/measurement/metrics/packet_time/'</em><a class="headerlink" href="#api.Api.url_measure_pkt_time" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="exception">
+<dt id="api.NotFoundError">
+<em class="property">exception </em><code class="descclassname">api.</code><code class="descname">NotFoundError</code><span class="sig-paren">(</span><em>msg=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.NotFoundError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">ryu.exception.RyuException</span></code></p>
+<dl class="attribute">
+<dt id="api.NotFoundError.message">
+<code class="descname">message</code><em class="property"> = 'Error occurred talking to function &lt;TBD&gt;'</em><a class="headerlink" href="#api.NotFoundError.message" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="api.RESTAPIController">
+<em class="property">class </em><code class="descclassname">api.</code><code class="descname">RESTAPIController</code><span class="sig-paren">(</span><em>req</em>, <em>link</em>, <em>data</em>, <em>**config</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">ryu.app.wsgi.ControllerBase</span></code></p>
+<p>This class is used to control REST API access to the
+nmeta data and control functions</p>
+<dl class="method">
+<dt id="api.RESTAPIController.get_data_structure_size_rows">
+<code class="descname">get_data_structure_size_rows</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.get_data_structure_size_rows" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.get_event_rates">
+<code class="descname">get_event_rates</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.get_event_rates" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.get_id_ip">
+<code class="descname">get_id_ip</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.get_id_ip" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.get_id_mac">
+<code class="descname">get_id_mac</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.get_id_mac" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.get_id_service">
+<code class="descname">get_id_service</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.get_id_service" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.get_packet_time">
+<code class="descname">get_packet_time</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.get_packet_time" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.list_flow_table">
+<code class="descname">list_flow_table</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.list_flow_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.list_flow_table_augmented">
+<code class="descname">list_flow_table_augmented</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.list_flow_table_augmented" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.list_flow_table_by_IP">
+<code class="descname">list_flow_table_by_IP</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.list_flow_table_by_IP" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.list_identity_nic_table">
+<code class="descname">list_identity_nic_table</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.list_identity_nic_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="api.RESTAPIController.list_identity_system_table">
+<code class="descname">list_identity_system_table</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#api.RESTAPIController.list_identity_system_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run a REST command and return
+appropriate response</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="function">
+<dt id="api.rest_command">
+<code class="descclassname">api.</code><code class="descname">rest_command</code><span class="sig-paren">(</span><em>func</em><span class="sig-paren">)</span><a class="headerlink" href="#api.rest_command" title="Permalink to this definition">¶</a></dt>
+<dd><p>REST API command template</p>
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">nmeta</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html">config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dns_experimental.html">dns_experimental module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flow.html">flow module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="forwarding.html">forwarding module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lldp-fixed.html">lldp-fixed module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="measure.html">measure module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmeta.html">nmeta module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmisc.html">nmisc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qos.html">qos module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="switch_abstraction.html">switch_abstraction module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_identity.html">tc_identity module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_payload.html">tc_payload module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_policy.html">tc_policy module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_static.html">tc_static module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_statistical.html">tc_statistical module</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">nmeta</a><ul>
+      <li>Previous: <a href="modules.html" title="previous chapter">nmeta</a></li>
+      <li>Next: <a href="config.html" title="next chapter">config module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/api.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Matthew John Hayes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/api.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

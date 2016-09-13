@@ -1,0 +1,170 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>flow module &#8212; nmeta 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="nmeta 0.2.0 documentation" href="index.html" />
+    <link rel="up" title="nmeta" href="modules.html" />
+    <link rel="next" title="forwarding module" href="forwarding.html" />
+    <link rel="prev" title="dns_experimental module" href="dns_experimental.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="module-flow">
+<span id="flow-module"></span><h1>flow module<a class="headerlink" href="#module-flow" title="Permalink to this headline">¶</a></h1>
+<p>This module is part of the nmeta suite running on top of Ryu SDN controller
+to provide network identity and flow (traffic classification) metadata</p>
+<dl class="class">
+<dt id="flow.FlowMetadata">
+<em class="property">class </em><code class="descclassname">flow.</code><code class="descname">FlowMetadata</code><span class="sig-paren">(</span><em>_nmeta</em>, <em>_config</em><span class="sig-paren">)</span><a class="headerlink" href="#flow.FlowMetadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>This class is instantiated by nmeta.py and provides methods to
+add/remove/update/search flow metadata table entries</p>
+<dl class="method">
+<dt id="flow.FlowMetadata.get_fm_table">
+<code class="descname">get_fm_table</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#flow.FlowMetadata.get_fm_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the flow metadata table</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="flow.FlowMetadata.get_fm_table_size_rows">
+<code class="descname">get_fm_table_size_rows</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#flow.FlowMetadata.get_fm_table_size_rows" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return the number of rows (items) in the flow metadata table</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="flow.FlowMetadata.maintain_fm_table">
+<code class="descname">maintain_fm_table</code><span class="sig-paren">(</span><em>max_age</em><span class="sig-paren">)</span><a class="headerlink" href="#flow.FlowMetadata.maintain_fm_table" title="Permalink to this definition">¶</a></dt>
+<dd><p>Deletes old entries from FM table.
+This function is passed a maximum age
+and deletes any entries in the FM
+table that have a time_last that is
+older than that when compared to
+current time</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="flow.FlowMetadata.update_flowmetadata">
+<code class="descname">update_flowmetadata</code><span class="sig-paren">(</span><em>msg</em>, <em>flow_actions</em><span class="sig-paren">)</span><a class="headerlink" href="#flow.FlowMetadata.update_flowmetadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Passed a message and actions assigned by
+Traffic Classification and Forwarding modules.
+Do the following:
+1) Update Flow Metadata Table
+2) Check QoS to see if special queueing should be applied.
+If so update the actions
+3) Return updated actions</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">nmeta</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="api.html">api module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="config.html">config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dns_experimental.html">dns_experimental module</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">flow module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="forwarding.html">forwarding module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="lldp-fixed.html">lldp-fixed module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="measure.html">measure module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmeta.html">nmeta module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nmisc.html">nmisc module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="qos.html">qos module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="switch_abstraction.html">switch_abstraction module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_identity.html">tc_identity module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_payload.html">tc_payload module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_policy.html">tc_policy module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_static.html">tc_static module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tc_statistical.html">tc_statistical module</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">nmeta</a><ul>
+      <li>Previous: <a href="dns_experimental.html" title="previous chapter">dns_experimental module</a></li>
+      <li>Next: <a href="forwarding.html" title="next chapter">forwarding module</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/flow.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Matthew John Hayes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/flow.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

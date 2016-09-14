@@ -2,7 +2,7 @@
 
 # nmeta - Network Metadata
 
-The nmeta project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this enriched network metadata requires policy-based control and ability to adapt to new purposes through extensibility. 
+The nmeta project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this enriched network metadata requires policy-based control and ability to adapt to new purposes through extensibility.
 
 Enriched network metadata has a number of uses, including classifying flows for Quality of Service (QoS), traffic engineering and security.
 

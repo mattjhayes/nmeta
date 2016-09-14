@@ -1,0 +1,166 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Introduction &#8212; nmeta 0.2.0 documentation</title>
+    
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    './',
+        VERSION:     '0.2.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="nmeta 0.2.0 documentation" href="index.html" />
+    <link rel="next" title="Code Documentation" href="modules.html" />
+    <link rel="prev" title="nmeta" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head>
+  <body role="document">
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="introduction">
+<h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
+<img alt="_images/nmeta.png" src="_images/nmeta.png" />
+<p>The nmeta <em>(pronounced en-meta)</em> project is founded on the belief that
+innovation in networks requires a foundation layer of knowledge
+about both the participants and their types of conversation.</p>
+<p>Today, networks generally have only a limited view of participants
+and conversation types</p>
+<img alt="_images/nmeta_concept.png" src="_images/nmeta_concept.png" />
+<p>The goal of the nmeta project is to produce network metadata enriched with
+participant identities and conversation types to provide a foundation for
+innovation in networking.</p>
+<p>The production of enriched network metadata requires policy-based control,
+and ability to adapt to new purposes through extensibility.</p>
+<p>Enriched network metadata has a number of uses, including classifying flows
+for QoS, billing, traffic engineering, troubleshooting and security.</p>
+<img alt="_images/flow_metadata_screenshot3.png" src="_images/flow_metadata_screenshot3.png" />
+<p>Nmeta is a research platform for traffic classification on Software Defined
+Networking (SDN).  It runs on top of the Ryu SDN controller
+(see: <a class="reference external" href="http://osrg.github.io/ryu/">http://osrg.github.io/ryu/</a>).</p>
+<div class="section" id="design-philosophy">
+<h2>Design Philosophy<a class="headerlink" href="#design-philosophy" title="Permalink to this headline">¶</a></h2>
+<p>The collection and enrichment of flow metadata should be decoupled from
+systems that consume it. This abstraction is intended to encourage the
+development of innovative new uses for flow metadata.</p>
+<p>Policy is used to control how traffic classifiers of many types
+(i.e. this is a multiclassifier system) are employed and what actions
+they can take.</p>
+<p>Flow metadata can be enriched by the policy-controlled classifiers - i.e.
+extra data can be added.</p>
+<p>The system is designed to work in an online mode such that classifications are
+made in a timely manner so that consuming systems may take actions while
+the flow is still newly active.</p>
+</div>
+<div class="section" id="feature-enhancement-wishlist">
+<h2>Feature Enhancement Wishlist<a class="headerlink" href="#feature-enhancement-wishlist" title="Permalink to this headline">¶</a></h2>
+<p>See <a class="reference external" href="https://github.com/mattjhayes/nmeta/issues">Issues</a> for list of
+enhancements and bugs</p>
+</div>
+<div class="section" id="privacy-considerations">
+<h2>Privacy Considerations<a class="headerlink" href="#privacy-considerations" title="Permalink to this headline">¶</a></h2>
+<p>Collecting network metadata brings with it ethical and legal considerations
+around privacy. Please ensure that you have permission to monitor traffic
+before deploying this software.</p>
+</div>
+<div class="section" id="disclaimer">
+<h2>Disclaimer<a class="headerlink" href="#disclaimer" title="Permalink to this headline">¶</a></h2>
+<p>This code carries no warrantee whatsoever. Use at your own risk.</p>
+</div>
+<div class="section" id="how-to-contribute">
+<h2>How to Contribute<a class="headerlink" href="#how-to-contribute" title="Permalink to this headline">¶</a></h2>
+<p>Code contributions and suggestions are welcome. Enhancement or bug fixes
+can be raised as <a class="reference external" href="https://github.com/mattjhayes/nmeta/issues">issues</a></p>
+<p>Please get in touch if you want to be added as a contributor to the project:</p>
+<p>Email: <a class="reference external" href="mailto:nmeta-maintainer&#37;&#52;&#48;outlook&#46;com">Nmeta Maintainer</a></p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h3><a href="index.html">Table Of Contents</a></h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#design-philosophy">Design Philosophy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#feature-enhancement-wishlist">Feature Enhancement Wishlist</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#privacy-considerations">Privacy Considerations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#disclaimer">Disclaimer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-to-contribute">How to Contribute</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">Code Documentation</a></li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">nmeta</a></li>
+      <li>Next: <a href="modules.html" title="next chapter">Code Documentation</a></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/introduction.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <div><input type="text" name="q" /></div>
+      <div><input type="submit" value="Go" /></div>
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2016, Matthew John Hayes.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.4.6</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.9</a>
+      
+      |
+      <a href="_sources/introduction.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

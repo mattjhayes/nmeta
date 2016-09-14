@@ -1,12 +1,12 @@
-![](images/nmeta.png)
+![](docs/source/images/nmeta.png)
 
 # nmeta - Network Metadata
 
-The nmeta project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this enriched network metadata requires policy-based control and ability to adapt to new purposes through extensibility. 
+The nmeta project is founded on the belief that innovation in enterprise networks requires a foundation layer of knowledge about both the participants and their types of conversation. The production of this enriched network metadata requires policy-based control and ability to adapt to new purposes through extensibility.
 
 Enriched network metadata has a number of uses, including classifying flows for Quality of Service (QoS), traffic engineering and security.
 
-![](images/flow_metadata_screenshot2.png)
+![](docs/source/images/flow_metadata_screenshot2.png)
 
 Nmeta is a research platform for traffic classification on Software Defined Networking (SDN).  It runs on top of the Ryu SDN controller (see: http://osrg.github.io/ryu/). One day it may even be good enough to run in a real enterprise network...
 
@@ -43,9 +43,9 @@ git clone https://github.com/mattjhayes/nmeta.git
 ```
 
 3) Fix LLDP bug (optional)
-The lldp.py packet library module supplied with Ryu has 
+The lldp.py packet library module supplied with Ryu has
 (at the time of writing) a bug related to parsing system
-capabilities. A modified version of this file can be 
+capabilities. A modified version of this file can be
 copied over the original to fix this.
 
 First back up the original lldp.py file:
@@ -59,7 +59,7 @@ Now overwrite lldp.py with the modified file:
 ```
 cp nmeta/lldp-fixed.py ryu/ryu/lib/packet/lldp.py
 ```
-    
+
 4) Run nmeta:
 Navigate to the Ryu root directory:
 
@@ -99,7 +99,7 @@ config/tc_policy.yaml
 ### Static Classifiers
 
 TBD
-  
+
 ### Identity Classifiers
 
   All identity classifiers are prefixed with 'identity_'
@@ -108,7 +108,7 @@ TBD
     Example:
     -------
     To match system names of *.audit.example.com add this policy condition:
-    
+
 ```
 identity_lldp_systemname_re: '.*\.audit\.example\.com'
 ```
@@ -118,7 +118,7 @@ identity_lldp_systemname_re: '.*\.audit\.example\.com'
   All statistical classifiers are prefixed with 'statistical_'
 
 TBD - more here
-  
+
 ### Payload Classifiers
 
 TBD

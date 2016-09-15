@@ -20,6 +20,30 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../../nmeta'))
 
+import mock
+
+MOCK_MODULES = ['ryu.utils',
+    'ryu.base.app_manager',
+    'ryu.controller.ofp_event',
+    'ryu.controller.handler.CONFIG_DISPATCHER',
+    'ryu.controller.handler.MAIN_DISPATCHER',
+    'ryu.controller.handler.HANDSHAKE_DISPATCHER',
+    'ryu.controller.handler.set_ev_cls',
+    'ryu.ofproto.ofproto_v1_0',
+    'ryu.ofproto.ofproto_v1_3',
+    'ryu.lib.packet.packet',
+    'ryu.lib.addrconv',
+    'ryu.lib.packet.ethernet',
+    'ryu.lib.packet.ipv4',
+    'ryu.lib.packet.ipv6',
+    'ryu.lib.packet.tcp',
+    'ryu.app.wsgi.WSGIApplication']
+
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
+
+#*** Required for api module context:
+from ryu.app.wsgi import WSGIApplication
 
 # -- General configuration ------------------------------------------------
 

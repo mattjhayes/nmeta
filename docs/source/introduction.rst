@@ -1,3 +1,5 @@
+.. image:: images/nmeta.png
+
 ============
 Introduction
 ============
@@ -5,8 +7,6 @@ Introduction
 The nmeta *(pronounced en-meta)* project is founded on the belief that
 innovation in networks requires a foundation layer of knowledge
 about both the participants and their types of conversation.
-
-.. image:: images/nmeta.png
 
 Today, networks generally have only a limited view of participants
 and conversation types
@@ -28,24 +28,6 @@ for QoS, billing, traffic engineering, troubleshooting and security.
 Nmeta is a research platform for traffic classification on Software Defined
 Networking (SDN).  It runs on top of the Ryu SDN controller
 (see: `<http://osrg.github.io/ryu/>`_).
-
-Design Philosophy
------------------
-
-The collection and enrichment of flow metadata should be decoupled from
-systems that consume it. This abstraction is intended to encourage the
-development of innovative new uses for flow metadata.
-
-Policy is used to control how traffic classifiers of many types
-(i.e. this is a multiclassifier system) are employed and what actions
-they can take.
-
-Flow metadata can be enriched by the policy-controlled classifiers - i.e.
-extra data can be added.
-
-The system is designed to work in an online mode such that classifications are
-made in a timely manner so that consuming systems may take actions while
-the flow is still newly active.
 
 Feature Enhancement Wishlist
 ----------------------------

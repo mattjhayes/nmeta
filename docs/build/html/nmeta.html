@@ -81,7 +81,13 @@ in event</p>
 <dl class="method">
 <dt id="nmeta.NMeta._packet_in_handler">
 <code class="descname">_packet_in_handler</code><span class="sig-paren">(</span><em>ev</em><span class="sig-paren">)</span><a class="headerlink" href="#nmeta.NMeta._packet_in_handler" title="Permalink to this definition">¶</a></dt>
-<dd><p>A switch has sent us a Packet In event</p>
+<dd><p>This method is called for every Packet-In event from a Switch.
+We receive a copy of the Packet-In event, pass it to the
+traffic classification area for analysis, work out the forwarding,
+update flow metadata, then add a flow entry to the switch (when
+appropriate) to suppress receiving further packets on this flow.
+Finally, we send the packet out the switch port(s) via a
+Packet-Out message, with appropriate QoS queue set.</p>
 </dd></dl>
 
 <dl class="method">

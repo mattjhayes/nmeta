@@ -1,11 +1,12 @@
+============
 Introduction
 ============
-
-.. image:: images/nmeta.png
 
 The nmeta *(pronounced en-meta)* project is founded on the belief that
 innovation in networks requires a foundation layer of knowledge
 about both the participants and their types of conversation.
+
+.. image:: images/nmeta.png
 
 Today, networks generally have only a limited view of participants
 and conversation types

@@ -202,7 +202,13 @@ class NMeta(app_manager.RyuApp):
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         """
-        A switch has sent us a Packet In event
+        This method is called for every Packet-In event from a Switch.
+        We receive a copy of the Packet-In event, pass it to the
+        traffic classification area for analysis, work out the forwarding,
+        update flow metadata, then add a flow entry to the switch (when
+        appropriate) to suppress receiving further packets on this flow.
+        Finally, we send the packet out the switch port(s) via a
+        Packet-Out message, with appropriate QoS queue set.
         """
         #*** Record the time for later delta measurement:
         pi_start_time = time.time()

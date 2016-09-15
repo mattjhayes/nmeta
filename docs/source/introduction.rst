@@ -68,7 +68,7 @@ How to Contribute
 -----------------
 
 Code contributions and suggestions are welcome. Enhancement or bug fixes
-can be raised as `issues <https://github.com/mattjhayes/nmeta/issues>`_
+can be raised as issues through GitHub.
 
 Please get in touch if you want to be added as a contributor to the project:
 

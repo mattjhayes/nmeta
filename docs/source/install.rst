@@ -26,16 +26,18 @@ Install Python pip
 Install git
 ===========
 
+Install git and git-flow for software version control:
+
 .. code-block:: text
 
-  sudo apt-get install git
+  sudo apt-get install git git-flow
 
 *******************************
 Install Ryu OpenFlow Controller
 *******************************
 
-This is the OpenFlow controller application that handles communications
-with the switch
+Ryu is the OpenFlow Software-Defined Networking (SDN) controller application
+that handles communications with the switch:
 
 .. code-block:: text
 
@@ -44,6 +46,13 @@ with the switch
 **********************************
 Install Packages Required by nmeta
 **********************************
+
+Install dpkt library
+====================
+
+.. code-block:: text
+
+  sudo pip install dpkt
 
 Install pytest
 ==============
@@ -81,3 +90,42 @@ Clone nmeta
   cd
   git clone https://github.com/mattjhayes/nmeta2.git
 
+*********
+Run nmeta
+*********
+
+.. code-block:: text
+
+  cd
+  cd ryu
+  PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
+
+*******
+Aliases
+*******
+
+Aliases can be used to make it easier to run common commands.
+To add the aliases, edit the .bash_aliases file in your home directory:
+
+.. code-block:: text
+
+  cd
+  sudo vi .bash_aliases
+
+Paste in the following:
+
+.. code-block:: text
+
+  # Run nmeta:
+  alias nm="cd; cd ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py"
+  #
+  # Retrieve nmeta measurement data:
+  alias nm-evr="/home/bob/testtools/hort/hort.py --url http://localhost:8080/nmeta/measurement/eventrates/ --log-object-data --parse-json --kvp"
+  alias nm-pkt="/home/bob/testtools/hort/hort.py --url http://localhost:8080/nmeta/measurement/metrics/packet_time/ --log-object-data --parse-json --kvp"
+  #
+  # Retrieve nmeta network metadata:
+  alias idmac="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/mac/"
+  alias idip="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/ip/"
+  alias idsvc="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/service/"
+  alias idsys="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/systemtable/"
+  alias idnic="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/nictable/"

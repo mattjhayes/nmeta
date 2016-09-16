@@ -44,8 +44,14 @@ MOCK_MODULES = ['ryu',
     'ryu.lib.packet.ipv6',
     'ryu.lib.packet.tcp',
     'ryu.lib.addrconv',
+    'ryu.lib.mac',
+    'ryu.lib.mac.haddr_to_bin',
+    'ryu.app',
     'ryu.app.wsgi',
-    'ryu.app.wsgi.WSGIApplication']
+    'ryu.app.wsgi.WSGIApplication',
+    'ryu.exception',
+    'ryu.exception.RyuException',
+    'dpkt']
 
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()

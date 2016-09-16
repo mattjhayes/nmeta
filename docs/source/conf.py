@@ -53,8 +53,8 @@ MOCK_MODULES = ['ryu',
     'ryu.exception.RyuException',
     'dpkt']
 
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = mock.Mock()
+#for mod_name in MOCK_MODULES:
+#    sys.modules[mod_name] = mock.Mock()
 
 # -- General configuration ------------------------------------------------
 

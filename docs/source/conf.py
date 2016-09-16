@@ -22,21 +22,29 @@ sys.path.insert(0, os.path.abspath('../../nmeta'))
 
 import mock
 
-MOCK_MODULES = ['ryu.utils',
+MOCK_MODULES = ['ryu',
+    'ryu.utils',
+    'ryu.base',
     'ryu.base.app_manager',
+    'ryu.controller',
     'ryu.controller.ofp_event',
+    'ryu.controller.handler',
     'ryu.controller.handler.CONFIG_DISPATCHER',
     'ryu.controller.handler.MAIN_DISPATCHER',
     'ryu.controller.handler.HANDSHAKE_DISPATCHER',
     'ryu.controller.handler.set_ev_cls',
+    'ryu.ofproto',
     'ryu.ofproto.ofproto_v1_0',
     'ryu.ofproto.ofproto_v1_3',
+    'ryu.lib',
+    'ryu.lib.packet',
     'ryu.lib.packet.packet',
-    'ryu.lib.addrconv',
     'ryu.lib.packet.ethernet',
     'ryu.lib.packet.ipv4',
     'ryu.lib.packet.ipv6',
     'ryu.lib.packet.tcp',
+    'ryu.lib.addrconv',
+    'ryu.app.wsgi',
     'ryu.app.wsgi.WSGIApplication']
 
 for mod_name in MOCK_MODULES:

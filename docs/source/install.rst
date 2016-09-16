@@ -50,13 +50,15 @@ Install Packages Required by nmeta
 Install dpkt library
 ====================
 
+The dpkt library is used to parse and build packets:
+
 .. code-block:: text
 
   sudo pip install dpkt
 
 Install pytest
 ==============
-Pytest is used to run unit tests
+Pytest is used to run unit tests:
 
 .. code-block:: text
 
@@ -88,7 +90,7 @@ Clone nmeta
 .. code-block:: text
 
   cd
-  git clone https://github.com/mattjhayes/nmeta2.git
+  git clone https://github.com/mattjhayes/nmeta.git
 
 *********
 Run nmeta

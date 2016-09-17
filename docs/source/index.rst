@@ -19,6 +19,7 @@ Contents:
    configguide
    apiguide
    loggingguide
+   datastructures
    modules
 
 

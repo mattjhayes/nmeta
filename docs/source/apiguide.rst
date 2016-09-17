@@ -27,7 +27,7 @@ jsonpretty.py script (requires install of simplejson):
 Example API Calls
 *****************
 
-Example API Calls to run on local host (jsonpretty.py omitted for brevity):</p>
+Example API Calls to run on local host (jsonpretty.py omitted for brevity):
 
 Conversation Type Metadata
 --------------------------

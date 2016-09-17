@@ -1,5 +1,3 @@
-.. image:: images/nmeta.png
-
 ============
 Introduction
 ============
@@ -28,6 +26,12 @@ for QoS, billing, traffic engineering, troubleshooting and security.
 Nmeta is a research platform for traffic classification on Software Defined
 Networking (SDN).  It runs on top of the Ryu SDN controller
 (see: `<http://osrg.github.io/ryu/>`_).
+
+Limitations
+-----------
+Nmeta does not scale well. Every new flow has a processing overhead, and this
+workload cannot be scaled horizontally on the controller. The nmeta2 system is
+being developed to address this limitation.
 
 Feature Enhancement Wishlist
 ----------------------------

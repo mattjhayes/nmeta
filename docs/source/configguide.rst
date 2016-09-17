@@ -76,16 +76,22 @@ attributes such as port numbers.
 
 Supported attributes are:
 
-:eth_src: | Ethernet source MAC address.
+:eth_src: Ethernet source MAC address.
+
   | **Example**:
   | eth_src: 08:00:27:4a:2d:41
-:eth_dst: | Ethernet destination MAC address.
+
+:eth_dst: Ethernet destination MAC address.
+
   | **Example**:
   | eth_dst: 08:00:27:4a:2d:42
-:eth_type: | Ethernet type. Can be in hex (starting with 0x) or decimal.
+
+:eth_type: Ethernet type. Can be in hex (starting with 0x) or decimal.
+
   | **Examples**:
   | eth_type: 0x0800
   | eth_type: 35020
+
 :ip_src: IP source address. Can be a single address, a network with a mask in
   CIDR notation, or an IP range with two addresses separated by a hyphen.
   Both addresses in a range must be the same type, and the second
@@ -100,14 +106,19 @@ Supported attributes are:
   mask in CIDR notation, or an IP range with two addresses separated by a
   hyphen. Both addresses in a range must be the same type, and the second
   address must be higher than the first.
+
   | **Examples**:
   | ip_dst: 192.168.57.40
   | ip_dst: 192.168.57.0/24
   | ip_dst: 192.168.57.36\-192.168.78.31
-:tcp_src: | TCP source port.
+
+:tcp_src: TCP source port.
+
   | **Example**:
   | tcp_src: 22
-:tcp_dst: | TCP destination port.
+
+:tcp_dst: TCP destination port.
+
   | **Example**:
   | tcp_dst: 80
 
@@ -131,26 +142,28 @@ policy condition:
 
 Supported attributes are:
 
-====                        ===========            ========
-Name                        Description            Examples
-====                        ===========            ========
-identity_lldp_systemname    Exact match against    identity_lldp_systemname:
-                            a system name          bob.example.com
-                            discovered via LLDP
-identity_lldp_systemname_re Regular expression     identity_lldp_systemname_re:
-                            match against a        '.*\.audit\.example\.com'
-                            system name
-                            discovered via
-                            LLDP
-identity_service_dns        Exact match of         identity_service_dns:
-                            either IP address      www.example.com
-                            in a flow against a
-                            DNS domain
-identity_service_dns_re     Regular expression     identity_service_dns_re:
-                            match of either IP     '.*\.example\.com'
-                            address in a flow
-                            against a DNS domain
+:identity_lldp_systemname: Exact match against a system name discovered
+  via LLDP.
 
+  | **Example**:
+  | identity_lldp_systemname: bob.example.com
 
+:identity_lldp_systemname_re: Regular expression match against a system name
+  discovered via LLDP.
+
+  | **Example**:
+  | identity_lldp_systemname_re: '.*\.audit\.example\.com'
+
+:identity_service_dns: Exact match of either IP address in a flow against a
+   DNS domain.
+
+  | **Example**:
+  | identity_service_dns: www.example.com
+
+:identity_service_dns_re: Regular expression match of either IP address in
+  a flow against a DNS domain.
+
+  | **Example**:
+  | identity_service_dns_re: '.*\.example\.com'
 
 

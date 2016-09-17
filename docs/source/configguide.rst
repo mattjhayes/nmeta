@@ -145,9 +145,9 @@ Supported attributes are:
 :identity_lldp_systemname: Exact match against a system name discovered
   via LLDP. Example:
 
-.. code-block:: text
+  .. code-block:: text
 
-  identity_lldp_systemname: bob.example.com
+    identity_lldp_systemname: bob.example.com
 
 :identity_lldp_systemname_re: Regular expression match against a system name
   discovered via LLDP. Example:

@@ -33,14 +33,17 @@ stage), which in turn contains one or more *rules*.
 
 Rules are an ordered list (denoted by preceding dash). Each rule contains:
 
-:Comment: A *comment* to describe the purpose of the rule (optional). A
-  comment must start with the attribute *comment:* and any single-line string
-  can follow
+  Comment
+    A *comment* to describe the purpose of the rule (optional). A
+    comment must start with the attribute *comment:* and any single-line string
+    can follow
 
-:Match Type: A *match type* is one of *any* or *all*
+  Match Type
+    A *match type* is one of *any* or *all*
 
-:Conditions List: A single *conditions_list* stanza that contains one or more
-  *conditions* stanzas
+  Conditions List
+    A single *conditions_list* stanza that contains one or more
+    *conditions* stanzas
 
 Example simple traffic classification policy with a single rule:
 

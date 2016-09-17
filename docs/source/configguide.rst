@@ -143,27 +143,57 @@ policy condition:
 Supported attributes are:
 
 :identity_lldp_systemname: Exact match against a system name discovered
-  via LLDP.
+  via LLDP. Example:
 
-  | **Example**:
-  | identity_lldp_systemname: bob.example.com
+.. code-block:: text
+
+  identity_lldp_systemname: bob.example.com
 
 :identity_lldp_systemname_re: Regular expression match against a system name
-  discovered via LLDP.
+  discovered via LLDP. Example:
 
-  | **Example**:
-  | identity_lldp_systemname_re: '.*\.audit\.example\.com'
+.. code-block:: text
+
+  identity_lldp_systemname_re: '.*\.audit\.example\.com'
 
 :identity_service_dns: Exact match of either IP address in a flow against a
-   DNS domain.
+   DNS domain. Example:
 
-  | **Example**:
-  | identity_service_dns: www.example.com
+.. code-block:: text
+
+  identity_service_dns: www.example.com
 
 :identity_service_dns_re: Regular expression match of either IP address in
-  a flow against a DNS domain.
+  a flow against a DNS domain. Example:
 
-  | **Example**:
-  | identity_service_dns_re: '.*\.example\.com'
+.. code-block:: text
 
+  identity_service_dns_re: '.*\.example\.com'
+
+Statistical Classifiers
+-----------------------
+
+All statistical classifiers are prefixed with:
+
+.. code-block:: text
+
+  statistical_
+
+TBD - more here
+
+Payload Classifiers
+
+TBD
+
+*****************
+QoS Configuration
+*****************
+
+Quality of Service (QoS) configuration parameters are stored in the file:
+
+.. code-block:: text
+
+  qos_policy.yaml
+
+TBD
 

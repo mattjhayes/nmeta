@@ -100,7 +100,7 @@ Run nmeta
 
   cd
   cd ryu
-  PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
+  PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta/nmeta.py
 
 *******
 Aliases
@@ -119,11 +119,7 @@ Paste in the following:
 .. code-block:: text
 
   # Run nmeta:
-  alias nm="cd; cd ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py"
-  #
-  # Retrieve nmeta measurement data:
-  alias nm-evr="/home/bob/testtools/hort/hort.py --url http://localhost:8080/nmeta/measurement/eventrates/ --log-object-data --parse-json --kvp"
-  alias nm-pkt="/home/bob/testtools/hort/hort.py --url http://localhost:8080/nmeta/measurement/metrics/packet_time/ --log-object-data --parse-json --kvp"
+  alias nm="cd; cd ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta/nmeta.py"
   #
   # Retrieve nmeta network metadata:
   alias idmac="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/mac/"

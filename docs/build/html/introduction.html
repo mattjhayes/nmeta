@@ -24,7 +24,7 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="nmeta 0.2.0 documentation" href="index.html" />
-    <link rel="next" title="Code Documentation" href="modules.html" />
+    <link rel="next" title="Install" href="install.html" />
     <link rel="prev" title="nmeta" href="index.html" />
    
   <link rel="stylesheet" href="_static/custom.css" type="text/css" />
@@ -41,8 +41,7 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <img alt="_images/nmeta.png" src="_images/nmeta.png" />
-<div class="section" id="introduction">
+  <div class="section" id="introduction">
 <h1>Introduction<a class="headerlink" href="#introduction" title="Permalink to this headline">¶</a></h1>
 <p>The nmeta <em>(pronounced en-meta)</em> project is founded on the belief that
 innovation in networks requires a foundation layer of knowledge
@@ -61,6 +60,12 @@ for QoS, billing, traffic engineering, troubleshooting and security.</p>
 <p>Nmeta is a research platform for traffic classification on Software Defined
 Networking (SDN).  It runs on top of the Ryu SDN controller
 (see: <a class="reference external" href="http://osrg.github.io/ryu/">http://osrg.github.io/ryu/</a>).</p>
+<div class="section" id="limitations">
+<h2>Limitations<a class="headerlink" href="#limitations" title="Permalink to this headline">¶</a></h2>
+<p>Nmeta does not scale well. Every new flow has a processing overhead, and this
+workload cannot be scaled horizontally on the controller. The nmeta2 system is
+being developed to address this limitation.</p>
+</div>
 <div class="section" id="feature-enhancement-wishlist">
 <h2>Feature Enhancement Wishlist<a class="headerlink" href="#feature-enhancement-wishlist" title="Permalink to this headline">¶</a></h2>
 <p>See <a class="reference external" href="https://github.com/mattjhayes/nmeta/issues">Issues</a> for list of
@@ -94,6 +99,7 @@ can be raised as issues through GitHub.</p>
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Introduction</a><ul>
+<li><a class="reference internal" href="#limitations">Limitations</a></li>
 <li><a class="reference internal" href="#feature-enhancement-wishlist">Feature Enhancement Wishlist</a></li>
 <li><a class="reference internal" href="#privacy-considerations">Privacy Considerations</a></li>
 <li><a class="reference internal" href="#disclaimer">Disclaimer</a></li>
@@ -106,7 +112,7 @@ can be raised as issues through GitHub.</p>
 <ul>
   <li><a href="index.html">Documentation overview</a><ul>
       <li>Previous: <a href="index.html" title="previous chapter">nmeta</a></li>
-      <li>Next: <a href="modules.html" title="next chapter">Code Documentation</a></li>
+      <li>Next: <a href="install.html" title="next chapter">Install</a></li>
   </ul></li>
 </ul>
 </div>

@@ -76,11 +76,11 @@ attributes such as port numbers.
 
 Supported attributes are:
 
-:eth_src: Ethernet source MAC address
+:eth_src: | Ethernet source MAC address
   | Example: eth_src: 08:00:27:4a:2d:41
-:eth_dst: Ethernet destination MAC address
+:eth_dst: | Ethernet destination MAC address
   | Example: eth_dst: 08:00:27:4a:2d:42
-:eth_type: Ethernet type. Can be in hex (starting with 0x) or decimal
+:eth_type: | Ethernet type. Can be in hex (starting with 0x) or decimal
   | Examples:
   | eth_type: 0x0800
   | eth_type: 35020

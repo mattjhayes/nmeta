@@ -14,6 +14,7 @@ Contents:
    introduction
    install
    quickstart
+   configguide
    modules
 
 

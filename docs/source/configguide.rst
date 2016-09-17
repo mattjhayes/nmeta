@@ -90,10 +90,12 @@ Supported attributes are:
   CIDR notation, or an IP range with two addresses separated by a hyphen.
   Both addresses in a range must be the same type, and the second
   address must be higher than the first.
+
   | **Examples**:
   | ip_src: 192.168.56.12
   | ip_src: 192.168.56.0/24
   | ip_src: 192.168.56.12-192.168.56.31
+
 :ip_dst: IP destination address. Can be a single address, a network with a
   mask in CIDR notation, or an IP range with two addresses separated by a
   hyphen. Both addresses in a range must be the same type, and the second
@@ -129,7 +131,25 @@ policy condition:
 
 Supported attributes are:
 
-
+====                        ===========            ========
+Name                        Description            Examples
+====                        ===========            ========
+identity_lldp_systemname    Exact match against    identity_lldp_systemname:
+                            a system name          bob.example.com
+                            discovered via LLDP
+identity_lldp_systemname_re Regular expression     identity_lldp_systemname_re:
+                            match against a        '.*\.audit\.example\.com'
+                            system name
+                            discovered via
+                            LLDP
+identity_service_dns        Exact match of         identity_service_dns:
+                            either IP address      www.example.com
+                            in a flow against a
+                            DNS domain
+identity_service_dns_re     Regular expression     identity_service_dns_re:
+                            match of either IP     '.*\.example\.com'
+                            address in a flow
+                            against a DNS domain
 
 
 

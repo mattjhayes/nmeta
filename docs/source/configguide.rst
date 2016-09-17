@@ -79,19 +79,24 @@ attributes such as port numbers.
 
 Supported attributes are:
 
-:eth_src: Ethernet source MAC address. Example:
+:eth_src: Ethernet source MAC address.
+
+  Example:
 
   .. code-block:: text
 
     eth_src: 08:00:27:4a:2d:41
 
-:eth_dst: Ethernet destination MAC address. Example:
+:eth_dst: Ethernet destination MAC address.
+
+  Example:
 
   .. code-block:: text
 
     eth_dst: 08:00:27:4a:2d:42
 
 :eth_type: Ethernet type. Can be in hex (starting with 0x) or decimal.
+
   Examples:
 
   .. code-block:: text
@@ -140,13 +145,17 @@ Supported attributes are:
 
     ip_dst: 192.168.57.36-192.168.78.31
 
-:tcp_src: TCP source port. Example:
+:tcp_src: TCP source port.
+
+  Example:
 
   .. code-block:: text
 
     tcp_src: 22
 
-:tcp_dst: TCP destination port. Example:
+:tcp_dst: TCP destination port.
+
+  Example:
 
   .. code-block:: text
 

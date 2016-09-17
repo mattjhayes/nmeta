@@ -15,6 +15,8 @@ Contents:
    install
    quickstart
    configguide
+   apiguide
+   loggingguide
    modules
 
 

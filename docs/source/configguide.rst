@@ -86,7 +86,7 @@ Supported attributes are:
   | **Examples**:
   | eth_type: 0x0800
   | eth_type: 35020
-:ip_src: | IP source address. Can be a single address, a network with a mask in
+:ip_src: IP source address. Can be a single address, a network with a mask in
   CIDR notation, or an IP range with two addresses separated by a hyphen.
   Both addresses in a range must be the same type, and the second
   address must be higher than the first.
@@ -94,7 +94,7 @@ Supported attributes are:
   | ip_src: 192.168.56.12
   | ip_src: 192.168.56.0/24
   | ip_src: 192.168.56.12-192.168.56.31
-:ip_dst: | IP destination address. Can be a single address, a network with a
+:ip_dst: IP destination address. Can be a single address, a network with a
   mask in CIDR notation, or an IP range with two addresses separated by a
   hyphen. Both addresses in a range must be the same type, and the second
   address must be higher than the first.
@@ -109,6 +109,25 @@ Supported attributes are:
   | **Example**:
   | tcp_dst: 80
 
+Identity Classifiers
+--------------------
+
+All identity classifiers are prefixed with:
+
+.. code-block:: text
+
+  identity_
+
+LLDP systemname may be matched as a regular expression.
+The match pattern must be contained in single
+quotes. For example, to match system names of \*.audit.example.com, add this
+policy condition:
+
+.. code-block:: text
+
+  identity_lldp_systemname_re: '.*\.audit\.example\.com'
+
+Supported attributes are:
 
 
 

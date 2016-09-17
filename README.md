@@ -28,5 +28,5 @@ made in a timely manner so that consuming systems may take actions while
 the flow is still newly active.
 
 # Documentation
-For documentation see the website (https://mattjhayes.github.io/nmeta/)
+Documentation is on ReadtheDocs (http://nmeta.readthedocs.io)
 

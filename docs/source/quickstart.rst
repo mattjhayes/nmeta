@@ -27,7 +27,7 @@ then connect them up.
 
 .. image:: images/quickstart_number_4.png
 
-**Configure** nmeta as per the `User Guide <userguide.html>`_
+**Configure** nmeta as per the `Config Guide <configguide.html>`_
 
 .. image:: images/quickstart_number_5.png
 

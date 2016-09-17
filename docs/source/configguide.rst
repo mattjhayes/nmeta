@@ -2,10 +2,11 @@
 Configure Nmeta
 ###############
 
-Configuration files are in the config subdirectory and are written
-in YAML ("YAML Ain't Markup Language") format.
+********************
+System Configuration
+********************
 
-General configuration parameters are stored in the file:
+A YAML file holds the system configuration. It's location is:
 
 .. code-block:: text
 
@@ -35,7 +36,9 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
 :Comment: A *comment* to describe the purpose of the rule (optional). A
   comment must start with the attribute *comment:* and any single-line string
   can follow
+
 :Match Type: A *match type* is one of *any* or *all*
+
 :Conditions List: A single *conditions_list* stanza that contains one or more
   *conditions* stanzas
 
@@ -209,6 +212,7 @@ All statistical classifiers are prefixed with:
 TBD - more here
 
 Payload Classifiers
+-------------------
 
 TBD
 

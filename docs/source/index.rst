@@ -8,12 +8,16 @@
 nmeta
 =====
 
+The nmeta project is a research platform for traffic classification on
+Software Defined Networking (SDN). `Read More <introduction.html>`_
+
 Contents:
 
 .. toctree::
    :maxdepth: 2
 
    introduction
+   howitworks
    install
    quickstart
    configguide

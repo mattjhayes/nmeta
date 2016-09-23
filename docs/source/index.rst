@@ -24,6 +24,7 @@ Contents:
    apiguide
    loggingguide
    datastructures
+   codestructure
    modules
 
 

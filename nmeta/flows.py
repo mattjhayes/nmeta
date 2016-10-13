@@ -1,0 +1,510 @@
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+The flows module is part of the nmeta suite
+
+It provides an abstraction for conversations (flows), using
+a MongoDB database for storage and data retention maintenance.
+
+Flows are identified via an indexed bi-directionally-unique
+hash value, derived from IP-value-ordered 5-tuple (source and
+destination IP addresses, IP protocol and transport source and
+destination port numbers).
+
+Ingesting a packet puts the flows object into the context of the
+packet that flow belongs to, and updates the database object for
+that flow with information from the current packet.
+
+There are various methods (see class docstring) that provide views
+into the state of the flow.
+"""
+
+#*** For packet methods:
+import socket
+
+#*** Import dpkt for packet parsing:
+import dpkt
+
+#*** mongodb Database Import:
+import pymongo
+from pymongo import MongoClient
+
+#*** For hashing flow 5-tuples:
+import hashlib
+
+#*** For timestamps:
+import datetime
+
+class Flow(object):
+    """
+    An object that represents a flow that we are classifying
+
+    Intended to provide an abstraction of a flow that classifiers
+    can use to make determinations without having to understand
+    implementations such as database lookups etc.
+
+    Be aware that this module is not very mature yet. It does not
+    cover some basic corner cases such as packet retransmissions and
+    out of order or missing packets.
+
+    Variables available for Classifiers (assumes class instantiated as
+    an object called 'flow'):
+
+        **Variables for the current packet**:
+
+        flow.tcp_seq
+          TCP sequence number of latest packet in flow
+
+        flow.tcp_acq
+          TCP acknowledgement number of latest packet in flow
+
+        flow.tcp_fin()
+          True if TCP FIN flag is set in the current packet
+
+        flow.tcp_syn()
+          True if TCP SYN flag is set in the current packet
+
+        flow.tcp_rst()
+          True if TCP RST flag is set in the current packet
+
+        flow.tcp_psh()
+          True if TCP PSH flag is set in the current packet
+
+        flow.tcp_ack()
+          True if TCP ACK flag is set in the current packet
+
+        flow.tcp_urg()
+          True if TCP URG flag is set in the current packet
+
+        flow.tcp_ece()
+          True if TCP ECE flag is set in the current packet
+
+        flow.tcp_cwr()
+          True if TCP CWR flag is set in the current packet
+
+        flow.payload
+          Payload data of current packet
+
+        flow.packet['hash']
+          The hash of the 5-tuple of the current packet
+
+        flow.packet['dpid']
+          The DPID that the current packet was received from
+          via a Packet-In message
+
+        flow.packet['in_port']
+          The switch port that the current packet was received on
+          before being sent to the controller
+
+        flow.packet['timestamp']
+          The time in datetime format that the current packet was
+          received at the controller
+
+        flow.packet['length']
+          Length in bytes of the current packet on wire
+
+        flow.packet['ip_src']
+          IP source address of current packet
+
+        flow.packet['ip_dst']
+          IP destination address of current packet
+
+        flow.packet['proto']
+          IP protocol number of current packet
+
+        flow.packet['tp_src']
+          Source transport-layer port number of current packet
+
+        flow.packet['tp_dst']
+          Destination transport-layer port number of current packet
+
+        flow.packet['tp_flags']
+          Transport-layer flags of the current packet
+
+        flow.packet['tp_seq_src']
+          Source transport-layer sequence number (where existing)
+          of current packet
+
+        flow.packet['tp_seq_dst']
+          Destination transport-layer sequence number (where existing)
+          of current packet
+
+        **Variables for the whole flow**:
+
+        flow.packet_count()
+          Unique packets registered for the flow
+
+        flow.client()
+          The IP that is the originator of the flow (if known,
+          otherwise 0)
+
+        flow.server()
+          The IP that is the destination of the flow (if known,
+          otherwise 0)
+
+        flow.packet_direction()
+          c2s (client to server) or s2c directionality based on first observed
+          packet direction in the flow. Source of first packet in flow is
+          assumed to be the client
+
+        flow.finalised
+          A classification has been made
+
+        flow.suppressed
+          The flow packet count number when a request was made to controller
+          to not see further packets in this flow. 0 is not suppressed
+
+        flow.server
+          The IP that is the destination of the TCP session
+          session (if known, otherwise 0)
+
+        **Methods available for Classifiers**:
+        (assumes class instantiated as an object called 'flow')
+
+        flow.max_packet_size()
+          Size of largest packet in the flow
+
+        flow.max_interpacket_interval()
+          TBD
+
+        flow.min_interpacket_interval()
+          TBD
+
+    Challenges (not handled - yet):
+     - duplicate packets due to retransmissions or multiple switches
+       in path
+     - IP fragments
+     - Flow reuse - TCP source port reused
+    """
+
+    def __init__(self, logger, mongo_addr, mongo_port):
+        """
+        Initialise an instance of the Flow class for a new
+        flow. Passed layer 3/4 parameters.
+        Add an entry to the flows database if it doesn't
+        already exist. If it does exist, update it.
+        Only works for TCP at this stage.
+        """
+        # TEMP, should come from config:
+        db_nmeta_packet_ins_max_bytes = 2000000
+        self.FLOW_TIME_LIMIT = datetime.timedelta(seconds=30)
+
+        self.logger = logger
+
+        #*** Initialise packet variables:
+        self.packet = {}
+        self.packet['hash'] = 0
+        self.packet['dpid'] = 0
+        self.packet['in_port'] = 0
+        self.packet['timestamp'] = 0
+        self.packet['length'] = 0
+        self.packet['ip_src'] = 0
+        self.packet['ip_dst'] = 0
+        self.packet['proto'] = 0
+        self.packet['tp_src'] = 0
+        self.packet['tp_dst'] = 0
+        self.packet['tp_flags'] = 0
+        self.packet['tp_seq_src'] = 0
+        self.packet['tp_seq_dst'] = 0
+
+        #*** Start mongodb:
+        self.logger.info("Connecting to MongoDB database...")
+        mongo_client = MongoClient(mongo_addr, mongo_port)
+
+        #*** Connect to MongoDB nmeta database:
+        db_nmeta = mongo_client.nmeta_database
+
+        #*** Delete (drop) previous packet_ins collection if it exists:
+        self.logger.debug("Deleting previous packet_ins MongoDB collection...")
+        db_nmeta.packet_ins.drop()
+
+        #*** Create the packets collection, specifying capped option
+        #*** with max size in bytes, so MongoDB handles data retention:
+        self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
+                                            size=db_nmeta_packet_ins_max_bytes)
+
+        #*** Index hash key of packets database to improve look-up performance:
+        self.packet_ins.create_index([('hash', pymongo.TEXT)], unique=False)
+
+    def ingest_packet(self, dpid, in_port, pkt, timestamp):
+        """
+        Ingest a packet into the packet_ins collection and put the flow object
+        into the context of the packet.
+        """
+        #*** Packet dictionary to write to packets database collection:
+        self.packet = {}
+
+        #*** Read into dpkt:
+        eth = dpkt.ethernet.Ethernet(pkt)
+
+        #*** We only support IPv4 (TBD: add IPv6 support):
+        eth_type = eth.type
+        if eth_type != 2048:
+            self.logger.error("Non IPv4 packet, eth_type is %s", eth_type)
+            return 0
+        ip = eth.data
+
+        #*** We only support TCP (TBD, handle other protocols):
+        if ip.p != 6:
+            self.logger.error("Non TCP packet, ip_proto=%s", ip.p)
+            return 0
+
+        #*** DPID of the switch that sent the Packet-In message:
+        self.packet['dpid'] = dpid
+        #*** Port packet was received on:
+        self.packet['in_port'] = in_port
+        #*** Packet receive time:
+        self.packet['timestamp'] = timestamp
+        #*** Packet length on the wire:
+        self.packet['length'] = len(pkt)
+        #*** IP addresses:
+        self.packet['ip_src'] = socket.inet_ntop(socket.AF_INET, ip.src)
+        self.packet['ip_dst'] = socket.inet_ntop(socket.AF_INET, ip.dst)
+        #*** IP protocol:
+        self.packet['proto'] = ip.p
+        #*** Transport ports: (TBD, make non-TCP specific)
+        tcp = ip.data
+        self.packet['tp_src'] = tcp.sport
+        self.packet['tp_dst'] = tcp.dport
+        self.packet['tp_flags'] = tcp.flags
+        self.packet['tp_seq_src'] = tcp.seq
+        self.packet['tp_seq_dst'] = tcp.ack
+
+        #*** Generate a hash unique to flow for packets in either direction
+        self.packet['hash'] = _hash_5tuple(self.packet['ip_src'],
+                                            self.packet['ip_dst'],
+                                            self.packet['tp_src'],
+                                            self.packet['tp_dst'],
+                                            self.packet['proto'])
+
+        self.logger.debug("self.packet=%s", self.packet)
+
+        #*** Hold copy of payload data in class (TBD - TCP specific):
+        self.payload = tcp.data
+
+        #*** Write packet-in metadata to database collection:
+        db_result = self.packet_ins.insert_one(self.packet)
+
+    def packet_count(self):
+        """
+        Return the number of packets in the flow (counting packets in
+        both directions). This method should deduplicate for where the
+        same packet is received from multiple switches, but is TBD...
+
+        Works by retrieving packets from packet_ins database with
+        current packet hash and within flow reuse time limit.
+        """
+        db_data = {'hash': self.packet['hash'],
+              'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.FLOW_TIME_LIMIT}}
+        packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
+        self.logger.debug("packet_cursor.count()=%s", packet_cursor.count())
+        return packet_cursor.count()
+
+    def packet_direction(self):
+        """
+        Return the direction of the current packet in the flow
+        where c2s is client to server and s2c is server to client.
+
+        Works by retrieving packets from packet_ins database with
+        current packet hash and within flow reuse time limit.
+
+        """
+        flow_client = self.client()
+        if self.packet['ip_src'] == flow_client:
+            return 'c2s'
+        else:
+            return 's2c'
+
+
+    def client(self):
+        """
+        The IP that is the originator of the flow (if known,
+        otherwise 0)
+
+        Finds first packet seen for the hash within the time limit
+        and returns the source IP
+        """
+        db_data = {'hash': self.packet['hash'],
+              'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.FLOW_TIME_LIMIT}}
+        packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
+        if packets.count():
+            return list(packets)[0]['ip_src']
+        else:
+            logger.warning("no packets found")
+            return 0
+
+    def server(self):
+        """
+        The IP that is the destination of the flow (if known,
+        otherwise 0)
+
+        Finds first packet seen for the hash within the time limit
+        and returns the destination IP
+        """
+        db_data = {'hash': self.packet['hash'],
+              'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.FLOW_TIME_LIMIT}}
+        packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
+        if packets.count():
+            return list(packets)[0]['ip_dst']
+        else:
+            logger.warning("no packets found")
+            return 0
+
+    def max_packet_size(self):
+        """
+        Return the size of the largest packet in the flow (in either direction)
+        """
+        max_packet_size = 0
+        db_data = {'hash': self.packet['hash'],
+              'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.FLOW_TIME_LIMIT}}
+        packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
+        if packet_cursor.count():
+            for packet in packet_cursor:
+                if packet['length'] > max_packet_size:
+                    max_packet_size = packet['length']
+        return max_packet_size
+
+    def max_interpacket_interval(self):
+        """
+        Return the size of the largest inter-packet time interval
+        in the flow (assessed per direction in flow).
+        .
+        Note: slightly inaccurate due to floating point rounding.
+        """
+        #*** TBD:
+        pass
+
+    def min_interpacket_interval(self):
+        """
+        Return the size of the smallest inter-packet time interval
+        in the flow (assessed per direction in flow)
+        .
+        Note: slightly inaccurate due to floating point rounding.
+        """
+        #*** TBD
+        pass
+
+    def set_suppress_flow(self):
+        """
+        Set the suppressed attribute in the flow database
+        object to the current packet count so that future
+        suppressions of the same flow can be backed off
+        to prevent overwhelming the controller
+        """
+        #TBD
+        pass
+
+    def tcp_fin(self):
+        """
+        Does the current packet have the TCP FIN flag set?
+        """
+        return self.packet['tp_flags'] & dpkt.tcp.TH_FIN != 0
+
+    def tcp_syn(self):
+        """
+        Does the current packet have the TCP SYN flag set?
+        """
+        return self.packet['tp_flags'] & dpkt.tcp.TH_SYN != 0
+
+    def tcp_rst(self):
+        """
+        Does the current packet have the TCP RST flag set?
+        """
+        return self.packet['tp_flags'] & dpkt.tcp.TH_RST != 0
+
+    def tcp_psh(self):
+        """
+        Does the current packet have the TCP PSH flag set?
+        """
+        return self.packet['tp_flags'] & dpkt.tcp.TH_PUSH != 0
+
+    def tcp_ack(self):
+        """
+        Does the current packet have the TCP ACK flag set?
+        """
+        return self.packet['tp_flags'] & dpkt.tcp.TH_ACK != 0
+
+    def tcp_urg(self):
+        """
+        Does the current packet have the TCP URG flag set?
+        """
+        return self.packet['tp_flags'] & dpkt.tcp.TH_URG != 0
+
+    def tcp_ece(self):
+        """
+        Does the current packet have the TCP ECE flag set?
+        """
+        return self.packet['tp_flags'] & dpkt.tcp.TH_ECE != 0
+
+    def tcp_cwr(self):
+        """
+        Does the current packet have the TCP CWR flag set?
+        """
+        return self.packet['tp_flags'] & dpkt.tcp.TH_CWR != 0
+
+#================== PRIVATE FUNCTIONS ==================
+
+def _is_tcp_syn(tcp_flags):
+    """
+    Passed a TCP flags object (hex) and return 1 if it
+    contains a TCP SYN and no other flags
+    """
+    if tcp_flags == 2:
+        return 1
+    else:
+        return 0
+
+def _is_tcp_synack(tcp_flags):
+    """
+    Passed a TCP flags object (hex) and return 1 if it
+    contains TCP SYN + ACK flags and no other flags
+    """
+    if tcp_flags == 0x12:
+        return 1
+    else:
+        return 0
+
+def _hash_5tuple(ip_A, ip_B, tp_src, tp_dst, proto):
+    """
+    Generate a predictable hash for the 5-tuple which is the
+    same not matter which direction the traffic is travelling
+    """
+    if ip_A > ip_B:
+        direction = 1
+    elif ip_B > ip_A:
+        direction = 2
+    elif tp_src > tp_dst:
+        direction = 1
+    elif tp_dst > tp_src:
+        direction = 2
+    else:
+        direction = 1
+    hash_5t = hashlib.md5()
+    if direction == 1:
+        flow_tuple = (ip_A, ip_B, tp_src, tp_dst, proto)
+    else:
+        flow_tuple = (ip_B, ip_A, tp_dst, tp_src, proto)
+    flow_tuple_as_string = str(flow_tuple)
+    hash_5t.update(flow_tuple_as_string)
+    return hash_5t.hexdigest()
+
+def _mac_addr(address):
+    """
+    Convert a MAC address to a readable/printable string
+    """
+    return ':'.join('%02x' % ord(b) for b in address)

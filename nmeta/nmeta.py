@@ -55,6 +55,8 @@ import measure
 import forwarding
 import api
 
+import flows
+
 #*** Number of preceding seconds that events are averaged over:
 EVENT_RATE_INTERVAL = 60
 
@@ -164,6 +166,12 @@ class NMeta(app_manager.RyuApp):
         wsgi = kwargs['wsgi']
         self.api = api.Api(self, self.config, wsgi)
 
+        #*** Retrieve config values for Flows class MongoDB connection:
+        _mongo_addr = self.config.get_value("mongo_addr")
+        _mongo_port = self.config.get_value("mongo_port")
+        #*** Instantiate a flow object for classifiers to work with:
+        self.flow = flows.Flow(self.logger, _mongo_addr, _mongo_port)
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
         """
@@ -216,6 +224,8 @@ class NMeta(app_manager.RyuApp):
         #*** Record the event for measurements:
         self.measure.record_rate_event('packet_in')
 
+
+
         #*** Extract parameters:
         msg = ev.msg
         datapath = msg.datapath
@@ -223,6 +233,12 @@ class NMeta(app_manager.RyuApp):
         ofproto = datapath.ofproto
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
+
+        # TEST USE OF DATABASE FOR FLOW CONVERSATIONS:
+        #*** The following is TCP specific but shouldn't be... TBD...
+        if pkt.get_protocol(tcp.tcp):
+            #*** Read packet into flow object for classifiers to work with:
+            self.flow.ingest_packet(msg.data, time.time())
 
         #*** Get the in port (OpenFlow version dependant call):
         in_port = self.sa.get_in_port(msg, datapath, ofproto)

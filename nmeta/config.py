@@ -17,7 +17,7 @@
 This module is part of the nmeta suite running on top of the
 Ryu SDN controller to provide network identity and flow
 (traffic classification) metadata.
-It expects a file called "config.yaml" to be in the same directory 
+It expects a file called "config.yaml" to be in the same directory
 containing properly formed YAML
 """
 
@@ -80,15 +80,17 @@ CONFIG_TEMPLATE = \
     'console_log_enabled': 1,
     'console_format': "%(levelname)s: %(name)s %(funcName)s: %(message)s",
     'event_rate_interval': 60,
-    'augment_flow_metadata_with_identity': 1
+    'augment_flow_metadata_with_identity': 1,
+    'mongo_addr': 'localhost',
+    'mongo_port': 27017
 }
 
 class Config(object):
     """
-    This class is instantiated by nmeta.py and provides methods to 
+    This class is instantiated by nmeta.py and provides methods to
     ingest the configuration file and provides access to the
     keys/values that it contains.
-    Config file is in YAML in config subdirectory and is 
+    Config file is in YAML in config subdirectory and is
     called 'config.yaml'
     """
     def __init__(self):
@@ -112,7 +114,7 @@ class Config(object):
         self.fullpathname = os.path.join(self.working_directory,
                                          self.config_directory,
                                          self.config_filename)
-        self.logger.info("About to open config file %s", 
+        self.logger.info("About to open config file %s",
                           self.fullpathname)
         #*** Ingest the config file:
         try:
@@ -148,7 +150,7 @@ class Config(object):
                                  key, value)
                 self._config_yaml[key] = value
         #*** TBD - check values are valid...
-        
+
     def get_value(self, config_key):
         """
         Passed a key and see if it exists in the config YAML. If it does

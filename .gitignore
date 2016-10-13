@@ -3,3 +3,5 @@ docs/_build
 docs/_static
 docs/_templates
 nmeta/*.pyc
+tests/__pycache__/
+tests/*.pyc

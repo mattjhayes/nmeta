@@ -124,4 +124,8 @@ event_rate_interval: 60
 #========== FLOW METADATA =============================
 # Turn this on to augment flow metadata table with identity metadata:
 augment_flow_metadata_with_identity: 1
-
+#
+#========== Mongodb Database ==========================
+mongo_addr: localhost
+mongo_port: 27017
+#

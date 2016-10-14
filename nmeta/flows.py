@@ -63,39 +63,6 @@ class Flow(object):
 
         **Variables for the current packet**:
 
-        flow.tcp_seq
-          TCP sequence number of latest packet in flow
-
-        flow.tcp_acq
-          TCP acknowledgement number of latest packet in flow
-
-        flow.tcp_fin()
-          True if TCP FIN flag is set in the current packet
-
-        flow.tcp_syn()
-          True if TCP SYN flag is set in the current packet
-
-        flow.tcp_rst()
-          True if TCP RST flag is set in the current packet
-
-        flow.tcp_psh()
-          True if TCP PSH flag is set in the current packet
-
-        flow.tcp_ack()
-          True if TCP ACK flag is set in the current packet
-
-        flow.tcp_urg()
-          True if TCP URG flag is set in the current packet
-
-        flow.tcp_ece()
-          True if TCP ECE flag is set in the current packet
-
-        flow.tcp_cwr()
-          True if TCP CWR flag is set in the current packet
-
-        flow.payload
-          Payload data of current packet
-
         flow.packet['hash']
           The hash of the 5-tuple of the current packet
 
@@ -140,6 +107,33 @@ class Flow(object):
           Destination transport-layer sequence number (where existing)
           of current packet
 
+        flow.tcp_fin()
+          True if TCP FIN flag is set in the current packet
+
+        flow.tcp_syn()
+          True if TCP SYN flag is set in the current packet
+
+        flow.tcp_rst()
+          True if TCP RST flag is set in the current packet
+
+        flow.tcp_psh()
+          True if TCP PSH flag is set in the current packet
+
+        flow.tcp_ack()
+          True if TCP ACK flag is set in the current packet
+
+        flow.tcp_urg()
+          True if TCP URG flag is set in the current packet
+
+        flow.tcp_ece()
+          True if TCP ECE flag is set in the current packet
+
+        flow.tcp_cwr()
+          True if TCP CWR flag is set in the current packet
+
+        flow.payload
+          Payload data of current packet
+
         **Variables for the whole flow**:
 
         flow.packet_count()
@@ -157,20 +151,6 @@ class Flow(object):
           c2s (client to server) or s2c directionality based on first observed
           packet direction in the flow. Source of first packet in flow is
           assumed to be the client
-
-        flow.finalised
-          A classification has been made
-
-        flow.suppressed
-          The flow packet count number when a request was made to controller
-          to not see further packets in this flow. 0 is not suppressed
-
-        flow.server
-          The IP that is the destination of the TCP session
-          session (if known, otherwise 0)
-
-        **Methods available for Classifiers**:
-        (assumes class instantiated as an object called 'flow')
 
         flow.max_packet_size()
           Size of largest packet in the flow

@@ -224,8 +224,6 @@ class NMeta(app_manager.RyuApp):
         #*** Record the event for measurements:
         self.measure.record_rate_event('packet_in')
 
-
-
         #*** Extract parameters:
         msg = ev.msg
         datapath = msg.datapath
@@ -234,14 +232,14 @@ class NMeta(app_manager.RyuApp):
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
 
+        #*** Get the in port (OpenFlow version dependant call):
+        in_port = self.sa.get_in_port(msg, datapath, ofproto)
+
         # TEST USE OF DATABASE FOR FLOW CONVERSATIONS:
         #*** The following is TCP specific but shouldn't be... TBD...
         if pkt.get_protocol(tcp.tcp):
             #*** Read packet into flow object for classifiers to work with:
-            self.flow.ingest_packet(msg.data, time.time())
-
-        #*** Get the in port (OpenFlow version dependant call):
-        in_port = self.sa.get_in_port(msg, datapath, ofproto)
+            self.flow.ingest_packet(dpid, in_port, msg.data, time.time())
 
         #*** Extra debug if syslog or console logging set to DEBUG:
         if self.debug_on:

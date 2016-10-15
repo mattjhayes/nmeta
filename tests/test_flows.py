@@ -33,6 +33,9 @@ import nmeta
 import config
 import flows as flow_class
 
+#*** nmeta test imports:
+import packets_for_testing as pkts
+
 #*** Instantiate Config class:
 _config = config.Config()
 
@@ -44,61 +47,18 @@ _mongo_port = _config.get_value("mongo_port")
 logger = logging.getLogger(__name__)
 
 #*** Test Switches and Switch classes that abstract OpenFlow switches:
-def test_flow():
+def test_flow_ipv4_http():
     """
+    Test ingesting packets from an IPv4 HTTP flow, with a packet
+    from a different flow ingested mid-stream.
+
     Note: no testing of max_interpacket_interval and
     min_interpacket_interval as they become imprecise due
     to floating point and when tried using decimal module
     found that would not serialise into Pymongo db.
 
-    To create test packet data, capture packet in Wireshark and:
-
-      For the packet summary:
-        Right-click packet in top pane, Copy -> Summary (text).
-        Edit pasted text as appropriate
-
-      For the packet hex:
-        Right-click packet in top pane, Copy -> Bytes -> Hex Stream
-
-      For the packet timestamp:
-        Expand 'Frame' in the middle pane,
-        right-click 'Epoch Time' Copy -> Value
+    Note that packets + metadata are imported from packets_for_testing module
     """
-
-    #*** Flow 1 TCP handshake packet 1
-    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN] Seq=0 Win=29200 Len=0 MSS=1460 SACK_PERM=1 TSval=5982511 TSecr=0 WS=64
-    flow1_pkt1 = binascii.unhexlify("080027c8db910800272ad6dd08004510003c19fd400040060cab0a0100010a010002a9210050c37250d200000000a002721014330000020405b40402080a005b492f0000000001030306")
-    flow1_pkt1_timestamp = datetime.datetime.now()
-
-    #*** Flow 1 TCP handshake packet 2
-    # 10.1.0.2 10.1.0.1 TCP 74 http > 43297 [SYN, ACK] Seq=0 Ack=1 Win=28960 Len=0 MSS=1460 SACK_PERM=1 TSval=5977583 TSecr=5982511 WS=64
-    flow1_pkt2 = binascii.unhexlify("0800272ad6dd080027c8db9108004500003c00004000400626b80a0100020a0100010050a9219e5c9d99c37250d3a0127120494a0000020405b40402080a005b35ef005b492f01030306")
-    flow1_pkt2_timestamp = datetime.datetime.now()
-
-    #*** Flow 1 TCP handshake packet 3
-    # 10.1.0.1 10.1.0.2 TCP 66 43297 > http [ACK] Seq=1 Ack=1 Win=29248 Len=0 TSval=5982512 TSecr=5977583
-    flow1_pkt3 = binascii.unhexlify("080027c8db910800272ad6dd08004510003419fe400040060cb20a0100010a010002a9210050c37250d39e5c9d9a801001c9142b00000101080a005b4930005b35ef")
-    flow1_pkt3_timestamp = datetime.datetime.now()
-
-    #*** Flow 1 client to server payload 1
-    #  10.1.0.1 10.1.0.2 TCP 71 [TCP segment of a reassembled PDU] [PSH + ACK]
-    flow1_pkt4 = binascii.unhexlify("080027c8db910800272ad6dd08004510003919ff400040060cac0a0100010a010002a9210050c37250d39e5c9d9a801801c9143000000101080a005b4d59005b35ef4745540d0a")
-    flow1_pkt4_timestamp = datetime.datetime.now()
-
-    #*** Flow 1 TCP ACK server to client
-    # 10.1.0.2 10.1.0.1 TCP 66 http > 43297 [ACK] Seq=1 Ack=6 Win=28992 Len=0 TSval=5978648 TSecr=5983577
-    flow1_pkt5 = binascii.unhexlify("0800272ad6dd080027c8db91080045000034a875400040067e4a0a0100020a0100010050a9219e5c9d9ac37250d8801001c5df1800000101080a005b3a18005b4d59")
-    flow1_pkt5_timestamp = datetime.datetime.now()
-
-    #*** Flow 1 server to client response
-    # 10.1.0.2 10.1.0.1 HTTP 162 HTTP/1.1 400 Bad Request  (text/plain)  [PSH + ACK]
-    flow1_pkt6 = binascii.unhexlify("0800272ad6dd080027c8db91080045000094a876400040067de90a0100020a0100010050a9219e5c9d9ac37250d8801801c5792f00000101080a005b3a18005b4d59485454502f312e31203430302042616420526571756573740d0a436f6e74656e742d4c656e6774683a2032320d0a436f6e74656e742d547970653a20746578742f706c61696e0d0a0d0a4d616c666f726d656420526571756573742d4c696e65")
-    flow1_pkt6_timestamp = datetime.datetime.now()
-
-    #*** Flow 1 client to server ACK
-    # 10.1.0.1 10.1.0.2 TCP 66 43297 > http [ACK] Seq=6 Ack=97 Win=29248 Len=0 TSval=5983577 TSecr=5978648
-    flow1_pkt7 = binascii.unhexlify("080027c8db910800272ad6dd0800451000341a00400040060cb00a0100010a010002a9210050c37250d89e5c9dfa801001c9142b00000101080a005b4d59005b3a18")
-    flow1_pkt7_timestamp = datetime.datetime.now()
 
     #*** Flow 2 TCP SYN used to test flow separation:
     # 10.1.0.1 10.1.0.2 TCP 74 43300 > http [SYN] Seq=0 Win=29200 Len=0 MSS=1460 SACK_PERM=1 TSval=7498808 TSecr=0 WS=64
@@ -125,7 +85,7 @@ def test_flow():
     IN_PORT2 = 2
 
     #*** Sanity check can read into dpkt:
-    eth = dpkt.ethernet.Ethernet(flow1_pkt1)
+    eth = dpkt.ethernet.Ethernet(pkts.IPv4_HTTP[0])
     eth_src = mac_addr(eth.src)
     assert eth_src == '08:00:27:2a:d6:dd'
 
@@ -133,15 +93,16 @@ def test_flow():
     flow = flow_class.Flow(logger, _mongo_addr, _mongo_port)
 
     #*** Test Flow 1 Packet 1:
-    flow.ingest_packet(DPID1, IN_PORT1, flow1_pkt1, flow1_pkt1_timestamp)
+    flow.ingest_packet(DPID1, IN_PORT1, pkts.IPv4_HTTP[0], datetime.datetime.now())
     assert flow.packet_count() == 1
-    assert flow.packet['length'] == pkt_len[1]
-    assert flow.packet['ip_src'] == '10.1.0.1'
-    assert flow.packet['ip_dst'] == '10.1.0.2'
-    assert flow.client() == '10.1.0.1'
-    assert flow.server() == '10.1.0.2'
-    assert flow.packet['tp_src'] == 43297
-    assert flow.packet['tp_dst'] == 80
+    assert flow.packet['length'] == pkts.IPv4_HTTP_LEN[0]
+    assert flow.packet['ip_src'] == pkts.IPv4_HTTP_IP_SRC[0]
+    assert flow.packet['ip_dst'] == pkts.IPv4_HTTP_IP_DST[0]
+    assert flow.client() == pkts.IPv4_HTTP_FLOW_IP_CLIENT
+    assert flow.server() == pkts.IPv4_HTTP_FLOW_IP_SERVER
+    assert flow.packet['proto'] == pkts.IPv4_HTTP_PROTO[0]
+    assert flow.packet['tp_src'] == pkts.IPv4_HTTP_TP_SRC[0]
+    assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[0]
     assert flow.packet['tp_seq_src'] == 3279048914
     assert flow.packet['tp_seq_dst'] == 0
     assert flow.tcp_syn() == 1
@@ -154,15 +115,17 @@ def test_flow():
     assert flow.max_packet_size() == max(pkt_len[0:2])
 
     #*** Test Flow 1 Packet 2:
-    flow.ingest_packet(DPID1, IN_PORT2, flow1_pkt2, flow1_pkt2_timestamp)
+    flow.ingest_packet(DPID1, IN_PORT2, pkts.IPv4_HTTP[1],
+                                                    datetime.datetime.now())
     assert flow.packet_count() == 2
-    assert flow.packet['length'] == pkt_len[2]
-    assert flow.packet['ip_src'] == '10.1.0.2'
-    assert flow.packet['ip_dst'] == '10.1.0.1'
-    assert flow.client() == '10.1.0.1'
-    assert flow.server() == '10.1.0.2'
-    assert flow.packet['tp_src'] == 80
-    assert flow.packet['tp_dst'] == 43297
+    assert flow.packet['length'] == pkts.IPv4_HTTP_LEN[1]
+    assert flow.packet['ip_src'] == pkts.IPv4_HTTP_IP_SRC[1]
+    assert flow.packet['ip_dst'] == pkts.IPv4_HTTP_IP_DST[1]
+    assert flow.client() == pkts.IPv4_HTTP_FLOW_IP_CLIENT
+    assert flow.server() == pkts.IPv4_HTTP_FLOW_IP_SERVER
+    assert flow.packet['proto'] == pkts.IPv4_HTTP_PROTO[1]
+    assert flow.packet['tp_src'] == pkts.IPv4_HTTP_TP_SRC[1]
+    assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[1]
     assert flow.packet['tp_seq_src'] == 2656869785
     assert flow.packet['tp_seq_dst'] == 3279048915
     assert flow.tcp_syn() == 1
@@ -175,15 +138,17 @@ def test_flow():
     assert flow.max_packet_size() == max(pkt_len[0:3])
 
     #*** Test Flow 1 Packet 3:
-    flow.ingest_packet(DPID1, IN_PORT1, flow1_pkt3, flow1_pkt3_timestamp)
+    flow.ingest_packet(DPID1, IN_PORT1, pkts.IPv4_HTTP[2],
+                                                    datetime.datetime.now())
     assert flow.packet_count() == 3
-    assert flow.packet['length'] == pkt_len[3]
-    assert flow.packet['ip_src'] == '10.1.0.1'
-    assert flow.packet['ip_dst'] == '10.1.0.2'
-    assert flow.client() == '10.1.0.1'
-    assert flow.server() == '10.1.0.2'
-    assert flow.packet['tp_src'] == 43297
-    assert flow.packet['tp_dst'] == 80
+    assert flow.packet['length'] == pkts.IPv4_HTTP_LEN[2]
+    assert flow.packet['ip_src'] == pkts.IPv4_HTTP_IP_SRC[2]
+    assert flow.packet['ip_dst'] == pkts.IPv4_HTTP_IP_DST[2]
+    assert flow.client() == pkts.IPv4_HTTP_FLOW_IP_CLIENT
+    assert flow.server() == pkts.IPv4_HTTP_FLOW_IP_SERVER
+    assert flow.packet['proto'] == pkts.IPv4_HTTP_PROTO[2]
+    assert flow.packet['tp_src'] == pkts.IPv4_HTTP_TP_SRC[2]
+    assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[2]
     assert flow.packet['tp_seq_src'] == 3279048915
     assert flow.packet['tp_seq_dst'] == 2656869786
     assert flow.tcp_syn() == 0
@@ -199,15 +164,17 @@ def test_flow():
     flow.ingest_packet(DPID1, IN_PORT1, flow2_pkt1, flow2_pkt1_timestamp)
 
     #*** Test Flow 1 Packet 4:
-    flow.ingest_packet(DPID1, IN_PORT1, flow1_pkt4, flow1_pkt4_timestamp)
+    flow.ingest_packet(DPID1, IN_PORT1, pkts.IPv4_HTTP[3],
+                                                    datetime.datetime.now())
     assert flow.packet_count() == 4
-    assert flow.packet['length'] == pkt_len[4]
-    assert flow.packet['ip_src'] == '10.1.0.1'
-    assert flow.packet['ip_dst'] == '10.1.0.2'
-    assert flow.client() == '10.1.0.1'
-    assert flow.server() == '10.1.0.2'
-    assert flow.packet['tp_src'] == 43297
-    assert flow.packet['tp_dst'] == 80
+    assert flow.packet['length'] == pkts.IPv4_HTTP_LEN[3]
+    assert flow.packet['ip_src'] == pkts.IPv4_HTTP_IP_SRC[3]
+    assert flow.packet['ip_dst'] == pkts.IPv4_HTTP_IP_DST[3]
+    assert flow.client() == pkts.IPv4_HTTP_FLOW_IP_CLIENT
+    assert flow.server() == pkts.IPv4_HTTP_FLOW_IP_SERVER
+    assert flow.packet['proto'] == pkts.IPv4_HTTP_PROTO[3]
+    assert flow.packet['tp_src'] == pkts.IPv4_HTTP_TP_SRC[3]
+    assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[3]
     assert flow.packet['tp_seq_src'] == 3279048915
     assert flow.packet['tp_seq_dst'] == 2656869786
     assert flow.tcp_syn() == 0
@@ -220,15 +187,17 @@ def test_flow():
     assert flow.max_packet_size() == max(pkt_len[0:5])
 
     #*** Test Flow 1 Packet 5:
-    flow.ingest_packet(DPID1, IN_PORT1, flow1_pkt5, flow1_pkt5_timestamp)
+    flow.ingest_packet(DPID1, IN_PORT1, pkts.IPv4_HTTP[4],
+                                                    datetime.datetime.now())
     assert flow.packet_count() == 5
-    assert flow.packet['length'] == pkt_len[5]
-    assert flow.packet['ip_src'] == '10.1.0.2'
-    assert flow.packet['ip_dst'] == '10.1.0.1'
-    assert flow.client() == '10.1.0.1'
-    assert flow.server() == '10.1.0.2'
-    assert flow.packet['tp_src'] == 80
-    assert flow.packet['tp_dst'] == 43297
+    assert flow.packet['length'] == pkts.IPv4_HTTP_LEN[4]
+    assert flow.packet['ip_src'] == pkts.IPv4_HTTP_IP_SRC[4]
+    assert flow.packet['ip_dst'] == pkts.IPv4_HTTP_IP_DST[4]
+    assert flow.client() == pkts.IPv4_HTTP_FLOW_IP_CLIENT
+    assert flow.server() == pkts.IPv4_HTTP_FLOW_IP_SERVER
+    assert flow.packet['proto'] == pkts.IPv4_HTTP_PROTO[4]
+    assert flow.packet['tp_src'] == pkts.IPv4_HTTP_TP_SRC[4]
+    assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[4]
     assert flow.packet['tp_seq_src'] == 2656869786
     assert flow.packet['tp_seq_dst'] == 3279048920
     assert flow.tcp_syn() == 0
@@ -241,15 +210,17 @@ def test_flow():
     assert flow.max_packet_size() == max(pkt_len[0:6])
 
     #*** Test Flow 1 Packet 6:
-    flow.ingest_packet(DPID1, IN_PORT1, flow1_pkt6, flow1_pkt6_timestamp)
+    flow.ingest_packet(DPID1, IN_PORT1, pkts.IPv4_HTTP[5],
+                                                    datetime.datetime.now())
     assert flow.packet_count() == 6
-    assert flow.packet['length'] == pkt_len[6]
-    assert flow.packet['ip_src'] == '10.1.0.2'
-    assert flow.packet['ip_dst'] == '10.1.0.1'
-    assert flow.client() == '10.1.0.1'
-    assert flow.server() == '10.1.0.2'
-    assert flow.packet['tp_src'] == 80
-    assert flow.packet['tp_dst'] == 43297
+    assert flow.packet['length'] == pkts.IPv4_HTTP_LEN[5]
+    assert flow.packet['ip_src'] == pkts.IPv4_HTTP_IP_SRC[5]
+    assert flow.packet['ip_dst'] == pkts.IPv4_HTTP_IP_DST[5]
+    assert flow.client() == pkts.IPv4_HTTP_FLOW_IP_CLIENT
+    assert flow.server() == pkts.IPv4_HTTP_FLOW_IP_SERVER
+    assert flow.packet['proto'] == pkts.IPv4_HTTP_PROTO[5]
+    assert flow.packet['tp_src'] == pkts.IPv4_HTTP_TP_SRC[5]
+    assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[5]
     assert flow.packet['tp_seq_src'] == 2656869786
     assert flow.packet['tp_seq_dst'] == 3279048920
     assert flow.tcp_syn() == 0
@@ -262,15 +233,17 @@ def test_flow():
     assert flow.max_packet_size() == max(pkt_len[0:7])
 
     #*** Test Flow 1 Packet 7:
-    flow.ingest_packet(DPID1, IN_PORT1, flow1_pkt7, flow1_pkt7_timestamp)
+    flow.ingest_packet(DPID1, IN_PORT1, pkts.IPv4_HTTP[6],
+                                                    datetime.datetime.now())
     assert flow.packet_count() == 7
-    assert flow.packet['length'] == pkt_len[7]
-    assert flow.packet['ip_src'] == '10.1.0.1'
-    assert flow.packet['ip_dst'] == '10.1.0.2'
-    assert flow.client() == '10.1.0.1'
-    assert flow.server() == '10.1.0.2'
-    assert flow.packet['tp_src'] == 43297
-    assert flow.packet['tp_dst'] == 80
+    assert flow.packet['length'] == pkts.IPv4_HTTP_LEN[6]
+    assert flow.packet['ip_src'] == pkts.IPv4_HTTP_IP_SRC[6]
+    assert flow.packet['ip_dst'] == pkts.IPv4_HTTP_IP_DST[6]
+    assert flow.client() == pkts.IPv4_HTTP_FLOW_IP_CLIENT
+    assert flow.server() == pkts.IPv4_HTTP_FLOW_IP_SERVER
+    assert flow.packet['proto'] == pkts.IPv4_HTTP_PROTO[6]
+    assert flow.packet['tp_src'] == pkts.IPv4_HTTP_TP_SRC[6]
+    assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[6]
     assert flow.packet['tp_seq_src'] == 3279048920
     assert flow.packet['tp_seq_dst'] == 2656869882
     assert flow.tcp_syn() == 0

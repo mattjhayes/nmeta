@@ -63,8 +63,14 @@ class Flow(object):
 
         **Variables for the current packet**:
 
-        flow.packet['hash']
+        flow.packet['flow_hash']
           The hash of the 5-tuple of the current packet
+
+        flow.packet['packet_hash']
+          The hash of the current packet used for deduplication.
+          It is an indexed uni-directionally packet identifier,
+          derived from ip_src, ip_dst, proto, tp_src, tp_dst,
+          tp_seq_src, tp_seq_dst
 
         flow.packet['dpid']
           The DPID that the current packet was received from
@@ -184,7 +190,7 @@ class Flow(object):
 
         #*** Initialise packet variables:
         self.packet = {}
-        self.packet['hash'] = 0
+        self.packet['flow_hash'] = 0
         self.packet['dpid'] = 0
         self.packet['in_port'] = 0
         self.packet['timestamp'] = 0
@@ -214,8 +220,10 @@ class Flow(object):
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=db_nmeta_packet_ins_max_bytes)
 
-        #*** Index hash key of packets database to improve look-up performance:
-        self.packet_ins.create_index([('hash', pymongo.TEXT)], unique=False)
+        #*** Index flow_hash and packet_hash keys of packets database to
+        #*** improve look-up performance:
+        self.packet_ins.create_index([('flow_hash', pymongo.TEXT)],
+                                                                unique=False)
 
     def ingest_packet(self, dpid, in_port, pkt, timestamp):
         """
@@ -261,12 +269,11 @@ class Flow(object):
         self.packet['tp_seq_src'] = tcp.seq
         self.packet['tp_seq_dst'] = tcp.ack
 
-        #*** Generate a hash unique to flow for packets in either direction
-        self.packet['hash'] = _hash_5tuple(self.packet['ip_src'],
-                                            self.packet['ip_dst'],
-                                            self.packet['tp_src'],
-                                            self.packet['tp_dst'],
-                                            self.packet['proto'])
+        #*** Generate a flow_hash unique to flow for pkts in either direction:
+        self.packet['flow_hash'] = self._hash_flow()
+
+        #*** Generate a packet_hash unique to the packet:
+        self.packet['packet_hash'] = self._hash_packet()
 
         self.logger.debug("self.packet=%s", self.packet)
 
@@ -283,9 +290,9 @@ class Flow(object):
         same packet is received from multiple switches, but is TBD...
 
         Works by retrieving packets from packet_ins database with
-        current packet hash and within flow reuse time limit.
+        current packet flow_hash and within flow reuse time limit.
         """
-        db_data = {'hash': self.packet['hash'],
+        db_data = {'flow_hash': self.packet['flow_hash'],
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.FLOW_TIME_LIMIT}}
         packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
@@ -296,10 +303,6 @@ class Flow(object):
         """
         Return the direction of the current packet in the flow
         where c2s is client to server and s2c is server to client.
-
-        Works by retrieving packets from packet_ins database with
-        current packet hash and within flow reuse time limit.
-
         """
         flow_client = self.client()
         if self.packet['ip_src'] == flow_client:
@@ -307,23 +310,22 @@ class Flow(object):
         else:
             return 's2c'
 
-
     def client(self):
         """
         The IP that is the originator of the flow (if known,
         otherwise 0)
 
-        Finds first packet seen for the hash within the time limit
+        Finds first packet seen for the flow_hash within the time limit
         and returns the source IP
         """
-        db_data = {'hash': self.packet['hash'],
+        db_data = {'flow_hash': self.packet['flow_hash'],
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.FLOW_TIME_LIMIT}}
         packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
         if packets.count():
             return list(packets)[0]['ip_src']
         else:
-            logger.warning("no packets found")
+            self.logger.warning("no packets found")
             return 0
 
     def server(self):
@@ -334,14 +336,14 @@ class Flow(object):
         Finds first packet seen for the hash within the time limit
         and returns the destination IP
         """
-        db_data = {'hash': self.packet['hash'],
+        db_data = {'flow_hash': self.packet['flow_hash'],
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.FLOW_TIME_LIMIT}}
         packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
         if packets.count():
             return list(packets)[0]['ip_dst']
         else:
-            logger.warning("no packets found")
+            self.logger.warning("no packets found")
             return 0
 
     def max_packet_size(self):
@@ -349,7 +351,7 @@ class Flow(object):
         Return the size of the largest packet in the flow (in either direction)
         """
         max_packet_size = 0
-        db_data = {'hash': self.packet['hash'],
+        db_data = {'flow_hash': self.packet['flow_hash'],
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.FLOW_TIME_LIMIT}}
         packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
@@ -437,6 +439,54 @@ class Flow(object):
         """
         return self.packet['tp_flags'] & dpkt.tcp.TH_CWR != 0
 
+    def _hash_flow(self):
+        """
+        Generate a predictable flow_hash for the 5-tuple which is the
+        same not matter which direction the traffic is travelling
+        """
+        ip_A = self.packet['ip_src']
+        ip_B = self.packet['ip_dst']
+        proto = self.packet['proto']
+        tp_src = self.packet['tp_src']
+        tp_dst = self.packet['tp_dst']
+        if ip_A > ip_B:
+            direction = 1
+        elif ip_B > ip_A:
+            direction = 2
+        elif tp_src > tp_dst:
+            direction = 1
+        elif tp_dst > tp_src:
+            direction = 2
+        else:
+            direction = 1
+        hash_5t = hashlib.md5()
+        if direction == 1:
+            flow_tuple = (ip_A, ip_B, tp_src, tp_dst, proto)
+        else:
+            flow_tuple = (ip_B, ip_A, tp_dst, tp_src, proto)
+        flow_tuple_as_string = str(flow_tuple)
+        hash_5t.update(flow_tuple_as_string)
+        return hash_5t.hexdigest()
+
+    def _hash_packet(self):
+        """
+        Generate a hash of the current packet used for deduplication.
+        It is an indexed uni-directionally packet identifier,
+        derived from ip_src, ip_dst, proto, tp_src, tp_dst,
+        tp_seq_src, tp_seq_dst
+        """
+        hash_7t = hashlib.md5()
+        packet_tuple = (self.packet['ip_src'],
+                        self.packet['ip_dst'],
+                        self.packet['proto'],
+                        self.packet['tp_src'],
+                        self.packet['tp_dst'],
+                        self.packet['tp_seq_src'],
+                        self.packet['tp_seq_dst'])
+        packet_tuple_as_string = str(packet_tuple)
+        hash_7t.update(packet_tuple_as_string)
+        return hash_7t.hexdigest()
+
 #================== PRIVATE FUNCTIONS ==================
 
 def _is_tcp_syn(tcp_flags):
@@ -458,30 +508,6 @@ def _is_tcp_synack(tcp_flags):
         return 1
     else:
         return 0
-
-def _hash_5tuple(ip_A, ip_B, tp_src, tp_dst, proto):
-    """
-    Generate a predictable hash for the 5-tuple which is the
-    same not matter which direction the traffic is travelling
-    """
-    if ip_A > ip_B:
-        direction = 1
-    elif ip_B > ip_A:
-        direction = 2
-    elif tp_src > tp_dst:
-        direction = 1
-    elif tp_dst > tp_src:
-        direction = 2
-    else:
-        direction = 1
-    hash_5t = hashlib.md5()
-    if direction == 1:
-        flow_tuple = (ip_A, ip_B, tp_src, tp_dst, proto)
-    else:
-        flow_tuple = (ip_B, ip_A, tp_dst, tp_src, proto)
-    flow_tuple_as_string = str(flow_tuple)
-    hash_5t.update(flow_tuple_as_string)
-    return hash_5t.hexdigest()
 
 def _mac_addr(address):
     """

@@ -48,6 +48,12 @@ IPv4_HTTP_PROTO = []
 #*** Transport-layer protocol numbers in decimal:
 IPv4_HTTP_TP_SRC = []
 IPv4_HTTP_TP_DST = []
+#*** TCP FLAGS:
+IPv4_HTTP_TCP_SYN = []
+IPv4_HTTP_TCP_FIN = []
+IPv4_HTTP_TCP_RST = []
+IPv4_HTTP_TCP_PSH = []
+IPv4_HTTP_TCP_ACK = []
 
 #*** TCP handshake packet 1
 # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN] Seq=0 Win=29200 Len=0 MSS=1460 SACK_PERM=1 TSval=5982511 TSecr=0 WS=64
@@ -58,6 +64,11 @@ IPv4_HTTP_IP_DST.append('10.1.0.2')
 IPv4_HTTP_PROTO.append(6)
 IPv4_HTTP_TP_SRC.append(43297)
 IPv4_HTTP_TP_DST.append(80)
+IPv4_HTTP_TCP_SYN.append(1)
+IPv4_HTTP_TCP_FIN.append(0)
+IPv4_HTTP_TCP_RST.append(0)
+IPv4_HTTP_TCP_PSH.append(0)
+IPv4_HTTP_TCP_ACK.append(0)
 
 #*** TCP handshake packet 2
 # 10.1.0.2 10.1.0.1 TCP 74 http > 43297 [SYN, ACK] Seq=0 Ack=1 Win=28960 Len=0 MSS=1460 SACK_PERM=1 TSval=5977583 TSecr=5982511 WS=64
@@ -68,6 +79,11 @@ IPv4_HTTP_IP_DST.append('10.1.0.1')
 IPv4_HTTP_PROTO.append(6)
 IPv4_HTTP_TP_SRC.append(80)
 IPv4_HTTP_TP_DST.append(43297)
+IPv4_HTTP_TCP_SYN.append(1)
+IPv4_HTTP_TCP_FIN.append(0)
+IPv4_HTTP_TCP_RST.append(0)
+IPv4_HTTP_TCP_PSH.append(0)
+IPv4_HTTP_TCP_ACK.append(1)
 
 #*** TCP handshake packet 3
 # 10.1.0.1 10.1.0.2 TCP 66 43297 > http [ACK] Seq=1 Ack=1 Win=29248 Len=0 TSval=5982512 TSecr=5977583
@@ -78,6 +94,11 @@ IPv4_HTTP_IP_DST.append('10.1.0.2')
 IPv4_HTTP_PROTO.append(6)
 IPv4_HTTP_TP_SRC.append(43297)
 IPv4_HTTP_TP_DST.append(80)
+IPv4_HTTP_TCP_SYN.append(0)
+IPv4_HTTP_TCP_FIN.append(0)
+IPv4_HTTP_TCP_RST.append(0)
+IPv4_HTTP_TCP_PSH.append(0)
+IPv4_HTTP_TCP_ACK.append(1)
 
 #*** Client to server payload 1 "GET\r\n"
 #  10.1.0.1 10.1.0.2 TCP 71 [TCP segment of a reassembled PDU] [PSH + ACK]
@@ -88,6 +109,11 @@ IPv4_HTTP_IP_DST.append('10.1.0.2')
 IPv4_HTTP_PROTO.append(6)
 IPv4_HTTP_TP_SRC.append(43297)
 IPv4_HTTP_TP_DST.append(80)
+IPv4_HTTP_TCP_SYN.append(0)
+IPv4_HTTP_TCP_FIN.append(0)
+IPv4_HTTP_TCP_RST.append(0)
+IPv4_HTTP_TCP_PSH.append(1)
+IPv4_HTTP_TCP_ACK.append(1)
 
 #*** TCP ACK server to client
 # 10.1.0.2 10.1.0.1 TCP 66 http > 43297 [ACK] Seq=1 Ack=6 Win=28992 Len=0 TSval=5978648 TSecr=5983577
@@ -98,6 +124,11 @@ IPv4_HTTP_IP_DST.append('10.1.0.1')
 IPv4_HTTP_PROTO.append(6)
 IPv4_HTTP_TP_SRC.append(80)
 IPv4_HTTP_TP_DST.append(43297)
+IPv4_HTTP_TCP_SYN.append(0)
+IPv4_HTTP_TCP_FIN.append(0)
+IPv4_HTTP_TCP_RST.append(0)
+IPv4_HTTP_TCP_PSH.append(0)
+IPv4_HTTP_TCP_ACK.append(1)
 
 #*** Server to client response
 # 10.1.0.2 10.1.0.1 HTTP 162 HTTP/1.1 400 Bad Request  (text/plain)  [PSH + ACK]
@@ -108,6 +139,11 @@ IPv4_HTTP_IP_DST.append('10.1.0.1')
 IPv4_HTTP_PROTO.append(6)
 IPv4_HTTP_TP_SRC.append(80)
 IPv4_HTTP_TP_DST.append(43297)
+IPv4_HTTP_TCP_SYN.append(0)
+IPv4_HTTP_TCP_FIN.append(0)
+IPv4_HTTP_TCP_RST.append(0)
+IPv4_HTTP_TCP_PSH.append(1)
+IPv4_HTTP_TCP_ACK.append(1)
 
 #*** Client to server ACK
 # 10.1.0.1 10.1.0.2 TCP 66 43297 > http [ACK] Seq=6 Ack=97 Win=29248 Len=0 TSval=5983577 TSecr=5978648
@@ -118,6 +154,11 @@ IPv4_HTTP_IP_DST.append('10.1.0.2')
 IPv4_HTTP_PROTO.append(6)
 IPv4_HTTP_TP_SRC.append(43297)
 IPv4_HTTP_TP_DST.append(80)
+IPv4_HTTP_TCP_SYN.append(0)
+IPv4_HTTP_TCP_FIN.append(0)
+IPv4_HTTP_TCP_RST.append(0)
+IPv4_HTTP_TCP_PSH.append(0)
+IPv4_HTTP_TCP_ACK.append(1)
 
 #*** Metadata for whole flow:
 IPv4_HTTP_FLOW_IP_CLIENT = '10.1.0.1'

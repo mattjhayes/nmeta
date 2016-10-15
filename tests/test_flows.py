@@ -105,11 +105,11 @@ def test_flow_ipv4_http():
     assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[0]
     assert flow.packet['tp_seq_src'] == 3279048914
     assert flow.packet['tp_seq_dst'] == 0
-    assert flow.tcp_syn() == 1
-    assert flow.tcp_fin() == 0
-    assert flow.tcp_rst() == 0
-    assert flow.tcp_psh() == 0
-    assert flow.tcp_ack() == 0
+    assert flow.tcp_syn() == pkts.IPv4_HTTP_TCP_SYN[0]
+    assert flow.tcp_fin() == pkts.IPv4_HTTP_TCP_FIN[0]
+    assert flow.tcp_rst() == pkts.IPv4_HTTP_TCP_RST[0]
+    assert flow.tcp_psh() == pkts.IPv4_HTTP_TCP_PSH[0]
+    assert flow.tcp_ack() == pkts.IPv4_HTTP_TCP_ACK[0]
     assert flow.payload == ""
     assert flow.packet_direction() == 'c2s'
     assert flow.max_packet_size() == max(pkt_len[0:2])
@@ -128,11 +128,11 @@ def test_flow_ipv4_http():
     assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[1]
     assert flow.packet['tp_seq_src'] == 2656869785
     assert flow.packet['tp_seq_dst'] == 3279048915
-    assert flow.tcp_syn() == 1
-    assert flow.tcp_fin() == 0
-    assert flow.tcp_rst() == 0
-    assert flow.tcp_psh() == 0
-    assert flow.tcp_ack() == 1
+    assert flow.tcp_syn() == pkts.IPv4_HTTP_TCP_SYN[1]
+    assert flow.tcp_fin() == pkts.IPv4_HTTP_TCP_FIN[1]
+    assert flow.tcp_rst() == pkts.IPv4_HTTP_TCP_RST[1]
+    assert flow.tcp_psh() == pkts.IPv4_HTTP_TCP_PSH[1]
+    assert flow.tcp_ack() == pkts.IPv4_HTTP_TCP_ACK[1]
     assert flow.payload == ""
     assert flow.packet_direction() == 's2c'
     assert flow.max_packet_size() == max(pkt_len[0:3])
@@ -151,11 +151,11 @@ def test_flow_ipv4_http():
     assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[2]
     assert flow.packet['tp_seq_src'] == 3279048915
     assert flow.packet['tp_seq_dst'] == 2656869786
-    assert flow.tcp_syn() == 0
-    assert flow.tcp_fin() == 0
-    assert flow.tcp_rst() == 0
-    assert flow.tcp_psh() == 0
-    assert flow.tcp_ack() == 1
+    assert flow.tcp_syn() == pkts.IPv4_HTTP_TCP_SYN[2]
+    assert flow.tcp_fin() == pkts.IPv4_HTTP_TCP_FIN[2]
+    assert flow.tcp_rst() == pkts.IPv4_HTTP_TCP_RST[2]
+    assert flow.tcp_psh() == pkts.IPv4_HTTP_TCP_PSH[2]
+    assert flow.tcp_ack() == pkts.IPv4_HTTP_TCP_ACK[2]
     assert flow.payload == ""
     assert flow.packet_direction() == 'c2s'
     assert flow.max_packet_size() == max(pkt_len[0:4])
@@ -177,11 +177,11 @@ def test_flow_ipv4_http():
     assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[3]
     assert flow.packet['tp_seq_src'] == 3279048915
     assert flow.packet['tp_seq_dst'] == 2656869786
-    assert flow.tcp_syn() == 0
-    assert flow.tcp_fin() == 0
-    assert flow.tcp_rst() == 0
-    assert flow.tcp_psh() == 1
-    assert flow.tcp_ack() == 1
+    assert flow.tcp_syn() == pkts.IPv4_HTTP_TCP_SYN[3]
+    assert flow.tcp_fin() == pkts.IPv4_HTTP_TCP_FIN[3]
+    assert flow.tcp_rst() == pkts.IPv4_HTTP_TCP_RST[3]
+    assert flow.tcp_psh() == pkts.IPv4_HTTP_TCP_PSH[3]
+    assert flow.tcp_ack() == pkts.IPv4_HTTP_TCP_ACK[3]
     assert flow.payload == "GET\r\n"
     assert flow.packet_direction() == 'c2s'
     assert flow.max_packet_size() == max(pkt_len[0:5])
@@ -200,11 +200,11 @@ def test_flow_ipv4_http():
     assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[4]
     assert flow.packet['tp_seq_src'] == 2656869786
     assert flow.packet['tp_seq_dst'] == 3279048920
-    assert flow.tcp_syn() == 0
-    assert flow.tcp_fin() == 0
-    assert flow.tcp_rst() == 0
-    assert flow.tcp_psh() == 0
-    assert flow.tcp_ack() == 1
+    assert flow.tcp_syn() == pkts.IPv4_HTTP_TCP_SYN[4]
+    assert flow.tcp_fin() == pkts.IPv4_HTTP_TCP_FIN[4]
+    assert flow.tcp_rst() == pkts.IPv4_HTTP_TCP_RST[4]
+    assert flow.tcp_psh() == pkts.IPv4_HTTP_TCP_PSH[4]
+    assert flow.tcp_ack() == pkts.IPv4_HTTP_TCP_ACK[4]
     assert flow.payload == ""
     assert flow.packet_direction() == 's2c'
     assert flow.max_packet_size() == max(pkt_len[0:6])
@@ -223,11 +223,11 @@ def test_flow_ipv4_http():
     assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[5]
     assert flow.packet['tp_seq_src'] == 2656869786
     assert flow.packet['tp_seq_dst'] == 3279048920
-    assert flow.tcp_syn() == 0
-    assert flow.tcp_fin() == 0
-    assert flow.tcp_rst() == 0
-    assert flow.tcp_psh() == 1
-    assert flow.tcp_ack() == 1
+    assert flow.tcp_syn() == pkts.IPv4_HTTP_TCP_SYN[5]
+    assert flow.tcp_fin() == pkts.IPv4_HTTP_TCP_FIN[5]
+    assert flow.tcp_rst() == pkts.IPv4_HTTP_TCP_RST[5]
+    assert flow.tcp_psh() == pkts.IPv4_HTTP_TCP_PSH[5]
+    assert flow.tcp_ack() == pkts.IPv4_HTTP_TCP_ACK[5]
     assert flow.payload.encode("hex") == "485454502f312e31203430302042616420526571756573740d0a436f6e74656e742d4c656e6774683a2032320d0a436f6e74656e742d547970653a20746578742f706c61696e0d0a0d0a4d616c666f726d656420526571756573742d4c696e65"
     assert flow.packet_direction() == 's2c'
     assert flow.max_packet_size() == max(pkt_len[0:7])
@@ -246,11 +246,11 @@ def test_flow_ipv4_http():
     assert flow.packet['tp_dst'] == pkts.IPv4_HTTP_TP_DST[6]
     assert flow.packet['tp_seq_src'] == 3279048920
     assert flow.packet['tp_seq_dst'] == 2656869882
-    assert flow.tcp_syn() == 0
-    assert flow.tcp_fin() == 0
-    assert flow.tcp_rst() == 0
-    assert flow.tcp_psh() == 0
-    assert flow.tcp_ack() == 1
+    assert flow.tcp_syn() == pkts.IPv4_HTTP_TCP_SYN[6]
+    assert flow.tcp_fin() == pkts.IPv4_HTTP_TCP_FIN[6]
+    assert flow.tcp_rst() == pkts.IPv4_HTTP_TCP_RST[6]
+    assert flow.tcp_psh() == pkts.IPv4_HTTP_TCP_PSH[6]
+    assert flow.tcp_ack() == pkts.IPv4_HTTP_TCP_ACK[6]
     assert flow.payload == ""
     assert flow.packet_direction() == 'c2s'
     assert flow.max_packet_size() == max(pkt_len)

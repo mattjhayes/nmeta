@@ -34,6 +34,8 @@ This flow is IPv4 + TCP + HTTP with a GET returning a "HTTP/1.1
       For the packet timestamp:
         Expand 'Frame' in the middle pane,
         right-click 'Epoch Time' Copy -> Value
+
+Packet capture file is 'packets_ipv4_http.pcapng'
 """
 
 import binascii

@@ -59,6 +59,7 @@ CONFIG_TEMPLATE = \
     'measure_logging_level_c': 'INFO',
     'forwarding_logging_level_c': 'INFO',
     'api_logging_level_c': 'INFO',
+    'flows_logging_level_c': 'INFO',
     'external_api_logging_level_c': 'INFO',
     'nmeta_logging_level_s': 'INFO',
     'flow_logging_level_s': 'INFO',
@@ -72,6 +73,7 @@ CONFIG_TEMPLATE = \
     'measure_logging_level_s': 'INFO',
     'forwarding_logging_level_s': 'INFO',
     'api_logging_level_s': 'INFO',
+    'flows_logging_level_s': 'INFO',
     'external_api_logging_level_s': 'INFO',
     'syslog_enabled': 0,
     'loghost': 'localhost',
@@ -80,11 +82,14 @@ CONFIG_TEMPLATE = \
     'syslog_format': \
         "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s",
     'console_log_enabled': 1,
+    'coloredlogs_enabled': 1,
     'console_format': "%(levelname)s: %(name)s %(funcName)s: %(message)s",
     'event_rate_interval': 60,
     'augment_flow_metadata_with_identity': 1,
     'mongo_addr': 'localhost',
-    'mongo_port': 27017
+    'mongo_port': 27017,
+    'packet_ins_max_bytes': 2000000,
+    'flow_time_limit': 30
 }
 
 class Config(object):

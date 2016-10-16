@@ -53,12 +53,11 @@ import packets_ipv4_http2 as pkts2
 import packets_ipv4_tcp_reset as pkts3
 
 #*** Instantiate Config class:
-_config = config.Config()
+config = config.Config()
 
 #======================== flow.py Unit Tests ============================
 #*** Retrieve values for db connection for flow class to use:
-_mongo_addr = _config.get_value("mongo_addr")
-_mongo_port = _config.get_value("mongo_port")
+
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +80,7 @@ def test_flow_ipv4_http():
     assert eth_src == '08:00:27:2a:d6:dd'
 
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(logger, _mongo_addr, _mongo_port)
+    flow = flow_class.Flow(config)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
@@ -129,7 +128,7 @@ def test_flow_ipv4_http2():
     INPORT2 = 2
 
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(logger, _mongo_addr, _mongo_port)
+    flow = flow_class.Flow(config)
 
     #*** Test Flow 2 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
@@ -195,7 +194,7 @@ def test_flow_ipv4_tcp_reset():
     INPORT2 = 2
 
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(logger, _mongo_addr, _mongo_port)
+    flow = flow_class.Flow(config)
 
     #*** Test Flow 2 Packet 1 (Client SYN on TCP-81):
     flow.ingest_packet(DPID1, INPORT1, pkts3.RAW[0], datetime.datetime.now())

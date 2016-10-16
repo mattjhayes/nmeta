@@ -170,7 +170,7 @@ class NMeta(app_manager.RyuApp):
         _mongo_addr = self.config.get_value("mongo_addr")
         _mongo_port = self.config.get_value("mongo_port")
         #*** Instantiate a flow object for classifiers to work with:
-        self.flow = flows.Flow(self.logger, _mongo_addr, _mongo_port)
+        self.flow = flows.Flow(self.config)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):

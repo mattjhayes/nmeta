@@ -46,7 +46,10 @@ import hashlib
 #*** For timestamps:
 import datetime
 
-class Flow(object):
+#*** For logging configuration:
+from baseclass import BaseClass
+
+class Flow(BaseClass):
     """
     An object that represents a flow that we are classifying
 
@@ -174,19 +177,26 @@ class Flow(object):
      - Flow reuse - TCP source port reused
     """
 
-    def __init__(self, logger, mongo_addr, mongo_port):
+    def __init__(self, config):
         """
-        Initialise an instance of the Flow class for a new
-        flow. Passed layer 3/4 parameters.
-        Add an entry to the flows database if it doesn't
-        already exist. If it does exist, update it.
-        Only works for TCP at this stage.
+        Initialise an instance of the Flow class
         """
-        # TEMP, should come from config:
-        db_nmeta_packet_ins_max_bytes = 2000000
-        self.FLOW_TIME_LIMIT = datetime.timedelta(seconds=30)
-
-        self.logger = logger
+        #*** Required for BaseClass:
+        self.config = config
+        #*** Run the BaseClass init to set things up:
+        super(Flow, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("flows_logging_level_s",
+                                       "flows_logging_level_c")
+        #*** Get parameters from config:
+        mongo_addr = config.get_value("mongo_addr")
+        mongo_port = config.get_value("mongo_port")
+        mongo_dbname = self.config.get_value("mongo_dbname")
+        #*** Max bytes of the packet_ins capped collection:
+        packet_ins_max_bytes = config.get_value("packet_ins_max_bytes")
+        #*** How far back in time to go back looking for packets in flow:
+        self.flow_time_limit = datetime.timedelta \
+                                (seconds=config.get_value("flow_time_limit"))
 
         #*** Initialise packet variables:
         self.packet = {}
@@ -203,13 +213,14 @@ class Flow(object):
         self.packet['tp_flags'] = 0
         self.packet['tp_seq_src'] = 0
         self.packet['tp_seq_dst'] = 0
+        self.payload = ""
 
         #*** Start mongodb:
         self.logger.info("Connecting to MongoDB database...")
         mongo_client = MongoClient(mongo_addr, mongo_port)
 
         #*** Connect to MongoDB nmeta database:
-        db_nmeta = mongo_client.nmeta_database
+        db_nmeta = mongo_client.mongo_dbname
 
         #*** Delete (drop) previous packet_ins collection if it exists:
         self.logger.debug("Deleting previous packet_ins MongoDB collection...")
@@ -218,7 +229,7 @@ class Flow(object):
         #*** Create the packets collection, specifying capped option
         #*** with max size in bytes, so MongoDB handles data retention:
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
-                                            size=db_nmeta_packet_ins_max_bytes)
+                                            size=packet_ins_max_bytes)
 
         #*** Index flow_hash and packet_hash keys of packets database to
         #*** improve look-up performance:
@@ -294,7 +305,7 @@ class Flow(object):
         """
         db_data = {'flow_hash': self.packet['flow_hash'],
               'timestamp': {'$gte': datetime.datetime.now() - \
-                                                self.FLOW_TIME_LIMIT}}
+                                                self.flow_time_limit}}
         packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
         self.logger.debug("packet_cursor.count()=%s", packet_cursor.count())
         return packet_cursor.count()
@@ -320,7 +331,7 @@ class Flow(object):
         """
         db_data = {'flow_hash': self.packet['flow_hash'],
               'timestamp': {'$gte': datetime.datetime.now() - \
-                                                self.FLOW_TIME_LIMIT}}
+                                                self.flow_time_limit}}
         packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
         if packets.count():
             return list(packets)[0]['ip_src']
@@ -338,7 +349,7 @@ class Flow(object):
         """
         db_data = {'flow_hash': self.packet['flow_hash'],
               'timestamp': {'$gte': datetime.datetime.now() - \
-                                                self.FLOW_TIME_LIMIT}}
+                                                self.flow_time_limit}}
         packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
         if packets.count():
             return list(packets)[0]['ip_dst']
@@ -353,7 +364,7 @@ class Flow(object):
         max_packet_size = 0
         db_data = {'flow_hash': self.packet['flow_hash'],
               'timestamp': {'$gte': datetime.datetime.now() - \
-                                                self.FLOW_TIME_LIMIT}}
+                                                self.flow_time_limit}}
         packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
         if packet_cursor.count():
             for packet in packet_cursor:

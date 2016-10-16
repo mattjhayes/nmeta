@@ -37,14 +37,18 @@ sa_logging_level_s: INFO
 measure_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 api_logging_level_s: INFO
+flows_logging_level_s: INFO
 external_api_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
 #*** Set to 1 if want to log to console:
 console_log_enabled: 1
 #
+#*** Set to 1 if you want colorised logs in terminal:
+coloredlogs_enabled: 1
+#
 #*** Console Log Format:
-console_format: "%(levelname)s: %(name)s %(funcName)s: %(message)s"
+console_format: "%(asctime)s %(module)s[%(process)d] %(funcName)s %(levelname)s %(message)s"
 #
 #*** Console Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
@@ -60,6 +64,7 @@ sa_logging_level_c: INFO
 measure_logging_level_c: INFO
 forwarding_logging_level_c: INFO
 api_logging_level_c: INFO
+flows_logging_level_c: DEBUG
 external_api_logging_level_c: INFO
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
@@ -130,4 +135,9 @@ augment_flow_metadata_with_identity: 1
 #========== Mongodb Database ==========================
 mongo_addr: localhost
 mongo_port: 27017
+mongo_dbname: nmeta_database
+#*** Max bytes of the packet_ins capped collection:
+packet_ins_max_bytes: 2000000
+#*** How far back in time in seconds to look for packets in flow:
+flow_time_limit: 30
 #

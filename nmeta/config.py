@@ -88,6 +88,7 @@ CONFIG_TEMPLATE = \
     'augment_flow_metadata_with_identity': 1,
     'mongo_addr': 'localhost',
     'mongo_port': 27017,
+    'mongo_dbname': 'nmeta_database',
     'packet_ins_max_bytes': 2000000,
     'flow_time_limit': 30
 }

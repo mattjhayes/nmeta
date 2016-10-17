@@ -140,16 +140,4 @@ mongo_dbname: nmeta_database
 packet_ins_max_bytes: 2000000
 #*** How far back in time in seconds to look for packets in flow:
 flow_time_limit: 30
-
 #
-#========== External API ==========================
-#*** External API version used in base of URL:
-#external_api_version: v1
-
-#*** External Host IP Address. Use 0.0.0.0 for all NICs:
-#external_api_host: 0.0.0.0
-#*** External API TCP port:
-#external_api_port: 8081
-#*** Extra Eve Debug (use values True or False).
-#***  Be aware that this causes whole program to restart:
-#external_api_debug: False

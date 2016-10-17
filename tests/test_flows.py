@@ -214,6 +214,9 @@ def pkt_test(flow, pkts, pkt_num):
     """
     assert flow.packet_count() == pkt_num
     assert flow.packet['length'] == pkts.LEN[pkt_num - 1]
+    assert flow.packet['eth_src'] == pkts.ETH_SRC[pkt_num - 1]
+    assert flow.packet['eth_dst'] == pkts.ETH_DST[pkt_num - 1]
+    assert flow.packet['eth_type'] == pkts.ETH_TYPE[pkt_num - 1]
     assert flow.packet['ip_src'] == pkts.IP_SRC[pkt_num - 1]
     assert flow.packet['ip_dst'] == pkts.IP_DST[pkt_num - 1]
     assert flow.client() == pkts.FLOW_IP_CLIENT

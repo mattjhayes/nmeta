@@ -78,4 +78,5 @@ class BaseClass(object):
                 self.console_handler.setFormatter(console_formatter)
                 self.console_handler.setLevel(_logging_level_c)
                 self.logger.addHandler(self.console_handler)
+        # NEED THIS TO SUPPORT DEBUG LEVEL BUT NOT SURE WHY???:
         self.logger.setLevel(_logging_level_c)

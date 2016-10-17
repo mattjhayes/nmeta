@@ -90,6 +90,15 @@ class Flow(BaseClass):
         flow.packet['length']
           Length in bytes of the current packet on wire
 
+        flow.packet['eth_src']
+          Ethernet source MAC address of current packet
+
+        flow.packet['eth_dst']
+          Ethernet destination MAC address of current packet
+
+        flow.packet['eth_type']
+          Ethertype of current packet in decimal
+
         flow.packet['ip_src']
           IP source address of current packet
 
@@ -205,6 +214,9 @@ class Flow(BaseClass):
         self.packet['in_port'] = 0
         self.packet['timestamp'] = 0
         self.packet['length'] = 0
+        self.packet['eth_src'] = 0
+        self.packet['eth_dst'] = 0
+        self.packet['eth_type'] = 0
         self.packet['ip_src'] = 0
         self.packet['ip_dst'] = 0
         self.packet['proto'] = 0
@@ -220,7 +232,7 @@ class Flow(BaseClass):
         mongo_client = MongoClient(mongo_addr, mongo_port)
 
         #*** Connect to MongoDB nmeta database:
-        db_nmeta = mongo_client.mongo_dbname
+        db_nmeta = mongo_client[mongo_dbname]
 
         #*** Delete (drop) previous packet_ins collection if it exists:
         self.logger.debug("Deleting previous packet_ins MongoDB collection...")
@@ -267,6 +279,10 @@ class Flow(BaseClass):
         self.packet['timestamp'] = timestamp
         #*** Packet length on the wire:
         self.packet['length'] = len(pkt)
+        #*** Ethernet parameters:
+        self.packet['eth_src'] = _mac_addr(eth.src)
+        self.packet['eth_dst'] = _mac_addr(eth.dst)
+        self.packet['eth_type'] = eth.type
         #*** IP addresses:
         self.packet['ip_src'] = socket.inet_ntop(socket.AF_INET, ip.src)
         self.packet['ip_dst'] = socket.inet_ntop(socket.AF_INET, ip.dst)

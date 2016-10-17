@@ -44,6 +44,10 @@ import binascii
 RAW = []
 #*** Packet on the wire lengths in bytes:
 LEN = []
+#*** Ethernet parameters:
+ETH_SRC = []
+ETH_DST = []
+ETH_TYPE = []
 #*** IP addresses:
 IP_SRC = []
 IP_DST = []
@@ -70,6 +74,9 @@ DIRECTION = []
 # 74 10.1.0.1 10.1.0.2 TCP 38331 81 [SYN] Seq=1370089506 Win=29200 Len=0 MSS=1460 SACK_PERM=1 TSval=9535205 TSecr=0 WS=64
 RAW.append(binascii.unhexlify("080027c8db910800272ad6dd08004510003c96c7400040068fe00a0100010a01000295bb005151a9e82200000000a002721014330000020405b40402080a00917ee50000000001030306"))
 LEN.append(74)
+ETH_SRC.append('08:00:27:2a:d6:dd')
+ETH_DST.append('08:00:27:c8:db:91')
+ETH_TYPE.append(2048)
 IP_SRC.append('10.1.0.1')
 IP_DST.append('10.1.0.2')
 PROTO.append(6)
@@ -89,6 +96,9 @@ DIRECTION.append("c2s")
 # 60 10.1.0.2 10.1.0.1 TCP 81 38331 [RST, ACK] Seq=0 Ack=1370089507 Win=0 Len=0
 RAW.append(binascii.unhexlify("0800272ad6dd080027c8db91080045100028f819400040062ea20a0100020a010001005195bb0000000051a9e82350140000cbf20000000000000000"))
 LEN.append(60)
+ETH_SRC.append('08:00:27:c8:db:91')
+ETH_DST.append('08:00:27:2a:d6:dd')
+ETH_TYPE.append(2048)
 IP_SRC.append('10.1.0.2')
 IP_DST.append('10.1.0.1')
 PROTO.append(6)

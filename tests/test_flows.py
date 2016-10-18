@@ -51,6 +51,7 @@ import flows as flow_class
 import packets_ipv4_http as pkts
 import packets_ipv4_http2 as pkts2
 import packets_ipv4_tcp_reset as pkts3
+import packets_lldp as pkts_lldp
 
 #*** Instantiate Config class:
 config = config.Config()
@@ -204,6 +205,28 @@ def test_flow_ipv4_tcp_reset():
     flow.ingest_packet(DPID1, INPORT2, pkts3.RAW[1], datetime.datetime.now())
     pkt_test(flow, pkts3, 2)
 
+
+def test_flow_LLDP():
+    """
+    Test ingesting LLDP (non-IP) packets
+    """
+
+    #*** Test DPIDs and in ports:
+    DPID1 = 1
+    DPID2 = 2
+    INPORT1 = 1
+    INPORT2 = 2
+
+    #*** Instantiate a flow object:
+    flow = flow_class.Flow(config)
+
+    #*** Test LLDP ingestion:
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0],
+                                                     datetime.datetime.now())
+    assert flow.packet_count() == 1
+    assert flow.packet['length'] == pkts_lldp.LEN[0]
+    assert flow.packet['eth_src'] == pkts_lldp.ETH_SRC[0]
+    assert flow.packet['eth_dst'] == pkts_lldp.ETH_DST[0]
 
 #================= HELPER FUNCTIONS ===========================================
 

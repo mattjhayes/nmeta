@@ -256,21 +256,6 @@ class Flow(BaseClass):
         #*** Packet dictionary to write to packets database collection:
         self.packet = {}
 
-        #*** Read into dpkt:
-        eth = dpkt.ethernet.Ethernet(pkt)
-
-        #*** We only support IPv4 (TBD: add IPv6 support):
-        eth_type = eth.type
-        if eth_type != 2048:
-            self.logger.error("Non IPv4 packet, eth_type is %s", eth_type)
-            return 0
-        ip = eth.data
-
-        #*** We only support TCP (TBD, handle other protocols):
-        if ip.p != 6:
-            self.logger.error("Non TCP packet, ip_proto=%s", ip.p)
-            return 0
-
         #*** DPID of the switch that sent the Packet-In message:
         self.packet['dpid'] = dpid
         #*** Port packet was received on:
@@ -279,22 +264,49 @@ class Flow(BaseClass):
         self.packet['timestamp'] = timestamp
         #*** Packet length on the wire:
         self.packet['length'] = len(pkt)
+
+        #*** Read packet into dpkt to parse headers:
+        eth = dpkt.ethernet.Ethernet(pkt)
+
         #*** Ethernet parameters:
         self.packet['eth_src'] = _mac_addr(eth.src)
         self.packet['eth_dst'] = _mac_addr(eth.dst)
         self.packet['eth_type'] = eth.type
-        #*** IP addresses:
-        self.packet['ip_src'] = socket.inet_ntop(socket.AF_INET, ip.src)
-        self.packet['ip_dst'] = socket.inet_ntop(socket.AF_INET, ip.dst)
-        #*** IP protocol:
-        self.packet['proto'] = ip.p
-        #*** Transport ports: (TBD, make non-TCP specific)
-        tcp = ip.data
-        self.packet['tp_src'] = tcp.sport
-        self.packet['tp_dst'] = tcp.dport
-        self.packet['tp_flags'] = tcp.flags
-        self.packet['tp_seq_src'] = tcp.seq
-        self.packet['tp_seq_dst'] = tcp.ack
+
+        if eth.type == 2048:
+            #*** IPv4 (TBD: add IPv6 support)
+            ip = eth.data
+            self.packet['ip_src'] = socket.inet_ntop(socket.AF_INET, ip.src)
+            self.packet['ip_dst'] = socket.inet_ntop(socket.AF_INET, ip.dst)
+            self.packet['proto'] = ip.p
+            if ip.p == 6:
+                #*** TCP (TBD, add UDP support)
+                tcp = ip.data
+                self.packet['tp_src'] = tcp.sport
+                self.packet['tp_dst'] = tcp.dport
+                self.packet['tp_flags'] = tcp.flags
+                self.packet['tp_seq_src'] = tcp.seq
+                self.packet['tp_seq_dst'] = tcp.ack
+                self.payload = tcp.data
+            else:
+                #*** Not a transport layer that we understand:
+                self.packet['tp_src'] = 0
+                self.packet['tp_dst'] = 0
+                self.packet['tp_flags'] = 0
+                self.packet['tp_seq_src'] = 0
+                self.packet['tp_seq_dst'] = 0
+                self.payload = ip.data
+        else:
+            #*** Non-IP:
+            self.packet['ip_src'] = ''
+            self.packet['ip_dst'] = ''
+            self.packet['proto'] = 0
+            self.packet['tp_src'] = 0
+            self.packet['tp_dst'] = 0
+            self.packet['tp_flags'] = 0
+            self.packet['tp_seq_src'] = 0
+            self.packet['tp_seq_dst'] = 0
+            self.payload = eth.data
 
         #*** Generate a flow_hash unique to flow for pkts in either direction:
         self.packet['flow_hash'] = self._hash_flow()
@@ -303,9 +315,6 @@ class Flow(BaseClass):
         self.packet['packet_hash'] = self._hash_packet()
 
         self.logger.debug("self.packet=%s", self.packet)
-
-        #*** Hold copy of payload data in class (TBD - TCP specific):
-        self.payload = tcp.data
 
         #*** Write packet-in metadata to database collection:
         db_result = self.packet_ins.insert_one(self.packet)

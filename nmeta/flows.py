@@ -392,7 +392,6 @@ class Flow(BaseClass):
         self.packet.packet_hash = self._hash_packet()
 
         db_dict = self.packet.dbdict()
-        self.logger.debug("db_dict=%s", db_dict)
 
         #*** Write packet-in metadata to database collection:
         db_result = self.packet_ins.insert_one(db_dict)
@@ -509,22 +508,38 @@ class Flow(BaseClass):
         """
         Generate a predictable flow_hash for the 5-tuple which is the
         same not matter which direction the traffic is travelling
+        for packets that are part of a flow.
+
+        For packets that we don't understand as a flow, create a hash
+        that is unique to the packet to avoid retrieving unrelated
+        packets
         """
-        ip_A = self.packet.ip_src
-        ip_B = self.packet.ip_dst
         proto = self.packet.proto
-        tp_src = self.packet.tp_src
-        tp_dst = self.packet.tp_dst
-        if ip_A > ip_B:
-            direction = 1
-        elif ip_B > ip_A:
-            direction = 2
-        elif tp_src > tp_dst:
-            direction = 1
-        elif tp_dst > tp_src:
-            direction = 2
+        if (proto == 6):
+            #*** Is a flow (TBD, do UDP):
+            ip_A = self.packet.ip_src
+            ip_B = self.packet.ip_dst
+            tp_src = self.packet.tp_src
+            tp_dst = self.packet.tp_dst
+            if ip_A > ip_B:
+                direction = 1
+            elif ip_B > ip_A:
+                direction = 2
+            elif tp_src > tp_dst:
+                direction = 1
+            elif tp_dst > tp_src:
+                direction = 2
+            else:
+                direction = 1
         else:
+            #*** Isn't a flow, so make hash unique to packet by including
+            #*** the DPID and timestamp in the hash:
+            ip_A = self.packet.eth_src
+            ip_B = self.packet.eth_dst
+            tp_src = self.packet.dpid
+            tp_dst = self.packet.timestamp
             direction = 1
+
         hash_5t = hashlib.md5()
         if direction == 1:
             flow_tuple = (ip_A, ip_B, tp_src, tp_dst, proto)
@@ -536,22 +551,41 @@ class Flow(BaseClass):
 
     def _hash_packet(self):
         """
-        Generate a hash of the current packet used for deduplication.
-        It is an indexed uni-directionally packet identifier,
-        derived from ip_src, ip_dst, proto, tp_src, tp_dst,
-        tp_seq_src, tp_seq_dst
+        Generate a hash of the current packet used for deduplication
+        where the same packet is received from multiple switches.
+
+        Retransmissions of a packet that is part of a flow should have
+        same hash value, so that retransmissions can be measured.
+
+        The packet hash is an indexed uni-directionally packet identifier
+
+        For flow-packets, the hash is derived from:
+          ip_src, ip_dst, proto, tp_src, tp_dst, tp_seq_src, tp_seq_dst
+
+        For non-flow packets, the hash is derived from:
+          eth_src, eth_dst, eth_type, dpid, timestamp
         """
-        hash_7t = hashlib.md5()
-        packet_tuple = (self.packet.ip_src,
+        hash_result = hashlib.md5()
+        if (self.packet.proto == 6):
+            #*** Is a flow (TBD, do UDP):
+            packet_tuple = (self.packet.ip_src,
                         self.packet.ip_dst,
                         self.packet.proto,
                         self.packet.tp_src,
                         self.packet.tp_dst,
                         self.packet.tp_seq_src,
                         self.packet.tp_seq_dst)
+        else:
+            #*** Isn't a flow, so make hash unique to packet by including
+            #*** the DPID and timestamp in the hash:
+            packet_tuple = (self.packet.eth_src,
+                        self.packet.eth_dst,
+                        self.packet.eth_type,
+                        self.packet.dpid,
+                        self.packet.timestamp)
         packet_tuple_as_string = str(packet_tuple)
-        hash_7t.update(packet_tuple_as_string)
-        return hash_7t.hexdigest()
+        hash_result.update(packet_tuple_as_string)
+        return hash_result.hexdigest()
 
 #================== PRIVATE FUNCTIONS ==================
 

@@ -228,6 +228,32 @@ def test_flow_LLDP():
     assert flow.packet.eth_src == pkts_lldp.ETH_SRC[0]
     assert flow.packet.eth_dst == pkts_lldp.ETH_DST[0]
 
+    #*** Ingest same packet again, shouldn't increase flow count as isn't flow:
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0],
+                                                     datetime.datetime.now())
+    assert flow.packet_count() == 1
+    assert flow.packet.length == pkts_lldp.LEN[0]
+    assert flow.packet.eth_src == pkts_lldp.ETH_SRC[0]
+    assert flow.packet.eth_dst == pkts_lldp.ETH_DST[0]
+
+def test_flow_hashing():
+    """
+    Test flow counts for packet retransmissions. For flow packets
+    (i.e. TCP), all retx should be counted (if from same DPID)
+
+    For non-flow packets, the flow packet count should always be 1
+    """
+    # TBD
+    pass
+
+def test_packet_hashing():
+    """
+    Test that same flow packet (i.e. TCP) retx adds to count whereas
+    retx of non-flow packet has count of 1
+    """
+    # TBD
+    pass
+
 #================= HELPER FUNCTIONS ===========================================
 
 def pkt_test(flow, pkts, pkt_num):

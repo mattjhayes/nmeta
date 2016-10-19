@@ -113,11 +113,7 @@ class NMeta(app_manager.RyuApp):
             self.console_handler.setLevel(_logging_level_c)
             #*** Add console log handler to logger:
             self.logger.addHandler(self.console_handler)
-        #*** Set a variable to indicate if either or both levels are at debug:
-        if _logging_level_s == 'DEBUG' or _logging_level_c == 'DEBUG':
-            self.debug_on = True
-        else:
-            self.debug_on = False
+
         #*** Set up variables:
         #*** Get max bytes of new flow packets to send to controller from
         #*** config file:
@@ -237,10 +233,7 @@ class NMeta(app_manager.RyuApp):
 
         #*** Read packet into flow object for classifiers to work with:
         self.flow.ingest_packet(dpid, in_port, msg.data, time.time())
-
-        #*** Extra debug if syslog or console logging set to DEBUG:
-        if self.debug_on:
-            self._packet_in_debug(ev, in_port)
+        self.logger.debug("packet_in=%s", self.flow.packet.dbdict())
 
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches
@@ -394,53 +387,6 @@ class NMeta(app_manager.RyuApp):
                               priority=1, buffer_id=None,
                               idle_timeout=5, hard_timeout=0)
         return _result
-
-
-    def _packet_in_debug(self, ev, in_port):
-        """
-        Generate a debug message describing the packet
-        in event
-        """
-        #*** Extract parameters:
-        msg = ev.msg
-        datapath = msg.datapath
-        dpid = datapath.id
-        pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)
-        eth_src = eth.src
-        eth_dst = eth.dst
-        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)
-
-        #*** Some debug about the Packet In:
-        if pkt_ip4 and pkt_tcp:
-            self.logger.debug("event=pi_ipv4_tcp dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
-                                  "tcp_dst=%s",
-                                  dpid, in_port, pkt_ip4.src, pkt_ip4.dst,
-                                  pkt_tcp.src_port, pkt_tcp.dst_port)
-        elif pkt_ip6 and pkt_tcp:
-            self.logger.debug("event=pi_ipv6_tcp dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
-                                  "tcp_dst=%s",
-                                  dpid, in_port, pkt_ip6.src, pkt_ip6.dst,
-                                  pkt_tcp.src_port, pkt_tcp.dst_port)
-        elif pkt_ip4:
-            self.logger.debug("event=pi_ipv4 dpid="
-                                  "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
-                                  dpid, in_port,
-                                  pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
-        elif pkt_ip6:
-            self.logger.debug("event=pi_ipv6 dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s",
-                                  dpid, in_port,
-                                  pkt_ip6.src, pkt_ip6.dst)
-        else:
-            self.logger.debug("event=pi_other dpid=%s "
-                                "in_port=%s eth_src=%s eth_dst=%s eth_type=%s",
-                                dpid, in_port, eth_src, eth_dst, eth.ethertype)
-
 
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])

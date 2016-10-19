@@ -54,13 +54,14 @@ import switch_abstraction
 import measure
 import forwarding
 import api
-
 import flows
+#*** For logging configuration:
+from baseclass import BaseClass
 
 #*** Number of preceding seconds that events are averaged over:
 EVENT_RATE_INTERVAL = 60
 
-class NMeta(app_manager.RyuApp):
+class NMeta(app_manager.RyuApp, BaseClass):
     """
     This is the main class used to run nmeta
     """
@@ -77,42 +78,11 @@ class NMeta(app_manager.RyuApp):
         #*** config.yaml and provides access to keys/values:
         self.config = config.Config()
 
-        #*** Get logging config values from config class:
-        _logging_level_s = self.config.get_value \
-                                    ('nmeta_logging_level_s')
-        _logging_level_c = self.config.get_value \
-                                    ('nmeta_logging_level_c')
-        _syslog_enabled = self.config.get_value('syslog_enabled')
-        _loghost = self.config.get_value('loghost')
-        _logport = self.config.get_value('logport')
-        _logfacility = self.config.get_value('logfacility')
-        _syslog_format = self.config.get_value('syslog_format')
-        _console_log_enabled = self.config.get_value('console_log_enabled')
-        _console_format = self.config.get_value('console_format')
-        #*** Set up Logging:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
-        #*** Syslog:
-        if _syslog_enabled:
-            #*** Log to syslog on host specified in config.yaml:
-            self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport),
-                                                facility=_logfacility)
-            syslog_formatter = logging.Formatter(_syslog_format)
-            self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(_logging_level_s)
-            #*** Add syslog log handler to logger:
-            self.logger.addHandler(self.syslog_handler)
-        #*** Console logging:
-        if _console_log_enabled:
-            #*** Log to the console:
-            self.console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(_console_format)
-            self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(_logging_level_c)
-            #*** Add console log handler to logger:
-            self.logger.addHandler(self.console_handler)
+        #*** Run the BaseClass init to set things up:
+        super(NMeta, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("nmeta_logging_level_s",
+                                       "nmeta_logging_level_c")
 
         #*** Set up variables:
         #*** Get max bytes of new flow packets to send to controller from
@@ -204,7 +174,7 @@ class NMeta(app_manager.RyuApp):
                                                     body.hw_desc, body.sw_desc)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def _packet_in_handler(self, ev):
+    def packet_in(self, ev):
         """
         This method is called for every Packet-In event from a Switch.
         We receive a copy of the Packet-In event, pass it to the

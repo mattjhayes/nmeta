@@ -224,9 +224,9 @@ def test_flow_LLDP():
     flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0],
                                                      datetime.datetime.now())
     assert flow.packet_count() == 1
-    assert flow.packet['length'] == pkts_lldp.LEN[0]
-    assert flow.packet['eth_src'] == pkts_lldp.ETH_SRC[0]
-    assert flow.packet['eth_dst'] == pkts_lldp.ETH_DST[0]
+    assert flow.packet.length == pkts_lldp.LEN[0]
+    assert flow.packet.eth_src == pkts_lldp.ETH_SRC[0]
+    assert flow.packet.eth_dst == pkts_lldp.ETH_DST[0]
 
 #================= HELPER FUNCTIONS ===========================================
 
@@ -236,25 +236,25 @@ def pkt_test(flow, pkts, pkt_num):
     from the packets object and check parameters match
     """
     assert flow.packet_count() == pkt_num
-    assert flow.packet['length'] == pkts.LEN[pkt_num - 1]
-    assert flow.packet['eth_src'] == pkts.ETH_SRC[pkt_num - 1]
-    assert flow.packet['eth_dst'] == pkts.ETH_DST[pkt_num - 1]
-    assert flow.packet['eth_type'] == pkts.ETH_TYPE[pkt_num - 1]
-    assert flow.packet['ip_src'] == pkts.IP_SRC[pkt_num - 1]
-    assert flow.packet['ip_dst'] == pkts.IP_DST[pkt_num - 1]
+    assert flow.packet.length == pkts.LEN[pkt_num - 1]
+    assert flow.packet.eth_src == pkts.ETH_SRC[pkt_num - 1]
+    assert flow.packet.eth_dst == pkts.ETH_DST[pkt_num - 1]
+    assert flow.packet.eth_type == pkts.ETH_TYPE[pkt_num - 1]
+    assert flow.packet.ip_src == pkts.IP_SRC[pkt_num - 1]
+    assert flow.packet.ip_dst == pkts.IP_DST[pkt_num - 1]
+    assert flow.packet.proto == pkts.PROTO[pkt_num - 1]
+    assert flow.packet.tp_src == pkts.TP_SRC[pkt_num - 1]
+    assert flow.packet.tp_dst == pkts.TP_DST[pkt_num - 1]
+    assert flow.packet.tp_seq_src == pkts.TP_SEQ_SRC[pkt_num - 1]
+    assert flow.packet.tp_seq_dst == pkts.TP_SEQ_DST[pkt_num - 1]
+    assert flow.packet.tcp_syn() == pkts.TCP_SYN[pkt_num - 1]
+    assert flow.packet.tcp_fin() == pkts.TCP_FIN[pkt_num - 1]
+    assert flow.packet.tcp_rst() == pkts.TCP_RST[pkt_num - 1]
+    assert flow.packet.tcp_psh() == pkts.TCP_PSH[pkt_num - 1]
+    assert flow.packet.tcp_ack() == pkts.TCP_ACK[pkt_num - 1]
+    assert flow.packet.payload.encode("hex") == pkts.PAYLOAD[pkt_num - 1]
     assert flow.client() == pkts.FLOW_IP_CLIENT
     assert flow.server() == pkts.FLOW_IP_SERVER
-    assert flow.packet['proto'] == pkts.PROTO[pkt_num - 1]
-    assert flow.packet['tp_src'] == pkts.TP_SRC[pkt_num - 1]
-    assert flow.packet['tp_dst'] == pkts.TP_DST[pkt_num - 1]
-    assert flow.packet['tp_seq_src'] == pkts.TP_SEQ_SRC[pkt_num - 1]
-    assert flow.packet['tp_seq_dst'] == pkts.TP_SEQ_DST[pkt_num - 1]
-    assert flow.tcp_syn() == pkts.TCP_SYN[pkt_num - 1]
-    assert flow.tcp_fin() == pkts.TCP_FIN[pkt_num - 1]
-    assert flow.tcp_rst() == pkts.TCP_RST[pkt_num - 1]
-    assert flow.tcp_psh() == pkts.TCP_PSH[pkt_num - 1]
-    assert flow.tcp_ack() == pkts.TCP_ACK[pkt_num - 1]
-    assert flow.payload.encode("hex") == pkts.PAYLOAD[pkt_num - 1]
     assert flow.packet_direction() == pkts.DIRECTION[pkt_num - 1]
     assert flow.max_packet_size() == max(pkts.LEN[0:pkt_num])
 

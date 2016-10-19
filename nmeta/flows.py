@@ -66,91 +66,91 @@ class Flow(BaseClass):
 
         **Variables for the current packet**:
 
-        flow.packet['flow_hash']
+        flow.packet.flow_hash
           The hash of the 5-tuple of the current packet
 
-        flow.packet['packet_hash']
+        flow.packet.packet_hash
           The hash of the current packet used for deduplication.
           It is an indexed uni-directionally packet identifier,
           derived from ip_src, ip_dst, proto, tp_src, tp_dst,
           tp_seq_src, tp_seq_dst
 
-        flow.packet['dpid']
+        flow.packet.dpid
           The DPID that the current packet was received from
           via a Packet-In message
 
-        flow.packet['in_port']
+        flow.packet.in_port
           The switch port that the current packet was received on
           before being sent to the controller
 
-        flow.packet['timestamp']
+        flow.packet.timestamp
           The time in datetime format that the current packet was
           received at the controller
 
-        flow.packet['length']
+        flow.packet.length
           Length in bytes of the current packet on wire
 
-        flow.packet['eth_src']
+        flow.packet.eth_src
           Ethernet source MAC address of current packet
 
-        flow.packet['eth_dst']
+        flow.packet.eth_dst
           Ethernet destination MAC address of current packet
 
-        flow.packet['eth_type']
+        flow.packet.eth_type
           Ethertype of current packet in decimal
 
-        flow.packet['ip_src']
+        flow.packet.ip_src
           IP source address of current packet
 
-        flow.packet['ip_dst']
+        flow.packet.ip_dst
           IP destination address of current packet
 
-        flow.packet['proto']
+        flow.packet.proto
           IP protocol number of current packet
 
-        flow.packet['tp_src']
+        flow.packet.tp_src
           Source transport-layer port number of current packet
 
-        flow.packet['tp_dst']
+        flow.packet.tp_dst
           Destination transport-layer port number of current packet
 
-        flow.packet['tp_flags']
+        flow.packet.tp_flags
           Transport-layer flags of the current packet
 
-        flow.packet['tp_seq_src']
+        flow.packet.tp_seq_src
           Source transport-layer sequence number (where existing)
           of current packet
 
-        flow.packet['tp_seq_dst']
+        flow.packet.tp_seq_dst
           Destination transport-layer sequence number (where existing)
           of current packet
 
-        flow.tcp_fin()
+        flow.packet.payload
+          Payload data of current packet
+
+        flow.packet.tcp_fin()
           True if TCP FIN flag is set in the current packet
 
-        flow.tcp_syn()
+        flow.packet.tcp_syn()
           True if TCP SYN flag is set in the current packet
 
-        flow.tcp_rst()
+        flow.packet.tcp_rst()
           True if TCP RST flag is set in the current packet
 
-        flow.tcp_psh()
+        flow.packet.tcp_psh()
           True if TCP PSH flag is set in the current packet
 
-        flow.tcp_ack()
+        flow.packet.tcp_ack()
           True if TCP ACK flag is set in the current packet
 
-        flow.tcp_urg()
+        flow.packet.tcp_urg()
           True if TCP URG flag is set in the current packet
 
-        flow.tcp_ece()
+        flow.packet.tcp_ece()
           True if TCP ECE flag is set in the current packet
 
-        flow.tcp_cwr()
+        flow.packet.tcp_cwr()
           True if TCP CWR flag is set in the current packet
-
-        flow.payload
-          Payload data of current packet
 
         **Variables for the whole flow**:
 
@@ -207,26 +207,6 @@ class Flow(BaseClass):
         self.flow_time_limit = datetime.timedelta \
                                 (seconds=config.get_value("flow_time_limit"))
 
-        #*** Initialise packet variables:
-        self.packet = {}
-        self.packet['flow_hash'] = 0
-        self.packet['dpid'] = 0
-        self.packet['in_port'] = 0
-        self.packet['timestamp'] = 0
-        self.packet['length'] = 0
-        self.packet['eth_src'] = 0
-        self.packet['eth_dst'] = 0
-        self.packet['eth_type'] = 0
-        self.packet['ip_src'] = 0
-        self.packet['ip_dst'] = 0
-        self.packet['proto'] = 0
-        self.packet['tp_src'] = 0
-        self.packet['tp_dst'] = 0
-        self.packet['tp_flags'] = 0
-        self.packet['tp_seq_src'] = 0
-        self.packet['tp_seq_dst'] = 0
-        self.payload = ""
-
         #*** Start mongodb:
         self.logger.info("Connecting to MongoDB database...")
         mongo_client = MongoClient(mongo_addr, mongo_port)
@@ -248,76 +228,174 @@ class Flow(BaseClass):
         self.packet_ins.create_index([('flow_hash', pymongo.TEXT)],
                                                                 unique=False)
 
+    class Packet(object):
+        """
+        An object that represents the current packet
+        """
+        def __init__(self):
+            #*** Initialise packet variables:
+            self.flow_hash = 0
+            self.dpid = 0
+            self.in_port = 0
+            self.timestamp = 0
+            self.length = 0
+            self.eth_src = 0
+            self.eth_dst = 0
+            self.eth_type = 0
+            self.ip_src = 0
+            self.ip_dst = 0
+            self.proto = 0
+            self.tp_src = 0
+            self.tp_dst = 0
+            self.tp_flags = 0
+            self.tp_seq_src = 0
+            self.tp_seq_dst = 0
+            self.payload = ""
+
+        def dbdict(self):
+            """
+            Return a dictionary object of metadata
+            parameters of current packet (excludes payload),
+            for storing in database
+            """
+            dbdictresult = {}
+            dbdictresult['flow_hash'] = self.flow_hash
+            dbdictresult['dpid'] = self.dpid
+            dbdictresult['in_port'] = self.in_port
+            dbdictresult['timestamp'] = self.timestamp
+            dbdictresult['length'] = self.length
+            dbdictresult['eth_src'] = self.eth_src
+            dbdictresult['eth_dst'] = self.eth_dst
+            dbdictresult['eth_type'] = self.eth_type
+            dbdictresult['ip_src'] = self.ip_src
+            dbdictresult['ip_dst'] = self.ip_dst
+            dbdictresult['proto'] = self.proto
+            dbdictresult['tp_src'] = self.tp_src
+            dbdictresult['tp_dst'] = self.tp_dst
+            dbdictresult['tp_flags'] = self.tp_flags
+            dbdictresult['tp_seq_src'] = self.tp_seq_src
+            dbdictresult['tp_seq_dst'] = self.tp_seq_dst
+            return dbdictresult
+
+        def tcp_fin(self):
+            """
+            Does the current packet have the TCP FIN flag set?
+            """
+            return self.tp_flags & dpkt.tcp.TH_FIN != 0
+
+        def tcp_syn(self):
+            """
+            Does the current packet have the TCP SYN flag set?
+            """
+            return self.tp_flags & dpkt.tcp.TH_SYN != 0
+
+        def tcp_rst(self):
+            """
+            Does the current packet have the TCP RST flag set?
+            """
+            return self.tp_flags & dpkt.tcp.TH_RST != 0
+
+        def tcp_psh(self):
+            """
+            Does the current packet have the TCP PSH flag set?
+            """
+            return self.tp_flags & dpkt.tcp.TH_PUSH != 0
+
+        def tcp_ack(self):
+            """
+            Does the current packet have the TCP ACK flag set?
+            """
+            return self.tp_flags & dpkt.tcp.TH_ACK != 0
+
+        def tcp_urg(self):
+            """
+            Does the current packet have the TCP URG flag set?
+            """
+            return self.tp_flags & dpkt.tcp.TH_URG != 0
+
+        def tcp_ece(self):
+            """
+            Does the current packet have the TCP ECE flag set?
+            """
+            return self.tp_flags & dpkt.tcp.TH_ECE != 0
+
+        def tcp_cwr(self):
+            """
+            Does the current packet have the TCP CWR flag set?
+            """
+            return self.tp_flags & dpkt.tcp.TH_CWR != 0
+
     def ingest_packet(self, dpid, in_port, pkt, timestamp):
         """
         Ingest a packet into the packet_ins collection and put the flow object
         into the context of the packet.
         """
-        #*** Packet dictionary to write to packets database collection:
-        self.packet = {}
+        #*** Instantiate an instance of Packet class:
+        self.packet = self.Packet()
 
         #*** DPID of the switch that sent the Packet-In message:
-        self.packet['dpid'] = dpid
+        self.packet.dpid = dpid
         #*** Port packet was received on:
-        self.packet['in_port'] = in_port
+        self.packet.in_port = in_port
         #*** Packet receive time:
-        self.packet['timestamp'] = timestamp
+        self.packet.timestamp = timestamp
         #*** Packet length on the wire:
-        self.packet['length'] = len(pkt)
+        self.packet.length = len(pkt)
 
         #*** Read packet into dpkt to parse headers:
         eth = dpkt.ethernet.Ethernet(pkt)
 
         #*** Ethernet parameters:
-        self.packet['eth_src'] = _mac_addr(eth.src)
-        self.packet['eth_dst'] = _mac_addr(eth.dst)
-        self.packet['eth_type'] = eth.type
+        self.packet.eth_src = _mac_addr(eth.src)
+        self.packet.eth_dst = _mac_addr(eth.dst)
+        self.packet.eth_type = eth.type
 
         if eth.type == 2048:
             #*** IPv4 (TBD: add IPv6 support)
             ip = eth.data
-            self.packet['ip_src'] = socket.inet_ntop(socket.AF_INET, ip.src)
-            self.packet['ip_dst'] = socket.inet_ntop(socket.AF_INET, ip.dst)
-            self.packet['proto'] = ip.p
+            self.packet.ip_src = socket.inet_ntop(socket.AF_INET, ip.src)
+            self.packet.ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
+            self.packet.proto = ip.p
             if ip.p == 6:
                 #*** TCP (TBD, add UDP support)
                 tcp = ip.data
-                self.packet['tp_src'] = tcp.sport
-                self.packet['tp_dst'] = tcp.dport
-                self.packet['tp_flags'] = tcp.flags
-                self.packet['tp_seq_src'] = tcp.seq
-                self.packet['tp_seq_dst'] = tcp.ack
-                self.payload = tcp.data
+                self.packet.tp_src = tcp.sport
+                self.packet.tp_dst = tcp.dport
+                self.packet.tp_flags = tcp.flags
+                self.packet.tp_seq_src = tcp.seq
+                self.packet.tp_seq_dst = tcp.ack
+                self.packet.payload = tcp.data
             else:
                 #*** Not a transport layer that we understand:
-                self.packet['tp_src'] = 0
-                self.packet['tp_dst'] = 0
-                self.packet['tp_flags'] = 0
-                self.packet['tp_seq_src'] = 0
-                self.packet['tp_seq_dst'] = 0
-                self.payload = ip.data
+                self.packet.tp_src = 0
+                self.packet.tp_dst = 0
+                self.packet.tp_flags = 0
+                self.packet.tp_seq_src = 0
+                self.packet.tp_seq_dst = 0
+                self.packet.payload = ip.data
         else:
             #*** Non-IP:
-            self.packet['ip_src'] = ''
-            self.packet['ip_dst'] = ''
-            self.packet['proto'] = 0
-            self.packet['tp_src'] = 0
-            self.packet['tp_dst'] = 0
-            self.packet['tp_flags'] = 0
-            self.packet['tp_seq_src'] = 0
-            self.packet['tp_seq_dst'] = 0
-            self.payload = eth.data
+            self.packet.ip_src = ''
+            self.packet.ip_dst = ''
+            self.packet.proto = 0
+            self.packet.tp_src = 0
+            self.packet.tp_dst = 0
+            self.packet.tp_flags = 0
+            self.packet.tp_seq_src = 0
+            self.packet.tp_seq_dst = 0
+            self.packet.payload = eth.data
 
         #*** Generate a flow_hash unique to flow for pkts in either direction:
-        self.packet['flow_hash'] = self._hash_flow()
+        self.packet.flow_hash = self._hash_flow()
 
         #*** Generate a packet_hash unique to the packet:
-        self.packet['packet_hash'] = self._hash_packet()
+        self.packet.packet_hash = self._hash_packet()
 
-        self.logger.debug("self.packet=%s", self.packet)
+        db_dict = self.packet.dbdict()
+        self.logger.debug("db_dict=%s", db_dict)
 
         #*** Write packet-in metadata to database collection:
-        db_result = self.packet_ins.insert_one(self.packet)
+        db_result = self.packet_ins.insert_one(db_dict)
 
     def packet_count(self):
         """
@@ -328,7 +406,7 @@ class Flow(BaseClass):
         Works by retrieving packets from packet_ins database with
         current packet flow_hash and within flow reuse time limit.
         """
-        db_data = {'flow_hash': self.packet['flow_hash'],
+        db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
         packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
@@ -341,7 +419,7 @@ class Flow(BaseClass):
         where c2s is client to server and s2c is server to client.
         """
         flow_client = self.client()
-        if self.packet['ip_src'] == flow_client:
+        if self.packet.ip_src == flow_client:
             return 'c2s'
         else:
             return 's2c'
@@ -354,7 +432,7 @@ class Flow(BaseClass):
         Finds first packet seen for the flow_hash within the time limit
         and returns the source IP
         """
-        db_data = {'flow_hash': self.packet['flow_hash'],
+        db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
         packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
@@ -372,7 +450,7 @@ class Flow(BaseClass):
         Finds first packet seen for the hash within the time limit
         and returns the destination IP
         """
-        db_data = {'flow_hash': self.packet['flow_hash'],
+        db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
         packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
@@ -387,14 +465,14 @@ class Flow(BaseClass):
         Return the size of the largest packet in the flow (in either direction)
         """
         max_packet_size = 0
-        db_data = {'flow_hash': self.packet['flow_hash'],
+        db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
         packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
         if packet_cursor.count():
-            for packet in packet_cursor:
-                if packet['length'] > max_packet_size:
-                    max_packet_size = packet['length']
+            for pkt in packet_cursor:
+                if pkt['length'] > max_packet_size:
+                    max_packet_size = pkt['length']
         return max_packet_size
 
     def max_interpacket_interval(self):
@@ -427,64 +505,16 @@ class Flow(BaseClass):
         #TBD
         pass
 
-    def tcp_fin(self):
-        """
-        Does the current packet have the TCP FIN flag set?
-        """
-        return self.packet['tp_flags'] & dpkt.tcp.TH_FIN != 0
-
-    def tcp_syn(self):
-        """
-        Does the current packet have the TCP SYN flag set?
-        """
-        return self.packet['tp_flags'] & dpkt.tcp.TH_SYN != 0
-
-    def tcp_rst(self):
-        """
-        Does the current packet have the TCP RST flag set?
-        """
-        return self.packet['tp_flags'] & dpkt.tcp.TH_RST != 0
-
-    def tcp_psh(self):
-        """
-        Does the current packet have the TCP PSH flag set?
-        """
-        return self.packet['tp_flags'] & dpkt.tcp.TH_PUSH != 0
-
-    def tcp_ack(self):
-        """
-        Does the current packet have the TCP ACK flag set?
-        """
-        return self.packet['tp_flags'] & dpkt.tcp.TH_ACK != 0
-
-    def tcp_urg(self):
-        """
-        Does the current packet have the TCP URG flag set?
-        """
-        return self.packet['tp_flags'] & dpkt.tcp.TH_URG != 0
-
-    def tcp_ece(self):
-        """
-        Does the current packet have the TCP ECE flag set?
-        """
-        return self.packet['tp_flags'] & dpkt.tcp.TH_ECE != 0
-
-    def tcp_cwr(self):
-        """
-        Does the current packet have the TCP CWR flag set?
-        """
-        return self.packet['tp_flags'] & dpkt.tcp.TH_CWR != 0
-
     def _hash_flow(self):
         """
         Generate a predictable flow_hash for the 5-tuple which is the
         same not matter which direction the traffic is travelling
         """
-        ip_A = self.packet['ip_src']
-        ip_B = self.packet['ip_dst']
-        proto = self.packet['proto']
-        tp_src = self.packet['tp_src']
-        tp_dst = self.packet['tp_dst']
+        ip_A = self.packet.ip_src
+        ip_B = self.packet.ip_dst
+        proto = self.packet.proto
+        tp_src = self.packet.tp_src
+        tp_dst = self.packet.tp_dst
         if ip_A > ip_B:
             direction = 1
         elif ip_B > ip_A:
@@ -512,13 +542,13 @@ class Flow(BaseClass):
         tp_seq_src, tp_seq_dst
         """
         hash_7t = hashlib.md5()
-        packet_tuple = (self.packet['ip_src'],
-                        self.packet['ip_dst'],
-                        self.packet['proto'],
-                        self.packet['tp_src'],
-                        self.packet['tp_dst'],
-                        self.packet['tp_seq_src'],
-                        self.packet['tp_seq_dst'])
+        packet_tuple = (self.packet.ip_src,
+                        self.packet.ip_dst,
+                        self.packet.proto,
+                        self.packet.tp_src,
+                        self.packet.tp_dst,
+                        self.packet.tp_seq_src,
+                        self.packet.tp_seq_dst)
         packet_tuple_as_string = str(packet_tuple)
         hash_7t.update(packet_tuple_as_string)
         return hash_7t.hexdigest()

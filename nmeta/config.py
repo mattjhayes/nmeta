@@ -90,7 +90,22 @@ CONFIG_TEMPLATE = \
     'mongo_port': 27017,
     'mongo_dbname': 'nmeta_database',
     'packet_ins_max_bytes': 2000000,
-    'flow_time_limit': 30
+    'flow_time_limit': 30,
+    'external_api_version': 'v1',
+    'external_api_host': '0.0.0.0',
+    'external_api_port': 8081,
+    'external_api_debug': False
+
+
+#
+#========== External API =============================
+
+#*** Decision API TCP port:
+
+#*** Extra Eve Debug (use values True or False).
+#***  Be aware that this causes whole program to restart:
+
+
 }
 
 class Config(object):

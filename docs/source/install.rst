@@ -81,6 +81,19 @@ Install simplejson
 
   sudo pip install simplejson
 
+
+Install eve
+===========
+Eve is used to power the external API
+
+.. code-block:: text
+
+  pip install eve
+
+TBD
+===
+mongodb + pymongo
+
 *************
 Install nmeta
 *************

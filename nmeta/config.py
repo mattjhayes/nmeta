@@ -95,17 +95,6 @@ CONFIG_TEMPLATE = \
     'external_api_host': '0.0.0.0',
     'external_api_port': 8081,
     'external_api_debug': False
-
-
-#
-#========== External API =============================
-
-#*** Decision API TCP port:
-
-#*** Extra Eve Debug (use values True or False).
-#***  Be aware that this causes whole program to restart:
-
-
 }
 
 class Config(object):

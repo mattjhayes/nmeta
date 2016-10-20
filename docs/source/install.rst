@@ -81,7 +81,6 @@ Install simplejson
 
   sudo pip install simplejson
 
-
 Install eve
 ===========
 Eve is used to power the external API
@@ -90,9 +89,20 @@ Eve is used to power the external API
 
   pip install eve
 
+Install coloredlogs
+===================
+
+Install coloredlogs to improve readability of terminal logs by colour-coding:
+
+.. code-block:: text
+
+  sudo pip install coloredlogs
+
 TBD
 ===
 mongodb + pymongo
+
+
 
 *************
 Install nmeta

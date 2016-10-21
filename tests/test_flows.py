@@ -12,7 +12,7 @@ min_interpacket_interval as they become imprecise due
 to floating point and when tried using decimal module
 found that would not serialise into Pymongo db.
 
-Note that packets + metadata are imported from packets_for_testing module
+Note that packets + metadata are imported from local packets_* modules
 
 TBD duplicate packets (retx / diff switch)
 TBD: test flow.tcp_urg(), flow.tcp_ece(), flow.tcp_cwr()
@@ -47,7 +47,7 @@ import nmeta
 import config
 import flows as flow_class
 
-#*** nmeta test imports:
+#*** nmeta test packet imports:
 import packets_ipv4_http as pkts
 import packets_ipv4_http2 as pkts2
 import packets_ipv4_tcp_reset as pkts3
@@ -56,11 +56,9 @@ import packets_lldp as pkts_lldp
 #*** Instantiate Config class:
 config = config.Config()
 
-#======================== flow.py Unit Tests ============================
-#*** Retrieve values for db connection for flow class to use:
-
-
 logger = logging.getLogger(__name__)
+
+#======================== flows.py Unit Tests ============================
 
 def test_flow_ipv4_http():
     """

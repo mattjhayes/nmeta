@@ -38,7 +38,7 @@ measure_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 api_logging_level_s: INFO
 flows_logging_level_s: INFO
-identity_logging_level_s: INFO
+identities_logging_level_s: INFO
 external_api_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
@@ -66,7 +66,7 @@ measure_logging_level_c: DEBUG
 forwarding_logging_level_c: DEBUG
 api_logging_level_c: DEBUG
 flows_logging_level_c: DEBUG
-identity_logging_level_c: DEBUG
+identities_logging_level_c: DEBUG
 external_api_logging_level_c: DEBUG
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
@@ -138,10 +138,18 @@ augment_flow_metadata_with_identity: 1
 mongo_addr: localhost
 mongo_port: 27017
 mongo_dbname: nmeta_database
-#*** Max bytes of the packet_ins capped collection:
+#
+#
+#*** Capped collection packet_ins
 packet_ins_max_bytes: 2000000
 #*** How far back in time in seconds to look for packets in flow:
 flow_time_limit: 30
+#
+#
+#*** Capped collection identities
+identities_max_bytes: 2000000
+identity_time_limit: 86400
+#
 #
 #========== External API =============================
 #*** External API version used in base of URL:

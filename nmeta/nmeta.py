@@ -203,7 +203,6 @@ class NMeta(app_manager.RyuApp, BaseClass):
 
         #*** Read packet into flow object for classifiers to work with:
         self.flow.ingest_packet(dpid, in_port, msg.data, time.time())
-        self.logger.debug("packet_in=%s", self.flow.packet.dbdict())
 
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches

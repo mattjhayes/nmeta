@@ -61,6 +61,10 @@ class Flow(BaseClass):
     cover some basic corner cases such as packet retransmissions and
     out of order or missing packets.
 
+    Read a packet_in event into flows (assumes class instantiated as
+    an object called 'flow'):
+        flow.ingest_packet(dpid, in_port, pkt, timestamp)
+
     Variables available for Classifiers (assumes class instantiated as
     an object called 'flow'):
 
@@ -218,7 +222,7 @@ class Flow(BaseClass):
         self.logger.debug("Deleting previous packet_ins MongoDB collection...")
         db_nmeta.packet_ins.drop()
 
-        #*** Create the packets collection, specifying capped option
+        #*** Create the packet_ins collection, specifying capped option
         #*** with max size in bytes, so MongoDB handles data retention:
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=packet_ins_max_bytes)
@@ -392,6 +396,7 @@ class Flow(BaseClass):
         self.packet.packet_hash = self._hash_packet()
 
         db_dict = self.packet.dbdict()
+        self.logger.debug("packet_in=%s", db_dict)
 
         #*** Write packet-in metadata to database collection:
         db_result = self.packet_ins.insert_one(db_dict)

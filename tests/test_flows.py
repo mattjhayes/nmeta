@@ -85,34 +85,34 @@ def test_flow_ipv4_http():
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
-    pkt_test(flow, pkts, 1)
+    pkt_test(flow, pkts, 1, 1)
 
     #*** Test Flow 1 Packet 2 (Server TCP SYN ACK):
     flow.ingest_packet(DPID1, INPORT2, pkts.RAW[1], datetime.datetime.now())
-    pkt_test(flow, pkts, 2)
+    pkt_test(flow, pkts, 2, 2)
 
     #*** Test Flow 1 Packet 3 (Client ACK):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[2], datetime.datetime.now())
-    pkt_test(flow, pkts, 3)
+    pkt_test(flow, pkts, 3, 3)
 
     #*** Random packet to ensure it doesn't count against flow 1:
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[1], datetime.datetime.now())
 
     #*** Test Flow 1 Packet 4 (Client to Server HTTP GET):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[3], datetime.datetime.now())
-    pkt_test(flow, pkts, 4)
+    pkt_test(flow, pkts, 4, 4)
 
     #*** Test Flow 1 Packet 5 (Server ACK):
     flow.ingest_packet(DPID1, INPORT2, pkts.RAW[4], datetime.datetime.now())
-    pkt_test(flow, pkts, 5)
+    pkt_test(flow, pkts, 5, 5)
 
     #*** Test Flow 1 Packet 6 (Server to Client HTTP 400 Bad Request):
     flow.ingest_packet(DPID1, INPORT2, pkts.RAW[5], datetime.datetime.now())
-    pkt_test(flow, pkts, 6)
+    pkt_test(flow, pkts, 6, 6)
 
     #*** Test Flow 1 Packet 7 (Client ACK):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[6], datetime.datetime.now())
-    pkt_test(flow, pkts, 7)
+    pkt_test(flow, pkts, 7, 7)
 
 def test_flow_ipv4_http2():
     """
@@ -133,54 +133,54 @@ def test_flow_ipv4_http2():
 
     #*** Test Flow 2 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
-    pkt_test(flow, pkts2, 1)
+    pkt_test(flow, pkts2, 1, 1)
 
     #*** Test Flow 2 Packet 2 (Server TCP SYN ACK):
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[1], datetime.datetime.now())
-    pkt_test(flow, pkts2, 2)
+    pkt_test(flow, pkts2, 2, 2)
 
     #*** Test Flow 2 Packet 3 (Client ACK):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
-    pkt_test(flow, pkts2, 3)
+    pkt_test(flow, pkts2, 3, 3)
 
     #*** Random packet to ensure it doesn't count against flow 2:
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
 
     #*** Test Flow 2 Packet 4 (Client HTTP GET):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], datetime.datetime.now())
-    pkt_test(flow, pkts2, 4)
+    pkt_test(flow, pkts2, 4, 4)
 
     #*** Test Flow 2 Packet 5 (Server ACK):
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[4], datetime.datetime.now())
-    pkt_test(flow, pkts2, 5)
+    pkt_test(flow, pkts2, 5, 5)
 
     #*** Test Flow 2 Packet 6 (Server HTTP 200 OK):
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[5], datetime.datetime.now())
-    pkt_test(flow, pkts2, 6)
+    pkt_test(flow, pkts2, 6, 6)
 
     #*** Test Flow 2 Packet 7 (Client ACK):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[6], datetime.datetime.now())
-    pkt_test(flow, pkts2, 7)
+    pkt_test(flow, pkts2, 7, 7)
 
     #*** Test Flow 2 Packet 8 (Server sends HTML Page to Client):
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[7], datetime.datetime.now())
-    pkt_test(flow, pkts2, 8)
+    pkt_test(flow, pkts2, 8, 8)
 
     #*** Test Flow 2 Packet 9 (Client ACK):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[8], datetime.datetime.now())
-    pkt_test(flow, pkts2, 9)
+    pkt_test(flow, pkts2, 9, 9)
 
     #*** Test Flow 2 Packet 10 (Server FIN ACK):
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[9], datetime.datetime.now())
-    pkt_test(flow, pkts2, 10)
+    pkt_test(flow, pkts2, 10, 10)
 
     #*** Test Flow 2 Packet 11 (Client FIN ACK):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[10], datetime.datetime.now())
-    pkt_test(flow, pkts2, 11)
+    pkt_test(flow, pkts2, 11, 11)
 
     #*** Test Flow 2 Packet 12 (Final ACK from Server):
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[11], datetime.datetime.now())
-    pkt_test(flow, pkts2, 12)
+    pkt_test(flow, pkts2, 12, 12)
 
 def test_flow_ipv4_tcp_reset():
     """
@@ -199,11 +199,11 @@ def test_flow_ipv4_tcp_reset():
 
     #*** Test Flow 2 Packet 1 (Client SYN on TCP-81):
     flow.ingest_packet(DPID1, INPORT1, pkts3.RAW[0], datetime.datetime.now())
-    pkt_test(flow, pkts3, 1)
+    pkt_test(flow, pkts3, 1, 1)
 
     #*** Test Flow 2 Packet 2 (Server RST):
     flow.ingest_packet(DPID1, INPORT2, pkts3.RAW[1], datetime.datetime.now())
-    pkt_test(flow, pkts3, 2)
+    pkt_test(flow, pkts3, 2, 2)
 
 
 def test_flow_LLDP():
@@ -256,12 +256,13 @@ def test_packet_hashing():
 
 #================= HELPER FUNCTIONS ===========================================
 
-def pkt_test(flow, pkts, pkt_num):
+def pkt_test(flow, pkts, pkt_num, flow_packet_count):
     """
-    Passed a flow object, packets object and a packet number
-    from the packets object and check parameters match
+    Passed a flow object, packets object, packet number
+    from the packets object and the number of unique packets
+    in the flow and check parameters match
     """
-    assert flow.packet_count() == pkt_num
+    assert flow.packet_count() == flow_packet_count
     assert flow.packet.length == pkts.LEN[pkt_num - 1]
     assert flow.packet.eth_src == pkts.ETH_SRC[pkt_num - 1]
     assert flow.packet.eth_dst == pkts.ETH_DST[pkt_num - 1]

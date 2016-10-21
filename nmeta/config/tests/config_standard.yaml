@@ -38,6 +38,7 @@ measure_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 api_logging_level_s: INFO
 flows_logging_level_s: INFO
+identity_logging_level_s: INFO
 external_api_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
@@ -65,7 +66,8 @@ measure_logging_level_c: DEBUG
 forwarding_logging_level_c: DEBUG
 api_logging_level_c: DEBUG
 flows_logging_level_c: DEBUG
-external_api_logging_level_c: INFO
+identity_logging_level_c: DEBUG
+external_api_logging_level_c: DEBUG
 #
 #========== TABLE MAINTENANCE SETTINGS ==============
 #*** Flow Metadata Table entry maximum age in seconds

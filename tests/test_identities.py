@@ -66,39 +66,15 @@ def test_harvest_ARP():
     identities = identities_class.Identities(config)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
-    flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[0], datetime.datetime.now())
-    identities.harvest(pkts_arp.RAW[0], flow)
+    flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[1], flow.packet)
+    result_identity = identities.findbymac(pkts_arp.ETH_SRC[1])
+
+    assert result_identity['mac_address'] == pkts_arp.ETH_SRC[1]
+    assert result_identity['ip_address'] == '10.1.0.2'
+
 
 #================= HELPER FUNCTIONS ===========================================
-
-def pkt_test(flow, pkts, pkt_num, flow_packet_count):
-    """
-    Passed a flow object, packets object, packet number
-    from the packets object and the number of unique packets
-    in the flow and check parameters match
-    """
-    assert flow.packet_count() == flow_packet_count
-    assert flow.packet.length == pkts.LEN[pkt_num - 1]
-    assert flow.packet.eth_src == pkts.ETH_SRC[pkt_num - 1]
-    assert flow.packet.eth_dst == pkts.ETH_DST[pkt_num - 1]
-    assert flow.packet.eth_type == pkts.ETH_TYPE[pkt_num - 1]
-    assert flow.packet.ip_src == pkts.IP_SRC[pkt_num - 1]
-    assert flow.packet.ip_dst == pkts.IP_DST[pkt_num - 1]
-    assert flow.packet.proto == pkts.PROTO[pkt_num - 1]
-    assert flow.packet.tp_src == pkts.TP_SRC[pkt_num - 1]
-    assert flow.packet.tp_dst == pkts.TP_DST[pkt_num - 1]
-    assert flow.packet.tp_seq_src == pkts.TP_SEQ_SRC[pkt_num - 1]
-    assert flow.packet.tp_seq_dst == pkts.TP_SEQ_DST[pkt_num - 1]
-    assert flow.packet.tcp_syn() == pkts.TCP_SYN[pkt_num - 1]
-    assert flow.packet.tcp_fin() == pkts.TCP_FIN[pkt_num - 1]
-    assert flow.packet.tcp_rst() == pkts.TCP_RST[pkt_num - 1]
-    assert flow.packet.tcp_psh() == pkts.TCP_PSH[pkt_num - 1]
-    assert flow.packet.tcp_ack() == pkts.TCP_ACK[pkt_num - 1]
-    assert flow.packet.payload.encode("hex") == pkts.PAYLOAD[pkt_num - 1]
-    assert flow.client() == pkts.FLOW_IP_CLIENT
-    assert flow.server() == pkts.FLOW_IP_SERVER
-    assert flow.packet_direction() == pkts.DIRECTION[pkt_num - 1]
-    assert flow.max_packet_size() == max(pkts.LEN[0:pkt_num])
 
 def mac_addr(address):
     """

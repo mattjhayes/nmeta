@@ -73,7 +73,60 @@ class ExternalAPI(BaseClass):
         """
         Run the External API instance
         """
-        eve_domain = {'packet_ins': {}}
+        packet_ins_schema = {
+            'schema': {
+                'flow_hash': {
+                    'type': 'string',
+                },
+                'dpid': {
+                    'type': 'string',
+                },
+                'in_port': {
+                    'type': 'integer',
+                },
+                'timestamp': {
+                    'type': 'string',
+                },
+                'length': {
+                    'type': 'integer',
+                },
+                'eth_src': {
+                    'type': 'string',
+                },
+                'eth_dst': {
+                    'type': 'string',
+                },
+                'ip_src': {
+                    'type': 'string',
+                },
+                'ip_dst': {
+                    'type': 'string',
+                },
+                'proto': {
+                    'type': 'string',
+                },
+                'tp_src': {
+                    'type': 'string',
+                },
+                'tp_dst': {
+                    'type': 'string',
+                },
+                'tp_flags': {
+                    'type': 'string',
+                },
+                'tp_seq_src': {
+                    'type': 'string',
+                },
+                'tp_seq_dst': {
+                    'type': 'string',
+                },
+                'payload': {
+                    'type': 'string',
+                }
+            }
+        }
+
+        eve_domain = {'packet_ins': packet_ins_schema}
 
         #*** Set up a settings dictionary for starting Eve app:
         eve_settings = {}

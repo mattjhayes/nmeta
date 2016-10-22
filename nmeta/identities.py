@@ -22,6 +22,7 @@ Identities are identified via  TBD....
 There are methods (see class docstring) that provide harvesting
 of identity metadata and various retrieval searches
 """
+import sys
 
 #*** For packet methods:
 import socket
@@ -176,18 +177,52 @@ class Identities(BaseClass):
                     self.logger.debug("writing db_dict=%s", db_dict)
                     self.identities.insert_one(db_dict)
             return 1
-        #elif flow_pkt.eth_type == 2054:
-
         #*** DHCP:
+        elif flow_pkt.eth_type == 2048 and flow_pkt.proto == 17 and \
+                                                         flow_pkt.tp_dst == 67:
+            self.logger.debug("Harvesting metadata from DHCP request")
+            #*** Use dpkt to parse UDP DHCP data:
+            try:
+                pkt_dhcp = dpkt.dhcp.DHCP(flow_pkt.payload)
+            except:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("DHCP extraction failed "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+                return 0
+            if pkt_dhcp.opts:
+                #*** Iterate through options looking for Option 12 (Host Name):
+                for opt in pkt_dhcp.opts:
+                    if opt[0] == 12:
+                        #*** Found option 12 so grab the host name:
+                        dhcp_hostname = opt[1]
+                        self.logger.debug("dhcp host_name=%s", dhcp_hostname)
+                        #*** Instantiate an instance of Indentity class:
+                        ident = self.Identity()
+                        ident.dpid = flow_pkt.dpid
+                        ident.in_port = flow_pkt.in_port
+                        ident.mac_address = flow_pkt.eth_src
+                        ident.ip_address = flow_pkt.ip_src
+                        ident.harvest_type = 'DHCP'
+                        ident.host_name = dhcp_hostname
+                        ident.harvest_time = flow_pkt.timestamp
+                        ident.valid_from = flow_pkt.timestamp
+                        ident.valid_to = flow_pkt.timestamp + \
+                                        datetime.timedelta(0, ARP_CACHE_TIME)
+                        db_dict = ident.dbdict()
+                        #*** Write DHCP identity metadata to db collection:
+                        self.logger.debug("writing db_dict=%s", db_dict)
+                        self.identities.insert_one(db_dict)
+                        return 1
 
         #*** LLDP:
+        # TBD
 
         #*** DNS:
+        # TBD
 
         if not is_id_indicator:
             return 0
-        #*** Instantiate an instance of Identity class:
-        #self.identity = self.Identity()
 
     def findbymac(self, mac_addr):
         """
@@ -198,10 +233,25 @@ class Identities(BaseClass):
         result = self.identities.find(db_data).sort('$natural', -1).limit(1)
         if result.count():
             result0 = list(result)[0]
-            self.logger.debug("found result=%s len=%s", result0,  len(result0))
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
             return result0
         else:
             self.logger.debug("mac_addr=%s not found", mac_addr)
+            return 0
+
+    def findbynode(self, host_name):
+        """
+        TEST FIND BY NODE
+        DOC TBD
+        """
+        db_data = {'host_name': host_name}
+        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if result.count():
+            result0 = list(result)[0]
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
+            return result0
+        else:
+            self.logger.debug("host_name=%s not found", host_name)
             return 0
 
 def mac_addr(address):

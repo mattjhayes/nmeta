@@ -141,8 +141,8 @@ class ExternalAPI(BaseClass):
                 self.config.get_value('external_api_version')
         eve_settings['DOMAIN'] = eve_domain
         #*** Allowed Eve methods:
-        eve_settings['RESOURCE_METHODS'] = ['GET', 'POST']
-        eve_settings['ITEM_METHODS'] = ['GET', 'PUT']
+        eve_settings['RESOURCE_METHODS'] = ['GET']
+        eve_settings['ITEM_METHODS'] = ['GET']
 
         #*** TBD - set up username/password into MongoDB
 

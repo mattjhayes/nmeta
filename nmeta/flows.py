@@ -361,7 +361,7 @@ class Flow(BaseClass):
             self.packet.ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
             self.packet.proto = ip.p
             if ip.p == 6:
-                #*** TCP (TBD, add UDP support)
+                #*** TCP
                 tcp = ip.data
                 self.packet.tp_src = tcp.sport
                 self.packet.tp_dst = tcp.dport
@@ -369,8 +369,18 @@ class Flow(BaseClass):
                 self.packet.tp_seq_src = tcp.seq
                 self.packet.tp_seq_dst = tcp.ack
                 self.packet.payload = tcp.data
+            elif ip.p == 17:
+                #*** UDP
+                udp = ip.data
+                self.packet.tp_src = udp.sport
+                self.packet.tp_dst = udp.dport
+                self.packet.tp_flags = ""
+                self.packet.tp_seq_src = 0
+                self.packet.tp_seq_dst = 0
+                self.packet.payload = udp.data
             else:
                 #*** Not a transport layer that we understand:
+                # TBD: add other transport protocols
                 self.packet.tp_src = 0
                 self.packet.tp_dst = 0
                 self.packet.tp_flags = 0

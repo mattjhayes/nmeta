@@ -23,6 +23,7 @@ There are methods (see class docstring) that provide harvesting
 of identity metadata and various retrieval searches
 """
 import sys
+import struct
 
 #*** For packet methods:
 import socket
@@ -207,6 +208,7 @@ class Identities(BaseClass):
                         ident.host_name = dhcp_hostname
                         ident.harvest_time = flow_pkt.timestamp
                         ident.valid_from = flow_pkt.timestamp
+                        # TBD, FIX THIS:
                         ident.valid_to = flow_pkt.timestamp + \
                                         datetime.timedelta(0, ARP_CACHE_TIME)
                         db_dict = ident.dbdict()
@@ -214,9 +216,32 @@ class Identities(BaseClass):
                         self.logger.debug("writing db_dict=%s", db_dict)
                         self.identities.insert_one(db_dict)
                         return 1
-
         #*** LLDP:
-        # TBD
+        elif flow_pkt.eth_type == 35020:
+            payload = pkt[14:]
+            system_name, port_id = self._parse_lldp_detail(payload)
+            if system_name:
+                self.logger.debug("LLDP system_name=%s", system_name)
+                #*** Instantiate an instance of Indentity class:
+                ident = self.Identity()
+                ident.dpid = flow_pkt.dpid
+                ident.in_port = flow_pkt.in_port
+                ident.mac_address = flow_pkt.eth_src
+                ident.harvest_type = 'LLDP'
+                ident.host_name = system_name
+                ident.harvest_time = flow_pkt.timestamp
+                ident.valid_from = flow_pkt.timestamp
+                # TBD, FIX THIS:
+                ident.valid_to = flow_pkt.timestamp + \
+                                        datetime.timedelta(0, ARP_CACHE_TIME)
+                db_dict = ident.dbdict()
+                #*** Write LLDP identity metadata to db collection:
+                self.logger.debug("writing db_dict=%s", db_dict)
+                self.identities.insert_one(db_dict)
+                return 1
+            else:
+                #*** Didn't get sensible LLDP return
+                return 0
 
         #*** DNS:
         # TBD
@@ -253,6 +278,42 @@ class Identities(BaseClass):
         else:
             self.logger.debug("host_name=%s not found", host_name)
             return 0
+
+    def _parse_lldp_detail(self, lldpPayload):
+        """
+        Parse basic LLDP parameters from an LLDP packet payload
+        """
+        system_name = None
+        vlan_id = None
+        port_id = None
+
+        while lldpPayload:
+            tlv_header = struct.unpack("!H", lldpPayload[:2])[0]
+            tlv_type = tlv_header >> 9
+            tlv_len = (tlv_header & 0x01ff)
+            lldpDU = lldpPayload[2:tlv_len + 2]
+            if tlv_type == 127:
+                tlv_oui = lldpDU[:3]
+                tlv_subtype = lldpDU[3:4]
+                tlv_datafield = lldpDU[4:tlv_len]
+                if tlv_oui == "\x00\x80\xC2" and tlv_subtype == "\x01":
+                    vlan_id = struct.unpack("!H", tlv_datafield)[0]
+            elif tlv_type == 0:
+                # TLV Type is ZERO, Breaking the while loop:
+                break
+            else:
+                tlv_subtype = struct.unpack("!B", lldpDU[0:1]) \
+                                                    if tlv_type is 2 else ""
+                startbyte = 1 if tlv_type is 2 else 0
+                tlv_datafield = lldpDU[startbyte:tlv_len]
+            if tlv_type == 4:
+                port_id = tlv_datafield
+            elif tlv_type == 5:
+                system_name = tlv_datafield
+            else:
+                pass
+            lldpPayload = lldpPayload[2 + tlv_len:]
+        return (system_name, port_id)
 
 def mac_addr(address):
     """

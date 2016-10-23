@@ -41,6 +41,7 @@ import identities as identities_class
 #*** nmeta test packet imports:
 import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
+import packets_lldp as pkts_lldp
 
 #*** Instantiate Config class:
 config = config.Config()
@@ -93,6 +94,29 @@ def test_harvest_DHCP():
     result_identity = identities.findbynode('pc1')
 
     assert result_identity['host_name'] == 'pc1'
+
+def test_harvest_LLDP():
+    """
+    Test harvesting identity metadata from LLDP packets
+    """
+
+    #*** Test DPIDs and in ports:
+    DPID1 = 1
+    DPID2 = 2
+    INPORT1 = 1
+    INPORT2 = 2
+
+    #*** Instantiate flow and identities objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    #*** Server DHCP ACK:
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[0], flow.packet)
+    result_identity = identities.findbynode('pc1.example.com')
+
+    assert result_identity['host_name'] == 'pc1.example.com'
+
 
 #================= HELPER FUNCTIONS ===========================================
 

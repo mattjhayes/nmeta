@@ -146,9 +146,14 @@ class ExternalAPI(BaseClass):
 
         #*** TBD - set up username/password into MongoDB
 
+        #*** Set up static content location:
+        file_dir = os.path.dirname(os.path.realpath(__file__))
+        static_folder = os.path.join(file_dir, 'static')
+
         #*** Set up Eve:
         self.logger.info("Configuring Eve Python REST API Framework")
-        app = Eve(settings=eve_settings)
+        app = Eve(settings=eve_settings, static_folder=static_folder)
+        self.logger.debug("static_folder=%s", static_folder)
 
         #*** Register a callback on GET requests pre-database:
         app.on_pre_GET += self.pre_get_callback
@@ -168,6 +173,12 @@ class ExternalAPI(BaseClass):
         self.logger.info("Starting Eve Python REST API Framework")
         app.run(port=eve_port, debug=eve_debug, host=eve_host)
 
+        @app.route('/')
+        def serve_static():
+            """
+            Serve static content for WebUI
+            """
+            return 'Hello World!'
 
     def pre_get_callback(self, resource, request, lookup):
         """

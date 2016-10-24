@@ -333,6 +333,7 @@ class Flow(BaseClass):
         """
         Ingest a packet into the packet_ins collection and put the flow object
         into the context of the packet.
+        Note that timestamp MUST be in datetime format
         """
         #*** Instantiate an instance of Packet class:
         self.packet = self.Packet()

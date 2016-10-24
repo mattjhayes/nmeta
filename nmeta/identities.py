@@ -25,6 +25,8 @@ of identity metadata and various retrieval searches
 import sys
 import struct
 
+import binascii
+
 #*** For packet methods:
 import socket
 
@@ -219,34 +221,73 @@ class Identities(BaseClass):
         #*** LLDP:
         elif flow_pkt.eth_type == 35020:
             payload = pkt[14:]
-            system_name, port_id = self._parse_lldp_detail(payload)
-            if system_name:
-                self.logger.debug("LLDP system_name=%s", system_name)
-                #*** Instantiate an instance of Indentity class:
-                ident = self.Identity()
-                ident.dpid = flow_pkt.dpid
-                ident.in_port = flow_pkt.in_port
-                ident.mac_address = flow_pkt.eth_src
-                ident.harvest_type = 'LLDP'
-                ident.host_name = system_name
-                ident.harvest_time = flow_pkt.timestamp
-                ident.valid_from = flow_pkt.timestamp
-                # TBD, FIX THIS:
-                ident.valid_to = flow_pkt.timestamp + \
-                                        datetime.timedelta(0, ARP_CACHE_TIME)
-                db_dict = ident.dbdict()
-                #*** Write LLDP identity metadata to db collection:
-                self.logger.debug("writing db_dict=%s", db_dict)
-                self.identities.insert_one(db_dict)
-                return 1
-            else:
-                #*** Didn't get sensible LLDP return
+            lldp_dict = self._parse_lldp_detail(payload)
+            if not len(lldp_dict):
+                self.logger.warning("Failed to parse LLDP")
                 return 0
+            self.logger.debug("LLDP parsed %s", lldp_dict)
+            #*** Instantiate an instance of Indentity class:
+            ident = self.Identity()
+            if 'system_name' in lldp_dict:
+                ident.host_name = lldp_dict['system_name']
+            if 'system_desc' in lldp_dict:
+                ident.host_desc = lldp_dict['system_desc']
+            if 'TTL' in lldp_dict:
+                ttl = lldp_dict['TTL']
+            else:
+                #*** TBD, handle this better:
+                ttl = 60
+            ident.dpid = flow_pkt.dpid
+            ident.in_port = flow_pkt.in_port
+            ident.mac_address = flow_pkt.eth_src
+            ident.harvest_type = 'LLDP'
+            ident.harvest_time = flow_pkt.timestamp
+            ident.valid_from = flow_pkt.timestamp
+            #*** valid to based on LLDP TTL:
+            ident.valid_to = flow_pkt.timestamp + \
+                                        datetime.timedelta(0, ttl)
+            db_dict = ident.dbdict()
+            #*** Write LLDP identity metadata to db collection:
+            self.logger.debug("writing db_dict=%s", db_dict)
+            self.identities.insert_one(db_dict)
+            return 1
 
         #*** DNS:
-        # TBD
-
-        if not is_id_indicator:
+        elif (flow_pkt.proto == 6 or flow_pkt.proto == 17) and \
+                        (flow_pkt.tp_src == 53 or flow_pkt.tp_src == 53):
+            self.logger.debug("Checking DNS for metadata")
+            #*** Use dpkt to parse DNS:
+            try:
+                pkt_dns = dpkt.dns.DNS(flow_pkt.payload)
+            except:
+                exc_type, exc_value, exc_traceback = sys.exc_info()
+                self.logger.error("DNS extraction failed "
+                            "Exception %s, %s, %s",
+                             exc_type, exc_value, exc_traceback)
+                return 0
+            answers = pkt_dns.an
+            for answer in answers:
+                if answer.type == 1:
+                    #*** DNS A Record:
+                    answer_ip = socket.inet_ntoa(answer.rdata)
+                    answer_name = answer.name
+                    answer_ttl = answer.ttl
+                    self.logger.debug("dns_answer_name=%s dns_answer_A=%s "
+                                    "answer_ttl=%s",
+                                    answer_name, answer_ip, answer_ttl)
+                    # TBD
+                elif answer.type == 5:
+                    #*** DNS CNAME Record:
+                    answer_cname = answer.cname
+                    answer_name = answer.name
+                    self.logger.debug("dns_answer_name=%s dns_answer_CNAME=%s",
+                                    answer_name, answer_cname)
+                    # TBD
+                else:
+                    #*** Not a type that we handle yet
+                    pass
+        else:
+            #*** Not an identity indicator
             return 0
 
     def findbymac(self, mac_addr):
@@ -279,41 +320,39 @@ class Identities(BaseClass):
             self.logger.debug("host_name=%s not found", host_name)
             return 0
 
+    #=================== PRIVATE ==============================================
     def _parse_lldp_detail(self, lldpPayload):
         """
         Parse basic LLDP parameters from an LLDP packet payload
         """
-        system_name = None
-        vlan_id = None
-        port_id = None
+        result = {}
 
         while lldpPayload:
             tlv_header = struct.unpack("!H", lldpPayload[:2])[0]
             tlv_type = tlv_header >> 9
             tlv_len = (tlv_header & 0x01ff)
             lldpDU = lldpPayload[2:tlv_len + 2]
-            if tlv_type == 127:
-                tlv_oui = lldpDU[:3]
-                tlv_subtype = lldpDU[3:4]
-                tlv_datafield = lldpDU[4:tlv_len]
-                if tlv_oui == "\x00\x80\xC2" and tlv_subtype == "\x01":
-                    vlan_id = struct.unpack("!H", tlv_datafield)[0]
-            elif tlv_type == 0:
-                # TLV Type is ZERO, Breaking the while loop:
+            if tlv_type == 0:
+                #*** TLV type 0 is end of TLVs so break the while loop:
                 break
             else:
                 tlv_subtype = struct.unpack("!B", lldpDU[0:1]) \
                                                     if tlv_type is 2 else ""
                 startbyte = 1 if tlv_type is 2 else 0
                 tlv_datafield = lldpDU[startbyte:tlv_len]
-            if tlv_type == 4:
-                port_id = tlv_datafield
+            #*** Pull out values from specific TLVs:
+            if tlv_type == 3:
+                result['TTL'] = struct.unpack("!h", tlv_datafield)[0]
+            elif tlv_type == 4:
+                result['port_desc'] = tlv_datafield
             elif tlv_type == 5:
-                system_name = tlv_datafield
+                result['system_name'] = tlv_datafield
+            elif tlv_type == 6:
+                result['system_desc'] = tlv_datafield
             else:
                 pass
             lldpPayload = lldpPayload[2 + tlv_len:]
-        return (system_name, port_id)
+        return result
 
 def mac_addr(address):
     """

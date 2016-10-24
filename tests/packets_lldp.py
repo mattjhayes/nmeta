@@ -40,7 +40,6 @@ Packet capture file is 'packets_ipv4_http.pcapng'
 
 import binascii
 
-#======================== IPv4 + TCP + HTTP port 80 flow ======================
 #*** Raw packet data:
 RAW = []
 #*** Packet on the wire lengths in bytes:
@@ -70,6 +69,12 @@ TCP_ACK = []
 PAYLOAD = []
 #*** Packet direction, c2s (client to server) or s2c
 DIRECTION = []
+#*** LLDP specific:
+LLDP_SYSTEM_NAME = []
+LLDP_SYSTEM_DESC = []
+LLDP_PORT_DESC = []
+LLDP_TTL = []
+
 
 #*** Packet 1 - LLDP from pc1
 # 206 08:00:27:2a:d6:dd 01:80:c2:00:00:0e LLDP NoS = 08:00:27:2a:d6:dd TTL = 120 System Name = pc1.example.com
@@ -93,6 +98,10 @@ TCP_PSH.append(0)
 TCP_ACK.append(0)
 PAYLOAD.append("")
 DIRECTION.append("")
+LLDP_SYSTEM_NAME.append("pc1.example.com")
+LLDP_SYSTEM_DESC.append("Ubuntu 14.04.2 LTS Linux 3.16.0-45-generic #60~14.04.1-Ubuntu SMP Fri Jul 24 21:16:23 UTC 2015 x86_64")
+LLDP_PORT_DESC = 'eth1'
+LLDP_TTL = 120
 
 #*** Packet 2 - LLDP from sw1
 # 206 08:00:27:f7:25:13 01:80:c2:00:00:0e LLDP NoS = 08:00:27:f7:25:13 TTL = 120 System Name = sw1.example.com
@@ -116,6 +125,10 @@ TCP_PSH.append(0)
 TCP_ACK.append(0)
 PAYLOAD.append("")
 DIRECTION.append("")
+LLDP_SYSTEM_NAME.append("sw1.example.com")
+LLDP_SYSTEM_DESC.append("Ubuntu 14.04.2 LTS Linux 3.16.0-45-generic #60~14.04.1-Ubuntu SMP Fri Jul 24 21:16:23 UTC 2015 x86_64")
+LLDP_PORT_DESC = 'eth1'
+LLDP_TTL = 120
 
 #*** Packet 3 - LLDP from lg1
 # 206 08:00:27:21:4f:ea 01:80:c2:00:00:0e LLDP NoS = 08:00:27:21:4f:ea TTL = 120 System Name = lg1.example.com
@@ -139,6 +152,10 @@ TCP_PSH.append(0)
 TCP_ACK.append(0)
 PAYLOAD.append("")
 DIRECTION.append("")
+LLDP_SYSTEM_NAME.append("lg1.example.com")
+LLDP_SYSTEM_DESC.append("Ubuntu 14.04.2 LTS Linux 3.16.0-30-generic #40~14.04.1-Ubuntu SMP Thu Jan 15 17:43:14 UTC 2015 x86_64")
+LLDP_PORT_DESC = 'eth1'
+LLDP_TTL = 120
 
 #*** Metadata for whole flow:
 FLOW_IP_CLIENT = ''

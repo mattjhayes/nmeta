@@ -27,6 +27,7 @@ and carries no warrantee whatsoever. You have been warned.
 import logging
 import struct
 import time
+import datetime
 
 #*** Ryu Imports:
 from ryu import utils
@@ -55,6 +56,8 @@ import measure
 import forwarding
 import api
 import flows
+import identities
+
 #*** For logging configuration:
 from baseclass import BaseClass
 
@@ -135,8 +138,10 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Retrieve config values for Flows class MongoDB connection:
         _mongo_addr = self.config.get_value("mongo_addr")
         _mongo_port = self.config.get_value("mongo_port")
-        #*** Instantiate a flow object for classifiers to work with:
+        #*** Instantiate a flow object for conversation metadata:
         self.flow = flows.Flow(self.config)
+        #*** Instantiate an identity object for participant metadata:
+        self.ident = identities.Identities(self.config)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
@@ -202,7 +207,10 @@ class NMeta(app_manager.RyuApp, BaseClass):
         in_port = self.sa.get_in_port(msg, datapath, ofproto)
 
         #*** Read packet into flow object for classifiers to work with:
-        self.flow.ingest_packet(dpid, in_port, msg.data, time.time())
+        self.flow.ingest_packet(dpid, in_port, msg.data, datetime.datetime.now())
+
+        #*** Harvest identity metadata:
+        self.ident.harvest(msg.data, self.flow.packet)
 
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches

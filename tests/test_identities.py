@@ -42,6 +42,7 @@ import identities as identities_class
 import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_lldp as pkts_lldp
+import packets_dns as pkts_dns
 
 #*** Instantiate Config class:
 config = config.Config()
@@ -110,12 +111,62 @@ def test_harvest_LLDP():
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
 
-    #*** Server DHCP ACK:
+    #*** Test no result found by checking before LLDP ingestion:
+    result_identity = identities.findbynode(pkts_lldp.LLDP_SYSTEM_NAME[0])
+    assert result_identity == 0
+
+    #*** LLDP packet 0:
     flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
     identities.harvest(pkts_lldp.RAW[0], flow.packet)
-    result_identity = identities.findbynode('pc1.example.com')
+    result_identity = identities.findbynode(pkts_lldp.LLDP_SYSTEM_NAME[0])
+    assert result_identity['host_name'] == pkts_lldp.LLDP_SYSTEM_NAME[0]
+    assert result_identity['host_desc'] == pkts_lldp.LLDP_SYSTEM_DESC[0]
+    assert result_identity['dpid'] == DPID1
+    assert result_identity['in_port'] == INPORT1
+    assert result_identity['mac_address'] == pkts_lldp.ETH_SRC[0]
+    assert result_identity['harvest_type'] == 'LLDP'
 
-    assert result_identity['host_name'] == 'pc1.example.com'
+    #*** LLDP packet 1:
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[1], flow.packet)
+    result_identity = identities.findbynode(pkts_lldp.LLDP_SYSTEM_NAME[1])
+    assert result_identity['host_name'] == pkts_lldp.LLDP_SYSTEM_NAME[1]
+    assert result_identity['host_desc'] == pkts_lldp.LLDP_SYSTEM_DESC[1]
+    assert result_identity['dpid'] == DPID1
+    assert result_identity['in_port'] == INPORT1
+    assert result_identity['mac_address'] == pkts_lldp.ETH_SRC[1]
+    assert result_identity['harvest_type'] == 'LLDP'
+
+    #*** LLDP packet 2:
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[2], flow.packet)
+    result_identity = identities.findbynode(pkts_lldp.LLDP_SYSTEM_NAME[2])
+    assert result_identity['host_name'] == pkts_lldp.LLDP_SYSTEM_NAME[2]
+    assert result_identity['host_desc'] == pkts_lldp.LLDP_SYSTEM_DESC[2]
+    assert result_identity['dpid'] == DPID1
+    assert result_identity['in_port'] == INPORT1
+    assert result_identity['mac_address'] == pkts_lldp.ETH_SRC[2]
+    assert result_identity['harvest_type'] == 'LLDP'
+
+def test_harvest_DNS():
+    """
+    Test harvesting identity metadata from DNS packets
+    """
+
+    #*** Test DPIDs and in ports:
+    DPID1 = 1
+    DPID2 = 2
+    INPORT1 = 1
+    INPORT2 = 2
+
+    #*** Instantiate flow and identities objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    #*** DNS packet 1 (answer):
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+    # TBD
 
 
 #================= HELPER FUNCTIONS ===========================================

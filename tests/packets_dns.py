@@ -69,7 +69,9 @@ PAYLOAD = []
 #*** Packet direction, c2s (client to server) or s2c
 DIRECTION = []
 #*** DNS specific:
-# TBD
+DNS_NAME = []
+DNS_CNAME = []
+DNS_IP = []
 
 
 #*** Packet 1 - DNS Query A www.facebook.com
@@ -93,6 +95,9 @@ TCP_PSH.append(0)
 TCP_ACK.append(0)
 PAYLOAD.append("24e801000001000000000000037777770866616365626f6f6b03636f6d0000010001")
 DIRECTION.append("")
+DNS_NAME.append("www.facebook.com")
+DNS_CNAME.append("")
+DNS_IP.append("")
 
 #*** Packet 2 -
 # 121 208.67.220.123 10.0.2.15 DNS Standard query response 0x24e8 A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
@@ -115,6 +120,9 @@ TCP_PSH.append(0)
 TCP_ACK.append(0)
 PAYLOAD.append("24e881800001000200000000037777770866616365626f6f6b03636f6d0000010001c00c0005000100000ab0001109737461722d6d696e690463313072c010c02e00010001000000330004b33cc124")
 DIRECTION.append("")
+DNS_NAME.append("www.facebook.com")
+DNS_CNAME.append("star-mini.c10r.facebook.com")
+DNS_IP.append("179.60.193.36")
 
 #*** Metadata for whole flow:
 FLOW_IP_CLIENT = ''

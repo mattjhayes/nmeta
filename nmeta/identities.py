@@ -124,6 +124,7 @@ class Identities(BaseClass):
             self.host_OS = ""
             self.host_desc = ""
             self.service_name = ""
+            self.service_alias = ""
             self.userID = ""
             self.valid_from = ""
             self.valid_to = ""
@@ -145,6 +146,7 @@ class Identities(BaseClass):
             dbdictresult['host_OS'] = self.host_OS
             dbdictresult['host_desc'] = self.host_desc
             dbdictresult['service_name'] = self.service_name
+            dbdictresult['service_alias'] = self.service_alias
             dbdictresult['userID'] = self.userID
             dbdictresult['valid_from'] = self.valid_from
             dbdictresult['valid_to'] = self.valid_to
@@ -269,20 +271,36 @@ class Identities(BaseClass):
             for answer in answers:
                 if answer.type == 1:
                     #*** DNS A Record:
-                    answer_ip = socket.inet_ntoa(answer.rdata)
-                    answer_name = answer.name
-                    answer_ttl = answer.ttl
-                    self.logger.debug("dns_answer_name=%s dns_answer_A=%s "
-                                    "answer_ttl=%s",
-                                    answer_name, answer_ip, answer_ttl)
-                    # TBD
+                    ident = self.Identity()
+                    ident.dpid = flow_pkt.dpid
+                    ident.in_port = flow_pkt.in_port
+                    ident.harvest_type = 'DNS_A'
+                    ident.ip_address = socket.inet_ntoa(answer.rdata)
+                    ident.service_name = answer.name
+                    ident.harvest_time = flow_pkt.timestamp
+                    ident.valid_from = flow_pkt.timestamp
+                    ident.valid_to = flow_pkt.timestamp + \
+                                        datetime.timedelta(0, answer.ttl)
+                    db_dict = ident.dbdict()
+                    #*** Write DNS identity metadata to database collection:
+                    self.logger.debug("writing db_dict=%s", db_dict)
+                    self.identities.insert_one(db_dict)
                 elif answer.type == 5:
                     #*** DNS CNAME Record:
-                    answer_cname = answer.cname
-                    answer_name = answer.name
-                    self.logger.debug("dns_answer_name=%s dns_answer_CNAME=%s",
-                                    answer_name, answer_cname)
-                    # TBD
+                    ident = self.Identity()
+                    ident.dpid = flow_pkt.dpid
+                    ident.in_port = flow_pkt.in_port
+                    ident.harvest_type = 'DNS_CNAME'
+                    ident.service_name = answer.name
+                    ident.service_alias = answer.cname
+                    ident.harvest_time = flow_pkt.timestamp
+                    ident.valid_from = flow_pkt.timestamp
+                    ident.valid_to = flow_pkt.timestamp + \
+                                        datetime.timedelta(0, answer.ttl)
+                    db_dict = ident.dbdict()
+                    #*** Write DNS identity metadata to database collection:
+                    self.logger.debug("writing db_dict=%s", db_dict)
+                    self.identities.insert_one(db_dict)
                 else:
                     #*** Not a type that we handle yet
                     pass
@@ -311,6 +329,21 @@ class Identities(BaseClass):
         DOC TBD
         """
         db_data = {'host_name': host_name}
+        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if result.count():
+            result0 = list(result)[0]
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
+            return result0
+        else:
+            self.logger.debug("host_name=%s not found", host_name)
+            return 0
+
+    def findbyservice(self, service_name):
+        """
+        TEST FIND BY SERVICE
+        DOC TBD
+        """
+        db_data = {'service_name': service_name}
         result = self.identities.find(db_data).sort('$natural', -1).limit(1)
         if result.count():
             result0 = list(result)[0]

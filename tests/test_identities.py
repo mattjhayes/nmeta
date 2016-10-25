@@ -163,11 +163,15 @@ def test_harvest_DNS():
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
 
-    #*** DNS packet 1 (answer):
+    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
     flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
     identities.harvest(pkts_dns.RAW[1], flow.packet)
-    # TBD
-
+    result_identity = identities.findbyservice(pkts_dns.DNS_NAME[1])
+    assert result_identity['service_name'] == pkts_dns.DNS_NAME[1]
+    assert result_identity['service_alias'] == pkts_dns.DNS_CNAME[1]
+    result_identity = identities.findbyservice(pkts_dns.DNS_CNAME[1])
+    assert result_identity['service_name'] == pkts_dns.DNS_CNAME[1]
+    assert result_identity['ip_address'] == pkts_dns.DNS_IP[1]
 
 #================= HELPER FUNCTIONS ===========================================
 

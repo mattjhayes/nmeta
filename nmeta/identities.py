@@ -43,6 +43,9 @@ import datetime
 #*** For logging configuration:
 from baseclass import BaseClass
 
+#*** For Regular Expression searches:
+import re
+
 #*** How long in seconds to cache ARP responses for:
 ARP_CACHE_TIME = 60
 
@@ -161,152 +164,194 @@ class Identities(BaseClass):
         is_id_indicator = 0
         #*** ARP:
         if flow_pkt.eth_type == 2054:
-            eth = dpkt.ethernet.Ethernet(pkt)
-            pkt_arp = eth.arp
-            if pkt_arp:
-                #*** It's an ARP, but is it a reply (opcode 2) for IPv4?:
-                if pkt_arp.op == 2 and pkt_arp.pro == 2048:
-                    #*** Instantiate an instance of Indentity class:
-                    ident = self.Identity()
-                    ident.dpid = flow_pkt.dpid
-                    ident.in_port = flow_pkt.in_port
-                    ident.mac_address = mac_addr(pkt_arp.sha)
-                    ident.ip_address = socket.inet_ntoa(pkt_arp.spa)
-                    ident.harvest_type = 'ARP'
-                    ident.harvest_time = flow_pkt.timestamp
-                    ident.valid_from = flow_pkt.timestamp
-                    ident.valid_to = flow_pkt.timestamp + \
-                                        datetime.timedelta(0, ARP_CACHE_TIME)
-                    db_dict = ident.dbdict()
-                    #*** Write ARP identity metadata to database collection:
-                    self.logger.debug("writing db_dict=%s", db_dict)
-                    self.identities.insert_one(db_dict)
-            return 1
+            self.harvest_arp(pkt, flow_pkt)
+
         #*** DHCP:
         elif flow_pkt.eth_type == 2048 and flow_pkt.proto == 17 and \
                                                          flow_pkt.tp_dst == 67:
-            self.logger.debug("Harvesting metadata from DHCP request")
-            #*** Use dpkt to parse UDP DHCP data:
-            try:
-                pkt_dhcp = dpkt.dhcp.DHCP(flow_pkt.payload)
-            except:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("DHCP extraction failed "
-                            "Exception %s, %s, %s",
-                             exc_type, exc_value, exc_traceback)
-                return 0
-            if pkt_dhcp.opts:
-                #*** Iterate through options looking for Option 12 (Host Name):
-                for opt in pkt_dhcp.opts:
-                    if opt[0] == 12:
-                        #*** Found option 12 so grab the host name:
-                        dhcp_hostname = opt[1]
-                        self.logger.debug("dhcp host_name=%s", dhcp_hostname)
-                        #*** Instantiate an instance of Indentity class:
-                        ident = self.Identity()
-                        ident.dpid = flow_pkt.dpid
-                        ident.in_port = flow_pkt.in_port
-                        ident.mac_address = flow_pkt.eth_src
-                        ident.ip_address = flow_pkt.ip_src
-                        ident.harvest_type = 'DHCP'
-                        ident.host_name = dhcp_hostname
-                        ident.harvest_time = flow_pkt.timestamp
-                        ident.valid_from = flow_pkt.timestamp
-                        # TBD, FIX THIS:
-                        ident.valid_to = flow_pkt.timestamp + \
-                                        datetime.timedelta(0, ARP_CACHE_TIME)
-                        db_dict = ident.dbdict()
-                        #*** Write DHCP identity metadata to db collection:
-                        self.logger.debug("writing db_dict=%s", db_dict)
-                        self.identities.insert_one(db_dict)
-                        return 1
+            self.harvest_dhcp(flow_pkt)
+
         #*** LLDP:
         elif flow_pkt.eth_type == 35020:
-            payload = pkt[14:]
-            lldp_dict = self._parse_lldp_detail(payload)
-            if not len(lldp_dict):
-                self.logger.warning("Failed to parse LLDP")
-                return 0
-            self.logger.debug("LLDP parsed %s", lldp_dict)
-            #*** Instantiate an instance of Indentity class:
-            ident = self.Identity()
-            if 'system_name' in lldp_dict:
-                ident.host_name = lldp_dict['system_name']
-            if 'system_desc' in lldp_dict:
-                ident.host_desc = lldp_dict['system_desc']
-            if 'TTL' in lldp_dict:
-                ttl = lldp_dict['TTL']
-            else:
-                #*** TBD, handle this better:
-                ttl = 60
-            ident.dpid = flow_pkt.dpid
-            ident.in_port = flow_pkt.in_port
-            ident.mac_address = flow_pkt.eth_src
-            ident.harvest_type = 'LLDP'
-            ident.harvest_time = flow_pkt.timestamp
-            ident.valid_from = flow_pkt.timestamp
-            #*** valid to based on LLDP TTL:
-            ident.valid_to = flow_pkt.timestamp + \
-                                        datetime.timedelta(0, ttl)
-            db_dict = ident.dbdict()
-            #*** Write LLDP identity metadata to db collection:
-            self.logger.debug("writing db_dict=%s", db_dict)
-            self.identities.insert_one(db_dict)
-            return 1
+            self.harvest_lldp(flow_pkt)
 
         #*** DNS:
         elif (flow_pkt.proto == 6 or flow_pkt.proto == 17) and \
                         (flow_pkt.tp_src == 53 or flow_pkt.tp_src == 53):
-            self.logger.debug("Checking DNS for metadata")
-            #*** Use dpkt to parse DNS:
-            try:
-                pkt_dns = dpkt.dns.DNS(flow_pkt.payload)
-            except:
-                exc_type, exc_value, exc_traceback = sys.exc_info()
-                self.logger.error("DNS extraction failed "
-                            "Exception %s, %s, %s",
-                             exc_type, exc_value, exc_traceback)
-                return 0
-            answers = pkt_dns.an
-            for answer in answers:
-                if answer.type == 1:
-                    #*** DNS A Record:
-                    ident = self.Identity()
-                    ident.dpid = flow_pkt.dpid
-                    ident.in_port = flow_pkt.in_port
-                    ident.harvest_type = 'DNS_A'
-                    ident.ip_address = socket.inet_ntoa(answer.rdata)
-                    ident.service_name = answer.name
-                    ident.harvest_time = flow_pkt.timestamp
-                    ident.valid_from = flow_pkt.timestamp
-                    ident.valid_to = flow_pkt.timestamp + \
-                                        datetime.timedelta(0, answer.ttl)
-                    db_dict = ident.dbdict()
-                    #*** Write DNS identity metadata to database collection:
-                    self.logger.debug("writing db_dict=%s", db_dict)
-                    self.identities.insert_one(db_dict)
-                elif answer.type == 5:
-                    #*** DNS CNAME Record:
-                    ident = self.Identity()
-                    ident.dpid = flow_pkt.dpid
-                    ident.in_port = flow_pkt.in_port
-                    ident.harvest_type = 'DNS_CNAME'
-                    ident.service_name = answer.name
-                    ident.service_alias = answer.cname
-                    ident.harvest_time = flow_pkt.timestamp
-                    ident.valid_from = flow_pkt.timestamp
-                    ident.valid_to = flow_pkt.timestamp + \
-                                        datetime.timedelta(0, answer.ttl)
-                    db_dict = ident.dbdict()
-                    #*** Write DNS identity metadata to database collection:
-                    self.logger.debug("writing db_dict=%s", db_dict)
-                    self.identities.insert_one(db_dict)
-                else:
-                    #*** Not a type that we handle yet
-                    pass
+            self.harvest_dns(flow_pkt)
+
         else:
             #*** Not an identity indicator
             return 0
+
+    def harvest_arp(self, pkt, flow_pkt):
+        """
+        Harvest ARP identity metadata into database.
+        Passed packet-in metadata from flow object.
+        Check ARP reply and harvest identity
+        indicators to metadata
+        """
+        self.logger.debug("Harvesting metadata from ARP request")
+
+        eth = dpkt.ethernet.Ethernet(pkt)
+        pkt_arp = eth.arp
+        if pkt_arp:
+            #*** It's an ARP, but is it a reply (opcode 2) for IPv4?:
+            if pkt_arp.op == 2 and pkt_arp.pro == 2048:
+                #*** Instantiate an instance of Indentity class:
+                ident = self.Identity()
+                ident.dpid = flow_pkt.dpid
+                ident.in_port = flow_pkt.in_port
+                ident.mac_address = mac_addr(pkt_arp.sha)
+                ident.ip_address = socket.inet_ntoa(pkt_arp.spa)
+                ident.harvest_type = 'ARP'
+                ident.harvest_time = flow_pkt.timestamp
+                ident.valid_from = flow_pkt.timestamp
+                ident.valid_to = flow_pkt.timestamp + \
+                                    datetime.timedelta(0, ARP_CACHE_TIME)
+                db_dict = ident.dbdict()
+                #*** Write ARP identity metadata to database collection:
+                self.logger.debug("writing db_dict=%s", db_dict)
+                self.identities.insert_one(db_dict)
+        return 1
+
+    def harvest_dhcp(self, flow_pkt):
+        """
+        Harvest DHCP identity metadata into database.
+        Passed packet-in metadata from flow object.
+        Check LLDP TLV fields and harvest any relevant identity
+        indicators to metadata
+        """
+        self.logger.debug("Harvesting metadata from DHCP request")
+        #*** Use dpkt to parse UDP DHCP data:
+        try:
+            pkt_dhcp = dpkt.dhcp.DHCP(flow_pkt.payload)
+        except:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("DHCP extraction failed "
+                        "Exception %s, %s, %s",
+                         exc_type, exc_value, exc_traceback)
+            return 0
+        if pkt_dhcp.opts:
+            #*** Iterate through options looking for Option 12 (Host Name):
+            for opt in pkt_dhcp.opts:
+                if opt[0] == 12:
+                    #*** Found option 12 so grab the host name:
+                    dhcp_hostname = opt[1]
+                    self.logger.debug("dhcp host_name=%s", dhcp_hostname)
+                    #*** Instantiate an instance of Indentity class:
+                    ident = self.Identity()
+                    ident.dpid = flow_pkt.dpid
+                    ident.in_port = flow_pkt.in_port
+                    ident.mac_address = flow_pkt.eth_src
+                    ident.ip_address = flow_pkt.ip_src
+                    ident.harvest_type = 'DHCP'
+                    ident.host_name = dhcp_hostname
+                    ident.harvest_time = flow_pkt.timestamp
+                    ident.valid_from = flow_pkt.timestamp
+                    # TBD, FIX THIS:
+                    ident.valid_to = flow_pkt.timestamp + \
+                                    datetime.timedelta(0, ARP_CACHE_TIME)
+                    db_dict = ident.dbdict()
+                    #*** Write DHCP identity metadata to db collection:
+                    self.logger.debug("writing db_dict=%s", db_dict)
+                    self.identities.insert_one(db_dict)
+                    return 1
+
+    def harvest_lldp(self, flow_pkt):
+        """
+        Harvest LLDP identity metadata into database.
+        Passed packet-in metadata from flow object.
+        Check LLDP TLV fields and harvest any relevant identity
+        indicators to metadata
+        """
+        self.logger.debug("Checking LLDP for metadata")
+        payload = flow_pkt.payload
+        lldp_dict = self._parse_lldp_detail(payload)
+        if not len(lldp_dict):
+            self.logger.warning("Failed to parse LLDP")
+            return 0
+        self.logger.debug("LLDP parsed %s", lldp_dict)
+        #*** Instantiate an instance of Indentity class:
+        ident = self.Identity()
+        if 'system_name' in lldp_dict:
+            ident.host_name = lldp_dict['system_name']
+        if 'system_desc' in lldp_dict:
+            ident.host_desc = lldp_dict['system_desc']
+        if 'TTL' in lldp_dict:
+            ttl = lldp_dict['TTL']
+        else:
+            #*** TBD, handle this better:
+            ttl = 60
+        ident.dpid = flow_pkt.dpid
+        ident.in_port = flow_pkt.in_port
+        ident.mac_address = flow_pkt.eth_src
+        ident.harvest_type = 'LLDP'
+        ident.harvest_time = flow_pkt.timestamp
+        ident.valid_from = flow_pkt.timestamp
+        #*** valid to based on LLDP TTL:
+        ident.valid_to = flow_pkt.timestamp + \
+                                    datetime.timedelta(0, ttl)
+        db_dict = ident.dbdict()
+        #*** Write LLDP identity metadata to db collection:
+        self.logger.debug("writing db_dict=%s", db_dict)
+        self.identities.insert_one(db_dict)
+        return 1
+
+    def harvest_dns(self, flow_pkt):
+        """
+        Harvest DNS identity metadata into database.
+        Passed packet-in metadata from flow object.
+        Check DNS answer(s) and harvest any relevant identity
+        indicators to metadata
+        """
+        self.logger.debug("Checking DNS for metadata")
+        #*** Use dpkt to parse DNS:
+        try:
+            pkt_dns = dpkt.dns.DNS(flow_pkt.payload)
+        except:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("DNS extraction failed "
+                        "Exception %s, %s, %s",
+                         exc_type, exc_value, exc_traceback)
+            return 0
+        answers = pkt_dns.an
+        for answer in answers:
+            if answer.type == 1:
+                #*** DNS A Record:
+                ident = self.Identity()
+                ident.dpid = flow_pkt.dpid
+                ident.in_port = flow_pkt.in_port
+                ident.harvest_type = 'DNS_A'
+                ident.ip_address = socket.inet_ntoa(answer.rdata)
+                ident.service_name = answer.name
+                ident.harvest_time = flow_pkt.timestamp
+                ident.valid_from = flow_pkt.timestamp
+                ident.valid_to = flow_pkt.timestamp + \
+                                    datetime.timedelta(0, answer.ttl)
+                db_dict = ident.dbdict()
+                #*** Write DNS identity metadata to database collection:
+                self.logger.debug("writing db_dict=%s", db_dict)
+                self.identities.insert_one(db_dict)
+            elif answer.type == 5:
+                #*** DNS CNAME Record:
+                ident = self.Identity()
+                ident.dpid = flow_pkt.dpid
+                ident.in_port = flow_pkt.in_port
+                ident.harvest_type = 'DNS_CNAME'
+                ident.service_name = answer.name
+                ident.service_alias = answer.cname
+                ident.harvest_time = flow_pkt.timestamp
+                ident.valid_from = flow_pkt.timestamp
+                ident.valid_to = flow_pkt.timestamp + \
+                                    datetime.timedelta(0, answer.ttl)
+                db_dict = ident.dbdict()
+                #*** Write DNS identity metadata to database collection:
+                self.logger.debug("writing db_dict=%s", db_dict)
+                self.identities.insert_one(db_dict)
+            else:
+                #*** Not a type that we handle yet
+                pass
 
     def findbymac(self, mac_addr):
         """
@@ -338,19 +383,46 @@ class Identities(BaseClass):
             self.logger.debug("host_name=%s not found", host_name)
             return 0
 
-    def findbyservice(self, service_name):
+    def findbyservice(self, service_name, harvest_type='any'):
         """
         TEST FIND BY SERVICE
         DOC TBD
         """
-        db_data = {'service_name': service_name}
+        if harvest_type == 'any':
+            db_data = {'service_name': service_name}
+        else:
+            db_data = {'service_name': service_name,
+                       'harvest_type': harvest_type}
         result = self.identities.find(db_data).sort('$natural', -1).limit(1)
         if result.count():
             result0 = list(result)[0]
             self.logger.debug("found result=%s len=%s", result0, len(result0))
             return result0
         else:
-            self.logger.debug("host_name=%s not found", host_name)
+            self.logger.debug("service_name=%s not found", service_name)
+            return 0
+
+    def findbyservice_re(self, service_name, harvest_type='any'):
+        """
+        Find a service by name based on a regular expression
+        returns a result dictionary of an identities document if
+        exists, otherwise 0
+
+        TBD, to validity, multi-match etc.
+        """
+        regx = re.compile(service_name)
+        if harvest_type == 'any':
+            db_data = {'service_name': regx}
+        else:
+            db_data = {'service_name': regx,
+                       'harvest_type': harvest_type}
+        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if result.count():
+            result0 = list(result)[0]
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
+            return result0
+        else:
+            self.logger.debug("service_name=%s not found", service_name)
             return 0
 
     #=================== PRIVATE ==============================================

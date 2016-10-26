@@ -215,7 +215,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Traffic Classification:
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does return a dictionary of actions:
-        flow_actions = self.tc_policy.check_policy(pkt, dpid, in_port)
+        flow_actions = self.tc_policy.check_policy(self.flow, self.ident)
         self.logger.debug("flow_actions=%s", flow_actions)
 
         #*** Call Forwarding module to carry out forwarding functions:

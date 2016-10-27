@@ -368,12 +368,23 @@ class Identities(BaseClass):
             self.logger.debug("mac_addr=%s not found", mac_addr)
             return 0
 
-    def findbynode(self, host_name):
+    def findbynode(self, host_name, harvest_type='any', regex=False):
         """
-        TEST FIND BY NODE
-        DOC TBD
+        Find by node name
+        Pass it the name of the node to search for. Additionally,
+        can set:
+          regex=True       Treat service_name as a regular expression
+          harvest_type=    Specify what type of harvest (i.e. DHCP)
+        Returns boolean
         """
         db_data = {'host_name': host_name}
+        if harvest_type != 'any':
+            #*** Filter by harvest type:
+            db_data['harvest_type'] = harvest_type
+        if regex:
+            #*** Regular expression search on service name:
+            regx = re.compile(host_name)
+            db_data['host_name'] = regx
         result = self.identities.find(db_data).sort('$natural', -1).limit(1)
         if result.count():
             result0 = list(result)[0]
@@ -383,39 +394,23 @@ class Identities(BaseClass):
             self.logger.debug("host_name=%s not found", host_name)
             return 0
 
-    def findbyservice(self, service_name, harvest_type='any'):
+    def findbyservice(self, service_name, harvest_type='any', regex=False):
         """
-        TEST FIND BY SERVICE
-        DOC TBD
+        Find by service name
+        Pass it the name of the service to search for. Additionally,
+        can set:
+          regex=True       Treat service_name as a regular expression
+          harvest_type=    Specify what type of harvest (i.e. DNS_A)
+        Returns boolean
         """
-        if harvest_type == 'any':
-            db_data = {'service_name': service_name}
-        else:
-            db_data = {'service_name': service_name,
-                       'harvest_type': harvest_type}
-        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
-        if result.count():
-            result0 = list(result)[0]
-            self.logger.debug("found result=%s len=%s", result0, len(result0))
-            return result0
-        else:
-            self.logger.debug("service_name=%s not found", service_name)
-            return 0
-
-    def findbyservice_re(self, service_name, harvest_type='any'):
-        """
-        Find a service by name based on a regular expression
-        returns a result dictionary of an identities document if
-        exists, otherwise 0
-
-        TBD, to validity, multi-match etc.
-        """
-        regx = re.compile(service_name)
-        if harvest_type == 'any':
-            db_data = {'service_name': regx}
-        else:
-            db_data = {'service_name': regx,
-                       'harvest_type': harvest_type}
+        db_data = {'service_name': service_name}
+        if harvest_type != 'any':
+            #*** Filter by harvest type:
+            db_data['harvest_type'] = harvest_type
+        if regex:
+            #*** Regular expression search on service name:
+            regx = re.compile(service_name)
+            db_data['service_name'] = regx
         result = self.identities.find(db_data).sort('$natural', -1).limit(1)
         if result.count():
             result0 = list(result)[0]

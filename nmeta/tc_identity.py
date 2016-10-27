@@ -107,10 +107,12 @@ class IdentityInspect(object):
         Passed an identity attribute, value and flows packet object and
         an instance of the identities class. Return True or False based
         on whether or not the packet strongly
-        correlates to the identity attribute/value
+        correlates to the identity attribute/value.
+        Uses methods of the Identities class to work this out
+        Returns boolean
         """
         if policy_attr == "identity_lldp_systemname":
-            result = ident.findbyservice(policy_value)
+            result = ident.findbynode(policy_value, harvest_type='LLDP')
             if result:
                 #*** Does the source or destination IP of the packet match?
                 if pkt.ip_src == result['ip_address'] or \
@@ -122,7 +124,8 @@ class IdentityInspect(object):
                 return False
 
         elif policy_attr == "identity_lldp_systemname_re":
-            result = ident.findbyservice_re(policy_value)
+            result = ident.findbynode(policy_value, harvest_type='LLDP',
+                                                                    regex=True)
             if result:
                 #*** Does the source or destination IP of the packet match?
                 if pkt.ip_src == result['ip_address'] or \

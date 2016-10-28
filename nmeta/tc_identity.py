@@ -113,75 +113,40 @@ class IdentityInspect(object):
         """
         if policy_attr == "identity_lldp_systemname":
             result = ident.findbynode(policy_value, harvest_type='LLDP')
-            if result:
-                #*** Does the source or destination IP of the packet match?
-                if pkt.ip_src == result['ip_address'] or \
-                                            pkt.ip_dst == result['ip_address']:
-                    return True
-                else:
-                    return False
-            else:
-                return False
-
         elif policy_attr == "identity_lldp_systemname_re":
             result = ident.findbynode(policy_value, harvest_type='LLDP',
                                                                     regex=True)
-            if result:
-                #*** Does the source or destination IP of the packet match?
-                if pkt.ip_src == result['ip_address'] or \
-                                            pkt.ip_dst == result['ip_address']:
-                    return True
-                else:
-                    return False
-            else:
-                return False
-
         elif policy_attr == "identity_service_dns":
-            #*** Look up service in id_ip structure:
-            ips = []
-            if pkt_ip4:
-                #*** turn the src and dst IPs into a list so can iterate:
-                ips = [pkt_ip4.src, pkt_ip4.dst]
-            if pkt_ip6:
-                #*** turn the src and dst IPs into a list so can iterate:
-                ips = [pkt_ip6.src, pkt_ip6.dst]
-            if ctx in self.id_ip:
-                ip_ctx = self.id_ip[ctx]
-                for ip in ips:
-                    if ip in self.id_ip[ctx]:
-                        ip_ctx_ip = ip_ctx[ip]
-                        if 'service' in ip_ctx_ip:
-                            for service in ip_ctx_ip['service']:
-                                if service == policy_value:
-                                    #*** Matched service but is it valid?:
-                                    if self.valid_id_ip_service(ctx, ip,
-                                                                    service):
-                                        return True
-
+            #*** Handle potential CNAME indirection:
+            result = ident.findbyservice(policy_value, harvest_type='DNS_A')
+            if not result:
+                result = ident.findbyservice(policy_value,
+                                                      harvest_type='DNS_CNAME')
+                if result:
+                    result = ident.findbyservice(result['service_alias'],
+                                                          harvest_type='DNS_A')
         elif policy_attr == "identity_service_dns_re":
-            #*** Look up service in id_ip structure:
-            ips = []
-            if pkt_ip4:
-                #*** turn the src and dst IPs into a list so can iterate:
-                ips = [pkt_ip4.src, pkt_ip4.dst]
-            if pkt_ip6:
-                #*** turn the src and dst IPs into a list so can iterate:
-                ips = [pkt_ip6.src, pkt_ip6.dst]
-            if ctx in self.id_ip:
-                ip_ctx = self.id_ip[ctx]
-                for ip in ips:
-                    if ip in self.id_ip[ctx]:
-                        ip_ctx_ip = ip_ctx[ip]
-                        if 'service' in ip_ctx_ip:
-                            for service in ip_ctx_ip['service']:
-                                if (re.match(policy_value, service)):
-                                    #*** Matched service but is it valid?:
-                                    if self.valid_id_ip_service(ctx, ip,
-                                                                    service):
-                                        return True
-
+            #*** Handle potential CNAME indirection:
+            result = ident.findbyservice(policy_value, harvest_type='DNS_A',
+                                                                    regex=True)
+            if not result:
+                result = ident.findbyservice(policy_value,
+                                          harvest_type='DNS_CNAME', regex=True)
+                if result:
+                    result = ident.findbyservice(result['service_alias'],
+                                                          harvest_type='DNS_A')
         else:
             self.logger.error("Policy attribute %s did not match", policy_attr)
+            return False
+
+        if result:
+            #*** Does the source or destination IP of the packet match?
+            if pkt.ip_src == result['ip_address'] or \
+                                            pkt.ip_dst == result['ip_address']:
+                return True
+            else:
+                return False
+        else:
             return False
 
     def valid_id_ip_service(self, ctx, ip, service):

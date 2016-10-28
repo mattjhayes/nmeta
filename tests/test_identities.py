@@ -42,7 +42,7 @@ import identities as identities_class
 import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_lldp as pkts_lldp
-import packets_dns as pkts_dns
+import packets_ipv4_dns as pkts_dns
 
 #*** Instantiate Config class:
 config = config.Config()

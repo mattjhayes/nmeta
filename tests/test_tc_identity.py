@@ -45,6 +45,7 @@ import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_lldp as pkts_lldp
 import packets_ipv4_dns as pkts_dns
 import packets_ipv4_dns as pkts_dns4
+import packets_ipv4_tcp_facebook as pkts_facebook
 
 #*** Instantiate Config class:
 config = config.Config()
@@ -117,6 +118,10 @@ def test_DNS_identity():
     result_identity = identities.findbyservice(pkts_dns.DNS_CNAME[1])
     assert result_identity['service_name'] == pkts_dns.DNS_CNAME[1]
     assert result_identity['ip_address'] == pkts_dns.DNS_IP[1]
+
+    #*** Ingest TCP SYN to www.facebook.com (CNAME star-mini.c10r.facebook.com,
+    #*** IP 179.60.193.36)
+    flow.ingest_packet(DPID1, INPORT1, pkts_facebook.RAW[0], datetime.datetime.now())
 
     #*** Test tc_identity (foo should fail)
     assert tc_ident.check_identity("identity_service_dns", "foo", flow.packet,

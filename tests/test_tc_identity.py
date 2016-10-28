@@ -44,6 +44,7 @@ import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_lldp as pkts_lldp
 import packets_ipv4_dns as pkts_dns
+import packets_ipv4_dns as pkts_dns4
 
 #*** Instantiate Config class:
 config = config.Config()
@@ -92,6 +93,39 @@ def test_LLDP_identity():
     #*** Test tc_identity regular expression (*.example.org should fail)
     assert tc_ident.check_identity("identity_lldp_systemname_re", "^.*\.example\.org",
                         flow.packet, identities) == False
+
+def test_DNS_identity():
+    """
+    Test harvesting identity metadata from DNS packets and then
+    using this to validate an identity
+    """
+
+    #*** Test DPIDs and in ports:
+    DPID1 = 1
+    INPORT1 = 1
+
+    #*** Instantiate class objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+    tc_ident = tc_identity.IdentityInspect(config)
+    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+    result_identity = identities.findbyservice(pkts_dns.DNS_NAME[1])
+    assert result_identity['service_name'] == pkts_dns.DNS_NAME[1]
+    assert result_identity['service_alias'] == pkts_dns.DNS_CNAME[1]
+    result_identity = identities.findbyservice(pkts_dns.DNS_CNAME[1])
+    assert result_identity['service_name'] == pkts_dns.DNS_CNAME[1]
+    assert result_identity['ip_address'] == pkts_dns.DNS_IP[1]
+
+    #*** Test tc_identity (foo should fail)
+    assert tc_ident.check_identity("identity_service_dns", "foo", flow.packet,
+                        identities) == False
+
+    #*** Test tc_identity (www.facebook.com should pass)
+    assert tc_ident.check_identity("identity_service_dns", "www.facebook.com",
+                                               flow.packet, identities) == True
+
 #================= HELPER FUNCTIONS ===========================================
 
 def mac_addr(address):

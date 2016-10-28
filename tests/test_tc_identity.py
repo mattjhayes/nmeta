@@ -44,7 +44,7 @@ import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_lldp as pkts_lldp
 import packets_ipv4_dns as pkts_dns
-import packets_ipv4_dns as pkts_dns4
+import packets_ipv4_dns_4 as pkts_dns4
 import packets_ipv4_tcp_facebook as pkts_facebook
 
 #*** Instantiate Config class:
@@ -128,6 +128,20 @@ def test_DNS_identity():
                         identities) == False
 
     #*** Test tc_identity (www.facebook.com should pass)
+    assert tc_ident.check_identity("identity_service_dns", "www.facebook.com",
+                                               flow.packet, identities) == True
+
+    #*** Now, harvest another DNS packet with different A record for
+    #*** www.facebook.com (CNAME star-mini.c10r.facebook.com A 31.13.95.36):
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns4.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_dns4.RAW[1], flow.packet)
+
+    #*** Ingest TCP SYN to www.facebook.com (CNAME star-mini.c10r.facebook.com,
+    #*** IP 179.60.193.36)
+    flow.ingest_packet(DPID1, INPORT1, pkts_facebook.RAW[0], datetime.datetime.now())
+
+    #*** Test tc_identity (www.facebook.com, should pass even though there's
+    #*** another A record against the CNAME, i.e. should handle one to many)
     assert tc_ident.check_identity("identity_service_dns", "www.facebook.com",
                                                flow.packet, identities) == True
 

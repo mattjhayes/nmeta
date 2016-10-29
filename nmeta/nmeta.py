@@ -24,9 +24,7 @@ and carries no warrantee whatsoever. You have been warned.
 #*** Note: see api.py module for REST API calls
 
 #*** General Imports:
-import logging
 import struct
-import time
 import datetime
 
 #*** Ryu Imports:
@@ -48,11 +46,9 @@ from ryu.lib.packet import tcp
 from ryu.app.wsgi import WSGIApplication
 
 #*** nmeta imports:
-import flow
 import tc_policy
 import config
 import switch_abstraction
-import measure
 import forwarding
 import api
 import flows
@@ -87,7 +83,6 @@ class NMeta(app_manager.RyuApp, BaseClass):
         self.configure_logging("nmeta_logging_level_s",
                                        "nmeta_logging_level_c")
 
-        #*** Set up variables:
         #*** Get max bytes of new flow packets to send to controller from
         #*** config file:
         self.miss_send_len = self.config.get_value("miss_send_len")
@@ -100,44 +95,13 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Tell switch how to handle fragments (see OpenFlow spec):
         self.ofpc_frag = self.config.get_value("ofpc_frag")
 
-        #*** Table maintenance settings from config.yaml file:
-        self.fm_table_max_age = self.config.get_value('fm_table_max_age')
-        self.fm_table_tidyup_interval = self.config.\
-                                          get_value('fm_table_tidyup_interval')
-        self.identity_table_tidyup_interval = self.config.\
-                                    get_value('identity_table_tidyup_interval')
-        self.statistical_fcip_table_max_age = self.config.\
-                            get_value('statistical_fcip_table_max_age')
-        self.statistical_fcip_table_tidyup_interval = self.config.\
-                            get_value('statistical_fcip_table_tidyup_interval')
-        self.payload_fcip_table_max_age = self.config.\
-                            get_value('payload_fcip_table_max_age')
-        self.payload_fcip_table_tidyup_interval = self.config.\
-                            get_value('payload_fcip_table_tidyup_interval')
-        self.measure_buckets_max_age = self.config.\
-                            get_value('measure_buckets_max_age')
-        self.measure_buckets_tidyup_interval = self.config.\
-                            get_value('measure_buckets_tidyup_interval')
-        #*** Set initial value of the variable that holds last time
-        #*** for tidy-ups:
-        self.fm_table_last_tidyup_time = time.time()
-        self.identity_table_last_tidyup_time = time.time()
-        self.statistical_fcip_table_last_tidyup_time = time.time()
-        self.payload_fcip_table_last_tidyup_time = time.time()
-        self.measure_buckets_last_tidyup_time = time.time()
-
         #*** Instantiate Module Classes:
-        self.flowmetadata = flow.FlowMetadata(self, self.config)
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.sa = switch_abstraction.SwitchAbstract(self.config)
-        self.measure = measure.Measurement(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
         wsgi = kwargs['wsgi']
         self.api = api.Api(self, self.config, wsgi)
 
-        #*** Retrieve config values for Flows class MongoDB connection:
-        _mongo_addr = self.config.get_value("mongo_addr")
-        _mongo_port = self.config.get_value("mongo_port")
         #*** Instantiate a flow object for conversation metadata:
         self.flow = flows.Flow(self.config)
         #*** Instantiate an identity object for participant metadata:
@@ -189,12 +153,6 @@ class NMeta(app_manager.RyuApp, BaseClass):
         Finally, we send the packet out the switch port(s) via a
         Packet-Out message, with appropriate QoS queue set.
         """
-        #*** Record the time for later delta measurement:
-        pi_start_time = time.time()
-
-        #*** Record the event for measurements:
-        self.measure.record_rate_event('packet_in')
-
         #*** Extract parameters:
         msg = ev.msg
         datapath = msg.datapath
@@ -228,76 +186,24 @@ class NMeta(app_manager.RyuApp, BaseClass):
         flow_actions['datapath'][dpid]['out_port'] = out_port
 
         #*** Update Flow Metadata Table and add QoS queue:
-        flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
-        self.logger.debug("revised flow_actions=%s", flow_actions)
-        out_queue = flow_actions['datapath'][dpid].setdefault('out_queue', 0)
+        #flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
+        #self.logger.debug("revised flow_actions=%s", flow_actions)
+        #out_queue = flow_actions['datapath'][dpid].setdefault('out_queue', 0)
+
+        # TBD, set QoS queue, was done by deprecated flow.py module
+        out_queue = 0
 
         if out_port != ofproto.OFPP_FLOOD:
             #*** Do some add flow magic, but only if not a flooded packet:
             #*** Prefer to do fine-grained match where possible:
             _add_flow_result = self._add_flow(ev, in_port, out_port, out_queue)
             self.logger.debug("event=add_flow result=%s", _add_flow_result)
-            #*** Record the event for measurements:
-            self.measure.record_rate_event('add_flow')
             #*** Send Packet Out:
             self.sa.packet_out(datapath, msg, in_port, out_port, out_queue, 0)
         else:
             #*** It's a packet that's flooded, so send without specific queue
             #*** and with no queue option set:
             self.sa.packet_out(datapath, msg, in_port, out_port, 0, 1)
-
-        #*** Record Measurements:
-        self.measure.record_rate_event('packet_out')
-        pi_delta_time = time.time() - pi_start_time
-        self.measure.record_metric('packet_delta', pi_delta_time)
-
-        #*** Now check if table maintenance is needed:
-        #*** Flow Metadata (FM) table maintenance:
-        _time = time.time()
-        if (_time - self.fm_table_last_tidyup_time) > \
-                                 self.fm_table_tidyup_interval:
-            #*** Call function to do tidy-up on the Flow Metadata (FM) table:
-            self.logger.debug("event=tidy-up table=fm_table")
-            self.flowmetadata.maintain_fm_table(self.fm_table_max_age)
-            self.fm_table_last_tidyup_time = _time
-        #*** Identity NIC and System table maintenance:
-        _time = time.time()
-        if (_time - self.identity_table_last_tidyup_time) \
-                              > self.identity_table_tidyup_interval:
-            #*** Call function to do tidy-up on the Identity NIC
-            #***  and System tables:
-            self.logger.debug("event=tidy-up table=identity*")
-            self.tc_policy.identity.maintain_identity_tables()
-            self.identity_table_last_tidyup_time = _time
-        #*** Statistical FCIP table maintenance:
-        _time = time.time()
-        if (_time - self.statistical_fcip_table_last_tidyup_time) > \
-                                 self.statistical_fcip_table_tidyup_interval:
-            #*** Call function to do tidy-up on the FCIP table:
-            self.logger.debug("event=tidy-up table=statistical_fcip_table")
-            self.tc_policy.statistical.maintain_fcip_table(
-                                     self.statistical_fcip_table_max_age)
-            self.statistical_fcip_table_last_tidyup_time = _time
-        #*** Payload FCIP table maintenance:
-        _time = time.time()
-        if (_time - self.payload_fcip_table_last_tidyup_time) > \
-                                 self.payload_fcip_table_tidyup_interval:
-            #*** Call function to do tidy-up on the FCIP table:
-            self.logger.debug("event=tidy-up table=payload_fcip_table")
-            self.tc_policy.payload.maintain_fcip_table(
-                                     self.payload_fcip_table_max_age)
-            self.payload_fcip_table_last_tidyup_time = _time
-        #*** Measure bucket maintenance:
-        _time = time.time()
-        if (_time - self.measure_buckets_last_tidyup_time) > \
-                                 self.measure_buckets_tidyup_interval:
-            #*** Call function to do tidy-up on the measure buckets:
-            self.logger.debug("event=tidy-up table=measure_buckets")
-            self.measure.kick_the_rate_buckets(
-                                     self.measure_buckets_max_age)
-            self.measure.kick_the_metric_buckets(
-                                     self.measure_buckets_max_age)
-            self.measure_buckets_last_tidyup_time = _time
 
     def _add_flow(self, ev, in_port, out_port, out_queue):
         """

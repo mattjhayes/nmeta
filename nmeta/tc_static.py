@@ -18,10 +18,6 @@ This module is part of the nmeta suite running on top of Ryu SDN controller
 to provide network identity and flow (traffic classification) metadata
 """
 
-import logging
-import logging.handlers
-import struct
-import time
 import sys
 
 #*** Import netaddr for IP address checking:
@@ -29,17 +25,6 @@ from netaddr import IPAddress
 from netaddr import IPNetwork
 from netaddr import EUI
 from netaddr import iter_iprange
-
-#*** Ryu imports:
-from ryu.lib import addrconv
-from ryu.lib.packet import packet
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import lldp
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import tcp
-
-#*** nmeta imports:
-import nmisc
 
 #*** For logging configuration:
 from baseclass import BaseClass
@@ -65,23 +50,23 @@ class StaticInspect(BaseClass):
         packet object.
         Returns match Boolean (i.e. True means matches)
         """
-        if (policy_attr == 'eth_src'):
+        if policy_attr == 'eth_src':
             return pkt.eth_src == policy_value
-        elif (policy_attr == 'eth_dst'):
+        elif policy_attr == 'eth_dst':
             return pkt.eth_dst == policy_value
-        elif (policy_attr == 'eth_type'):
+        elif policy_attr == 'eth_type':
             return pkt.eth_type == policy_value
-        elif (policy_attr == 'ip_src'):
+        elif policy_attr == 'ip_src':
             return pkt.ip_src == policy_value
-        elif (policy_attr == 'ip_dst'):
+        elif policy_attr == 'ip_dst':
             return pkt.ip_dst == policy_value
-        elif (policy_attr == 'tcp_src'):
+        elif policy_attr == 'tcp_src':
             return pkt.proto == 6 and pkt.tp_src == policy_value
-        elif (policy_attr == 'tcp_dst'):
+        elif policy_attr == 'tcp_dst':
             return pkt.proto == 6 and pkt.tp_dst == policy_value
-        elif (policy_attr == 'udp_src'):
+        elif policy_attr == 'udp_src':
             return pkt.proto == 17 and pkt.tp_src == policy_value
-        elif (policy_attr == 'udp_dst'):
+        elif policy_attr == 'udp_dst':
             return pkt.proto == 17 and pkt.tp_dst == policy_value
         else:
             #*** didn't match any policy conditions so return false and
@@ -220,7 +205,7 @@ class StaticInspect(BaseClass):
         number
         """
         try:
-            if not (int(value_to_check)>0 and int(value_to_check)<65536):
+            if not (int(value_to_check) > 0 and int(value_to_check) < 65536):
                 self.logger.debug("Check of "
                     "is_valid_transport_port on %s returned false",
                     value_to_check)

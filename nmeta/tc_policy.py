@@ -48,6 +48,9 @@ import dpkt
 #*** YAML for config and policy file parsing:
 import yaml
 
+#*** For logging configuration:
+from baseclass import BaseClass
+
 #*** Describe supported syntax in main_policy.yaml so that it can be tested
 #*** for validity. Here are valid policy rule attributes:
 TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment',
@@ -82,49 +85,20 @@ IDENTITY_KEYS = ('arp',
                  'dns',
                  'dhcp')
 
-class TrafficClassificationPolicy(object):
+class TrafficClassificationPolicy(BaseClass):
     """
     This class is instantiated by nmeta.py and provides methods
     to ingest the policy file main_policy.yaml and check flows
     against policy to see if actions exist
     """
-    def __init__(self, _config):
-        #*** Get logging config values from config class:
-        _logging_level_s = _config.get_value \
-                                    ('tc_policy_logging_level_s')
-        _logging_level_c = _config.get_value \
-                                    ('tc_policy_logging_level_c')
-        _syslog_enabled = _config.get_value('syslog_enabled')
-        _loghost = _config.get_value('loghost')
-        _logport = _config.get_value('logport')
-        _logfacility = _config.get_value('logfacility')
-        _syslog_format = _config.get_value('syslog_format')
-        _console_log_enabled = _config.get_value('console_log_enabled')
-        _console_format = _config.get_value('console_format')
-        #*** Set up Logging:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
-        #*** Syslog:
-        if _syslog_enabled:
-            #*** Log to syslog on host specified in config.yaml:
-            self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport),
-                                                facility=_logfacility)
-            syslog_formatter = logging.Formatter(_syslog_format)
-            self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(_logging_level_s)
-            #*** Add syslog log handler to logger:
-            self.logger.addHandler(self.syslog_handler)
-        #*** Console logging:
-        if _console_log_enabled:
-            #*** Log to the console:
-            self.console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(_console_format)
-            self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(_logging_level_c)
-            #*** Add console log handler to logger:
-            self.logger.addHandler(self.console_handler)
+    def __init__(self, config):
+        #*** Required for BaseClass:
+        self.config = config
+        #*** Run the BaseClass init to set things up:
+        super(TrafficClassificationPolicy, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("tc_policy_logging_level_s",
+                                       "tc_policy_logging_level_c")
 
         #*** Name of the config file:
         self.policy_filename = "main_policy.yaml"
@@ -147,11 +121,11 @@ class TrafficClassificationPolicy(object):
             sys.exit("Exiting nmeta. Please create traffic classification "
                              "policy file")
         #*** Instantiate Classes:
-        self.static = tc_static.StaticInspect(_config)
-        self.identity = tc_identity.IdentityInspect(_config)
-        self.payload = tc_payload.PayloadInspect(_config)
+        self.static = tc_static.StaticInspect(config)
+        self.identity = tc_identity.IdentityInspect(config)
+        self.payload = tc_payload.PayloadInspect(config)
         self.statistical = tc_statistical.StatisticalInspect \
-                                (_config)
+                                (config)
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()

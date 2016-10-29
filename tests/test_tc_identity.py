@@ -1,5 +1,5 @@
 """
-nmeta tc_identity.py Unit Tests
+nmeta tc_identity.py Tests
 
 Uses pytest, install with:
     sudo apt-get install python-pytest

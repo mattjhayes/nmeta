@@ -469,21 +469,23 @@ class TrafficClassificationPolicy(object):
                                              self.ident)
             elif policy_attr == "statistical_qos_bandwidth_1":
                 _match = self.statistical.check_statistical(policy_attr,
-                                                            policy_value, pkt)
+                                                            policy_value,
+                                                            self.pkt)
                 self.logger.debug("statistical_qos_bandwidth_1 _match=%s",
                                                             _match)
                 #*** Need this line for any classifier that returns actions:
                 _result_dict['actions'] = _match['actions']
             elif policy_attr_type == "payload":
                 _payload_dict = self.payload.check_payload(policy_attr,
-                                         policy_value, pkt)
+                                         policy_value, self.pkt)
                 if _payload_dict["match"]:
                     _match = True
                     _result_dict["continue_to_inspect"] = \
                                      _payload_dict["continue_to_inspect"]
             elif policy_attr_type == "conditions_list":
                 #*** Do a recursive call on nested conditions:
-                _nested_dict = self._check_conditions(pkt, policy_value, ctx)
+                _nested_dict = self._check_conditions(self.pkt,
+                                                        policy_value, ctx)
                 _match = _nested_dict["match"]
                 #*** TBD: How do we deal with nested continue to inspect
                 #***  results that conflict?
@@ -495,7 +497,8 @@ class TrafficClassificationPolicy(object):
             else:
                 #*** default to doing a Static Classification match:
                 _match = self.static.check_static(policy_attr,
-                                                        policy_value, pkt)
+                                                    policy_value,
+                                                    self.pkt)
             #*** Decide what to do based on match result and match type:
             if _match and self.match_type == "any":
                 _result_dict["match"] = True

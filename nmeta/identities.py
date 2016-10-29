@@ -126,7 +126,7 @@ class Identities(BaseClass):
             self.host_desc = ""
             self.service_name = ""
             self.service_alias = ""
-            self.userid = ""
+            self.user_id = ""
             self.valid_from = ""
             self.valid_to = ""
 
@@ -148,7 +148,7 @@ class Identities(BaseClass):
             dbdictresult['host_desc'] = self.host_desc
             dbdictresult['service_name'] = self.service_name
             dbdictresult['service_alias'] = self.service_alias
-            dbdictresult['userid'] = self.userid
+            dbdictresult['user_id'] = self.user_id
             dbdictresult['valid_from'] = self.valid_from
             dbdictresult['valid_to'] = self.valid_to
             return dbdictresult

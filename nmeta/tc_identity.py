@@ -38,56 +38,43 @@ class IdentityInspect(BaseClass):
 
     def check_identity(self, policy_attr, policy_value, pkt, ident):
         """
+        Checks if a given packet matches a given identity match rule.
         Passed an identity attribute, value and flows packet object and
         an instance of the identities class. Return True or False based
-        on whether or not the packet strongly
-        correlates to the identity attribute/value.
+        on whether or not either of the packet IP addresses matches
+        the identity attribute/value.
         Uses methods of the Identities class to work this out
+        Returns a Boolean
+        """
+        result = False
+        if policy_attr == "identity_lldp_systemname":
+            result = self.check_lldp(policy_value, pkt, ident)
+        elif policy_attr == "identity_lldp_systemname_re":
+            result = self.check_lldp(policy_value, pkt, ident, is_regex=True)
+        elif policy_attr == "identity_service_dns":
+            result = self.check_dns(policy_value, pkt, ident)
+        elif policy_attr == "identity_service_dns_re":
+            result = self.check_dns(policy_value, pkt, ident, is_regex=True)
+        else:
+            self.logger.error("Unknown policy_attr=%s", policy_attr)
+            return False
+        return result
+
+    def check_lldp(self, host_name, pkt, ident, is_regex=False):
+        """
+        Passed a hostname, flows packet object, an instance of
+        the identities class and a regex boolean (if true, hostname
+        is treated as regex).
+        Return True or False based on whether or not the packet has
+        a source or destination IP address that matches the IP address
+        registered to the given hostname (if one even exists).
+        Uses methods of the Identities class to work this out.
         Returns boolean
         """
-        if policy_attr == "identity_lldp_systemname":
-            result = ident.findbynode(policy_value, harvest_type='LLDP')
-        elif policy_attr == "identity_lldp_systemname_re":
-            result = ident.findbynode(policy_value, harvest_type='LLDP',
-                                                                    regex=True)
-        elif policy_attr == "identity_service_dns":
-            #*** Handle potential CNAME indirection:
-            result = ident.findbyservice(policy_value, harvest_type='DNS_A',
-                                            ip_address=pkt.ip_src)
-            if not result:
-                result = ident.findbyservice(policy_value,
-                                harvest_type='DNS_A', ip_address=pkt.ip_dst)
-            self.logger.debug("TEMP: identity_service_dns DNS_A result=%s", result)
-            if not result:
-                result = ident.findbyservice(policy_value,
-                                                      harvest_type='DNS_CNAME')
-                self.logger.debug("TEMP: identity_service_dns DNS_CNAME result=%s", result)
-                if result:
-                    service_alias = result['service_alias']
-                    result = ident.findbyservice(service_alias,
-                                harvest_type='DNS_A', ip_address=pkt.ip_src)
-                    if not result:
-                        self.logger.debug("TEMP: pkt.ip_dst=%s service_alias=%s", pkt.ip_dst, service_alias)
-                        result = ident.findbyservice(service_alias,
-                                harvest_type='DNS_A', ip_address=pkt.ip_dst)
-                    self.logger.debug("TEMP: identity_service_dns Second DNS_A result=%s", result)
-        elif policy_attr == "identity_service_dns_re":
-            #*** Handle potential CNAME indirection:
-            result = ident.findbyservice(policy_value, harvest_type='DNS_A',
-                                                                    regex=True)
-            if not result:
-                result = ident.findbyservice(policy_value,
-                                          harvest_type='DNS_CNAME', regex=True)
-                if result:
-                    result = ident.findbyservice(result['service_alias'],
-                                                          harvest_type='DNS_A')
-        else:
-            self.logger.error("Policy attribute %s did not match", policy_attr)
-            return False
-
+        result = ident.findbynode(host_name, harvest_type='LLDP',
+                                                                regex=is_regex)
         if result:
             #*** Does the source or destination IP of the packet match?
-            self.logger.debug("TEMP: result['ip_address']=%s", result['ip_address'])
             if pkt.ip_src == result['ip_address'] or \
                                             pkt.ip_dst == result['ip_address']:
                 return True
@@ -96,7 +83,58 @@ class IdentityInspect(BaseClass):
         else:
             return False
 
-
+    def check_dns(self, dns_name, pkt, ident, is_regex=False):
+        """
+        Passed a DNS name, flows packet object, an instance of
+        the identities class and a regex boolean (if true, DNS name
+        is treated as regex).
+        Return True or False based on whether or not the packet has
+        a source or destination IP address that has been resolved from the
+        DNS name. Uses methods of the Identities class to work this out.
+        Returns boolean
+        """
+        #*** Look up DNS name by Source IP:
+        result = ident.findbyservice(dns_name, harvest_type='DNS_A',
+                                                    ip_address=pkt.ip_src,
+                                                    regex=is_regex)
+        if not result:
+            #*** Look up DNS name by Dest IP:
+            result = ident.findbyservice(dns_name,
+                                            harvest_type='DNS_A',
+                                            ip_address=pkt.ip_dst,
+                                            regex=is_regex)
+            if not result:
+                #*** Failed to find A record for NAME by Source or Dest IP
+                result = ident.findbyservice(dns_name,
+                                                harvest_type='DNS_CNAME',
+                                                regex=is_regex)
+                if result:
+                    #*** Look up IP against the CNAME:
+                    service_alias = result['service_alias']
+                    result = ident.findbyservice(service_alias,
+                                harvest_type='DNS_A', ip_address=pkt.ip_src)
+                    if not result:
+                        #*** Failed to find Source IP by CNAME
+                        result = ident.findbyservice(service_alias,
+                                harvest_type='DNS_A', ip_address=pkt.ip_dst)
+                        if result:
+                            #*** Found Dest IP by CNAME
+                            return True
+                        else:
+                            #*** Failed to find Dest IP by CNAME
+                            return False
+                    else:
+                        #*** Found Source IP by CNAME
+                        return True
+                else:
+                    #*** Failed to find by CNAME
+                    return False
+            else:
+                #*** Found A by Dest IP
+                return True
+        else:
+            #*** Found A by Source IP
+            return True
 
 
 

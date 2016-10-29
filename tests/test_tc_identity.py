@@ -145,6 +145,20 @@ def test_DNS_identity():
     assert tc_ident.check_identity("identity_service_dns", "www.facebook.com",
                                                flow.packet, identities) == True
 
+    #*** Test regular expression match of previous test:
+    assert tc_ident.check_identity("identity_service_dns_re", "^.*\.facebook\.com",
+                                               flow.packet, identities) == True
+
+    #*** Test regular expression that shouldn't match:
+    assert tc_ident.check_identity("identity_service_dns_re", "^.*\.facebook\.org",
+                                               flow.packet, identities) == False
+
+    #*** Ingest TCP SYN+ACK from www.facebook.com (CNAME star-mini.c10r.facebook.com,
+    #*** IP 179.60.193.36) to test matching on source IP address:
+    flow.ingest_packet(DPID1, INPORT1, pkts_facebook.RAW[1], datetime.datetime.now())
+    assert tc_ident.check_identity("identity_service_dns", "www.facebook.com",
+                                               flow.packet, identities) == True
+
 #================= HELPER FUNCTIONS ===========================================
 
 def mac_addr(address):

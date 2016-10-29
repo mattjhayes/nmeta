@@ -25,8 +25,6 @@ of identity metadata and various retrieval searches
 import sys
 import struct
 
-import binascii
-
 #*** For packet methods:
 import socket
 
@@ -124,11 +122,11 @@ class Identities(BaseClass):
             self.harvest_time = 0
             self.host_name = ""
             self.host_type = ""
-            self.host_OS = ""
+            self.host_os = ""
             self.host_desc = ""
             self.service_name = ""
             self.service_alias = ""
-            self.userID = ""
+            self.userid = ""
             self.valid_from = ""
             self.valid_to = ""
 
@@ -146,11 +144,11 @@ class Identities(BaseClass):
             dbdictresult['harvest_time'] = self.harvest_time
             dbdictresult['host_name'] = self.host_name
             dbdictresult['host_type'] = self.host_type
-            dbdictresult['host_OS'] = self.host_OS
+            dbdictresult['host_os'] = self.host_os
             dbdictresult['host_desc'] = self.host_desc
             dbdictresult['service_name'] = self.service_name
             dbdictresult['service_alias'] = self.service_alias
-            dbdictresult['userID'] = self.userID
+            dbdictresult['userid'] = self.userid
             dbdictresult['valid_from'] = self.valid_from
             dbdictresult['valid_to'] = self.valid_to
             return dbdictresult
@@ -161,7 +159,6 @@ class Identities(BaseClass):
         Check a packet_in event and harvest any relevant identity
         indicators to metadata
         """
-        is_id_indicator = 0
         #*** ARP:
         if flow_pkt.eth_type == 2054:
             self.harvest_arp(pkt, flow_pkt)
@@ -394,19 +391,25 @@ class Identities(BaseClass):
             self.logger.debug("host_name=%s not found", host_name)
             return 0
 
-    def findbyservice(self, service_name, harvest_type='any', regex=False):
+    def findbyservice(self, service_name, harvest_type='any', regex=False,
+                        ip_address='any'):
         """
         Find by service name
         Pass it the name of the service to search for. Additionally,
         can set:
-          regex=True       Treat service_name as a regular expression
-          harvest_type=    Specify what type of harvest (i.e. DNS_A)
+          regex=True        Treat service_name as a regular expression
+          harvest_type=     Specify what type of harvest (i.e. DNS_A)
+          ip_address=       Look for specific IP address
         Returns boolean
         """
+        self.logger.debug("TEMP: in findbyservice")
         db_data = {'service_name': service_name}
         if harvest_type != 'any':
             #*** Filter by harvest type:
             db_data['harvest_type'] = harvest_type
+        if ip_address != 'any':
+            #*** Filter by IP address:
+            db_data['ip_address'] = ip_address
         if regex:
             #*** Regular expression search on service name:
             regx = re.compile(service_name)

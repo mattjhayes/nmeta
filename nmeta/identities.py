@@ -382,6 +382,9 @@ class Identities(BaseClass):
             #*** Regular expression search on service name:
             regx = re.compile(host_name)
             db_data['host_name'] = regx
+        #*** Filter by documents that are still within 'best before' time:
+        db_data['valid_to'] = {'$gte': datetime.datetime.now()}
+        #*** Run db search:
         result = self.identities.find(db_data).sort('$natural', -1).limit(1)
         if result.count():
             result0 = list(result)[0]
@@ -414,6 +417,9 @@ class Identities(BaseClass):
             #*** Regular expression search on service name:
             regx = re.compile(service_name)
             db_data['service_name'] = regx
+        #*** Filter by documents that are still within 'best before' time:
+        db_data['valid_to'] = {'$gte': datetime.datetime.now()}
+        #*** Run db search:
         result = self.identities.find(db_data).sort('$natural', -1).limit(1)
         if result.count():
             result0 = list(result)[0]

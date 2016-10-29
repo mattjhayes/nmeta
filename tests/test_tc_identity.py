@@ -95,6 +95,20 @@ def test_LLDP_identity():
     assert tc_ident.check_identity("identity_lldp_systemname_re", "^.*\.example\.org",
                         flow.packet, identities) == False
 
+    #*** LLDP packet 1 - test time-based invalidity of stale data
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[1], datetime.datetime.now() - datetime.timedelta(seconds=125))
+    identities.harvest(pkts_lldp.RAW[1], flow.packet)
+    #*** Test tc_identity (sw1.example.com shouldn't match as data is stale as past LLDP TTL)
+    assert tc_ident.check_identity("identity_lldp_systemname", "sw1.example.com",
+                        flow.packet, identities) == False
+    #*** Reingest with current time to check it does work
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[1], flow.packet)
+    #*** Test tc_identity (sw1.example.com shouldn't match as data is stale as past LLDP TTL)
+    assert tc_ident.check_identity("identity_lldp_systemname", "sw1.example.com",
+                        flow.packet, identities) == True
+
+
 def test_DNS_identity():
     """
     Test harvesting identity metadata from DNS packets and then

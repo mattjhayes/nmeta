@@ -53,6 +53,7 @@ import forwarding
 import api
 import flows
 import identities
+import of_error_decode
 
 #*** For logging configuration:
 from baseclass import BaseClass
@@ -165,7 +166,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
         in_port = self.sa.get_in_port(msg, datapath, ofproto)
 
         #*** Read packet into flow object for classifiers to work with:
-        self.flow.ingest_packet(dpid, in_port, msg.data, datetime.datetime.now())
+        self.flow.ingest_packet(dpid, in_port, msg.data,
+                                                       datetime.datetime.now())
 
         #*** Harvest identity metadata:
         self.ident.harvest(msg.data, self.flow.packet)
@@ -271,6 +273,37 @@ class NMeta(app_manager.RyuApp, BaseClass):
                               idle_timeout=5, hard_timeout=0)
         return _result
 
+
+    @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
+    def flow_removed_handler(self, ev):
+        """
+        A switch has sent an event to us because it has removed
+        a flow from a flow table
+        """
+        msg = ev.msg
+        datapath = msg.datapath
+        ofp = datapath.ofproto
+        if msg.reason == ofp.OFPRR_IDLE_TIMEOUT:
+            reason = 'IDLE TIMEOUT'
+        elif msg.reason == ofp.OFPRR_HARD_TIMEOUT:
+            reason = 'HARD TIMEOUT'
+        elif msg.reason == ofp.OFPRR_DELETE:
+            reason = 'DELETE'
+        elif msg.reason == ofp.OFPRR_GROUP_DELETE:
+            reason = 'GROUP DELETE'
+        else:
+            reason = 'unknown'
+        self.logger.info('Flow removed msg '
+                              'cookie=%d priority=%d reason=%s table_id=%d '
+                              'duration_sec=%d '
+                              'idle_timeout=%d hard_timeout=%d '
+                              'packets=%d bytes=%d match=%s',
+                              msg.cookie, msg.priority, reason, msg.table_id,
+                              msg.duration_sec,
+                              msg.idle_timeout, msg.hard_timeout,
+                              msg.packet_count, msg.byte_count, msg.match)
+        # TBD, use flows mod to record this into the flow_rems db col.
+
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
     def error_msg_handler(self, ev):
@@ -280,33 +313,32 @@ class NMeta(app_manager.RyuApp, BaseClass):
         msg = ev.msg
         datapath = msg.datapath
         dpid = datapath.id
-        if msg.type == 0x03 and msg.code == 0x00:
-            self.logger.error('event=OFPErrorMsg_received: dpid=%s '
-                      'type=Flow_Table_Full(0x03) code=0x%02x message=%s',
-                      dpid, msg.code, utils.hex_array(msg.data))
-        else:
-            self.logger.error('event=OFPErrorMsg_received: dpid=%s '
-                      'type=0x%02x code=0x%02x message=%s',
+        self.logger.error('event=OFPErrorMsg_received: dpid=%s '
+                      'type=%s code=%s message=%s',
                       dpid, msg.type, msg.code, utils.hex_array(msg.data))
+        #*** Log human-friendly decodes for the error type and code:
+        type1, type2, code1, code2 = of_error_decode.decode(msg.type, msg.code)
+        self.logger.error('error_type=%s %s error_code=%s %s', type1, type2,
+                                    code1, code2)
 
-@set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-def _port_status_handler(self, ev):
-    """
-    Switch Port Status event
-    """
-    msg = ev.msg
-    reason = msg.reason
-    port_no = msg.desc.port_no
+    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
+    def _port_status_handler(self, ev):
+        """
+        Switch Port Status event
+        """
+        msg = ev.msg
+        reason = msg.reason
+        port_no = msg.desc.port_no
 
-    ofproto = msg.datapath.ofproto
-    if reason == ofproto.OFPPR_ADD:
-        self.logger.info("port added %s", port_no)
-    elif reason == ofproto.OFPPR_DELETE:
-        self.logger.info("port deleted %s", port_no)
-    elif reason == ofproto.OFPPR_MODIFY:
-        self.logger.info("port modified %s", port_no)
-    else:
-        self.logger.info("Illegal port state %s %s", port_no, reason)
+        ofproto = msg.datapath.ofproto
+        if reason == ofproto.OFPPR_ADD:
+            self.logger.info("port added %s", port_no)
+        elif reason == ofproto.OFPPR_DELETE:
+            self.logger.info("port deleted %s", port_no)
+        elif reason == ofproto.OFPPR_MODIFY:
+            self.logger.info("port modified %s", port_no)
+        else:
+            self.logger.info("Illegal port state %s %s", port_no, reason)
 
 #*** Borrowed from rest_router.py code:
 def ipv4_text_to_int(ip_text):

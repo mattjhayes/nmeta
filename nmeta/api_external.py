@@ -22,6 +22,9 @@ exposes an interface into nmeta MongoDB collections.
 
 It leverages the Eve Python REST API Framework
 """
+#*** Python 3 style division results as floating point:
+from __future__ import division
+
 import sys, os, ast
 
 #*** Import Eve for REST API Framework:
@@ -35,6 +38,12 @@ from pymongo import MongoClient
 
 #*** nmeta imports
 import config
+
+#*** For timestamps:
+import datetime
+
+#*** To convert results into JSON:
+from flask import jsonify
 
 class ExternalAPI(BaseClass):
     """
@@ -73,7 +82,7 @@ class ExternalAPI(BaseClass):
         """
         Run the External API instance
         """
-        packet_ins_schema = {
+        packet_ins_settings = {
             'schema': {
                 'flow_hash': {
                     'type': 'string',
@@ -126,9 +135,22 @@ class ExternalAPI(BaseClass):
             }
         }
 
-        eve_domain = {'packet_ins': packet_ins_schema}
+        #*** Eve Settings for Measurements of Packet In Rates:
+        m_pi_rate_settings = {
+            'url': 'measurements/pi_rate',
+            'schema': {
+                'pi_rate': {
+                    'type': 'float'
+                },
+            }
+        }
 
-        #*** Set up a settings dictionary for starting Eve app:
+        eve_domain = {
+                    'packet_ins': packet_ins_settings,
+                    'm_pi_rate': m_pi_rate_settings
+                    }
+
+        #*** Set up a settings dictionary for starting Eve app:datasource
         eve_settings = {}
         eve_settings['MONGO_HOST'] =  \
                 self.config.get_value('mongo_addr')
@@ -152,17 +174,17 @@ class ExternalAPI(BaseClass):
 
         #*** Set up Eve:
         self.logger.info("Configuring Eve Python REST API Framework")
-        app = Eve(settings=eve_settings, static_folder=static_folder)
+        self.app = Eve(settings=eve_settings, static_folder=static_folder)
         self.logger.debug("static_folder=%s", static_folder)
 
         #*** Register a callback on GET requests pre-database:
-        app.on_pre_GET += self.pre_get_callback
+        self.app.on_pre_GET += self.pre_get_callback
 
-        #*** Register a callback on POST requests after database insertion:
-        app.on_post_POST += self.post_post_callback
+        #*** Register a callback on GET requests after database insertion:
+        self.app.on_post_GET += self.post_get_callback
 
         #*** Register a callback on database insertion:
-        app.on_inserted += self.on_inserted_callback
+        self.app.on_inserted += self.on_inserted_callback
 
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
@@ -171,30 +193,45 @@ class ExternalAPI(BaseClass):
 
         #*** Run Eve:
         self.logger.info("Starting Eve Python REST API Framework")
-        app.run(port=eve_port, debug=eve_debug, host=eve_host)
+        self.app.run(port=eve_port, debug=eve_debug, host=eve_host)
 
-        @app.route('/')
+        @self.app.route('/')
         def serve_static():
             """
             Serve static content for WebUI
             """
-            return 'Hello World!'
+            return 1
 
     def pre_get_callback(self, resource, request, lookup):
         """
         Runs on GET request pre database lookup
         """
-        self.logger.info("Hooked GET with resource=%s request=%s "
+        self.logger.info("Hooked Pre-DB GET with resource=%s request=%s "
                             "lookup=%s", resource, request, lookup)
 
-    def post_post_callback(self, resource, request, lookup):
+
+    def post_get_callback(self, resource, request, payload):
         """
-        Runs on Decision API POST request, after database insertion completed.
-        It places a message onto the multi-process queue that contains
-        link to resource in database
+        TBD
         """
-        self.logger.info("Hooked POST with resource=%s request=%s "
-                            "lookup=%s", resource, request, lookup)
+        self.logger.info("Hooked Post-DB GET with resource=%s request=%s "
+                            "payload=%s", resource, request, payload)
+        if resource == 'm_pi_rate':
+            #*** Filter query to return Packet In rates:
+            self.logger.debug("returning Packet In rates")
+            #*** Get database and query it:
+            packet_ins = self.app.data.driver.db['packet_ins']
+            db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
+                                                datetime.timedelta(seconds=30)}}
+            packet_cursor = packet_ins.find(db_data).sort('$natural', -1)
+            pi_rate = float(packet_cursor.count() / 30)
+            self.logger.debug("pi_rate=%s", pi_rate)
+
+            #*** TBD put result in return body JSON:
+            #json = json.loads(payload.get_data())
+            #documents = json['_items']
+
+            return jsonify({'pi_rate':pi_rate})
 
     def on_inserted_callback(self, resource_name, items):
         """

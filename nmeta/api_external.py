@@ -45,6 +45,9 @@ import datetime
 #*** To convert results into JSON:
 from flask import jsonify
 
+#*** Amount of time (seconds) to go back for to calculate Packet-In rate:
+PACKET_IN_RATE_INTERVAL = 10
+
 class ExternalAPI(BaseClass):
     """
     This class provides methods for the External API
@@ -186,6 +189,9 @@ class ExternalAPI(BaseClass):
         #*** Register a callback on database insertion:
         self.app.on_inserted += self.on_inserted_callback
 
+        #*** Measurement API updates to returned resource:
+        self.app.on_fetched_resource_m_pi_rate += self.m_pi_rate_response
+
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
         eve_debug = self.config.get_value('external_api_debug')
@@ -201,6 +207,22 @@ class ExternalAPI(BaseClass):
             Serve static content for WebUI
             """
             return 1
+
+    def m_pi_rate_response(self, items):
+        """
+        Update the response with the packet_in rate.
+        Hooked from on_fetched_resource_<name>
+        """
+        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        #*** Get database and query it:
+        packet_ins = self.app.data.driver.db['packet_ins']
+        db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
+                          datetime.timedelta(seconds=PACKET_IN_RATE_INTERVAL)}}
+        packet_cursor = packet_ins.find(db_data).sort('$natural', -1)
+        pi_rate = float(packet_cursor.count() / PACKET_IN_RATE_INTERVAL)
+        self.logger.debug("pi_rate=%s", pi_rate)
+        result_dict = {'_id': 0, 'pi_rate': pi_rate, 'timespan': PACKET_IN_RATE_INTERVAL}
+        items['_items'].append(result_dict)
 
     def pre_get_callback(self, resource, request, lookup):
         """

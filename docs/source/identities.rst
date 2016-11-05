@@ -1,7 +1,7 @@
-lldp-fixed module
+identities module
 =================
 
-.. automodule:: lldp-fixed
+.. automodule:: identities
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1,7 +1,7 @@
-flow module
-===========
+flows module
+============
 
-.. automodule:: flow
+.. automodule:: flows
     :members:
     :undoc-members:
     :show-inheritance:

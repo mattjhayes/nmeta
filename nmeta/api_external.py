@@ -155,6 +155,7 @@ class ExternalAPI(BaseClass):
 
         #*** Set up a settings dictionary for starting Eve app:datasource
         eve_settings = {}
+        eve_settings['HATEOAS'] =  True
         eve_settings['MONGO_HOST'] =  \
                 self.config.get_value('mongo_addr')
         eve_settings['MONGO_PORT'] =  \

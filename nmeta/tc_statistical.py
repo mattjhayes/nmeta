@@ -19,77 +19,32 @@ This module is part of the nmeta suite running on top of Ryu SDN controller
 to provide network identity and flow (traffic classification) metadata
 """
 
-import logging
-import logging.handlers
 import struct
 import time
 
-#*** Ryu imports:
-from ryu.lib import addrconv
-from ryu.lib.packet import packet
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import lldp
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import tcp
+#*** For logging configuration:
+from baseclass import BaseClass
 
-#*** nmeta imports:
-import nmisc
-
-class StatisticalInspect(object):
+class StatisticalInspect(BaseClass):
     """
     This class is instantiated by tc_policy.py
     (class: TrafficClassificationPolicy) and provides methods to
     run statistical traffic classification matches
     """
     def __init__(self, _config):
-        #*** Get logging config values from config class:
-        _logging_level_s = _config.get_value \
-                                    ('tc_statistical_logging_level_s')
-        _logging_level_c = _config.get_value \
-                                    ('tc_statistical_logging_level_c')
-        _syslog_enabled = _config.get_value ('syslog_enabled')
-        _loghost = _config.get_value ('loghost')
-        _logport = _config.get_value ('logport')
-        _logfacility = _config.get_value ('logfacility')
-        _syslog_format = _config.get_value ('syslog_format')
-        _console_log_enabled = _config.get_value ('console_log_enabled')
-        _console_format = _config.get_value ('console_format')
-        #*** Set up Logging:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
-        #*** Syslog:
-        if _syslog_enabled:
-            #*** Log to syslog on host specified in config.yaml:
-            self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport),
-                                                facility=_logfacility)
-            syslog_formatter = logging.Formatter(_syslog_format)
-            self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(_logging_level_s)
-            #*** Add syslog log handler to logger:
-            self.logger.addHandler(self.syslog_handler)
-        #*** Console logging:
-        if _console_log_enabled:
-            #*** Log to the console:
-            self.console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(_console_format)
-            self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(_logging_level_c)
-            #*** Add console log handler to logger:
-            self.logger.addHandler(self.console_handler)
-
-        #*** Instantiate the Flow Classification In Progress (FCIP) Table:
-        self._fcip_table = nmisc.AutoVivification()
-        #*** Initialise FCIP Tables unique reference number:
-        self._fcip_ref = 1
-        #*** Do you want really verbose debugging?
-        self.extra_debugging = 1
+        #*** Required for BaseClass:
+        self.config = config
+        #*** Run the BaseClass init to set things up:
+        super(StatisticalInspect, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("tc_statistical_logging_level_s",
+                                       "tc_statistical_logging_level_c")
 
     def check_statistical(self, policy_attr, policy_value, pkt):
         """
-        Passed a statistical classification attribute, value and packet and
-        return a dictionary containing attributes 'valid',
+        Passed a statistical classification attribute, value and flows
+        packet object.
+        Return a dictionary containing attributes 'valid',
         'continue_to_inspect' and 'actions' with appropriate values set.
         """
         self.logger.debug("check_statistical was called policy_attr=%s "

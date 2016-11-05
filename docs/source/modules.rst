@@ -5,15 +5,13 @@ Code Documentation
    :maxdepth: 4
 
    api
+   api_external
+   classifications
    config
-   dns_experimental
-   flow
+   flows
+   identities
    forwarding
-   lldp-fixed
-   measure
    nmeta
-   nmisc
-   qos
    switch_abstraction
    tc_identity
    tc_payload

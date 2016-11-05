@@ -97,6 +97,7 @@ class Classifications(BaseClass):
             self.classification_type = ""
             self.classification_time = 0
             self.actions = ""
+            self.finalised = 0
 
         def dbdict(self):
             """
@@ -108,6 +109,7 @@ class Classifications(BaseClass):
             dbdictresult['classification_type'] = self.classification_type
             dbdictresult['classification_time'] = self.classification_time
             dbdictresult['actions'] = self.actions
+            dbdictresult['finalised'] = self.finalised
             return dbdictresult
 
     def record(self):

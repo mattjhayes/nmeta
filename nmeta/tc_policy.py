@@ -22,28 +22,16 @@ that this program expects. See constant tuples at start of program for valid
 attributes to use.
 """
 
-import logging
-import logging.handlers
-
 import sys
 import os
-
-#*** Packet-related imports:
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import arp
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import ipv6
-from ryu.lib.packet import udp
-from ryu.lib.packet import tcp
 
 #*** nmeta imports:
 import tc_static
 import tc_identity
 import tc_statistical
-import tc_payload
 
 #*** Import dpkt for DNS extraction, as not native to Ryu:
-import dpkt
+#import dpkt
 
 #*** YAML for config and policy file parsing:
 import yaml
@@ -78,7 +66,7 @@ TC_CONFIG_ACTIONS = ('set_qos_tag',
                      'pass_return_tags')
 TC_CONFIG_MATCH_TYPES = ('any',
                          'all',
-                         'statistical')
+                         'custom')
 #*** Keys that must exist under 'identity' in the policy:
 IDENTITY_KEYS = ('arp',
                  'lldp',
@@ -123,7 +111,6 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Instantiate Classes:
         self.static = tc_static.StaticInspect(config)
         self.identity = tc_identity.IdentityInspect(config)
-        self.payload = tc_payload.PayloadInspect(config)
         self.statistical = tc_statistical.StatisticalInspect \
                                 (config)
         #*** Run a test on the ingested traffic classification policy to ensure
@@ -473,6 +460,7 @@ class TrafficClassificationPolicy(BaseClass):
                 _match = self.static.check_static(policy_attr,
                                                     policy_value,
                                                     self.pkt)
+                self.logger.debug("static match=%s", _match)
             #*** Decide what to do based on match result and match type:
             if _match and self.match_type == "any":
                 _result_dict["match"] = True

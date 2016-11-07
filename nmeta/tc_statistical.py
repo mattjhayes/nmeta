@@ -31,7 +31,7 @@ class StatisticalInspect(BaseClass):
     (class: TrafficClassificationPolicy) and provides methods to
     run statistical traffic classification matches
     """
-    def __init__(self, _config):
+    def __init__(self, config):
         #*** Required for BaseClass:
         self.config = config
         #*** Run the BaseClass init to set things up:

@@ -12,6 +12,8 @@ import sys
 #*** Handle tests being in different directory branch to app code:
 sys.path.insert(0, '../nmeta')
 
+import logging
+
 #*** nmeta imports:
 import tc_policy
 import config
@@ -71,6 +73,7 @@ results_dict_no_match = {'actions': False, 'match': False,
 results_dict_match = {'actions': False, 'match': True,
                      'continue_to_inspect': False}
 
+logger = logging.getLogger(__name__)
 
 #*** Check TC packet match against a conditions stanza:
 def test_tc_check_conditions():
@@ -82,13 +85,17 @@ def test_tc_check_conditions():
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
     tc.pkt = flow.packet
-    #*** HTTP is not OpenFlow!
+    #*** HTTP is not OpenFlow so shouldn't match!
+    logger.debug("conditions_any_opf should not match")
     assert tc._check_conditions(conditions_any_opf) == results_dict_no_match
-    #*** HTTP is HTTP:
+    #*** HTTP is HTTP so should match:
+    logger.debug("conditions_any_http should match")
     assert tc._check_conditions(conditions_any_http) == results_dict_match
-    #*** Source AND Dest aren't HTTP:
+    #*** Source AND Dest aren't both HTTP so should not match:
+    logger.debug("conditions_all_http should not match")
     assert tc._check_conditions(conditions_all_http) == results_dict_no_match
     #*** This should match (HTTP src and dst ports correct):
+    logger.debug("conditions_all_http2 should match")
     assert tc._check_conditions(conditions_all_http2) == results_dict_match
     #*** MAC should match:
     assert tc._check_conditions(conditions_any_mac) == results_dict_match

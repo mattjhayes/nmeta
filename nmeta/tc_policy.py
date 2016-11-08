@@ -407,13 +407,17 @@ class TrafficClassificationPolicy(BaseClass):
         A match_type of 'all' will return false as soon as an invalid
         match is made and true if end of matching is reached.
         """
+        self.logger.debug("conditions=%s", conditions)
         #*** initial settings for results dictionary:
         _result_dict = {'match':True, 'continue_to_inspect':False,
                     'actions': False}
         self.match_type = conditions['match_type']
+        _match = False
         #*** Loop through conditions checking match:
         for policy_attr in conditions.keys():
             policy_value = conditions[policy_attr]
+            self.logger.debug("looping checking policy_attr=%s "
+                                  "policy_value=%s", policy_attr, policy_value)
             #*** Policy Attribute Type is for non-static classifiers to
             #*** hold the attribute prefix (i.e. identity).
             #*** Exclude nested conditions dictionaries from this check:
@@ -422,7 +426,6 @@ class TrafficClassificationPolicy(BaseClass):
             else:
                 policy_attr_type = policy_attr.split("_")
                 policy_attr_type = policy_attr_type[0]
-            _match = False
             #*** Main if/elif/else check on condition attribute type:
             if policy_attr_type == "identity":
                 _match = self.identity.check_identity(policy_attr,
@@ -454,6 +457,7 @@ class TrafficClassificationPolicy(BaseClass):
                                     _nested_dict["continue_to_inspect"]
             elif policy_attr == "match_type":
                 #*** Nothing to do:
+                self.logger.debug("passing...")
                 pass
             else:
                 #*** default to doing a Static Classification match:
@@ -465,7 +469,8 @@ class TrafficClassificationPolicy(BaseClass):
             if _match and self.match_type == "any":
                 _result_dict["match"] = True
                 return _result_dict
-            elif not _match and self.match_type == "all":
+            elif not _match and not policy_attr == "match_type" and \
+                                                      self.match_type == "all":
                 _result_dict["match"] = False
                 return _result_dict
             else:

@@ -329,6 +329,7 @@ class Flow(BaseClass):
             """
             return self.tp_flags & dpkt.tcp.TH_CWR != 0
 
+
     def ingest_packet(self, dpid, in_port, pkt, timestamp):
         """
         Ingest a packet into the packet_ins collection and put the flow object

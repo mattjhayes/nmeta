@@ -1,7 +1,7 @@
-tc_statistical module
-=====================
+tc_custom module
+================
 
-.. automodule:: tc_statistical
+.. automodule:: tc_custom
     :members:
     :undoc-members:
     :show-inheritance:

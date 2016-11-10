@@ -30,8 +30,7 @@ nmeta_logging_level_s: INFO
 tc_policy_logging_level_s: INFO
 tc_static_logging_level_s: INFO
 tc_identity_logging_level_s: INFO
-tc_payload_logging_level_s: INFO
-tc_statistical_logging_level_s: INFO
+tc_custom_logging_level_s: INFO
 sa_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 api_logging_level_s: INFO
@@ -56,8 +55,7 @@ nmeta_logging_level_c: DEBUG
 tc_policy_logging_level_c: DEBUG
 tc_static_logging_level_c: DEBUG
 tc_identity_logging_level_c: DEBUG
-tc_payload_logging_level_c: DEBUG
-tc_statistical_logging_level_c: DEBUG
+tc_custom_logging_level_c: DEBUG
 sa_logging_level_c: DEBUG
 forwarding_logging_level_c: DEBUG
 api_logging_level_c: DEBUG

@@ -55,11 +55,27 @@ conditions_any_ip = {'match_type': 'any', 'ip_dst': '192.168.57.12',
                          'ip_src': '192.168.56.32'}
 conditions_any_ssh = {'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}
 
-conditions_rule_nested_1 = {'comment': 'Audit Division SSH traffic',
-    'conditions_list': [{'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22},
-    {'match_type': 'any', 'ip_src': '10.0.0.1'}], 'match_type': 'all',
-    'actions': {'set_qos_tag': 'QoS_treatment=high_priority',
-    'set_desc_tag': 'description="High Priority Audit Division SSH Traffic"'}}
+conditions_rule_nested_1 = {
+            'comment': 'Audit Division SSH traffic',
+            'conditions_list':
+                [
+                    {
+                    'match_type': 'any',
+                    'tcp_src': 22,
+                    'tcp_dst': 22
+                },
+                    {
+                    'match_type': 'any',
+                    'ip_src': '10.0.0.1'
+                }
+            ],
+            'match_type': 'all',
+            'actions':
+                {
+                'set_qos_tag': 'QoS_treatment=high_priority',
+                'set_desc_tag': 'description="High Priority Audit Division SSH Traffic"'
+            }
+        }
 
 conditions_rule_nested_2 = {'comment': 'Audit Division SSH traffic',
     'conditions_list': [{'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22},
@@ -105,9 +121,6 @@ def test_tc_check_conditions():
 
 #*** Test TC packet match against a rule stanza:
 def test_tc_check_rule():
-    #*** Test Packets:
-    #pkt_arp = build_packet_ARP()
-    #pkt_tcp_22 = build_packet_tcp_22()
     #*** Rule checks:
     #assert tc._check_rule(pkt_arp, conditions_rule_nested_1, ctx) == \
     #                         results_dict_no_match

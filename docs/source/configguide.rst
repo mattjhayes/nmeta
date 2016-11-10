@@ -67,12 +67,11 @@ Here is a more complex traffic classification policy:
 
 .. image:: images/complex_tc_policy.png
 
-Conditions invoke classifiers. There are four types of classifier supported:
+Conditions invoke classifiers. There are three types of classifier supported:
 
 - Static
 - Identity
-- Payload
-- Statistical
+- Custom (Payload / Statistical / Multi-classifier)
 
 Static Classifiers
 ------------------
@@ -212,31 +211,35 @@ Supported attributes are:
 
     identity_service_dns_re: '.*\.example\.com'
 
-Statistical Classifiers
------------------------
+Custom Classifiers
+------------------
 
-All statistical classifiers are prefixed with:
+Nmeta supports the creation of custom classifiers.
 
-.. code-block:: text
-
-  statistical_
-
-TBD - more here
-
-Payload Classifiers
--------------------
-
-TBD
-
-*****************
-QoS Configuration
-*****************
-
-Quality of Service (QoS) configuration parameters are stored in the file:
+All custom classifiers have the attribute:
 
 .. code-block:: text
 
-  qos_policy.yaml
+  custom
 
-TBD
+The value determines the custom .py file to load from the nmeta/classifiers
+directory
+
+*************
+QoS Treatment
+*************
+
+Quality of Service (QoS) treatment parameters are configured in main policy
+under the qos_treatment root directive:
+
+.. code-block:: text
+
+  qos_treatment:
+    # Control Quality of Service (QoS) treatment mapping of
+    #  names to output queue numbers:
+    default_priority: 0
+    constrained_bw: 1
+    high_priority: 2
+    low_priority: 3
+
 

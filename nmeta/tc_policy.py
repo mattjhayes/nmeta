@@ -28,7 +28,7 @@ import os
 #*** nmeta imports:
 import tc_static
 import tc_identity
-import tc_statistical
+import tc_custom
 
 #*** Import dpkt for DNS extraction, as not native to Ryu:
 #import dpkt
@@ -58,7 +58,6 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'identity_service_dns': 'String',
                                'identity_service_dns_re': 'String',
                                'payload_type': 'String',
-                               'statistical_qos_bandwidth_1': 'String',
                                'match_type': 'MatchType',
                                'conditions_list': 'PolicyConditions'}
 TC_CONFIG_ACTIONS = ('set_qos_tag',
@@ -111,8 +110,7 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Instantiate Classes:
         self.static = tc_static.StaticInspect(config)
         self.identity = tc_identity.IdentityInspect(config)
-        self.statistical = tc_statistical.StatisticalInspect \
-                                (config)
+        self.custom = tc_custom.CustomInspect(config)
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
@@ -431,21 +429,13 @@ class TrafficClassificationPolicy(BaseClass):
                 _match = self.identity.check_identity(policy_attr,
                                              policy_value, self.pkt,
                                              self.ident)
-            elif policy_attr == "statistical_qos_bandwidth_1":
-                _match = self.statistical.check_statistical(policy_attr,
-                                                            policy_value,
+            elif policy_attr == "custom":
+                _match = self.custom.check_custom(policy_attr, policy_value,
                                                             self.pkt)
-                self.logger.debug("statistical_qos_bandwidth_1 _match=%s",
+                self.logger.debug("custom _match=%s",
                                                             _match)
                 #*** Need this line for any classifier that returns actions:
                 _result_dict['actions'] = _match['actions']
-            elif policy_attr_type == "payload":
-                _payload_dict = self.payload.check_payload(policy_attr,
-                                         policy_value, self.pkt)
-                if _payload_dict["match"]:
-                    _match = True
-                    _result_dict["continue_to_inspect"] = \
-                                     _payload_dict["continue_to_inspect"]
             elif policy_attr_type == "conditions_list":
                 #*** Do a recursive call on nested conditions:
                 _nested_dict = self._check_conditions(self.pkt,

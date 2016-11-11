@@ -205,8 +205,10 @@ class Flow(BaseClass):
         mongo_addr = config.get_value("mongo_addr")
         mongo_port = config.get_value("mongo_port")
         mongo_dbname = self.config.get_value("mongo_dbname")
-        #*** Max bytes of the packet_ins capped collection:
+        #*** Max bytes of the capped collections:
         packet_ins_max_bytes = config.get_value("packet_ins_max_bytes")
+        classifications_max_bytes = \
+                                  config.get_value("classifications_max_bytes")
         #*** How far back in time to go back looking for packets in flow:
         self.flow_time_limit = datetime.timedelta \
                                 (seconds=config.get_value("flow_time_limit"))
@@ -218,6 +220,7 @@ class Flow(BaseClass):
         #*** Connect to MongoDB nmeta database:
         db_nmeta = mongo_client[mongo_dbname]
 
+        #*** packet_ins collection:
         #*** Delete (drop) previous packet_ins collection if it exists:
         self.logger.debug("Deleting previous packet_ins MongoDB collection...")
         db_nmeta.packet_ins.drop()
@@ -227,9 +230,25 @@ class Flow(BaseClass):
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=packet_ins_max_bytes)
 
-        #*** Index flow_hash and packet_hash keys of packets database to
+        #*** Index flow_hash key of packet_ins collection to
         #*** improve look-up performance:
         self.packet_ins.create_index([('flow_hash', pymongo.TEXT)],
+                                                                unique=False)
+
+        #*** classifications collection:
+        #*** Delete (drop) previous classifications collection if it exists:
+        self.logger.debug("Deleting previous classifications MongoDB "
+                                                               "collection...")
+        db_nmeta.classifications.drop()
+
+        #*** Create the classifications collection, specifying capped option
+        #*** with max size in bytes, so MongoDB handles data retention:
+        self.classifications = db_nmeta.create_collection('classifications',
+                                   capped=True, size=classifications_max_bytes)
+
+        #*** Index flow_hash key of classifications collection to
+        #*** improve look-up performance:
+        self.classifications.create_index([('flow_hash', pymongo.TEXT)],
                                                                 unique=False)
 
     class Packet(object):

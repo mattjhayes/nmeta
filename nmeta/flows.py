@@ -183,6 +183,10 @@ class Flow(BaseClass):
         flow.min_interpacket_interval()
           TBD
 
+        **Variables for the whole flow relating to classification**:
+
+        classification.TBD
+
     Challenges (not handled - yet):
      - duplicate packets due to retransmissions or multiple switches
        in path
@@ -212,6 +216,9 @@ class Flow(BaseClass):
         #*** How far back in time to go back looking for packets in flow:
         self.flow_time_limit = datetime.timedelta \
                                 (seconds=config.get_value("flow_time_limit"))
+
+        self.classification_time_limit = datetime.timedelta \
+                        (seconds=config.get_value("classification_time_limit"))
 
         #*** Start mongodb:
         self.logger.info("Connecting to MongoDB database...")
@@ -250,6 +257,8 @@ class Flow(BaseClass):
         #*** improve look-up performance:
         self.classifications.create_index([('flow_hash', pymongo.TEXT)],
                                                                 unique=False)
+
+        self.flow_hash = 0
 
     class Packet(object):
         """
@@ -348,6 +357,71 @@ class Flow(BaseClass):
             """
             return self.tp_flags & dpkt.tcp.TH_CWR != 0
 
+    class Classification(object):
+        """
+        An object that represents an individual traffic classification
+        """
+        def __init__(self, flow_hash, clsfn, time_limit):
+            """
+            Retrieve classification data from MongoDB collection for a
+            particular flow hash within a time range.
+            time range is from current time backwards by number of seconds
+            defined in config for classification_time_limit
+            """
+            #*** Initialise classification variables:
+            self.flow_hash = flow_hash
+            self.classified = 0
+            self.classification_type = ""
+            self.classification_tag = ""
+            self.classification_time = 0
+            self.actions = ""
+
+            #*** Put into context of current flow by querying
+            #*** classifications database collection:
+            db_data = {'flow_hash': self.flow_hash}
+            #*** Filter to only recent classifications:
+            db_data['classification_time'] = {'$gte': datetime.datetime.now()-
+                                                time_limit}
+            #*** Run db search:
+            result = clsfn.find(db_data).sort('$natural', -1).limit(1)
+            if result.count():
+                #*** We have classification data for this flow:
+                result0 = list(result)[0]
+                #*** copy db result to flow classification state variables:
+                if 'classified' in result0:
+                    self.classified = result0['classified']
+                if 'classification_type' in result0:
+                    self.classified = result0['classification_type']
+                if 'classification_tag' in result0:
+                    self.classified = result0['classification_tag']
+                if 'classification_time' in result0:
+                    self.classified = result0['classification_time']
+                if 'actions' in result0:
+                    self.classified = result0['actions']
+
+        def dbdict(self):
+            """
+            Return a dictionary object of traffic classification
+            parameters for storing in the database
+            """
+            dbdictresult = {}
+            dbdictresult['flow_hash'] = self.flow_hash
+            dbdictresult['classified'] = self.classified
+            dbdictresult['classification_type'] = self.classification_type
+            dbdictresult['classification_tag'] = self.classification_tag
+            dbdictresult['classification_time'] = self.classification_time
+            dbdictresult['actions'] = self.actions
+            return dbdictresult
+
+        def commit(self):
+            """
+            Record current state of flow classification into MongoDB
+            classifications collection.
+            """
+            db_dict = self.classification.dbdict()
+            self.logger.debug("classification=%s", db_dict)
+            #*** Write classification to database collection:
+            db_result = self.classifications.insert_one(db_dict)
 
     def ingest_packet(self, dpid, in_port, pkt, timestamp):
         """
@@ -422,9 +496,15 @@ class Flow(BaseClass):
 
         #*** Generate a flow_hash unique to flow for pkts in either direction:
         self.packet.flow_hash = self._hash_flow()
+        self.flow_hash = self.packet.flow_hash
 
         #*** Generate a packet_hash unique to the packet:
         self.packet.packet_hash = self._hash_packet()
+
+        #*** Instantiate classification data for this flow:
+        self.classification = self.Classification(self.flow_hash,
+                                                self.classifications,
+                                                self.classification_time_limit)
 
         db_dict = self.packet.dbdict()
         self.logger.debug("packet_in=%s", db_dict)
@@ -530,7 +610,7 @@ class Flow(BaseClass):
         #*** TBD
         pass
 
-    def set_suppress_flow(self):
+    def suppress_flow(self):
         """
         Set the suppressed attribute in the flow database
         object to the current packet count so that future

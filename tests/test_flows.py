@@ -46,6 +46,7 @@ import dpkt
 import nmeta
 import config
 import flows as flow_class
+import tc_policy
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -251,6 +252,27 @@ def test_packet_hashing():
     """
     # TBD
     pass
+
+def test_get_classification():
+    """
+    Test that the get_classification method returns correct information.
+    Create a classification object, record it to DB then check
+    that classification can be retrieved
+    """
+    #*** Test DPIDs and in ports:
+    DPID1 = 1
+    INPORT1 = 1
+
+    #*** Instantiate classes:
+    flow = flow_class.Flow(config)
+    #tc = tc_policy.TrafficClassificationPolicy(config)
+
+    #*** Ingest Flow 2 Packet 1 (Client TCP SYN):
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
+
+    clasfn = flow.Classification(flow.packet.flow_hash,
+                                    flow.classifications,
+                                    flow.classification_time_limit)
 
 #================= HELPER FUNCTIONS ===========================================
 

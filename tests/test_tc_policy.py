@@ -56,6 +56,29 @@ conditions_any_ip = {'match_type': 'any', 'ip_dst': '192.168.57.12',
 conditions_any_ssh = {'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}
 
 conditions_rule_nested_1 = {
+            'comment': 'HTTP traffic',
+            'conditions_list':
+                [
+                    {
+                    'match_type': 'any',
+                    'tcp_src': 80,
+                    'tcp_dst': 80
+                },
+                    {
+                    'match_type': 'any',
+                    'ip_src': '10.1.0.1',
+                    'ip_dst': '10.1.0.1'
+                }
+            ],
+            'match_type': 'all',
+            'actions':
+                {
+                'set_qos_tag': 'QoS_treatment=high_priority',
+                'set_desc_tag': 'description="High Priority HTTP Traffic"'
+            }
+        }
+
+conditions_rule_nested_2 = {
             'comment': 'Audit Division SSH traffic',
             'conditions_list':
                 [
@@ -66,7 +89,7 @@ conditions_rule_nested_1 = {
                 },
                     {
                     'match_type': 'any',
-                    'ip_src': '10.0.0.1'
+                    'ip_src': '192.168.2.3'
                 }
             ],
             'match_type': 'all',
@@ -77,12 +100,6 @@ conditions_rule_nested_1 = {
             }
         }
 
-conditions_rule_nested_2 = {'comment': 'Audit Division SSH traffic',
-    'conditions_list': [{'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22},
-    {'match_type': 'any', 'ip_src': '192.168.2.3'}], 'match_type': 'all',
-    'actions': {'set_qos_tag': 'QoS_treatment=high_priority',
-    'set_desc_tag': 'description="High Priority Audit Division SSH Traffic"'}}
-
 results_dict_no_match = {'actions': False, 'match': False,
                      'continue_to_inspect': False}
 
@@ -91,8 +108,16 @@ results_dict_match = {'actions': False, 'match': True,
 
 logger = logging.getLogger(__name__)
 
-#*** Check TC packet match against a conditions stanza:
-def test_tc_check_conditions():
+#*** Test that packet match against policy works correctly:
+def test_check_policy():
+    #*** Instantiate classes:
+    tc = tc_policy.TrafficClassificationPolicy(config)
+    flow = flow_class.Flow(config)
+
+    # TBD
+
+#*** Test that packet match against policy rule works correctly:
+def test_check_rules():
     #*** Instantiate classes:
     tc = tc_policy.TrafficClassificationPolicy(config)
     flow = flow_class.Flow(config)
@@ -100,6 +125,27 @@ def test_tc_check_conditions():
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    #*** Set tc.pkt as work around for not calling parent method that sets it:
+    tc.pkt = flow.packet
+    #*** Should match:
+    assert tc._check_rule(conditions_rule_nested_1) == results_dict_match
+    #assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_1, ctx) == \
+    #                         results_dict_match
+    #assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_2, ctx) == \
+    #                         results_dict_no_match
+
+    # TBD
+
+#*** Check TC packet match against a conditions stanza:
+def test_check_conditions():
+    #*** Instantiate classes:
+    tc = tc_policy.TrafficClassificationPolicy(config)
+    flow = flow_class.Flow(config)
+
+    #*** Test Flow 1 Packet 1 (Client TCP SYN):
+    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    #*** Set tc.pkt as work around for not calling parent method that sets it:
     tc.pkt = flow.packet
     #*** HTTP is not OpenFlow so shouldn't match!
     logger.debug("conditions_any_opf should not match")

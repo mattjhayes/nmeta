@@ -87,30 +87,6 @@ class Classifications(BaseClass):
         #*** improve look-up performance:
 
 
-    class Classification(object):
-        """
-        An object that represents an individual traffic classification
-        """
-        def __init__(self):
-            #*** Initialise classification variables:
-            self.flow_hash = 0
-            self.classification_type = ""
-            self.classification_time = 0
-            self.actions = ""
-            self.finalised = 0
-
-        def dbdict(self):
-            """
-            Return a dictionary object of traffic classification
-            parameters for storing in the database
-            """
-            dbdictresult = {}
-            dbdictresult['flow_hash'] = self.flow_hash
-            dbdictresult['classification_type'] = self.classification_type
-            dbdictresult['classification_time'] = self.classification_time
-            dbdictresult['actions'] = self.actions
-            dbdictresult['finalised'] = self.finalised
-            return dbdictresult
 
     def record(self):
         """

@@ -80,7 +80,7 @@ identity_time_limit: 86400
 #
 #*** classifications capped collection
 classifications_max_bytes: 2000000
-classification_time_limit: 86400
+classification_time_limit: 300
 #
 #========== External API =============================
 #*** External API version used in base of URL:

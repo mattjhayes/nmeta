@@ -76,7 +76,7 @@ CONFIG_TEMPLATE = \
     'identities_max_bytes': 2000000,
     'identity_time_limit': 86400,
     'classifications_max_bytes': 2000000,
-    'classification_time_limit': 86400,
+    'classification_time_limit': 300,
     'external_api_version': 'v1',
     'external_api_host': '0.0.0.0',
     'external_api_port': 8081,

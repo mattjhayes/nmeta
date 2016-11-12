@@ -50,7 +50,7 @@ tc_static = tc_static_module.StaticInspect(config)
 
 logger = logging.getLogger(__name__)
 
-#======================== tc_identity.py Tests ================================
+#======================== tc_static.py Tests ================================
 
 def test_check_static():
     """

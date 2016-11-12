@@ -307,7 +307,8 @@ class TrafficClassificationPolicy(BaseClass):
         Passed a flows object, set in context of current packet-in event,
         and an identities object.
         Check if packet matches against any policy
-        rules and if it does return the associated actions.
+        rules and if it does, update the classifications portion of
+        the flows object to reflect details of the classification.
         """
         self.pkt = flow.packet
         self.ident = ident
@@ -346,6 +347,10 @@ class TrafficClassificationPolicy(BaseClass):
         #*** No hits so return false on everything:
         _result_dict = {'match':False, 'continue_to_inspect':False,
                     'actions': False}
+
+        # TBD Update flows object classifications:
+
+
         return _result_dict
 
     def _check_rule(self, rule):

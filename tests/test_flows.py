@@ -253,9 +253,9 @@ def test_packet_hashing():
     # TBD
     pass
 
-def test_get_classification():
+def test_classification():
     """
-    Test that the get_classification method returns correct information.
+    Test that classification returns correct information.
     Create a classification object, record it to DB then check
     that classification can be retrieved
     """
@@ -263,9 +263,11 @@ def test_get_classification():
     DPID1 = 1
     INPORT1 = 1
 
+    #*** TBD - set main_policy:
+
     #*** Instantiate classes:
     flow = flow_class.Flow(config)
-    #tc = tc_policy.TrafficClassificationPolicy(config)
+    tc = tc_policy.TrafficClassificationPolicy(config)
 
     #*** Ingest Flow 2 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
@@ -273,6 +275,18 @@ def test_get_classification():
     clasfn = flow.Classification(flow.packet.flow_hash,
                                     flow.classifications,
                                     flow.classification_time_limit)
+    #*** Base classification state:
+    assert flow.classification.flow_hash == flow.packet.flow_hash
+    assert flow.classification.classified == 0
+    assert flow.classification.classification_type == ""
+    assert flow.classification.classification_tag == ""
+    assert flow.classification.classification_time == 0
+    assert flow.classification.actions == ""
+
+    #*** Classify the packet:
+
+    #*** Re-Check Classification:
+
 
 #================= HELPER FUNCTIONS ===========================================
 

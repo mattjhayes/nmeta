@@ -96,7 +96,7 @@ conditions_rule_nested_2 = {
             'actions':
                 {
                 'set_qos_tag': 'QoS_treatment=high_priority',
-                'set_desc_tag': 'description="High Priority Audit Division SSH Traffic"'
+                'set_desc_tag': 'description="High Priority Audit Division SSHd Traffic"'
             }
         }
 
@@ -110,6 +110,10 @@ logger = logging.getLogger(__name__)
 
 #*** Test that packet match against policy works correctly:
 def test_check_policy():
+    #*** Copy in a test policy:
+
+    # TBD
+
     #*** Instantiate classes:
     tc = tc_policy.TrafficClassificationPolicy(config)
     flow = flow_class.Flow(config)

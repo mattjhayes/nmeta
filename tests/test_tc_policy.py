@@ -18,6 +18,7 @@ import logging
 import tc_policy
 import config
 import flows as flow_class
+import identities
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -110,17 +111,51 @@ logger = logging.getLogger(__name__)
 
 #*** Test that packet match against policy works correctly:
 def test_check_policy():
-    #*** Copy in a test policy:
 
-    # TBD
+    #config_dir="config/tests/regression",
+    #                    config_filename="main_policy_regression_static_2.yaml")
 
-    #*** Instantiate classes:
-    tc = tc_policy.TrafficClassificationPolicy(config)
+    #*** Instantiate tc_policy, flows and identities classes:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                                pol_dir="config/tests/regression",
+                                pol_file="main_policy_regression_static.yaml")
     flow = flow_class.Flow(config)
+    ident = identities.Identities(config)
 
-    # TBD
+    #*** Note: cannot query a classification until a packet has been
+    #*** ingested - will throw error
 
-#*** Test that packet match against policy rule works correctly:
+    #*** Ingest a packet:
+    #*** Test Flow 1 Packet 1 (Client TCP SYN):
+    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    #*** Check policy:
+    tc.check_policy(flow, ident)
+    #*** Should not match any rules in that policy:
+    logger.debug("flow.classification.classified=%s", flow.classification.classified)
+    assert flow.classification.classified == 0
+    assert flow.classification.classification_type == ""
+    assert flow.classification.classification_tag == ""
+    assert flow.classification.actions == ""
+
+    #*** Re-instantiate tc_policy with different policy that should classify:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                               pol_dir="config/tests/regression",
+                               pol_file="main_policy_regression_static_3.yaml")
+
+    #*** Re-ingest packet:
+    #*** Test Flow 1 Packet 1 (Client TCP SYN):
+    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    #*** Check policy:
+    tc.check_policy(flow, ident)
+    #*** Should match policy:
+    assert flow.classification.classified == 1
+    assert flow.classification.classification_type == ""
+    assert flow.classification.classification_tag == ""
+    logger.debug("flow.classification.actions=%s", flow.classification.actions)
+    assert flow.classification.actions == ""
+
 def test_check_rules():
     #*** Instantiate classes:
     tc = tc_policy.TrafficClassificationPolicy(config)

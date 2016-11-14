@@ -172,11 +172,12 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Harvest identity metadata:
         self.ident.harvest(msg.data, self.flow.packet)
 
-        #*** Traffic Classification:
+        #*** Traffic Classification if not already classified.
         #*** Check traffic classification policy to see if packet matches
-        #*** against policy and if it does return a dictionary of actions:
-        flow_actions = self.tc_policy.check_policy(self.flow, self.ident)
-        self.logger.debug("flow_actions=%s", flow_actions)
+        #*** against policy and if it does update flow.classified.*:
+        if not self.flow.classification.classified:
+            self.tc_policy.check_policy(self.flow, self.ident)
+            self.logger.debug("classification=%s", self.flow.classification.dbdict())
 
         #*** Call Forwarding module to carry out forwarding functions:
         out_port = self.forwarding.basic_switch(ev, in_port)

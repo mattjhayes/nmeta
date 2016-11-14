@@ -91,7 +91,7 @@ class Config(object):
     Config file is in YAML in config subdirectory and is
     called 'config.yaml'
     """
-    def __init__(self):
+    def __init__(self, config_dir="config", config_filename="config.yaml"):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
@@ -104,8 +104,8 @@ class Config(object):
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
         #*** Name of the config file:
-        self.config_filename = "config.yaml"
-        self.config_directory = "config"
+        self.config_filename = config_filename
+        self.config_directory = config_dir
         #*** Get working directory:
         self.working_directory = os.path.dirname(__file__)
         #*** Build the full path and filename for the config file:

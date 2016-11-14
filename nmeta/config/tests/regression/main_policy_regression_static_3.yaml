@@ -1,0 +1,36 @@
+---
+#*** Main Policy for nmeta - Static Regression Test
+#*** Written in YAML
+#
+tc_rules:
+    # Traffic Classification Rulesets and Rules
+    tc_ruleset_1:
+        - comment: Constrained Bandwidth Traffic
+          match_type: any
+          conditions_list:
+              - match_type: any
+                tcp_src: 80
+                tcp_dst: 80
+          actions:
+            set_qos_tag: QoS_treatment=constrained_bw
+            set_desc_tag: description="Constrained Bandwidth Traffic"
+#
+
+identity:
+    # Control how identity information is collected
+    # This is a 1 for on and 0 for off but will later tie to set of
+    # ports on which to run it
+    #
+    # Turn this on to collect ARP MAC address to IPv4 address mappings:
+    arp: 1
+    #
+    # Turn this on to collect Link Layer Discovery Protocol information:
+    lldp: 1
+    #
+    # Turn this on to collect DNS reply data matching services to IP addresses:
+    dns: 1
+    #
+    # Turn this on to collect DHCP information about address allocations and
+    # hostnames:
+    dhcp: 1
+

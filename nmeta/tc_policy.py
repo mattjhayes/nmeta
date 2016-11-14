@@ -25,6 +25,8 @@ attributes to use.
 import sys
 import os
 
+import time
+
 #*** nmeta imports:
 import tc_static
 import tc_identity
@@ -78,7 +80,7 @@ class TrafficClassificationPolicy(BaseClass):
     to ingest the policy file main_policy.yaml and check flows
     against policy to see if actions exist
     """
-    def __init__(self, config):
+    def __init__(self, config, pol_dir="config", pol_file="main_policy.yaml"):
         #*** Required for BaseClass:
         self.config = config
         #*** Run the BaseClass init to set things up:
@@ -87,14 +89,14 @@ class TrafficClassificationPolicy(BaseClass):
         self.configure_logging("tc_policy_logging_level_s",
                                        "tc_policy_logging_level_c")
 
-        #*** Name of the config file:
-        self.policy_filename = "main_policy.yaml"
-        self.config_directory = "config"
+        #*** Name of the main_policy file:
+        self.policy_filename = pol_file
+        self.policy_directory = pol_dir
         #*** Get working directory:
         self.working_directory = os.path.dirname(__file__)
         #*** Build the full path and filename for the config file:
         self.fullpathname = os.path.join(self.working_directory,
-                                         self.config_directory,
+                                         self.policy_directory,
                                          self.policy_filename)
         self.logger.info("About to open config file=%s", self.fullpathname)
         #*** Ingest the policy file:
@@ -317,8 +319,8 @@ class TrafficClassificationPolicy(BaseClass):
             #*** Check the rule:
             _result_dict = self._check_rule(tc_rule)
             if _result_dict['match']:
-                #self.logger.debug("Matched policy rule, _result_dict=%s",
-                #                                _result_dict)
+                self.logger.debug("Matched policy rule, _result_dict=%s",
+                                                _result_dict)
                 #*** Need to merge the actions configured on the rule
                 #*** with those returned by the classifiers
                 #*** Do type inspection to ensure only dealing with non-Null
@@ -342,16 +344,21 @@ class TrafficClassificationPolicy(BaseClass):
                     _merged_actions = False
                     self.logger.debug("#4 _merged_actions=%s", _merged_actions)
                 _result_dict['actions'] = _merged_actions
-                self.logger.debug("returning result=%s", _result_dict)
-                return _result_dict
-        #*** No hits so return false on everything:
-        _result_dict = {'match':False, 'continue_to_inspect':False,
-                    'actions': False}
+                self.logger.debug("_result_dict=%s", _result_dict)
 
-        # TBD Update flows object classifications:
+                #*** Update flows object classifications:
+                flow.classification.classified = _result_dict['match']
+                # TBD:
+                #flow.classification.classification_type = ""
+                # TBD:
+                #flow.classification.classification_tag = ""
+                flow.classification.classification_time = time.time()
+                # TBD:
+                flow.classification.actions = _result_dict['actions']
+                return 1
 
-
-        return _result_dict
+        #*** No hits so return without updating flow.classifications:
+        return 0
 
     def _check_rule(self, rule):
         """
@@ -393,8 +400,8 @@ class TrafficClassificationPolicy(BaseClass):
         else:
             #*** Unexpected result:
             self.logger.error("Unexpected result at "
-                "end of loop through attributes. policy_attr=%s, _match=%s, "
-                "self.match_type=%s", policy_attr, _match,
+                "end of loop through rule=%s, _match=%s, "
+                "self.match_type=%s", rule, _match,
                  self.rule_match_type)
             _result_dict['match'] = False
             return _result_dict
@@ -443,8 +450,7 @@ class TrafficClassificationPolicy(BaseClass):
                 _result_dict['actions'] = _match['actions']
             elif policy_attr_type == "conditions_list":
                 #*** Do a recursive call on nested conditions:
-                _nested_dict = self._check_conditions(self.pkt,
-                                                        policy_value, ctx)
+                _nested_dict = self._check_conditions(policy_value)
                 _match = _nested_dict["match"]
                 #*** TBD: How do we deal with nested continue to inspect
                 #***  results that conflict?

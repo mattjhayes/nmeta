@@ -13,7 +13,7 @@ tc_rules:
                 tcp_dst: 80
           actions:
             set_qos_tag: QoS_treatment=constrained_bw
-            set_desc_tag: description="Constrained Bandwidth Traffic"
+            set_desc_tag: "Constrained Bandwidth Traffic"
 #
 
 identity:

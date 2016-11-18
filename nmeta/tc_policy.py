@@ -390,10 +390,10 @@ class TrafficClassificationPolicy(BaseClass):
                 flow.classification.classified = True
                 flow.classification.classification_type = ""
                 # TBD:
-                #flow.classification.classification_tag = ""
+                flow.classification.classification_tag = tc_rule['actions']['set_desc_tag']
                 flow.classification.classification_time = time.time()
                 # TBD:
-                flow.classification.actions = ""
+                flow.classification.actions = tc_rule['actions']
                 return 1
 
         #*** No hits so return without updating flow.classifications:
@@ -503,11 +503,11 @@ class TrafficClassificationPolicy(BaseClass):
         #***  Work out what action to take:
         if not condition.match and conditions.match_type == "any":
             conditions.condition.append(condition)
-            conditions.match = True
+            conditions.match = False
             return conditions
         elif condition.match and conditions.match_type == "all":
             conditions.condition.append(condition)
-            conditions.match = False
+            conditions.match = True
             return conditions
         else:
             #*** Unexpected result:

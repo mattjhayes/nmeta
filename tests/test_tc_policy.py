@@ -109,13 +109,12 @@ results_dict_match = {'actions': False, 'match': True,
 
 logger = logging.getLogger(__name__)
 
-#*** Test that packet match against policy works correctly:
 def test_check_policy():
-
-    #config_dir="config/tests/regression",
-    #                    config_filename="main_policy_regression_static_2.yaml")
-
-    #*** Instantiate tc_policy, flows and identities classes:
+    """
+    Test that packet match against policy works correctly
+    """
+    #*** Instantiate tc_policy, flows and identities classes, specifying
+    #*** a particular main_policy file to use:
     tc = tc_policy.TrafficClassificationPolicy(config,
                                 pol_dir="config/tests/regression",
                                 pol_file="main_policy_regression_static.yaml")
@@ -152,7 +151,7 @@ def test_check_policy():
     #*** Should match policy:
     assert flow.classification.classified == 1
     assert flow.classification.classification_type == ""
-    assert flow.classification.classification_tag == ""
+    assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
     logger.debug("flow.classification.actions=%s", flow.classification.actions)
     assert flow.classification.actions == ""
 

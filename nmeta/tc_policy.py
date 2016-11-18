@@ -117,6 +117,72 @@ class TrafficClassificationPolicy(BaseClass):
         #*** that it is good:
         self.validate_policy()
 
+    class Rule(object):
+        """
+        An object that represents a traffic classification rule
+        (a set of conditions), including any decision collateral
+        on matches and actions
+        """
+        def __init__(self):
+            """
+            Initialise variables
+            """
+            self.match = 0
+            self.match_type = ""
+            #*** List for conditions objects:
+            self.conditions = []
+
+        def to_dict(self):
+            """
+            Return a dictionary object of the condition object
+            """
+            return self.__dict__
+
+
+    class Conditions(object):
+        """
+        An object that represents traffic classification conditions,
+        including any decision collateral on matches and actions
+        """
+        def __init__(self):
+            """
+            Initialise variables
+            """
+            self.match = 0
+            self.match_type = ""
+            #*** List for condition objects:
+            self.condition = []
+
+        def to_dict(self):
+            """
+            Return a dictionary object of the condition object
+            """
+            return self.__dict__
+
+    class Condition(object):
+        """
+        An object that represents a traffic classification condition,
+        including any decision collateral on match test
+        """
+        def __init__(self):
+            """
+            Initialise variables
+            """
+            self.policy_attr = ""
+            self.policy_attr_type = ""
+            self.policy_value = ""
+            self.match = 0
+            self.continue_to_inspect = 0
+            self.classification_tag = ""
+            self.actions = ""
+
+        def to_dict(self):
+            """
+            Return a dictionary object of the condition object
+            """
+            return self.__dict__
+
+
     def validate_policy(self):
         """
         Check main policy to ensure that it is in
@@ -317,138 +383,98 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Check against TC policy:
         for tc_rule in self.tc_ruleset:
             #*** Check the rule:
-            _result_dict = self._check_rule(tc_rule)
-            if _result_dict['match']:
-                self.logger.debug("Matched policy rule, _result_dict=%s",
-                                                _result_dict)
-                #*** Need to merge the actions configured on the rule
-                #*** with those returned by the classifiers
-                #*** Do type inspection to ensure only dealing with non-Null
-                #*** items. There has to be a better way...!!!?
-                self.logger.debug("tc_rule['actions']=%s, "
-                                    "_result_dict['actions']=%s",
-                                    tc_rule['actions'],
-                                    _result_dict['actions'])
-                if (isinstance(tc_rule['actions'], dict) and
-                        isinstance(_result_dict['actions'], dict)):
-                    _merged_actions = dict(tc_rule['actions'].items()
-                                        + _result_dict['actions'].items())
-                    self.logger.debug("#1 _merged_actions=%s", _merged_actions)
-                elif isinstance(tc_rule['actions'], dict):
-                    _merged_actions = tc_rule['actions']
-                    self.logger.debug("#2 _merged_actions=%s", _merged_actions)
-                elif isinstance(_result_dict['actions'], dict):
-                    _merged_actions = _result_dict['actions']
-                    self.logger.debug("#3 _merged_actions=%s", _merged_actions)
-                else:
-                    _merged_actions = False
-                    self.logger.debug("#4 _merged_actions=%s", _merged_actions)
-                _result_dict['actions'] = _merged_actions
-                self.logger.debug("_result_dict=%s", _result_dict)
-
+            rule = self._check_rule(tc_rule)
+            if rule.match:
+                self.logger.debug("Matched policy rule=%s", rule.to_dict())
                 #*** Update flows object classifications:
-                flow.classification.classified = _result_dict['match']
-                # TBD:
-                #flow.classification.classification_type = ""
+                flow.classification.classified = True
+                flow.classification.classification_type = ""
                 # TBD:
                 #flow.classification.classification_tag = ""
                 flow.classification.classification_time = time.time()
                 # TBD:
-                flow.classification.actions = _result_dict['actions']
+                flow.classification.actions = ""
                 return 1
 
         #*** No hits so return without updating flow.classifications:
         return 0
 
-    def _check_rule(self, rule):
+    def _check_rule(self, rule_stanza):
         """
-        Passed a main_policy.yaml tc_rule.
+        Passed a main_policy.yaml tc_rule stanza.
         Check to see if packet matches conditions as per the
         rule.
-        Return a results dictionary
+        Return a rule object
         """
-        _result_dict = {'match':True, 'continue_to_inspect':False,
-                    'actions': False}
-        self.rule_match_type = rule['match_type']
+        #*** Instantiate a Rule class for results:
+        rule = self.Rule()
+        rule.match_type = rule_stanza['match_type']
         #*** Iterate through the conditions list:
-        for condition_stanza in rule['conditions_list']:
-            _result = self._check_conditions(condition_stanza)
-            #self.logger.debug("_result=%s", _result)
-            _match = _result['match']
-            #*** Carry over actions from pass_return_tag classifiers if any:
-            if _result['actions'] != 'False':
-                #self.logger.debug("Passing actions from classifier")
-                _result_dict['actions'] = _result['actions']
+        for condition_stanza in rule_stanza['conditions_list']:
+            conditions = self._check_conditions(condition_stanza)
+            self.logger.debug("condition_stanza=%s, conditions=%s", condition_stanza, conditions.to_dict())
             #*** Decide what to do based on match result and match type:
-            if _match and self.rule_match_type == "any":
-                _result_dict['match'] = True
-                return _result_dict
-            elif not _match and self.rule_match_type == "all":
-                _result_dict['match'] = False
-                return _result_dict
+            if conditions.match and rule.match_type == "any":
+                rule.match = True
+                return rule
+            elif not conditions.match and rule.match_type == "all":
+                rule.match = False
+                return rule
             else:
                 #*** Not a condition that we take action on so keep going:
                 pass
         #*** We've finished loop through all conditions and haven't returned.
         #***  Work out what action to take:
-        if not _match and self.rule_match_type == "any":
-            _result_dict['match'] = False
-            return _result_dict
-        elif _match and self.rule_match_type == "all":
-            _result_dict['match'] = True
-            return _result_dict
+        if not conditions.match and rule.match_type == "any":
+            rule.match = False
+            return rule
+        elif conditions.match and rule.match_type == "all":
+            rule.match = True
+            return rule
         else:
             #*** Unexpected result:
             self.logger.error("Unexpected result at "
-                "end of loop through rule=%s, _match=%s, "
-                "self.match_type=%s", rule, _match,
-                 self.rule_match_type)
-            _result_dict['match'] = False
-            return _result_dict
+                "end of loop through rule=%s", rule.to_dict())
+            rule.match = False
+            return rule
 
-    def _check_conditions(self, conditions):
+    def _check_conditions(self, conditions_stanza):
         """
         Passed a conditions stanza
-        Check to see if packet matches conditions as per the
-        match type, and if so return in the dictionary attribute "match" with
-        the boolean value True otherwise boolean False.
-        A match_type of 'any' will return true as soon as a valid
-        match is made and false if end of matching is reached.
-        A match_type of 'all' will return false as soon as an invalid
-        match is made and true if end of matching is reached.
+        Check to see if self.packet matches conditions as per the
+        match type.
+        Return a condition object with match information.
         """
-        self.logger.debug("conditions=%s", conditions)
-        #*** initial settings for results dictionary:
-        _result_dict = {'match':True, 'continue_to_inspect':False,
-                    'actions': False}
-        self.match_type = conditions['match_type']
-        _match = False
-        #*** Loop through conditions checking match:
-        for policy_attr in conditions.keys():
-            policy_value = conditions[policy_attr]
+        self.logger.debug("conditions_stanza=%s", conditions_stanza)
+        #*** Instantiate a conditions class for results:
+        conditions = self.Conditions()
+        conditions.match_type = conditions_stanza['match_type']
+        #*** Loop through conditions_stanza checking match:
+        for policy_attr in conditions_stanza.keys():
+            if policy_attr == "match_type":
+                #*** Nothing to do:
+                continue
+            #*** Instantiate a condition class for result:
+            condition = self.Condition()
+            condition.policy_attr = policy_attr
+            condition.policy_value = conditions_stanza[policy_attr]
             self.logger.debug("looping checking policy_attr=%s "
-                                  "policy_value=%s", policy_attr, policy_value)
-            #*** Policy Attribute Type is for non-static classifiers to
-            #*** hold the attribute prefix (i.e. identity).
+                                  "policy_value=%s", condition.policy_attr,
+                                  condition.policy_value)
+            #*** Policy Attribute Type is for identity classifiers
             #*** Exclude nested conditions dictionaries from this check:
-            if policy_attr[0:10] == 'conditions':
-                policy_attr_type = "conditions"
+            if condition.policy_attr[0:10] == 'conditions':
+                condition.policy_attr_type = "conditions"
             else:
-                policy_attr_type = policy_attr.split("_")
-                policy_attr_type = policy_attr_type[0]
+                condition.policy_attr_type = policy_attr.split("_")[0]
             #*** Main if/elif/else check on condition attribute type:
-            if policy_attr_type == "identity":
-                _match = self.identity.check_identity(policy_attr,
-                                             policy_value, self.pkt,
-                                             self.ident)
-            elif policy_attr == "custom":
-                _match = self.custom.check_custom(policy_attr, policy_value,
-                                                            self.pkt)
-                self.logger.debug("custom _match=%s",
-                                                            _match)
-                #*** Need this line for any classifier that returns actions:
-                _result_dict['actions'] = _match['actions']
-            elif policy_attr_type == "conditions_list":
+            if condition.policy_attr_type == "identity":
+                self.identity.check_identity(condition, self.pkt, self.ident)
+            elif condition.policy_attr == "custom":
+                self.custom.check_custom(condition, self.pkt, self.ident)
+            elif condition.policy_attr_type == "conditions_list":
+                # TBD:
+
                 #*** Do a recursive call on nested conditions:
                 _nested_dict = self._check_conditions(policy_value)
                 _match = _nested_dict["match"]
@@ -456,40 +482,38 @@ class TrafficClassificationPolicy(BaseClass):
                 #***  results that conflict?
                 _result_dict["continue_to_inspect"] = \
                                     _nested_dict["continue_to_inspect"]
-            elif policy_attr == "match_type":
-                #*** Nothing to do:
-                self.logger.debug("passing...")
-                pass
             else:
                 #*** default to doing a Static Classification match:
-                _match = self.static.check_static(policy_attr,
-                                                    policy_value,
-                                                    self.pkt)
-                self.logger.debug("static match=%s", _match)
+                self.static.check_static(condition, self.pkt)
+                self.logger.debug("static match=%s", condition.to_dict())
             #*** Decide what to do based on match result and match type:
-            if _match and self.match_type == "any":
-                _result_dict["match"] = True
-                return _result_dict
-            elif not _match and not policy_attr == "match_type" and \
-                                                      self.match_type == "all":
-                _result_dict["match"] = False
-                return _result_dict
+            if condition.match and conditions.match_type == "any":
+                conditions.condition.append(condition)
+                conditions.match = True
+                return conditions
+            elif not condition.match and not condition.policy_attr == \
+                            "match_type" and conditions.match_type == "all":
+                conditions.condition.append(condition)
+                conditions.match = False
+                return conditions
             else:
                 #*** Not a condition that we take action on so keep going:
                 pass
         #*** We've finished loop through all conditions and haven't returned.
         #***  Work out what action to take:
-        if not _match and self.match_type == "any":
-            _result_dict["match"] = False
-            return _result_dict
-        elif _match and self.match_type == "all":
-            _result_dict["match"] = True
-            return _result_dict
+        if not condition.match and conditions.match_type == "any":
+            conditions.condition.append(condition)
+            conditions.match = True
+            return conditions
+        elif condition.match and conditions.match_type == "all":
+            conditions.condition.append(condition)
+            conditions.match = False
+            return conditions
         else:
             #*** Unexpected result:
-            self.logger.error("Unexpected result at "
-                "end of loop through attributes. policy_attr=%s, _match=%s, "
-                "self.match_type=%s", policy_attr, _match, self.match_type)
-            _result_dict["match"] = False
-            return _result_dict
+            self.logger.error("Unexpected result at end of loop through "
+                                        "attributes. condition=%s, ",
+                                        condition.to_dict())
+            conditions.match = False
+            return conditions
 

@@ -38,6 +38,7 @@ import config
 import flows as flow_class
 import identities as identities_class
 import tc_static as tc_static_module
+import tc_policy
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -67,20 +68,78 @@ def test_check_static():
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
-    assert tc_static.check_static('eth_src', pkts.ETH_SRC[0], flow.packet) == True
-    assert tc_static.check_static('eth_src', pkts.ETH_DST[0], flow.packet) == False
-    assert tc_static.check_static('eth_dst', pkts.ETH_DST[0], flow.packet) == True
-    assert tc_static.check_static('eth_dst', pkts.ETH_SRC[0], flow.packet) == False
-    assert tc_static.check_static('eth_type', pkts.ETH_TYPE[0], flow.packet) == True
-    assert tc_static.check_static('eth_type', 2054, flow.packet) == False
-    assert tc_static.check_static('ip_src', pkts.IP_SRC[0], flow.packet) == True
-    assert tc_static.check_static('ip_src', pkts.IP_DST[0], flow.packet) == False
-    assert tc_static.check_static('ip_dst', pkts.IP_DST[0], flow.packet) == True
-    assert tc_static.check_static('ip_dst', pkts.IP_SRC[0], flow.packet) == False
-    assert tc_static.check_static('tcp_src', pkts.TP_SRC[0], flow.packet) == True
-    assert tc_static.check_static('tcp_src', pkts.TP_DST[0], flow.packet) == False
-    assert tc_static.check_static('tcp_dst', pkts.TP_DST[0], flow.packet) == True
-    assert tc_static.check_static('tcp_dst', pkts.TP_SRC[0], flow.packet) == False
+    #*** Instantiate match object:
+    condition = tc_policy.TrafficClassificationPolicy.Condition()
+
+    condition.policy_attr = 'eth_src'
+    condition.policy_value = pkts.ETH_SRC[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'eth_src'
+    condition.policy_value = pkts.ETH_DST[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
+
+    condition.policy_attr = 'eth_dst'
+    condition.policy_value = pkts.ETH_DST[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'eth_dst'
+    condition.policy_value = pkts.ETH_SRC[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
+
+    condition.policy_attr = 'eth_type'
+    condition.policy_value = pkts.ETH_TYPE[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'eth_type'
+    condition.policy_value = 2054
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
+
+    condition.policy_attr = 'ip_src'
+    condition.policy_value = pkts.IP_SRC[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'ip_src'
+    condition.policy_value = pkts.IP_DST[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
+
+    condition.policy_attr = 'ip_dst'
+    condition.policy_value = pkts.IP_DST[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'ip_dst'
+    condition.policy_value = pkts.IP_SRC[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
+
+    condition.policy_attr = 'tcp_src'
+    condition.policy_value = pkts.TP_SRC[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'tcp_src'
+    condition.policy_value = pkts.TP_DST[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
+
+    condition.policy_attr = 'tcp_dst'
+    condition.policy_value = pkts.TP_DST[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'tcp_dst'
+    condition.policy_value = pkts.TP_SRC[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
 
     # TBD check UDP
 

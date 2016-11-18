@@ -44,35 +44,36 @@ class StaticInspect(BaseClass):
         self.configure_logging("tc_static_logging_level_s",
                                        "tc_static_logging_level_c")
 
-    def check_static(self, policy_attr, policy_value, pkt):
+    def check_static(self, condition, pkt):
         """
-        Passed a static classification attribute, value and flows
-        packet object.
-        Returns match Boolean (i.e. True means matches)
+        Passed match and flows packet objects
+        Update the match with boolean of result of match checks
         """
+        policy_attr = condition.policy_attr
+        policy_value = condition.policy_value
         if policy_attr == 'eth_src':
-            return pkt.eth_src == policy_value
+            condition.match = pkt.eth_src == policy_value
         elif policy_attr == 'eth_dst':
-            return pkt.eth_dst == policy_value
+            condition.match = pkt.eth_dst == policy_value
         elif policy_attr == 'eth_type':
-            return pkt.eth_type == policy_value
+            condition.match = pkt.eth_type == policy_value
         elif policy_attr == 'ip_src':
-            return pkt.ip_src == policy_value
+            condition.match = pkt.ip_src == policy_value
         elif policy_attr == 'ip_dst':
-            return pkt.ip_dst == policy_value
+            condition.match = pkt.ip_dst == policy_value
         elif policy_attr == 'tcp_src':
-            return pkt.proto == 6 and pkt.tp_src == policy_value
+            condition.match = pkt.proto == 6 and pkt.tp_src == policy_value
         elif policy_attr == 'tcp_dst':
-            return pkt.proto == 6 and pkt.tp_dst == policy_value
+            condition.match = pkt.proto == 6 and pkt.tp_dst == policy_value
         elif policy_attr == 'udp_src':
-            return pkt.proto == 17 and pkt.tp_src == policy_value
+            condition.match = pkt.proto == 17 and pkt.tp_src == policy_value
         elif policy_attr == 'udp_dst':
-            return pkt.proto == 17 and pkt.tp_dst == policy_value
+            condition.match = pkt.proto == 17 and pkt.tp_dst == policy_value
         else:
             #*** didn't match any policy conditions so return false and
             #***  log an error:
             self.logger.error("Unsupported policy_attr=%s", policy_attr)
-            return False
+            condition.match = False
 
     def is_valid_macaddress(self, value_to_check):
         """

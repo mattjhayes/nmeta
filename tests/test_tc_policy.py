@@ -167,7 +167,10 @@ def test_check_rules():
     #*** Set tc.pkt as work around for not calling parent method that sets it:
     tc.pkt = flow.packet
     #*** Should match:
-    assert tc._check_rule(conditions_rule_nested_1) == results_dict_match
+    rule = tc._check_rule(conditions_rule_nested_1)
+    logger.debug("rule=%s", rule.to_dict())
+    assert rule.match == True
+
     #assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_1, ctx) == \
     #                         results_dict_match
     #assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_2, ctx) == \
@@ -188,21 +191,34 @@ def test_check_conditions():
     tc.pkt = flow.packet
     #*** HTTP is not OpenFlow so shouldn't match!
     logger.debug("conditions_any_opf should not match")
-    assert tc._check_conditions(conditions_any_opf) == results_dict_no_match
+    conditions = tc._check_conditions(conditions_any_opf)
+    assert not conditions.condition[0].match
+
     #*** HTTP is HTTP so should match:
     logger.debug("conditions_any_http should match")
-    assert tc._check_conditions(conditions_any_http) == results_dict_match
+    conditions = tc._check_conditions(conditions_any_http)
+    assert conditions.condition[0].match
+
     #*** Source AND Dest aren't both HTTP so should not match:
     logger.debug("conditions_all_http should not match")
-    assert tc._check_conditions(conditions_all_http) == results_dict_no_match
+    conditions = tc._check_conditions(conditions_all_http)
+    assert not conditions.condition[0].match
+
     #*** This should match (HTTP src and dst ports correct):
     logger.debug("conditions_all_http2 should match")
-    assert tc._check_conditions(conditions_all_http2) == results_dict_match
+    conditions = tc._check_conditions(conditions_all_http2)
+    assert conditions.condition[0].match
+
     #*** MAC should match:
-    assert tc._check_conditions(conditions_any_mac) == results_dict_match
-    assert tc._check_conditions(conditions_all_mac) == results_dict_match
+    conditions = tc._check_conditions(conditions_any_mac)
+    assert conditions.condition[0].match
+
+    conditions = tc._check_conditions(conditions_all_mac)
+    assert conditions.condition[0].match
+
     #*** Different MAC shouldn't match:
-    assert tc._check_conditions(conditions_any_mac2) == results_dict_no_match
+    conditions = tc._check_conditions(conditions_any_mac2)
+    assert not conditions.condition[0].match
 
 #*** Test TC packet match against a rule stanza:
 def test_tc_check_rule():

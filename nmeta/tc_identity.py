@@ -36,15 +36,13 @@ class IdentityInspect(BaseClass):
         self.configure_logging("tc_identity_logging_level_s",
                                        "tc_identity_logging_level_c")
 
-    def check_identity(self, policy_attr, policy_value, pkt, ident):
+    def check_identity(self, match, pkt, ident):
         """
         Checks if a given packet matches a given identity match rule.
-        Passed an identity attribute, value and flows packet object and
-        an instance of the identities class. Return True or False based
-        on whether or not either of the packet IP addresses matches
-        the identity attribute/value.
+        Passed a match, flows packet and identities object and
+        update the match based on whether or not either of the packet
+        IP addresses matches the identity attribute/value.
         Uses methods of the Identities class to work this out
-        Returns a Boolean
         """
         result = False
         if policy_attr == "identity_lldp_systemname":
@@ -57,8 +55,9 @@ class IdentityInspect(BaseClass):
             result = self.check_dns(policy_value, pkt, ident, is_regex=True)
         else:
             self.logger.error("Unknown policy_attr=%s", policy_attr)
-            return False
-        return result
+            result = False
+        #*** Update the match object with the result:
+        match.match = result
 
     def check_lldp(self, host_name, pkt, ident, is_regex=False):
         """

@@ -40,15 +40,11 @@ class CustomInspect(BaseClass):
         self.configure_logging("tc_custom_logging_level_s",
                                        "tc_custom_logging_level_c")
 
-    def check_custom(self, policy_attr, policy_value, pkt):
+    def check_custom(self, match, pkt, ident):
         """
-        Passed a statistical classification attribute, value and flows
-        packet object.
-        Return a dictionary containing attributes 'valid',
-        'continue_to_inspect' and 'actions' with appropriate values set.
+        Passed match, flows packet and identites objects.
+        Update the match object as appropriate.
         """
-        self.logger.debug("check_statistical was called policy_attr=%s "
-                            "policy_value=%s", policy_attr, policy_value)
         if policy_attr == "statistical_qos_bandwidth_1":
             #*** call the function for this particular statistical classifier
             results_dict = self._statistical_qos_bandwidth_1(pkt)

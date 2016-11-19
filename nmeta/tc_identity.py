@@ -36,28 +36,30 @@ class IdentityInspect(BaseClass):
         self.configure_logging("tc_identity_logging_level_s",
                                        "tc_identity_logging_level_c")
 
-    def check_identity(self, match, pkt, ident):
+    def check_identity(self, condition, pkt, ident):
         """
         Checks if a given packet matches a given identity match rule.
-        Passed a match, flows packet and identities object and
-        update the match based on whether or not either of the packet
-        IP addresses matches the identity attribute/value.
+        Passed condition, flows packet and identities objects and
+        update the condition match based on whether or not either
+        of the packet IP addresses matches the identity attribute/value.
         Uses methods of the Identities class to work this out
         """
         result = False
-        if policy_attr == "identity_lldp_systemname":
-            result = self.check_lldp(policy_value, pkt, ident)
-        elif policy_attr == "identity_lldp_systemname_re":
-            result = self.check_lldp(policy_value, pkt, ident, is_regex=True)
-        elif policy_attr == "identity_service_dns":
-            result = self.check_dns(policy_value, pkt, ident)
-        elif policy_attr == "identity_service_dns_re":
-            result = self.check_dns(policy_value, pkt, ident, is_regex=True)
+        if condition.policy_attr == "identity_lldp_systemname":
+            result = self.check_lldp(condition.policy_value, pkt, ident)
+        elif condition.policy_attr == "identity_lldp_systemname_re":
+            result = self.check_lldp(condition.policy_value, pkt, ident,
+                                                                is_regex=True)
+        elif condition.policy_attr == "identity_service_dns":
+            result = self.check_dns(condition.policy_value, pkt, ident)
+        elif condition.policy_attr == "identity_service_dns_re":
+            result = self.check_dns(condition.policy_value, pkt, ident,
+                                                                is_regex=True)
         else:
-            self.logger.error("Unknown policy_attr=%s", policy_attr)
+            self.logger.error("Unknown policy_attr=%s", condition.policy_attr)
             result = False
         #*** Update the match object with the result:
-        match.match = result
+        condition.match = result
 
     def check_lldp(self, host_name, pkt, ident, is_regex=False):
         """

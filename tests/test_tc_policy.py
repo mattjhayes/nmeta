@@ -153,7 +153,8 @@ def test_check_policy():
     assert flow.classification.classification_type == ""
     assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
     logger.debug("flow.classification.actions=%s", flow.classification.actions)
-    assert flow.classification.actions == ""
+    assert flow.classification.actions == {'set_desc_tag': 'Constrained Bandwidth Traffic',
+                                           'set_qos_tag': 'QoS_treatment=constrained_bw'}
 
 def test_check_rules():
     #*** Instantiate classes:

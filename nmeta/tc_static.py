@@ -46,8 +46,9 @@ class StaticInspect(BaseClass):
 
     def check_static(self, condition, pkt):
         """
-        Passed match and flows packet objects
-        Update the match with boolean of result of match checks
+        Passed condition and flows packet objects
+        Update the condition match with boolean of result
+        of match checks
         """
         policy_attr = condition.policy_attr
         policy_value = condition.policy_value

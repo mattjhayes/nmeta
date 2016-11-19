@@ -225,12 +225,41 @@ All custom classifiers have the attribute:
 The value determines the custom .py file to load from the nmeta/classifiers
 directory
 
-*************
+For example, the following condition loads a custom classifier file :code:`~/nmeta/nmeta/classifiers/statistical_qos_bandwidth_1.py`:
+
+.. code-block:: text
+
+  custom: statistical_qos_bandwidth_1
+
+Actions
+-------
+
+Actions are specific to a rule, and define what nmeta should do when the rule is matched.
+
+Supported attributes are:
+
+:set_qos: Set QoS treatment for flow.
+
+  Example:
+
+  .. code-block:: text
+
+    set_qos: classifier_return
+
+  Values can be:
+
+    default_priority
+    constrained_bw
+    high_priority
+    low_priority
+    classifier_return
+
 QoS Treatment
-*************
+-------------
 
 Quality of Service (QoS) treatment parameters are configured in main policy
-under the qos_treatment root directive:
+under the qos_treatment root directive. They map qos action values to
+queue numbers. Example:
 
 .. code-block:: text
 

@@ -14,7 +14,15 @@ tc_rules:
                 identity_lldp_systemname_re: 'pc.*\.example\.com'
           actions:
             set_qos_tag: QoS_treatment=constrained_bw
-            set_desc_tag: description="Constrained Bandwidth Traffic"
+            set_desc_tag: "Constrained Bandwidth Traffic"
+#
+qos_treatment:
+  # Control Quality of Service (QoS) treatment mapping of
+  #  names to output queue numbers:
+  default_priority: 0
+  constrained_bw: 1
+  high_priority: 2
+  low_priority: 3
 #
 identity:
     # Control how identity information is collected

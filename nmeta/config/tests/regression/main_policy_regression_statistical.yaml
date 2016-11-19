@@ -9,9 +9,17 @@ tc_rules:
           match_type: any
           conditions_list:
               - match_type: any
-                statistical_qos_bandwidth_1: on
+                custom: statistical_qos_bandwidth_1
           actions:
-              pass_return_tags: true
+              set_qos: classifier_return
+#
+qos_treatment:
+  # Control Quality of Service (QoS) treatment mapping of
+  #  names to output queue numbers:
+  default_priority: 0
+  constrained_bw: 1
+  high_priority: 2
+  low_priority: 3
 #
 identity:
     # Control how identity information is collected

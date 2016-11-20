@@ -13,8 +13,8 @@ tc_rules:
               - match_type: any
                 identity_lldp_systemname_re: 'pc.*\.example\.com'
           actions:
-            set_qos_tag: QoS_treatment=constrained_bw
-            set_desc_tag: "Constrained Bandwidth Traffic"
+            set_desc: "Constrained Bandwidth Traffic"
+            qos_treatment: constrained_bw
 #
 qos_treatment:
   # Control Quality of Service (QoS) treatment mapping of

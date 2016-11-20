@@ -11,7 +11,7 @@ tc_rules:
               - match_type: any
                 tcp_src: 123
           actions:
-              set_desc_tag: "Foo"
+              set_desc: "Foo"
 #
 qos_treatment:
   # Control Quality of Service (QoS) treatment mapping of

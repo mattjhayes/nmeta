@@ -40,10 +40,10 @@ class CustomInspect(BaseClass):
         self.configure_logging("tc_custom_logging_level_s",
                                        "tc_custom_logging_level_c")
 
-    def check_custom(self, match, pkt, ident):
+    def check_custom(self, condition, pkt, ident):
         """
-        Passed match, flows packet and identites objects.
-        Update the match object as appropriate.
+        Passed condition, flows packet and identities objects.
+        Update the condition match as appropriate.
         """
         if policy_attr == "statistical_qos_bandwidth_1":
             #*** call the function for this particular statistical classifier
@@ -59,7 +59,7 @@ class CustomInspect(BaseClass):
     def instantiate_classifiers(self, _classifiers):
         """
         Dynamically import and instantiate classes for any
-        dynamic classifiers specified in the controller
+        custom classifiers specified in the controller
         nmeta2 main_policy.yaml
         .
         Passed a list of tuples of classifier type / classifer name

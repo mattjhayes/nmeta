@@ -238,7 +238,7 @@ Actions are specific to a rule, and define what nmeta should do when the rule is
 
 Supported attributes are:
 
-:set_qos: Set QoS treatment for flow.
+:qos_treatment: Specify QoS treatment for flow.
 
   Example:
 
@@ -248,11 +248,20 @@ Supported attributes are:
 
   Values can be:
 
-    default_priority
-    constrained_bw
-    high_priority
-    low_priority
-    classifier_return
+  - default_priority
+  - constrained_bw
+  - high_priority
+  - low_priority
+  - classifier_return
+
+:set_desc: Set description for the flow. This is a convenience for humans.
+
+  Example:
+
+  .. code-block:: text
+
+    set_desc: "This is a flow type description"
+
 
 QoS Treatment
 -------------

@@ -59,15 +59,13 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'identity_lldp_systemname_re': 'String',
                                'identity_service_dns': 'String',
                                'identity_service_dns_re': 'String',
-                               'payload_type': 'String',
+                               'custom': 'String',
                                'match_type': 'MatchType',
                                'conditions_list': 'PolicyConditions'}
-TC_CONFIG_ACTIONS = ('set_qos_tag',
-                     'set_desc_tag',
-                     'pass_return_tags')
+TC_CONFIG_ACTIONS = ('qos_treatment',
+                     'set_desc')
 TC_CONFIG_MATCH_TYPES = ('any',
-                         'all',
-                         'custom')
+                         'all')
 #*** Keys that must exist under 'identity' in the policy:
 IDENTITY_KEYS = ('arp',
                  'lldp',
@@ -109,6 +107,8 @@ class TrafficClassificationPolicy(BaseClass):
                               self.fullpathname, exception)
             sys.exit("Exiting nmeta. Please create traffic classification "
                              "policy file")
+        #*** List to be populated with names of any custom classifiers:
+        self.custom_classifiers = []
         #*** Instantiate Classes:
         self.static = tc_static.StaticInspect(config)
         self.identity = tc_identity.IdentityInspect(config)
@@ -280,6 +280,11 @@ class TrafficClassificationPolicy(BaseClass):
                 " is invalid: %s", policy_condition)
                 sys.exit("Exiting nmeta. Please fix error in "
                          "main_policy.yaml file")
+            #*** Accumulate names of any custom classifiers for later loading:
+            if policy_condition == 'custom':
+                custom_name = policy_conditions[policy_condition]
+                if custom_name not in self.custom_classifiers:
+                    self.custom_classifiers.append(custom_name)
             #*** Check policy condition value is valid:
             if not policy_condition[0:10] == 'conditions':
                 pc_value_type = TC_CONFIG_CONDITIONS[policy_condition]
@@ -390,7 +395,7 @@ class TrafficClassificationPolicy(BaseClass):
                 flow.classification.classified = True
                 flow.classification.classification_type = ""
                 # TBD:
-                flow.classification.classification_tag = tc_rule['actions']['set_desc_tag']
+                flow.classification.classification_tag = tc_rule['actions']['set_desc']
                 flow.classification.classification_time = time.time()
                 # TBD:
                 flow.classification.actions = tc_rule['actions']

@@ -153,8 +153,8 @@ def test_check_policy():
     assert flow.classification.classification_type == ""
     assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
     logger.debug("flow.classification.actions=%s", flow.classification.actions)
-    assert flow.classification.actions == {'set_desc_tag': 'Constrained Bandwidth Traffic',
-                                           'set_qos_tag': 'QoS_treatment=constrained_bw'}
+    assert flow.classification.actions == {'set_desc': 'Constrained Bandwidth Traffic',
+                                           'qos_treatment': 'constrained_bw'}
 
 def test_check_rules():
     #*** Instantiate classes:
@@ -220,17 +220,24 @@ def test_check_conditions():
     conditions = tc._check_conditions(conditions_any_mac2)
     assert not conditions.condition[0].match
 
-#*** Test TC packet match against a rule stanza:
-def test_tc_check_rule():
-    #*** Rule checks:
-    #assert tc._check_rule(pkt_arp, conditions_rule_nested_1, ctx) == \
-    #                         results_dict_no_match
-    #assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_1, ctx) == \
-    #                         results_dict_match
-    #assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_2, ctx) == \
-    #                         results_dict_no_match
-    pass
+def test_custom_classifiers():
+    """
+    Check deduplicated list of custom classifiers works
+    """
+    #*** Instantiate tc_policy, specifying
+    #*** a particular main_policy file to use that has no custom classifiers:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir="config/tests/regression",
+                            pol_file="main_policy_regression_static.yaml")
+    assert tc.custom_classifiers == []
 
+    #*** Instantiate tc_policy, specifying
+    #*** a custom statistical main_policy file to use that has a
+    #*** custom classifier:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir="config/tests/regression",
+                            pol_file="main_policy_regression_statistical.yaml")
+    assert tc.custom_classifiers == []
 
 #=========== Misc Functions to Generate Data for Unit Tests ===================
 

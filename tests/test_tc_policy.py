@@ -237,7 +237,7 @@ def test_custom_classifiers():
     tc = tc_policy.TrafficClassificationPolicy(config,
                             pol_dir="config/tests/regression",
                             pol_file="main_policy_regression_statistical.yaml")
-    assert tc.custom_classifiers == []
+    assert tc.custom_classifiers == ['statistical_qos_bandwidth_1']
 
 #=========== Misc Functions to Generate Data for Unit Tests ===================
 

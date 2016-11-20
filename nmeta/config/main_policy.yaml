@@ -5,14 +5,14 @@
 tc_rules:
     # Traffic Classification Rulesets and Rules
     tc_ruleset_1:
-        - comment: Control Static Rule that doesn't do anything
+        - comment: Basic Statistical Classifier
           match_type: any
           conditions_list:
               - match_type: any
-                tcp_src: 123
+                custom: statistical_qos_bandwidth_1
           actions:
-              set_desc: "Foo"
-#
+            set_desc: classifier_return
+            qos_treatment: classifier_return
 qos_treatment:
   # Control Quality of Service (QoS) treatment mapping of
   #  names to output queue numbers:

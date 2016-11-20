@@ -224,10 +224,11 @@ class TrafficClassificationPolicy(BaseClass):
                                          "invalid: %s ", policy_rule_parameter)
                     sys.exit("Exiting nmeta. Please fix error in "
                              "main_policy.yaml file")
-                if policy_rule_parameter == 'conditions':
-                    #*** Call function to validate the policy condition and
-                    #*** any nested policy conditions that it may contain:
-                    self._validate_conditions(tc_rule[policy_rule_parameter])
+                if policy_rule_parameter == 'conditions_list':
+                    for conditions in tc_rule[policy_rule_parameter]:
+                        #*** Call function to validate the policy condition and
+                        #*** any nested policy conditions that it may contain:
+                        self._validate_conditions(conditions)
                 if policy_rule_parameter == 'actions':
                     #*** Check actions are valid:
                     for action in tc_rule[policy_rule_parameter].keys():
@@ -283,6 +284,7 @@ class TrafficClassificationPolicy(BaseClass):
             #*** Accumulate names of any custom classifiers for later loading:
             if policy_condition == 'custom':
                 custom_name = policy_conditions[policy_condition]
+                self.logger.debug("custom_classifier=%s", custom_name)
                 if custom_name not in self.custom_classifiers:
                     self.custom_classifiers.append(custom_name)
             #*** Check policy condition value is valid:

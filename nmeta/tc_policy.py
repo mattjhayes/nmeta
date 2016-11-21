@@ -526,3 +526,15 @@ class TrafficClassificationPolicy(BaseClass):
             conditions.match = False
             return conditions
 
+    def qos(self, qos_treatment):
+        """
+        Passed a QoS treatment string and return the relevant
+        QoS queue number to use, otherwise 0. Works by lookup
+        on qos_treatment section of main_policy
+        """
+        qos_policy = self._main_policy['qos_treatment']
+        if qos_treatment in qos_policy:
+            return qos_policy[qos_treatment]
+        else:
+            self.logger.error("qos_treatment=%s not found in main_policy", qos_treatment)
+            return 0

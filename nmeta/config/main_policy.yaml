@@ -5,14 +5,17 @@
 tc_rules:
     # Traffic Classification Rulesets and Rules
     tc_ruleset_1:
-        - comment: Basic Statistical Classifier
+        - comment: Constrained Bandwidth Traffic
           match_type: any
           conditions_list:
               - match_type: any
-                custom: statistical_qos_bandwidth_1
+                tcp_src: 1234
+                tcp_dst: 1234
           actions:
-            set_desc: classifier_return
-            qos_treatment: classifier_return
+            set_desc: "Constrained Bandwidth Traffic"
+            qos_treatment: constrained_bw
+
+#
 qos_treatment:
   # Control Quality of Service (QoS) treatment mapping of
   #  names to output queue numbers:

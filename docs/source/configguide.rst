@@ -244,7 +244,7 @@ Supported attributes are:
 
   .. code-block:: text
 
-    set_qos: classifier_return
+    qos_treatment: classifier_return
 
   Values can be:
 

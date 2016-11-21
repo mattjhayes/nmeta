@@ -239,6 +239,21 @@ def test_custom_classifiers():
                             pol_file="main_policy_regression_statistical.yaml")
     assert tc.custom_classifiers == ['statistical_qos_bandwidth_1']
 
+def test_qos():
+    """
+    Test the assignment of QoS queues based on a qos_treatment action
+    """
+    #*** Instantiate tc_policy, specifying
+    #*** a particular main_policy file to use that has no custom classifiers:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir="config/tests/regression",
+                            pol_file="main_policy_regression_static.yaml")
+    assert tc.qos('default_priority') == 0
+    assert tc.qos('constrained_bw') == 1
+    assert tc.qos('high_priority') == 2
+    assert tc.qos('low_priority') == 3
+    assert tc.qos('foo') == 0
+
 #=========== Misc Functions to Generate Data for Unit Tests ===================
 
 

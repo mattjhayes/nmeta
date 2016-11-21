@@ -177,24 +177,19 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** against policy and if it does update flow.classified.*:
         if not self.flow.classification.classified:
             self.tc_policy.check_policy(self.flow, self.ident)
-            self.logger.debug("classification=%s", self.flow.classification.dbdict())
+            self.logger.debug("classification=%s",
+                                             self.flow.classification.dbdict())
 
-        #*** Call Forwarding module to carry out forwarding functions:
+        #*** Call Forwarding module to determine output port:
         out_port = self.forwarding.basic_switch(ev, in_port)
 
-        #*** Accumulate extra information in the flow_actions dictionary:
-        flow_actions.setdefault('datapath', {})
-        flow_actions['datapath'].setdefault(dpid, {})
-        flow_actions['datapath'][dpid]['in_port'] = in_port
-        flow_actions['datapath'][dpid]['out_port'] = out_port
-
-        #*** Update Flow Metadata Table and add QoS queue:
-        #flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
-        #self.logger.debug("revised flow_actions=%s", flow_actions)
-        #out_queue = flow_actions['datapath'][dpid].setdefault('out_queue', 0)
-
-        # TBD, set QoS queue, was done by deprecated flow.py module
-        out_queue = 0
+        #*** Set QoS queue based on any QoS actions:
+        actions = self.flow.classification.actions
+        if 'qos_treatment' in actions:
+            out_queue = self.tc_policy.qos(actions['qos_treatment'])
+            self.logger.debug("QoS output_queue=%s", out_queue)
+        else:
+            out_queue = 0
 
         if out_port != ofproto.OFPP_FLOOD:
             #*** Do some add flow magic, but only if not a flooded packet:

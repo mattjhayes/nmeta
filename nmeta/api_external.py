@@ -174,7 +174,7 @@ class ExternalAPI(BaseClass):
 
         #*** Set up static content location:
         file_dir = os.path.dirname(os.path.realpath(__file__))
-        static_folder = os.path.join(file_dir, 'static')
+        static_folder = os.path.join(file_dir, 'webUI')
 
         #*** Set up Eve:
         self.logger.info("Configuring Eve Python REST API Framework")

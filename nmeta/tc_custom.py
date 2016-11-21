@@ -19,8 +19,10 @@ This module is part of the nmeta suite running on top of Ryu SDN controller
 to provide network identity and flow (traffic classification) metadata
 """
 
-import struct
-import time
+import sys
+
+#*** For importing custom classifiers:
+import importlib
 
 #*** For logging configuration:
 from baseclass import BaseClass
@@ -39,58 +41,63 @@ class CustomInspect(BaseClass):
         #*** Set up Logging with inherited base class method:
         self.configure_logging("tc_custom_logging_level_s",
                                        "tc_custom_logging_level_c")
+        #*** Dictionary to hold dynamically loaded custom classifiers:
+        self.custom_classifiers = {}
 
     def check_custom(self, condition, pkt, ident):
         """
         Passed condition, flows packet and identities objects.
-        Update the condition match as appropriate.
+        Call the named custom classifier with these values so that it
+        can update the condition match as appropriate.
         """
-        if policy_attr == "statistical_qos_bandwidth_1":
-            #*** call the function for this particular statistical classifier
-            results_dict = self._statistical_qos_bandwidth_1(pkt)
-            return results_dict
+        classifier = condition.policy_value
+        if classifier in self.custom_classifiers:
+            custom = self.custom_classifiers[classifier]
+            #*** Run the custom classifier:
+            custom.classifier(condition, pkt, ident)
+            return 1
         else:
-            self.logger.error("Policy attribute "
-                              "%s did not match", policy_attr)
-            return {'valid':False, 'continue_to_inspect':False,
-                     'actions':'none'}
-        return False
+            self.logger.error("Failed to find classifier=%s", classifier)
+            return 0
 
-    def instantiate_classifiers(self, _classifiers):
+    def instantiate_classifiers(self, custom_list):
         """
         Dynamically import and instantiate classes for any
         custom classifiers specified in the controller
         nmeta2 main_policy.yaml
-        .
-        Passed a list of tuples of classifier type / classifer name
-        .
-        Classifier modules live in the 'classifiers' subdirectory
-        .
-        """
-        self.logger.debug("Loading dynamic classifiers into TC module")
 
-        for tc_type, module_name in _classifiers:
+        Passed a deduplicated list of custom classifier names
+        (without .py) to load.
+
+        Classifier modules live in the 'classifiers' subdirectory
+        """
+        self.logger.debug("Loading dynamic classifiers")
+
+        for module_name in custom_list:
             #*** Dynamically import and instantiate class from classifiers dir:
-            self.logger.debug("Importing module type=%s module_name=%s",
-                                        tc_type, "classifiers." + module_name)
+            self.logger.debug("Importing custom module_name=%s", module_name)
             try:
-                module = importlib.import_module("classifiers." + module_name)
+                module = importlib.import_module("custom_classifiers."
+                                                                 + module_name)
+                # TEMP
+                #module = importlib.import_module("classifications")
+                #module = importlib.import_module(module_name)
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("Failed to dynamically load classifier "
                                     "module %s from classifiers subdirectory."
                                     "Please check that module exists and alter"
-                                    " main_policy configuration in controller "
-                                    "nmeta2 configuration if required",
+                                    " main_policy configuration if required",
                                     module_name)
                 self.logger.error("Exception is %s, %s, %s",
                                             exc_type, exc_value, exc_traceback)
                 sys.exit("Exiting, please fix error...")
 
             #*** Dynamically instantiate class 'Classifier':
-            self.logger.debug("Instantiating module class")
+            self.logger.debug("Instantiating module class module_name=%s",
+                                                                   module_name)
             class_ = getattr(module, 'Classifier')
-            self.classifiers.append(class_(self.logger))
+            self.custom_classifiers[module_name] = class_(self.logger)
 
 
 

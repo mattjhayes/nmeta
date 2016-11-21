@@ -116,6 +116,8 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
+        #*** Instantiate any custom classifiers:
+        self.custom.instantiate_classifiers(self.custom_classifiers)
 
     class Rule(object):
         """

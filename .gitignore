@@ -5,3 +5,4 @@ docs/_templates
 nmeta/*.pyc
 tests/__pycache__/
 tests/*.pyc
+nmeta/custom_classifiers/*.pyc

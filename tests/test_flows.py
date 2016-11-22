@@ -1,12 +1,6 @@
 """
 nmeta flows.py Unit Tests
 
-Uses pytest, install with:
-    sudo apt-get install python-pytest
-
-To run test, type in:
-    py.test -vs
-
 Note: no testing of max_interpacket_interval and
 min_interpacket_interval as they become imprecise due
 to floating point and when tried using decimal module
@@ -47,6 +41,7 @@ import nmeta
 import config
 import flows as flow_class
 import tc_policy
+import identities
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -263,30 +258,57 @@ def test_classification():
     DPID1 = 1
     INPORT1 = 1
 
-    #*** TBD - set main_policy:
-
     #*** Instantiate classes:
     flow = flow_class.Flow(config)
-    tc = tc_policy.TrafficClassificationPolicy(config)
+    ident = identities.Identities(config)
+    #*** Initial main_policy won't match as looking for tcp-1234:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir="config/tests/regression",
+                            pol_file="main_policy_regression_static.yaml")
 
     #*** Ingest Flow 2 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
 
+    #*** Retrieve a classification object for this particular flow:
     clasfn = flow.Classification(flow.packet.flow_hash,
                                     flow.classifications,
                                     flow.classification_time_limit)
+
     #*** Base classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 0
     assert flow.classification.classification_type == ""
     assert flow.classification.classification_tag == ""
     assert flow.classification.classification_time == 0
-    assert flow.classification.actions == ""
+    assert flow.classification.actions == {}
 
     #*** Classify the packet:
+    tc.check_policy(flow, ident)
 
-    #*** Re-Check Classification:
+    #*** Unmatched classification state:
+    assert flow.classification.flow_hash == flow.packet.flow_hash
+    assert flow.classification.classified == 0
+    assert flow.classification.classification_type == ""
+    assert flow.classification.classification_tag == ""
+    assert flow.classification.classification_time == 0
+    assert flow.classification.actions == {}
 
+    #*** Initial main_policy that matches tcp-80:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir="config/tests/regression",
+                            pol_file="main_policy_regression_static_3.yaml")
+
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+
+    #*** Matched classification state:
+    assert flow.classification.flow_hash == flow.packet.flow_hash
+    assert flow.classification.classified == 1
+    assert flow.classification.classification_type == ""
+    assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
+    # Note: can't check classification_time reliably, so skip it
+    assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
+                                   'set_desc': 'Constrained Bandwidth Traffic'}
 
 #================= HELPER FUNCTIONS ===========================================
 

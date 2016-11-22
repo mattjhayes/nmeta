@@ -35,7 +35,7 @@ class Classifier(object):
         """
         self.logger = logger
 
-    def classifier(self, flow):
+    def classifier(self, condition, flow, ident):
         """
         A really basic statistical classifier to demonstrate ability
         to differentiate 'bandwidth hog' flows from ones that are
@@ -56,14 +56,14 @@ class Classifier(object):
         #*** Thresholds used in calculations:
         _max_packet_size_threshold = 1200
         _interpacket_ratio_threshold = 0.3
+        #*** Packets in flow so far:
+        packets = flow.packet_count()
 
-        #*** Dictionary to hold classification results:
-        _results = {}
-
-        if flow.packet_count >= _max_packets and not flow.finalised:
+        if packets >= _max_packets and condition.continue_to_inspect:
             #*** Reached our maximum packet count so do some classification:
-            self.logger.debug("Reached max packets count, finalising")
-            flow.finalised = 1
+            self.logger.debug("Reached max packets count=%s, finalising",
+                                                                       packets)
+            condition.continue_to_inspect = 0
 
             #*** Call functions to get statistics to make decisions on:
             _max_packet_size = flow.max_packet_size()
@@ -84,10 +84,8 @@ class Classifier(object):
             if (_max_packet_size > _max_packet_size_threshold and
                             _interpacket_ratio < _interpacket_ratio_threshold):
                 #*** This traffic looks like a bandwidth hog so constrain it:
-                _results['qos_treatment'] = 'constrained_bw'
+                condition.actions['qos_treatment'] = 'constrained_bw'
             else:
                 #*** Doesn't look like bandwidth hog so default priority:
-                _results['qos_treatment'] = 'default_priority'
-            self.logger.debug("Decided on results %s", _results)
-
-        return _results
+                condition.actions['qos_treatment'] = 'default_priority'
+            self.logger.debug("Decided on results %s", condition.to_dict())

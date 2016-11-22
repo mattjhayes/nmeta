@@ -44,9 +44,9 @@ class CustomInspect(BaseClass):
         #*** Dictionary to hold dynamically loaded custom classifiers:
         self.custom_classifiers = {}
 
-    def check_custom(self, condition, pkt, ident):
+    def check_custom(self, condition, flow, ident):
         """
-        Passed condition, flows packet and identities objects.
+        Passed condition, flows and identities objects.
         Call the named custom classifier with these values so that it
         can update the condition match as appropriate.
         """
@@ -54,7 +54,7 @@ class CustomInspect(BaseClass):
         if classifier in self.custom_classifiers:
             custom = self.custom_classifiers[classifier]
             #*** Run the custom classifier:
-            custom.classifier(condition, pkt, ident)
+            custom.classifier(condition, flow, ident)
             return 1
         else:
             self.logger.error("Failed to find classifier=%s", classifier)
@@ -79,9 +79,6 @@ class CustomInspect(BaseClass):
             try:
                 module = importlib.import_module("custom_classifiers."
                                                                  + module_name)
-                # TEMP
-                #module = importlib.import_module("classifications")
-                #module = importlib.import_module(module_name)
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("Failed to dynamically load classifier "

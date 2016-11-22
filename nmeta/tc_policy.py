@@ -131,6 +131,7 @@ class TrafficClassificationPolicy(BaseClass):
             """
             self.match = 0
             self.match_type = ""
+            self.actions = {}
             #*** List for conditions objects:
             self.conditions = []
 
@@ -139,7 +140,6 @@ class TrafficClassificationPolicy(BaseClass):
             Return a dictionary object of the condition object
             """
             return self.__dict__
-
 
     class Conditions(object):
         """
@@ -152,6 +152,7 @@ class TrafficClassificationPolicy(BaseClass):
             """
             self.match = 0
             self.match_type = ""
+            self.actions = {}
             #*** List for condition objects:
             self.condition = []
 
@@ -174,9 +175,9 @@ class TrafficClassificationPolicy(BaseClass):
             self.policy_attr_type = ""
             self.policy_value = ""
             self.match = 0
-            self.continue_to_inspect = 0
+            self.continue_to_inspect = 1
             self.classification_tag = ""
-            self.actions = ""
+            self.actions = {}
 
         def to_dict(self):
             """
@@ -387,6 +388,7 @@ class TrafficClassificationPolicy(BaseClass):
         rules and if it does, update the classifications portion of
         the flows object to reflect details of the classification.
         """
+        self.flow = flow
         self.pkt = flow.packet
         self.ident = ident
         #*** Check against TC policy:
@@ -401,8 +403,11 @@ class TrafficClassificationPolicy(BaseClass):
                 # TBD:
                 flow.classification.classification_tag = tc_rule['actions']['set_desc']
                 flow.classification.classification_time = time.time()
-                # TBD:
-                flow.classification.actions = tc_rule['actions']
+                #*** Accumulate any actions. (will overwrite with rule action)
+                #*** Firstly, any actions on the rule:
+                flow.classification.actions.update(tc_rule['actions'])
+                #*** Secondly, any actions returned from custom classifiers:
+                flow.classification.actions.update(rule.actions)
                 return 1
 
         #*** No hits so return without updating flow.classifications:
@@ -412,8 +417,7 @@ class TrafficClassificationPolicy(BaseClass):
         """
         Passed a main_policy.yaml tc_rule stanza.
         Check to see if packet matches conditions as per the
-        rule.
-        Return a rule object
+        rule. Return a rule object
         """
         #*** Instantiate a Rule class for results:
         rule = self.Rule()
@@ -425,6 +429,7 @@ class TrafficClassificationPolicy(BaseClass):
             #*** Decide what to do based on match result and match type:
             if conditions.match and rule.match_type == "any":
                 rule.match = True
+                rule.actions.update(conditions.actions)
                 return rule
             elif not conditions.match and rule.match_type == "all":
                 rule.match = False
@@ -439,6 +444,7 @@ class TrafficClassificationPolicy(BaseClass):
             return rule
         elif conditions.match and rule.match_type == "all":
             rule.match = True
+            rule.actions.update(conditions.actions)
             return rule
         else:
             #*** Unexpected result:
@@ -480,7 +486,7 @@ class TrafficClassificationPolicy(BaseClass):
             if condition.policy_attr_type == "identity":
                 self.identity.check_identity(condition, self.pkt, self.ident)
             elif condition.policy_attr == "custom":
-                self.custom.check_custom(condition, self.pkt, self.ident)
+                self.custom.check_custom(condition, self.flow, self.ident)
             elif condition.policy_attr_type == "conditions_list":
                 # TBD:
 
@@ -498,6 +504,9 @@ class TrafficClassificationPolicy(BaseClass):
             #*** Decide what to do based on match result and match type:
             if condition.match and conditions.match_type == "any":
                 conditions.condition.append(condition)
+                #*** Accumulate actions:
+                for condn in conditions.condition:
+                    conditions.actions.update(condn.actions)
                 conditions.match = True
                 return conditions
             elif not condition.match and not condition.policy_attr == \
@@ -516,6 +525,9 @@ class TrafficClassificationPolicy(BaseClass):
             return conditions
         elif condition.match and conditions.match_type == "all":
             conditions.condition.append(condition)
+            #*** Accumulate actions:
+            for condn in conditions.condition:
+                conditions.actions.update(condn.actions)
             conditions.match = True
             return conditions
         else:

@@ -374,7 +374,7 @@ class Flow(BaseClass):
             self.classification_type = ""
             self.classification_tag = ""
             self.classification_time = 0
-            self.actions = ""
+            self.actions = {}
 
             #*** Put into context of current flow by querying
             #*** classifications database collection:
@@ -421,7 +421,7 @@ class Flow(BaseClass):
             db_dict = self.classification.dbdict()
             self.logger.debug("classification=%s", db_dict)
             #*** Write classification to database collection:
-            db_result = self.classifications.insert_one(db_dict)
+            self.classifications.insert_one(db_dict)
 
     def ingest_packet(self, dpid, in_port, pkt, timestamp):
         """
@@ -510,7 +510,7 @@ class Flow(BaseClass):
         self.logger.debug("packet_in=%s", db_dict)
 
         #*** Write packet-in metadata to database collection:
-        db_result = self.packet_ins.insert_one(db_dict)
+        self.packet_ins.insert_one(db_dict)
 
     def packet_count(self):
         """
@@ -594,21 +594,109 @@ class Flow(BaseClass):
         """
         Return the size of the largest inter-packet time interval
         in the flow (assessed per direction in flow).
-        .
-        Note: slightly inaccurate due to floating point rounding.
+
+        c2s = client to server direction
+        s2c = server to client direction
+
+        Note: results are slightly inaccurate due to floating point
+        rounding.
         """
-        #*** TBD:
-        pass
+        max_c2s = 0
+        max_s2c = 0
+        count_c2s = 0
+        count_s2c = 0
+        prev_c2s_ts = 0
+        prev_s2c_ts = 0
+        #*** Do this once, as is DB call:
+        flow_client = self.client()
+        #*** Database lookup for whole flow:
+        db_data = {'flow_hash': self.packet.flow_hash,
+              'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.flow_time_limit}}
+        packet_cursor = self.packet_ins.find(db_data).sort('$natural', 1)
+        #*** Iterate forward through packets in flow:
+        if packet_cursor.count():
+            for pkt in packet_cursor:
+                if pkt['ip_src'] == flow_client:
+                    #*** c2s:
+                    count_c2s += 1
+                    if count_c2s > 1:
+                        delta = pkt['timestamp'] - prev_c2s_ts
+                        if delta > max_c2s:
+                            max_c2s = delta
+                    prev_c2s_ts = pkt['timestamp']
+                elif pkt['ip_dst'] == flow_client:
+                    #*** s2c:
+                    count_s2c += 1
+                    if count_s2c > 1:
+                        delta = pkt['timestamp'] - prev_s2c_ts
+                        if delta > max_s2c:
+                            max_s2c = delta
+                    prev_s2c_ts = pkt['timestamp']
+                else:
+                    #*** Don't know direction so ignore:
+                    pass
+        #*** Return the largest interpacket delay overall:
+        if max_c2s > max_s2c:
+            return max_c2s
+        else:
+            return max_s2c
 
     def min_interpacket_interval(self):
         """
         Return the size of the smallest inter-packet time interval
-        in the flow (assessed per direction in flow)
-        .
-        Note: slightly inaccurate due to floating point rounding.
+        in the flow (assessed per direction in flow).
+
+        c2s = client to server direction
+        s2c = server to client direction
+
+        Note: results are slightly inaccurate due to floating point
+        rounding.
         """
-        #*** TBD
-        pass
+        min_c2s = 0
+        min_s2c = 0
+        count_c2s = 0
+        count_s2c = 0
+        prev_c2s_ts = 0
+        prev_s2c_ts = 0
+        #*** Do this once, as is DB call:
+        flow_client = self.client()
+        #*** Database lookup for whole flow:
+        db_data = {'flow_hash': self.packet.flow_hash,
+              'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.flow_time_limit}}
+        packet_cursor = self.packet_ins.find(db_data).sort('$natural', 1)
+        #*** Iterate forward through packets in flow:
+        if packet_cursor.count():
+            for pkt in packet_cursor:
+                if pkt['ip_src'] == flow_client:
+                    #*** c2s:
+                    count_c2s += 1
+                    if count_c2s > 1:
+                        delta = pkt['timestamp'] - prev_c2s_ts
+                        if not min_c2s or delta < min_c2s:
+                            min_c2s = delta
+                    prev_c2s_ts = pkt['timestamp']
+                elif pkt['ip_dst'] == flow_client:
+                    #*** s2c:
+                    count_s2c += 1
+                    if count_s2c > 1:
+                        delta = pkt['timestamp'] - prev_s2c_ts
+                        if not min_c2s or delta < min_c2s:
+                            min_c2s = delta
+                    prev_s2c_ts = pkt['timestamp']
+                else:
+                    #*** Don't know direction so ignore:
+                    pass
+        #*** Return the smallest interpacket delay overall, watch out for
+        #***  where we didn't get a calculation (don't return 0 unless both 0):
+        if not min_s2c:
+            #*** min_s2c not set so return min_c2s as it might be:
+            return min_c2s
+        elif 0 < min_c2s < min_s2c:
+            return min_c2s
+        else:
+            return min_s2c
 
     def suppress_flow(self):
         """
@@ -631,7 +719,7 @@ class Flow(BaseClass):
         packets
         """
         proto = self.packet.proto
-        if (proto == 6):
+        if proto == 6:
             #*** Is a flow (TBD, do UDP):
             ip_A = self.packet.ip_src
             ip_B = self.packet.ip_dst
@@ -682,7 +770,7 @@ class Flow(BaseClass):
           eth_src, eth_dst, eth_type, dpid, timestamp
         """
         hash_result = hashlib.md5()
-        if (self.packet.proto == 6):
+        if self.packet.proto == 6:
             #*** Is a flow (TBD, do UDP):
             packet_tuple = (self.packet.ip_src,
                         self.packet.ip_dst,

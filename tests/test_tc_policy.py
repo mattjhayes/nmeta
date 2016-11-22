@@ -1,11 +1,5 @@
 """
 Nmeta tc_policy.py Tests
-
-Uses pytest, install with:
-    sudo apt-get install python-pytest
-
-To run test, in this directory type in:
-    py.test -v
 """
 
 import sys
@@ -56,7 +50,7 @@ conditions_any_ip = {'match_type': 'any', 'ip_dst': '192.168.57.12',
                          'ip_src': '192.168.56.32'}
 conditions_any_ssh = {'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}
 
-conditions_rule_nested_1 = {
+rule_1 = {
             'comment': 'HTTP traffic',
             'conditions_list':
                 [
@@ -79,7 +73,7 @@ conditions_rule_nested_1 = {
             }
         }
 
-conditions_rule_nested_2 = {
+rule_2 = {
             'comment': 'Audit Division SSH traffic',
             'conditions_list':
                 [
@@ -135,7 +129,7 @@ def test_check_policy():
     assert flow.classification.classified == 0
     assert flow.classification.classification_type == ""
     assert flow.classification.classification_tag == ""
-    assert flow.classification.actions == ""
+    assert flow.classification.actions == {}
 
     #*** Re-instantiate tc_policy with different policy that should classify:
     tc = tc_policy.TrafficClassificationPolicy(config,
@@ -167,19 +161,17 @@ def test_check_rules():
     #*** Set tc.pkt as work around for not calling parent method that sets it:
     tc.pkt = flow.packet
     #*** Should match:
-    rule = tc._check_rule(conditions_rule_nested_1)
+    rule = tc._check_rule(rule_1)
     logger.debug("rule=%s", rule.to_dict())
     assert rule.match == True
 
-    #assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_1, ctx) == \
-    #                         results_dict_match
-    #assert tc._check_rule(pkt_tcp_22, conditions_rule_nested_2, ctx) == \
-    #                         results_dict_no_match
+    # TBD - more
 
-    # TBD
 
-#*** Check TC packet match against a conditions stanza:
 def test_check_conditions():
+    """
+    Check TC packet match against a conditions stanza
+    """
     #*** Instantiate classes:
     tc = tc_policy.TrafficClassificationPolicy(config)
     flow = flow_class.Flow(config)
@@ -254,6 +246,5 @@ def test_qos():
     assert tc.qos('low_priority') == 3
     assert tc.qos('foo') == 0
 
-#=========== Misc Functions to Generate Data for Unit Tests ===================
 
 

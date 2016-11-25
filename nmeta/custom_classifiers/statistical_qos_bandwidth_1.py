@@ -89,3 +89,6 @@ class Classifier(object):
                 #*** Doesn't look like bandwidth hog so default priority:
                 condition.actions['qos_treatment'] = 'default_priority'
             self.logger.debug("Decided on results %s", condition.to_dict())
+        else:
+            condition.match = 1
+            condition.continue_to_inspect = 1

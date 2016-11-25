@@ -48,6 +48,7 @@ import packets_ipv4_http as pkts
 import packets_ipv4_http2 as pkts2
 import packets_ipv4_tcp_reset as pkts3
 import packets_lldp as pkts_lldp
+import packets_ipv4_ARP_2 as pkts_ARP_2
 
 #*** Instantiate Config class:
 config = config.Config()
@@ -248,9 +249,10 @@ def test_packet_hashing():
     # TBD
     pass
 
-def test_classification():
+def test_classification_static():
     """
-    Test that classification returns correct information.
+    Test that classification returns correct information for a static
+    classification.
     Create a classification object, record it to DB then check
     that classification can be retrieved
     """
@@ -277,7 +279,6 @@ def test_classification():
     #*** Base classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 0
-    assert flow.classification.classification_type == ""
     assert flow.classification.classification_tag == ""
     assert flow.classification.classification_time == 0
     assert flow.classification.actions == {}
@@ -287,8 +288,7 @@ def test_classification():
 
     #*** Unmatched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
-    assert flow.classification.classified == 0
-    assert flow.classification.classification_type == ""
+    assert flow.classification.classified == 1
     assert flow.classification.classification_tag == ""
     assert flow.classification.classification_time == 0
     assert flow.classification.actions == {}
@@ -304,9 +304,80 @@ def test_classification():
     #*** Matched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 1
-    assert flow.classification.classification_type == ""
     assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
-    # Note: can't check classification_time reliably, so skip it
+    assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
+                                   'set_desc': 'Constrained Bandwidth Traffic'}
+
+def test_classification_identity():
+    """
+    Test that classification returns correct information for an identity
+    classification.
+    Create a classification object, record it to DB then check
+    that classification can be retrieved
+    """
+    #*** Test DPIDs and in ports:
+    DPID1 = 1
+    INPORT1 = 1
+
+    #*** Instantiate classes:
+    flow = flow_class.Flow(config)
+    ident = identities.Identities(config)
+    #*** Load main_policy that matches identity pc1
+    #*** and has action to constrain it's bandwidth:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir="config/tests/regression",
+                            pol_file="main_policy_regression_identity_2.yaml")
+
+    #*** Ingest and harvest LLDP Packet 2 (lg1) that shouldn't match:
+    # 206 08:00:27:21:4f:ea 01:80:c2:00:00:0e LLDP NoS = 08:00:27:21:4f:ea
+    # TTL = 120 System Name = lg1.example.com
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[2], datetime.datetime.now())
+    ident.harvest(pkts_lldp.RAW[2], flow.packet)
+
+    #*** Ingest a packet from pc1:
+    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+
+    #*** Retrieve a classification object for this particular flow:
+    clasfn = flow.Classification(flow.packet.flow_hash,
+                                    flow.classifications,
+                                    flow.classification_time_limit)
+
+    #*** Unmatched classification state:
+    assert flow.classification.flow_hash == flow.packet.flow_hash
+    assert flow.classification.classified == 1
+    assert flow.classification.classification_tag == ""
+    assert flow.classification.actions == {}
+
+    #*** Ingest ARP response for pc1 so we know MAC to IP mapping:
+    flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[1], datetime.datetime.now())
+    ident.harvest(pkts_ARP_2.RAW[1], flow.packet)
+
+    #*** Ingest and harvest LLDP Packet 0 (pc1) that should match:
+    # 206 08:00:27:2a:d6:dd 01:80:c2:00:00:0e LLDP NoS = 08:00:27:2a:d6:dd
+    # TTL = 120 System Name = pc1.example.com
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
+    ident.harvest(pkts_lldp.RAW[0], flow.packet)
+
+    #*** Ingest a packet from pc1:
+    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+
+    #*** Retrieve a classification object for this particular flow:
+    clasfn = flow.Classification(flow.packet.flow_hash,
+                                    flow.classifications,
+                                    flow.classification_time_limit)
+
+    #*** Matched classification state:
+    assert flow.classification.flow_hash == flow.packet.flow_hash
+    assert flow.classification.classified == 1
+    assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
     assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
                                    'set_desc': 'Constrained Bandwidth Traffic'}
 

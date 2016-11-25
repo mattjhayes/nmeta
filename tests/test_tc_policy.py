@@ -95,12 +95,6 @@ rule_2 = {
             }
         }
 
-results_dict_no_match = {'actions': False, 'match': False,
-                     'continue_to_inspect': False}
-
-results_dict_match = {'actions': False, 'match': True,
-                     'continue_to_inspect': False}
-
 logger = logging.getLogger(__name__)
 
 def test_check_policy():
@@ -126,8 +120,7 @@ def test_check_policy():
     tc.check_policy(flow, ident)
     #*** Should not match any rules in that policy:
     logger.debug("flow.classification.classified=%s", flow.classification.classified)
-    assert flow.classification.classified == 0
-    assert flow.classification.classification_type == ""
+    assert flow.classification.classified == 1
     assert flow.classification.classification_tag == ""
     assert flow.classification.actions == {}
 
@@ -144,7 +137,6 @@ def test_check_policy():
     tc.check_policy(flow, ident)
     #*** Should match policy:
     assert flow.classification.classified == 1
-    assert flow.classification.classification_type == ""
     assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
     logger.debug("flow.classification.actions=%s", flow.classification.actions)
     assert flow.classification.actions == {'set_desc': 'Constrained Bandwidth Traffic',

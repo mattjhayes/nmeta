@@ -371,7 +371,6 @@ class Flow(BaseClass):
             #*** Initialise classification variables:
             self.flow_hash = flow_hash
             self.classified = 0
-            self.classification_type = ""
             self.classification_tag = ""
             self.classification_time = 0
             self.actions = {}
@@ -390,8 +389,6 @@ class Flow(BaseClass):
                 #*** copy db result to flow classification state variables:
                 if 'classified' in result0:
                     self.classified = result0['classified']
-                if 'classification_type' in result0:
-                    self.classified = result0['classification_type']
                 if 'classification_tag' in result0:
                     self.classified = result0['classification_tag']
                 if 'classification_time' in result0:
@@ -407,7 +404,6 @@ class Flow(BaseClass):
             dbdictresult = {}
             dbdictresult['flow_hash'] = self.flow_hash
             dbdictresult['classified'] = self.classified
-            dbdictresult['classification_type'] = self.classification_type
             dbdictresult['classification_tag'] = self.classification_tag
             dbdictresult['classification_time'] = self.classification_time
             dbdictresult['actions'] = self.actions

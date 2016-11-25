@@ -289,8 +289,12 @@ class Identities(BaseClass):
         #*** valid to based on LLDP TTL:
         ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, ttl)
-        db_dict = ident.dbdict()
+        #*** Try looking up an IP for the LLDP source MAC:
+        ident2 = self.findbymac(ident.mac_address)
+        if 'ip_address' in ident2:
+            ident.ip_address = ident2['ip_address']
         #*** Write LLDP identity metadata to db collection:
+        db_dict = ident.dbdict()
         self.logger.debug("writing db_dict=%s", db_dict)
         self.identities.insert_one(db_dict)
         return 1
@@ -363,7 +367,7 @@ class Identities(BaseClass):
             return result0
         else:
             self.logger.debug("mac_addr=%s not found", mac_addr)
-            return 0
+            return {}
 
     def findbynode(self, host_name, harvest_type='any', regex=False):
         """

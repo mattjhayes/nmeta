@@ -22,7 +22,7 @@ logport: 514
 logfacility: 19
 #
 #*** Syslog Log Format:
-syslog_format: "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s"
+syslog_format: "sev=%(levelname)s module=%(module)s func=%(funcName)s %(message)s"
 #
 #*** Syslog Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:

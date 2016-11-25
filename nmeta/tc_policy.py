@@ -130,6 +130,7 @@ class TrafficClassificationPolicy(BaseClass):
             Initialise variables
             """
             self.match = 0
+            self.continue_to_inspect = 0
             self.match_type = ""
             self.actions = {}
             #*** List for conditions objects:
@@ -151,6 +152,7 @@ class TrafficClassificationPolicy(BaseClass):
             Initialise variables
             """
             self.match = 0
+            self.continue_to_inspect = 0
             self.match_type = ""
             self.actions = {}
             #*** List for condition objects:
@@ -171,11 +173,11 @@ class TrafficClassificationPolicy(BaseClass):
             """
             Initialise variables
             """
+            self.match = 0
+            self.continue_to_inspect = 0
             self.policy_attr = ""
             self.policy_attr_type = ""
             self.policy_value = ""
-            self.match = 0
-            self.continue_to_inspect = 1
             self.classification_tag = ""
             self.actions = {}
 
@@ -397,11 +399,13 @@ class TrafficClassificationPolicy(BaseClass):
             rule = self._check_rule(tc_rule)
             if rule.match:
                 self.logger.debug("Matched policy rule=%s", rule.to_dict())
-                #*** Update flows object classifications:
-                flow.classification.classified = True
-                flow.classification.classification_type = ""
-                # TBD:
-                flow.classification.classification_tag = tc_rule['actions']['set_desc']
+                #*** Only set 'classified' if continue_to_inspect not set:
+                if not rule.continue_to_inspect:
+                    flow.classification.classified = True
+                else:
+                    flow.classification.classified = False
+                flow.classification.classification_tag = \
+                                                 tc_rule['actions']['set_desc']
                 flow.classification.classification_time = time.time()
                 #*** Accumulate any actions. (will overwrite with rule action)
                 #*** Firstly, any actions on the rule:
@@ -410,7 +414,8 @@ class TrafficClassificationPolicy(BaseClass):
                 flow.classification.actions.update(rule.actions)
                 return 1
 
-        #*** No hits so return without updating flow.classifications:
+        #*** No matches. Mark as classified so we don't process again:
+        flow.classification.classified = True
         return 0
 
     def _check_rule(self, rule_stanza):
@@ -430,6 +435,8 @@ class TrafficClassificationPolicy(BaseClass):
             if conditions.match and rule.match_type == "any":
                 rule.match = True
                 rule.actions.update(conditions.actions)
+                if conditions.continue_to_inspect:
+                    rule.continue_to_inspect = 1
                 return rule
             elif not conditions.match and rule.match_type == "all":
                 rule.match = False
@@ -445,6 +452,8 @@ class TrafficClassificationPolicy(BaseClass):
         elif conditions.match and rule.match_type == "all":
             rule.match = True
             rule.actions.update(conditions.actions)
+            if conditions.continue_to_inspect:
+                rule.continue_to_inspect = 1
             return rule
         else:
             #*** Unexpected result:
@@ -487,16 +496,8 @@ class TrafficClassificationPolicy(BaseClass):
                 self.identity.check_identity(condition, self.pkt, self.ident)
             elif condition.policy_attr == "custom":
                 self.custom.check_custom(condition, self.flow, self.ident)
-            elif condition.policy_attr_type == "conditions_list":
-                # TBD:
-
-                #*** Do a recursive call on nested conditions:
-                _nested_dict = self._check_conditions(policy_value)
-                _match = _nested_dict["match"]
-                #*** TBD: How do we deal with nested continue to inspect
-                #***  results that conflict?
-                _result_dict["continue_to_inspect"] = \
-                                    _nested_dict["continue_to_inspect"]
+            #elif condition.policy_attr_type == "conditions_list":
+                # TBD: Do a recursive call on nested conditions
             else:
                 #*** default to doing a Static Classification match:
                 self.static.check_static(condition, self.pkt)
@@ -507,6 +508,8 @@ class TrafficClassificationPolicy(BaseClass):
                 #*** Accumulate actions:
                 for condn in conditions.condition:
                     conditions.actions.update(condn.actions)
+                    if condn.continue_to_inspect:
+                        conditions.continue_to_inspect = 1
                 conditions.match = True
                 return conditions
             elif not condition.match and not condition.policy_attr == \
@@ -528,6 +531,8 @@ class TrafficClassificationPolicy(BaseClass):
             #*** Accumulate actions:
             for condn in conditions.condition:
                 conditions.actions.update(condn.actions)
+                if condn.continue_to_inspect:
+                    conditions.continue_to_inspect = 1
             conditions.match = True
             return conditions
         else:

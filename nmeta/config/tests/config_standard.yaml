@@ -22,21 +22,20 @@ logport: 514
 logfacility: 19
 #
 #*** Syslog Log Format:
-syslog_format: "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s"
+syslog_format: "sev=%(levelname)s module=%(module)s func=%(funcName)s %(message)s"
 #
 #*** Syslog Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_s: INFO
-tc_policy_logging_level_s: INFO
+nmeta_logging_level_s: DEBUG
+tc_policy_logging_level_s: DEBUG
 tc_static_logging_level_s: INFO
-tc_identity_logging_level_s: INFO
+tc_identity_logging_level_s: DEBUG
 tc_custom_logging_level_s: INFO
 sa_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 api_logging_level_s: INFO
-flows_logging_level_s: INFO
-identities_logging_level_s: INFO
-classifications_logging_level_s: INFO
+flows_logging_level_s: DEBUG
+identities_logging_level_s: DEBUG
 external_api_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
@@ -61,7 +60,6 @@ forwarding_logging_level_c: DEBUG
 api_logging_level_c: DEBUG
 flows_logging_level_c: DEBUG
 identities_logging_level_c: DEBUG
-classifications_logging_level_c: DEBUG
 external_api_logging_level_c: DEBUG
 #
 #========== Mongodb Database ==========================

@@ -293,6 +293,11 @@ class Identities(BaseClass):
         ident2 = self.findbymac(ident.mac_address)
         if 'ip_address' in ident2:
             ident.ip_address = ident2['ip_address']
+            self.logger.debug("Found ip=%s for LLDP flow_hash=%s",
+                                    ident.ip_address, flow_pkt.flow_hash)
+        else:
+            self.logger.debug("Could not find IP for LLDP flow_hash=%s",
+                                    flow_pkt.flow_hash)
         #*** Write LLDP identity metadata to db collection:
         db_dict = ident.dbdict()
         self.logger.debug("writing db_dict=%s", db_dict)

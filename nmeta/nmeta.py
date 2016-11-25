@@ -192,10 +192,17 @@ class NMeta(app_manager.RyuApp, BaseClass):
             out_queue = 0
 
         if out_port != ofproto.OFPP_FLOOD:
-            #*** Do some add flow magic, but only if not a flooded packet:
+            #*** Do some add flow magic, but only if not a flooded packet and
+            #*** has been classified.
             #*** Prefer to do fine-grained match where possible:
-            _add_flow_result = self._add_flow(ev, in_port, out_port, out_queue)
-            self.logger.debug("event=add_flow result=%s", _add_flow_result)
+            if self.flow.classification.classified:
+                _add_flow_result = self._add_flow(ev, in_port, out_port,
+                                                                    out_queue)
+                self.logger.debug("event=add_flow flow_hash=%s result=%s",
+                                         self.flow.flow_hash, _add_flow_result)
+            else:
+                self.logger.debug("Flow entry for flow_hash=%s not added as "
+                                     "not classified yet", self.flow.flow_hash)
             #*** Send Packet Out:
             self.sa.packet_out(datapath, msg, in_port, out_port, out_queue, 0)
         else:

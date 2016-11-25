@@ -552,6 +552,12 @@ class TrafficClassificationPolicy(BaseClass):
         qos_policy = self._main_policy['qos_treatment']
         if qos_treatment in qos_policy:
             return qos_policy[qos_treatment]
+        elif qos_treatment == 'classifier_return':
+            #*** This happens:
+            self.logger.debug("custom classifier did not return "
+                                                               "qos_treatment")
+            return 0
         else:
-            self.logger.error("qos_treatment=%s not found in main_policy", qos_treatment)
+            self.logger.error("qos_treatment=%s not found in main_policy",
+                                                                 qos_treatment)
             return 0

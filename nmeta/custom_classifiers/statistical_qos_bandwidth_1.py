@@ -63,8 +63,6 @@ class Classifier(object):
             #*** Reached our maximum packet count so do some classification:
             self.logger.debug("Reached max packets count=%s, finalising",
                                                                        packets)
-            condition.continue_to_inspect = 0
-
             #*** Call functions to get statistics to make decisions on:
             _max_packet_size = flow.max_packet_size()
             _max_interpacket_interval = flow.max_interpacket_interval()
@@ -84,9 +82,13 @@ class Classifier(object):
             if (_max_packet_size > _max_packet_size_threshold and
                             _interpacket_ratio < _interpacket_ratio_threshold):
                 #*** This traffic looks like a bandwidth hog so constrain it:
+                condition.match = 1
+                condition.continue_to_inspect = 0
                 condition.actions['qos_treatment'] = 'constrained_bw'
             else:
                 #*** Doesn't look like bandwidth hog so default priority:
+                condition.match = 1
+                condition.continue_to_inspect = 0
                 condition.actions['qos_treatment'] = 'default_priority'
             self.logger.debug("Decided on results %s", condition.to_dict())
         else:

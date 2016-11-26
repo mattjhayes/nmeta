@@ -1,18 +1,17 @@
 ---
-#*** Main Policy for nmeta - Statistical Regression Test
+#*** Main Policy for nmeta - Static Regression Test
 #*** Written in YAML
 #
 tc_rules:
     # Traffic Classification Rulesets and Rules
     tc_ruleset_1:
-        - comment: Basic Statistical Classifier
+        - comment: Control Static Rule that doesn't do anything
           match_type: any
           conditions_list:
               - match_type: any
-                custom: statistical_qos_bandwidth_1
+                tcp_src: 123
           actions:
-            set_desc: classifier_return
-            qos_treatment: classifier_return
+              set_desc: "Foo"
 #
 qos_treatment:
   # Control Quality of Service (QoS) treatment mapping of

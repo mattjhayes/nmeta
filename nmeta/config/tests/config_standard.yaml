@@ -30,7 +30,7 @@ nmeta_logging_level_s: DEBUG
 tc_policy_logging_level_s: DEBUG
 tc_static_logging_level_s: INFO
 tc_identity_logging_level_s: DEBUG
-tc_custom_logging_level_s: INFO
+tc_custom_logging_level_s: DEBUG
 sa_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 api_logging_level_s: INFO

@@ -59,7 +59,7 @@ class Classifier(object):
         #*** Packets in flow so far:
         packets = flow.packet_count()
 
-        if packets >= _max_packets and condition.continue_to_inspect:
+        if packets >= _max_packets:
             #*** Reached our maximum packet count so do some classification:
             self.logger.debug("Reached max packets count=%s, finalising",
                                                                        packets)
@@ -92,5 +92,7 @@ class Classifier(object):
                 condition.actions['qos_treatment'] = 'default_priority'
             self.logger.debug("Decided on results %s", condition.to_dict())
         else:
+            self.logger.debug("Continuing to inspect flow_hash=%s packets=%s",
+                                                       flow.flow_hash, packets)
             condition.match = 1
             condition.continue_to_inspect = 1

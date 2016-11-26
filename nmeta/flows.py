@@ -589,16 +589,18 @@ class Flow(BaseClass):
     def max_interpacket_interval(self):
         """
         Return the size of the largest inter-packet time interval
-        in the flow (assessed per direction in flow).
+        in the flow (assessed per direction in flow) as seconds
+        (type float)
 
+        Note:
         c2s = client to server direction
         s2c = server to client direction
 
         Note: results are slightly inaccurate due to floating point
         rounding.
         """
-        max_c2s = 0
-        max_s2c = 0
+        max_c2s = datetime.timedelta()
+        max_s2c = datetime.timedelta()
         count_c2s = 0
         count_s2c = 0
         prev_c2s_ts = 0
@@ -634,23 +636,25 @@ class Flow(BaseClass):
                     pass
         #*** Return the largest interpacket delay overall:
         if max_c2s > max_s2c:
-            return max_c2s
+            return max_c2s.total_seconds()
         else:
-            return max_s2c
+            return max_s2c.total_seconds()
 
     def min_interpacket_interval(self):
         """
         Return the size of the smallest inter-packet time interval
-        in the flow (assessed per direction in flow).
+        in the flow (assessed per direction in flow) as seconds
+        (type float)
 
+        Note:
         c2s = client to server direction
         s2c = server to client direction
 
         Note: results are slightly inaccurate due to floating point
         rounding.
         """
-        min_c2s = 0
-        min_s2c = 0
+        min_c2s = datetime.timedelta()
+        min_s2c = datetime.timedelta()
         count_c2s = 0
         count_s2c = 0
         prev_c2s_ts = 0
@@ -688,11 +692,11 @@ class Flow(BaseClass):
         #***  where we didn't get a calculation (don't return 0 unless both 0):
         if not min_s2c:
             #*** min_s2c not set so return min_c2s as it might be:
-            return min_c2s
+            return min_c2s.total_seconds()
         elif 0 < min_c2s < min_s2c:
-            return min_c2s
+            return min_c2s.total_seconds()
         else:
-            return min_s2c
+            return min_s2c.total_seconds()
 
     def suppress_flow(self):
         """

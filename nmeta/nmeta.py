@@ -24,9 +24,8 @@ and carries no warrantee whatsoever. You have been warned.
 #*** Note: see api.py module for REST API calls
 
 #*** General Imports:
-import logging
 import struct
-import time
+import datetime
 
 #*** Ryu Imports:
 from ryu import utils
@@ -47,18 +46,22 @@ from ryu.lib.packet import tcp
 from ryu.app.wsgi import WSGIApplication
 
 #*** nmeta imports:
-import flow
 import tc_policy
 import config
 import switch_abstraction
-import measure
 import forwarding
 import api
+import flows
+import identities
+import of_error_decode
+
+#*** For logging configuration:
+from baseclass import BaseClass
 
 #*** Number of preceding seconds that events are averaged over:
 EVENT_RATE_INTERVAL = 60
 
-class NMeta(app_manager.RyuApp):
+class NMeta(app_manager.RyuApp, BaseClass):
     """
     This is the main class used to run nmeta
     """
@@ -75,48 +78,12 @@ class NMeta(app_manager.RyuApp):
         #*** config.yaml and provides access to keys/values:
         self.config = config.Config()
 
-        #*** Get logging config values from config class:
-        _logging_level_s = self.config.get_value \
-                                    ('nmeta_logging_level_s')
-        _logging_level_c = self.config.get_value \
-                                    ('nmeta_logging_level_c')
-        _syslog_enabled = self.config.get_value('syslog_enabled')
-        _loghost = self.config.get_value('loghost')
-        _logport = self.config.get_value('logport')
-        _logfacility = self.config.get_value('logfacility')
-        _syslog_format = self.config.get_value('syslog_format')
-        _console_log_enabled = self.config.get_value('console_log_enabled')
-        _console_format = self.config.get_value('console_format')
-        #*** Set up Logging:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
-        #*** Syslog:
-        if _syslog_enabled:
-            #*** Log to syslog on host specified in config.yaml:
-            self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport),
-                                                facility=_logfacility)
-            syslog_formatter = logging.Formatter(_syslog_format)
-            self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(_logging_level_s)
-            #*** Add syslog log handler to logger:
-            self.logger.addHandler(self.syslog_handler)
-        #*** Console logging:
-        if _console_log_enabled:
-            #*** Log to the console:
-            self.console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(_console_format)
-            self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(_logging_level_c)
-            #*** Add console log handler to logger:
-            self.logger.addHandler(self.console_handler)
-        #*** Set a variable to indicate if either or both levels are at debug:
-        if _logging_level_s == 'DEBUG' or _logging_level_c == 'DEBUG':
-            self.debug_on = True
-        else:
-            self.debug_on = False
-        #*** Set up variables:
+        #*** Run the BaseClass init to set things up:
+        super(NMeta, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("nmeta_logging_level_s",
+                                       "nmeta_logging_level_c")
+
         #*** Get max bytes of new flow packets to send to controller from
         #*** config file:
         self.miss_send_len = self.config.get_value("miss_send_len")
@@ -129,40 +96,17 @@ class NMeta(app_manager.RyuApp):
         #*** Tell switch how to handle fragments (see OpenFlow spec):
         self.ofpc_frag = self.config.get_value("ofpc_frag")
 
-        #*** Table maintenance settings from config.yaml file:
-        self.fm_table_max_age = self.config.get_value('fm_table_max_age')
-        self.fm_table_tidyup_interval = self.config.\
-                                          get_value('fm_table_tidyup_interval')
-        self.identity_table_tidyup_interval = self.config.\
-                                    get_value('identity_table_tidyup_interval')
-        self.statistical_fcip_table_max_age = self.config.\
-                            get_value('statistical_fcip_table_max_age')
-        self.statistical_fcip_table_tidyup_interval = self.config.\
-                            get_value('statistical_fcip_table_tidyup_interval')
-        self.payload_fcip_table_max_age = self.config.\
-                            get_value('payload_fcip_table_max_age')
-        self.payload_fcip_table_tidyup_interval = self.config.\
-                            get_value('payload_fcip_table_tidyup_interval')
-        self.measure_buckets_max_age = self.config.\
-                            get_value('measure_buckets_max_age')
-        self.measure_buckets_tidyup_interval = self.config.\
-                            get_value('measure_buckets_tidyup_interval')
-        #*** Set initial value of the variable that holds last time
-        #*** for tidy-ups:
-        self.fm_table_last_tidyup_time = time.time()
-        self.identity_table_last_tidyup_time = time.time()
-        self.statistical_fcip_table_last_tidyup_time = time.time()
-        self.payload_fcip_table_last_tidyup_time = time.time()
-        self.measure_buckets_last_tidyup_time = time.time()
-
         #*** Instantiate Module Classes:
-        self.flowmetadata = flow.FlowMetadata(self, self.config)
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.sa = switch_abstraction.SwitchAbstract(self.config)
-        self.measure = measure.Measurement(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
         wsgi = kwargs['wsgi']
         self.api = api.Api(self, self.config, wsgi)
+
+        #*** Instantiate a flow object for conversation metadata:
+        self.flow = flows.Flow(self.config)
+        #*** Instantiate an identity object for participant metadata:
+        self.ident = identities.Identities(self.config)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_connection_handler(self, ev):
@@ -200,7 +144,7 @@ class NMeta(app_manager.RyuApp):
                                                     body.hw_desc, body.sw_desc)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def _packet_in_handler(self, ev):
+    def packet_in(self, ev):
         """
         This method is called for every Packet-In event from a Switch.
         We receive a copy of the Packet-In event, pass it to the
@@ -210,12 +154,6 @@ class NMeta(app_manager.RyuApp):
         Finally, we send the packet out the switch port(s) via a
         Packet-Out message, with appropriate QoS queue set.
         """
-        #*** Record the time for later delta measurement:
-        pi_start_time = time.time()
-
-        #*** Record the event for measurements:
-        self.measure.record_rate_event('packet_in')
-
         #*** Extract parameters:
         msg = ev.msg
         datapath = msg.datapath
@@ -227,96 +165,50 @@ class NMeta(app_manager.RyuApp):
         #*** Get the in port (OpenFlow version dependant call):
         in_port = self.sa.get_in_port(msg, datapath, ofproto)
 
-        #*** Extra debug if syslog or console logging set to DEBUG:
-        if self.debug_on:
-            self._packet_in_debug(ev, in_port)
+        #*** Read packet into flow object for classifiers to work with:
+        self.flow.ingest_packet(dpid, in_port, msg.data,
+                                                       datetime.datetime.now())
 
-        #*** Traffic Classification:
+        #*** Harvest identity metadata:
+        self.ident.harvest(msg.data, self.flow.packet)
+
+        #*** Traffic Classification if not already classified.
         #*** Check traffic classification policy to see if packet matches
-        #*** against policy and if it does return a dictionary of actions:
-        flow_actions = self.tc_policy.check_policy(pkt, dpid, in_port)
-        self.logger.debug("flow_actions=%s", flow_actions)
+        #*** against policy and if it does update flow.classified.*:
+        if not self.flow.classification.classified:
+            self.tc_policy.check_policy(self.flow, self.ident)
+            self.logger.debug("classification=%s",
+                                             self.flow.classification.dbdict())
 
-        #*** Call Forwarding module to carry out forwarding functions:
+        #*** Call Forwarding module to determine output port:
         out_port = self.forwarding.basic_switch(ev, in_port)
 
-        #*** Accumulate extra information in the flow_actions dictionary:
-        flow_actions.setdefault('datapath', {})
-        flow_actions['datapath'].setdefault(dpid, {})
-        flow_actions['datapath'][dpid]['in_port'] = in_port
-        flow_actions['datapath'][dpid]['out_port'] = out_port
-
-        #*** Update Flow Metadata Table and add QoS queue:
-        flow_actions = self.flowmetadata.update_flowmetadata(msg, flow_actions)
-        self.logger.debug("revised flow_actions=%s", flow_actions)
-        out_queue = flow_actions['datapath'][dpid].setdefault('out_queue', 0)
+        #*** Set QoS queue based on any QoS actions:
+        actions = self.flow.classification.actions
+        if 'qos_treatment' in actions:
+            out_queue = self.tc_policy.qos(actions['qos_treatment'])
+            self.logger.debug("QoS output_queue=%s", out_queue)
+        else:
+            out_queue = 0
 
         if out_port != ofproto.OFPP_FLOOD:
-            #*** Do some add flow magic, but only if not a flooded packet:
+            #*** Do some add flow magic, but only if not a flooded packet and
+            #*** has been classified.
             #*** Prefer to do fine-grained match where possible:
-            _add_flow_result = self._add_flow(ev, in_port, out_port, out_queue)
-            self.logger.debug("event=add_flow result=%s", _add_flow_result)
-            #*** Record the event for measurements:
-            self.measure.record_rate_event('add_flow')
+            if self.flow.classification.classified:
+                _add_flow_result = self._add_flow(ev, in_port, out_port,
+                                                                    out_queue)
+                self.logger.debug("event=add_flow flow_hash=%s result=%s",
+                                         self.flow.flow_hash, _add_flow_result)
+            else:
+                self.logger.debug("Flow entry for flow_hash=%s not added as "
+                                     "not classified yet", self.flow.flow_hash)
             #*** Send Packet Out:
             self.sa.packet_out(datapath, msg, in_port, out_port, out_queue, 0)
         else:
             #*** It's a packet that's flooded, so send without specific queue
             #*** and with no queue option set:
             self.sa.packet_out(datapath, msg, in_port, out_port, 0, 1)
-
-        #*** Record Measurements:
-        self.measure.record_rate_event('packet_out')
-        pi_delta_time = time.time() - pi_start_time
-        self.measure.record_metric('packet_delta', pi_delta_time)
-
-        #*** Now check if table maintenance is needed:
-        #*** Flow Metadata (FM) table maintenance:
-        _time = time.time()
-        if (_time - self.fm_table_last_tidyup_time) > \
-                                 self.fm_table_tidyup_interval:
-            #*** Call function to do tidy-up on the Flow Metadata (FM) table:
-            self.logger.debug("event=tidy-up table=fm_table")
-            self.flowmetadata.maintain_fm_table(self.fm_table_max_age)
-            self.fm_table_last_tidyup_time = _time
-        #*** Identity NIC and System table maintenance:
-        _time = time.time()
-        if (_time - self.identity_table_last_tidyup_time) \
-                              > self.identity_table_tidyup_interval:
-            #*** Call function to do tidy-up on the Identity NIC
-            #***  and System tables:
-            self.logger.debug("event=tidy-up table=identity*")
-            self.tc_policy.identity.maintain_identity_tables()
-            self.identity_table_last_tidyup_time = _time
-        #*** Statistical FCIP table maintenance:
-        _time = time.time()
-        if (_time - self.statistical_fcip_table_last_tidyup_time) > \
-                                 self.statistical_fcip_table_tidyup_interval:
-            #*** Call function to do tidy-up on the FCIP table:
-            self.logger.debug("event=tidy-up table=statistical_fcip_table")
-            self.tc_policy.statistical.maintain_fcip_table(
-                                     self.statistical_fcip_table_max_age)
-            self.statistical_fcip_table_last_tidyup_time = _time
-        #*** Payload FCIP table maintenance:
-        _time = time.time()
-        if (_time - self.payload_fcip_table_last_tidyup_time) > \
-                                 self.payload_fcip_table_tidyup_interval:
-            #*** Call function to do tidy-up on the FCIP table:
-            self.logger.debug("event=tidy-up table=payload_fcip_table")
-            self.tc_policy.payload.maintain_fcip_table(
-                                     self.payload_fcip_table_max_age)
-            self.payload_fcip_table_last_tidyup_time = _time
-        #*** Measure bucket maintenance:
-        _time = time.time()
-        if (_time - self.measure_buckets_last_tidyup_time) > \
-                                 self.measure_buckets_tidyup_interval:
-            #*** Call function to do tidy-up on the measure buckets:
-            self.logger.debug("event=tidy-up table=measure_buckets")
-            self.measure.kick_the_rate_buckets(
-                                     self.measure_buckets_max_age)
-            self.measure.kick_the_metric_buckets(
-                                     self.measure_buckets_max_age)
-            self.measure_buckets_last_tidyup_time = _time
 
     def _add_flow(self, ev, in_port, out_port, out_queue):
         """
@@ -385,51 +277,35 @@ class NMeta(app_manager.RyuApp):
         return _result
 
 
-    def _packet_in_debug(self, ev, in_port):
+    @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
+    def flow_removed_handler(self, ev):
         """
-        Generate a debug message describing the packet
-        in event
+        A switch has sent an event to us because it has removed
+        a flow from a flow table
         """
-        #*** Extract parameters:
         msg = ev.msg
         datapath = msg.datapath
-        dpid = datapath.id
-        pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)
-        eth_src = eth.src
-        eth_dst = eth.dst
-        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)
-
-        #*** Some debug about the Packet In:
-        if pkt_ip4 and pkt_tcp:
-            self.logger.debug("event=pi_ipv4_tcp dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
-                                  "tcp_dst=%s",
-                                  dpid, in_port, pkt_ip4.src, pkt_ip4.dst,
-                                  pkt_tcp.src_port, pkt_tcp.dst_port)
-        elif pkt_ip6 and pkt_tcp:
-            self.logger.debug("event=pi_ipv6_tcp dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s tcp_src=%s "
-                                  "tcp_dst=%s",
-                                  dpid, in_port, pkt_ip6.src, pkt_ip6.dst,
-                                  pkt_tcp.src_port, pkt_tcp.dst_port)
-        elif pkt_ip4:
-            self.logger.debug("event=pi_ipv4 dpid="
-                                  "%s in_port=%s ip_src=%s ip_dst=%s proto=%s",
-                                  dpid, in_port,
-                                  pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
-        elif pkt_ip6:
-            self.logger.debug("event=pi_ipv6 dpid=%s "
-                                  "in_port=%s ip_src=%s ip_dst=%s",
-                                  dpid, in_port,
-                                  pkt_ip6.src, pkt_ip6.dst)
+        ofp = datapath.ofproto
+        if msg.reason == ofp.OFPRR_IDLE_TIMEOUT:
+            reason = 'IDLE TIMEOUT'
+        elif msg.reason == ofp.OFPRR_HARD_TIMEOUT:
+            reason = 'HARD TIMEOUT'
+        elif msg.reason == ofp.OFPRR_DELETE:
+            reason = 'DELETE'
+        elif msg.reason == ofp.OFPRR_GROUP_DELETE:
+            reason = 'GROUP DELETE'
         else:
-            self.logger.debug("event=pi_other dpid=%s "
-                                "in_port=%s eth_src=%s eth_dst=%s eth_type=%s",
-                                dpid, in_port, eth_src, eth_dst, eth.ethertype)
-
+            reason = 'unknown'
+        self.logger.info('Flow removed msg '
+                              'cookie=%d priority=%d reason=%s table_id=%d '
+                              'duration_sec=%d '
+                              'idle_timeout=%d hard_timeout=%d '
+                              'packets=%d bytes=%d match=%s',
+                              msg.cookie, msg.priority, reason, msg.table_id,
+                              msg.duration_sec,
+                              msg.idle_timeout, msg.hard_timeout,
+                              msg.packet_count, msg.byte_count, msg.match)
+        # TBD, use flows mod to record this into the flow_rems db col.
 
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
@@ -440,33 +316,32 @@ class NMeta(app_manager.RyuApp):
         msg = ev.msg
         datapath = msg.datapath
         dpid = datapath.id
-        if msg.type == 0x03 and msg.code == 0x00:
-            self.logger.error('event=OFPErrorMsg_received: dpid=%s '
-                      'type=Flow_Table_Full(0x03) code=0x%02x message=%s',
-                      dpid, msg.code, utils.hex_array(msg.data))
-        else:
-            self.logger.error('event=OFPErrorMsg_received: dpid=%s '
-                      'type=0x%02x code=0x%02x message=%s',
+        self.logger.error('event=OFPErrorMsg_received: dpid=%s '
+                      'type=%s code=%s message=%s',
                       dpid, msg.type, msg.code, utils.hex_array(msg.data))
+        #*** Log human-friendly decodes for the error type and code:
+        type1, type2, code1, code2 = of_error_decode.decode(msg.type, msg.code)
+        self.logger.error('error_type=%s %s error_code=%s %s', type1, type2,
+                                    code1, code2)
 
-@set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-def _port_status_handler(self, ev):
-    """
-    Switch Port Status event
-    """
-    msg = ev.msg
-    reason = msg.reason
-    port_no = msg.desc.port_no
+    @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
+    def _port_status_handler(self, ev):
+        """
+        Switch Port Status event
+        """
+        msg = ev.msg
+        reason = msg.reason
+        port_no = msg.desc.port_no
 
-    ofproto = msg.datapath.ofproto
-    if reason == ofproto.OFPPR_ADD:
-        self.logger.info("port added %s", port_no)
-    elif reason == ofproto.OFPPR_DELETE:
-        self.logger.info("port deleted %s", port_no)
-    elif reason == ofproto.OFPPR_MODIFY:
-        self.logger.info("port modified %s", port_no)
-    else:
-        self.logger.info("Illegal port state %s %s", port_no, reason)
+        ofproto = msg.datapath.ofproto
+        if reason == ofproto.OFPPR_ADD:
+            self.logger.info("port added %s", port_no)
+        elif reason == ofproto.OFPPR_DELETE:
+            self.logger.info("port deleted %s", port_no)
+        elif reason == ofproto.OFPPR_MODIFY:
+            self.logger.info("port modified %s", port_no)
+        else:
+            self.logger.info("Illegal port state %s %s", port_no, reason)
 
 #*** Borrowed from rest_router.py code:
 def ipv4_text_to_int(ip_text):

@@ -1,3 +1,4 @@
+---
 #*** Main Policy for nmeta - Static Regression Test
 #*** Written in YAML
 #
@@ -10,7 +11,15 @@ tc_rules:
               - match_type: any
                 tcp_src: 123
           actions:
-              set_desc_tag: description="Foo"
+              set_desc: "Foo"
+#
+qos_treatment:
+  # Control Quality of Service (QoS) treatment mapping of
+  #  names to output queue numbers:
+  default_priority: 0
+  constrained_bw: 1
+  high_priority: 2
+  low_priority: 3
 #
 identity:
     # Control how identity information is collected

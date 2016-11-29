@@ -17,7 +17,7 @@
 This module is part of the nmeta suite running on top of the
 Ryu SDN controller to provide network identity and flow
 (traffic classification) metadata.
-It expects a file called "config.yaml" to be in the same directory 
+It expects a file called "config.yaml" to be in the same directory
 containing properly formed YAML
 """
 
@@ -35,42 +35,28 @@ CONFIG_TEMPLATE = \
     {
     'miss_send_len': 1500,
     'ofpc_frag': 0,
-    'fm_table_max_age': 600,
-    'fm_table_tidyup_interval': 12,
-    'identity_nic_table_max_age': 600,
-    'identity_system_table_max_age': 600,
-    'identity_table_tidyup_interval': 5,
-    'identity_arp_max_age': 60,
-    'statistical_fcip_table_max_age': 600,
-    'statistical_fcip_table_tidyup_interval': 5,
-    'payload_fcip_table_max_age': 600,
-    'payload_fcip_table_tidyup_interval': 5,
-    'measure_buckets_max_age': 600,
-    'measure_buckets_tidyup_interval': 321,
     'nmeta_logging_level_c': 'INFO',
-    'flow_logging_level_c': 'INFO',
-    'qos_logging_level_c': 'INFO',
     'tc_policy_logging_level_c': 'INFO',
     'tc_static_logging_level_c': 'INFO',
     'tc_identity_logging_level_c': 'INFO',
-    'tc_payload_logging_level_c': 'INFO',
-    'tc_statistical_logging_level_c': 'INFO',
+    'tc_custom_logging_level_c': 'INFO',
     'sa_logging_level_c': 'INFO',
-    'measure_logging_level_c': 'INFO',
     'forwarding_logging_level_c': 'INFO',
     'api_logging_level_c': 'INFO',
+    'flows_logging_level_c': 'INFO',
+    'identities_logging_level_c': 'INFO',
+    'external_api_logging_level_c': 'INFO',
     'nmeta_logging_level_s': 'INFO',
-    'flow_logging_level_s': 'INFO',
-    'qos_logging_level_s': 'INFO',
     'tc_policy_logging_level_s': 'INFO',
     'tc_static_logging_level_s': 'INFO',
     'tc_identity_logging_level_s': 'INFO',
-    'tc_payload_logging_level_s': 'INFO',
-    'tc_statistical_logging_level_s': 'INFO',
+    'tc_custom_logging_level_s': 'INFO',
     'sa_logging_level_s': 'INFO',
-    'measure_logging_level_s': 'INFO',
     'forwarding_logging_level_s': 'INFO',
     'api_logging_level_s': 'INFO',
+    'flows_logging_level_s': 'INFO',
+    'identities_logging_level_s': 'INFO',
+    'external_api_logging_level_s': 'INFO',
     'syslog_enabled': 0,
     'loghost': 'localhost',
     'logport': 514,
@@ -78,20 +64,32 @@ CONFIG_TEMPLATE = \
     'syslog_format': \
         "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s",
     'console_log_enabled': 1,
+    'coloredlogs_enabled': 1,
     'console_format': "%(levelname)s: %(name)s %(funcName)s: %(message)s",
-    'event_rate_interval': 60,
-    'augment_flow_metadata_with_identity': 1
+    'mongo_addr': 'localhost',
+    'mongo_port': 27017,
+    'mongo_dbname': 'nmeta_database',
+    'packet_ins_max_bytes': 2000000,
+    'flow_time_limit': 30,
+    'identities_max_bytes': 2000000,
+    'identity_time_limit': 86400,
+    'classifications_max_bytes': 2000000,
+    'classification_time_limit': 300,
+    'external_api_version': 'v1',
+    'external_api_host': '0.0.0.0',
+    'external_api_port': 8081,
+    'external_api_debug': False
 }
 
 class Config(object):
     """
-    This class is instantiated by nmeta.py and provides methods to 
+    This class is instantiated by nmeta.py and provides methods to
     ingest the configuration file and provides access to the
     keys/values that it contains.
-    Config file is in YAML in config subdirectory and is 
+    Config file is in YAML in config subdirectory and is
     called 'config.yaml'
     """
-    def __init__(self):
+    def __init__(self, config_dir="config", config_filename="config.yaml"):
         #*** Set up logging to write to syslog:
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
@@ -104,15 +102,15 @@ class Config(object):
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
         #*** Name of the config file:
-        self.config_filename = "config.yaml"
-        self.config_directory = "config"
+        self.config_filename = config_filename
+        self.config_directory = config_dir
         #*** Get working directory:
         self.working_directory = os.path.dirname(__file__)
         #*** Build the full path and filename for the config file:
         self.fullpathname = os.path.join(self.working_directory,
                                          self.config_directory,
                                          self.config_filename)
-        self.logger.info("About to open config file %s", 
+        self.logger.info("About to open config file %s",
                           self.fullpathname)
         #*** Ingest the config file:
         try:
@@ -148,7 +146,7 @@ class Config(object):
                                  key, value)
                 self._config_yaml[key] = value
         #*** TBD - check values are valid...
-        
+
     def get_value(self, config_key):
         """
         Passed a key and see if it exists in the config YAML. If it does

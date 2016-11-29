@@ -67,12 +67,11 @@ Here is a more complex traffic classification policy:
 
 .. image:: images/complex_tc_policy.png
 
-Conditions invoke classifiers. There are four types of classifier supported:
+Conditions invoke classifiers. There are three types of classifier supported:
 
 - Static
 - Identity
-- Payload
-- Statistical
+- Custom (Payload / Statistical / Multi-classifier)
 
 Static Classifiers
 ------------------
@@ -212,31 +211,73 @@ Supported attributes are:
 
     identity_service_dns_re: '.*\.example\.com'
 
-Statistical Classifiers
------------------------
+Custom Classifiers
+------------------
 
-All statistical classifiers are prefixed with:
+Nmeta supports the creation of custom classifiers.
 
-.. code-block:: text
-
-  statistical_
-
-TBD - more here
-
-Payload Classifiers
--------------------
-
-TBD
-
-*****************
-QoS Configuration
-*****************
-
-Quality of Service (QoS) configuration parameters are stored in the file:
+All custom classifiers have the attribute:
 
 .. code-block:: text
 
-  qos_policy.yaml
+  custom
 
-TBD
+The value determines the custom .py file to load from the nmeta/classifiers
+directory
+
+For example, the following condition loads a custom classifier file :code:`~/nmeta/nmeta/classifiers/statistical_qos_bandwidth_1.py`:
+
+.. code-block:: text
+
+  custom: statistical_qos_bandwidth_1
+
+Actions
+-------
+
+Actions are specific to a rule, and define what nmeta should do when the rule is matched.
+
+Supported attributes are:
+
+:qos_treatment: Specify QoS treatment for flow.
+
+  Example:
+
+  .. code-block:: text
+
+    qos_treatment: classifier_return
+
+  Values can be:
+
+  - default_priority
+  - constrained_bw
+  - high_priority
+  - low_priority
+  - classifier_return
+
+:set_desc: Set description for the flow. This is a convenience for humans.
+
+  Example:
+
+  .. code-block:: text
+
+    set_desc: "This is a flow type description"
+
+
+QoS Treatment
+-------------
+
+Quality of Service (QoS) treatment parameters are configured in main policy
+under the qos_treatment root directive. They map qos action values to
+queue numbers. Example:
+
+.. code-block:: text
+
+  qos_treatment:
+    # Control Quality of Service (QoS) treatment mapping of
+    #  names to output queue numbers:
+    default_priority: 0
+    constrained_bw: 1
+    high_priority: 2
+    low_priority: 3
+
 

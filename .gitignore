@@ -6,3 +6,4 @@ nmeta/*.pyc
 tests/__pycache__/
 tests/*.pyc
 nmeta/custom_classifiers/*.pyc
+nmeta/nmeta/webUI/experimental

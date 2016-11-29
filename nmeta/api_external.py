@@ -139,8 +139,8 @@ class ExternalAPI(BaseClass):
         }
 
         #*** Eve Settings for Measurements of Packet In Rates:
-        m_pi_rate_settings = {
-            'url': 'measurements/pi_rate',
+        i_c_pi_rate_settings = {
+            'url': 'infrastructure/controllers/pi_rate',
             'schema': {
                 'pi_rate': {
                     'type': 'float'
@@ -150,7 +150,7 @@ class ExternalAPI(BaseClass):
 
         eve_domain = {
                     'packet_ins': packet_ins_settings,
-                    'm_pi_rate': m_pi_rate_settings
+                    'i_c_pi_rate': i_c_pi_rate_settings
                     }
 
         #*** Set up a settings dictionary for starting Eve app:datasource
@@ -181,17 +181,8 @@ class ExternalAPI(BaseClass):
         self.app = Eve(settings=eve_settings, static_folder=static_folder)
         self.logger.debug("static_folder=%s", static_folder)
 
-        #*** Register a callback on GET requests pre-database:
-        self.app.on_pre_GET += self.pre_get_callback
-
-        #*** Register a callback on GET requests after database insertion:
-        self.app.on_post_GET += self.post_get_callback
-
-        #*** Register a callback on database insertion:
-        self.app.on_inserted += self.on_inserted_callback
-
         #*** Measurement API updates to returned resource:
-        self.app.on_fetched_resource_m_pi_rate += self.m_pi_rate_response
+        self.app.on_fetched_resource_i_c_pi_rate += self.i_c_pi_rate_response
 
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
@@ -209,7 +200,7 @@ class ExternalAPI(BaseClass):
             """
             return 1
 
-    def m_pi_rate_response(self, items):
+    def i_c_pi_rate_response(self, items):
         """
         Update the response with the packet_in rate.
         Hooked from on_fetched_resource_<name>
@@ -222,68 +213,7 @@ class ExternalAPI(BaseClass):
         packet_cursor = packet_ins.find(db_data).sort('$natural', -1)
         pi_rate = float(packet_cursor.count() / PACKET_IN_RATE_INTERVAL)
         self.logger.debug("pi_rate=%s", pi_rate)
-        result_dict = {'_id': 0, 'pi_rate': pi_rate, 'timespan': PACKET_IN_RATE_INTERVAL}
-        items['_items'].append(result_dict)
-
-    def pre_get_callback(self, resource, request, lookup):
-        """
-        Runs on GET request pre database lookup
-        """
-        self.logger.info("Hooked Pre-DB GET with resource=%s request=%s "
-                            "lookup=%s", resource, request, lookup)
-
-
-    def post_get_callback(self, resource, request, payload):
-        """
-        TBD
-        """
-        self.logger.info("Hooked Post-DB GET with resource=%s request=%s "
-                            "payload=%s", resource, request, payload)
-        if resource == 'm_pi_rate':
-            #*** Filter query to return Packet In rates:
-            self.logger.debug("returning Packet In rates")
-            #*** Get database and query it:
-            packet_ins = self.app.data.driver.db['packet_ins']
-            db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
-                                                datetime.timedelta(seconds=30)}}
-            packet_cursor = packet_ins.find(db_data).sort('$natural', -1)
-            pi_rate = float(packet_cursor.count() / 30)
-            self.logger.debug("pi_rate=%s", pi_rate)
-
-            #*** TBD put result in return body JSON:
-            #json = json.loads(payload.get_data())
-            #documents = json['_items']
-
-            return jsonify({'pi_rate':pi_rate})
-
-    def on_inserted_callback(self, resource_name, items):
-        """
-        Runs on Decision API database inserts, after database insertion
-        completed. It places a message onto the multi-process queue
-        that contains link to resource in database
-        """
-        _result = {}
-        self.logger.debug("Database insert resource_name=%s items=%s",
-                            resource_name, items)
-        _result['_id'] = items[0]['_id']
-        self.queue.put(_result)
-
-    def ingest_dictionary(self, filename):
-        """
-        Read text file that is in dictionary format into a Python
-        dictionary object. Uses ast module.
-        """
-        _result = {}
-        self.logger.debug("Reading in file %s to dictionary", filename)
-        try:
-            with open(filename,'r') as file_handle:
-                _result = ast.literal_eval(file_handle.read())
-        except (IOError, OSError) as exception:
-            #*** IO exception:
-            self.logger.critical("Failed to open file %s, "
-                                    "error=%s", filename, exception)
-            sys.exit("Exiting. Please create file")
-        return _result
+        items['pi_rate'] = pi_rate
 
 if __name__ == '__main__':
     #*** Instantiate config class which imports configuration file

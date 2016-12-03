@@ -148,9 +148,63 @@ class ExternalAPI(BaseClass):
             }
         }
 
+        #*** Eve Settings for Identities Objects:
+        identities_settings = {
+            'url': 'identities',
+            'item_title': 'identity',
+            'schema': {
+                'dpid': {
+                    'type': 'string'
+                },
+                'in_port': {
+                    'type': 'string'
+                },
+                'harvest_time': {
+                    'type': 'string'
+                },
+                'harvest_type': {
+                    'type': 'string'
+                },
+                'mac_address': {
+                    'type': 'string'
+                },
+                'ip_address': {
+                    'type': 'string'
+                },
+                'host_name': {
+                    'type': 'string'
+                },
+                'host_type': {
+                    'type': 'string'
+                },
+                'host_os': {
+                    'type': 'string'
+                },
+                'host_desc': {
+                    'type': 'string'
+                },
+                'service_name': {
+                    'type': 'string'
+                },
+                'service_alias': {
+                    'type': 'string'
+                },
+                'user_id': {
+                    'type': 'string'
+                },
+                'valid_from': {
+                    'type': 'string'
+                },
+                'valid_to': {
+                    'type': 'string'
+                }
+            }
+        }
+
         eve_domain = {
                     'packet_ins': packet_ins_settings,
-                    'i_c_pi_rate': i_c_pi_rate_settings
+                    'i_c_pi_rate': i_c_pi_rate_settings,
+                    'identities': identities_settings
                     }
 
         #*** Set up a settings dictionary for starting Eve app:datasource

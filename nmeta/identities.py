@@ -44,6 +44,9 @@ from baseclass import BaseClass
 #*** For Regular Expression searches:
 import re
 
+#*** For hashing of identities:
+import hashlib
+
 #*** How long in seconds to cache ARP responses for:
 ARP_CACHE_TIME = 60
 
@@ -129,6 +132,7 @@ class Identities(BaseClass):
             self.user_id = ""
             self.valid_from = ""
             self.valid_to = ""
+            self.id_hash = ""
 
         def dbdict(self):
             """
@@ -151,6 +155,7 @@ class Identities(BaseClass):
             dbdictresult['user_id'] = self.user_id
             dbdictresult['valid_from'] = self.valid_from
             dbdictresult['valid_to'] = self.valid_to
+            dbdictresult['id_hash'] = self.id_hash
             return dbdictresult
 
     def harvest(self, pkt, flow_pkt):
@@ -206,6 +211,7 @@ class Identities(BaseClass):
                 ident.valid_from = flow_pkt.timestamp
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, ARP_CACHE_TIME)
+                ident.id_hash = self._hash_identity(ident)
                 db_dict = ident.dbdict()
                 #*** Write ARP identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -249,6 +255,7 @@ class Identities(BaseClass):
                     # TBD, FIX THIS:
                     ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, ARP_CACHE_TIME)
+                    ident.id_hash = self._hash_identity(ident)
                     db_dict = ident.dbdict()
                     #*** Write DHCP identity metadata to db collection:
                     self.logger.debug("writing db_dict=%s", db_dict)
@@ -298,6 +305,7 @@ class Identities(BaseClass):
         else:
             self.logger.debug("Could not find IP for LLDP flow_hash=%s",
                                     flow_pkt.flow_hash)
+        ident.id_hash = self._hash_identity(ident)
         #*** Write LLDP identity metadata to db collection:
         db_dict = ident.dbdict()
         self.logger.debug("writing db_dict=%s", db_dict)
@@ -335,6 +343,7 @@ class Identities(BaseClass):
                 ident.valid_from = flow_pkt.timestamp
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, answer.ttl)
+                ident.id_hash = self._hash_identity(ident)
                 db_dict = ident.dbdict()
                 #*** Write DNS identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -351,6 +360,7 @@ class Identities(BaseClass):
                 ident.valid_from = flow_pkt.timestamp
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, answer.ttl)
+                ident.id_hash = self._hash_identity(ident)
                 db_dict = ident.dbdict()
                 #*** Write DNS identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -437,6 +447,25 @@ class Identities(BaseClass):
         else:
             self.logger.debug("service_name=%s not found", service_name)
             return 0
+
+    def _hash_identity(self, ident):
+        """
+        Generate a hash of the current identity used for deduplication
+        where the same identity is received periodically, or from multiple
+        sources.
+        """
+        hash_result = hashlib.md5()
+        id_tuple = (ident.mac_address,
+                    ident.ip_address,
+                    ident.harvest_type,
+                    ident.host_name,
+                    ident.service_name,
+                    ident.user_id)
+        #*** TEMP!!!!
+        id_tuple = (ident.host_name)
+        id_tuple_as_string = str(id_tuple)
+        hash_result.update(id_tuple_as_string)
+        return hash_result.hexdigest()
 
     #=================== PRIVATE ==============================================
     def _parse_lldp_detail(self, lldpPayload):

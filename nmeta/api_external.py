@@ -148,7 +148,8 @@ class ExternalAPI(BaseClass):
             }
         }
 
-        #*** Eve Settings for Identities Objects:
+        #*** Eve Settings for Identities Objects. Note the reverse sort
+        #*** by harvest time:
         identities_settings = {
             'url': 'identities',
             'item_title': 'identity',
@@ -197,6 +198,56 @@ class ExternalAPI(BaseClass):
                 },
                 'valid_to': {
                     'type': 'string'
+                },
+                'id_hash': {
+                    'type': 'string'
+                }
+            },
+            'datasource': {
+                'default_sort': [('harvest_time', -1)],
+                'aggregation' : {
+                    'pipeline': [
+                            {
+                            '$group': {
+                                'originalId': {'$first': '$_id'},
+                                '_id': '$id_hash',
+                                'dpid': {'$first': '$dpid'},
+                                'in_port': {'$first': '$in_port'},
+                                'mac_address': {'$first': '$mac_address'},
+                                'ip_address': {'$first': '$ip_address'},
+                                'harvest_type': {'$first': '$harvest_type'},
+                                'harvest_time': {'$first': '$harvest_time'},
+                                'host_name': {'$first': '$host_name'},
+                                'host_type': {'$first': '$host_type'},
+                                'host_os': {'$first': '$host_os'},
+                                'host_desc': {'$first': '$host_desc'},
+                                'service_name': {'$first': '$service_name'},
+                                'service_alias': {'$first': '$service_alias'},
+                                'user_id': {'$first': '$user_id'},
+                                'valid_from': {'$first': '$valid_from'},
+                                'valid_to': {'$first': '$valid_to'}
+                            },
+                            '$project': {
+                                '_id': '$originalId',
+                                'id_hash': '$_id',
+                                'dpid': '$dpid',
+                                'in_port': '$in_port',
+                                'mac_address': '$mac_address',
+                                'ip_address': '$ip_address',
+                                'harvest_type': '$harvest_type',
+                                'harvest_time': '$harvest_time',
+                                'host_name': '$host_name',
+                                'host_type': '$host_type',
+                                'host_os': '$host_os',
+                                'host_desc': '$host_desc',
+                                'service_name': '$service_name',
+                                'service_alias': '$service_alias',
+                                'user_id': '$user_id',
+                                'valid_from': '$valid_from',
+                                'valid_to': '$valid_to'
+                            }
+                        }
+                    ]
                 }
             }
         }
@@ -238,6 +289,9 @@ class ExternalAPI(BaseClass):
         #*** Measurement API updates to returned resource:
         self.app.on_fetched_resource_i_c_pi_rate += self.i_c_pi_rate_response
 
+        #*** TEST:
+        self.app.on_fetched_resource_identities += self.identities_response
+
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
         eve_debug = self.config.get_value('external_api_debug')
@@ -268,6 +322,13 @@ class ExternalAPI(BaseClass):
         pi_rate = float(packet_cursor.count() / PACKET_IN_RATE_INTERVAL)
         self.logger.debug("pi_rate=%s", pi_rate)
         items['pi_rate'] = pi_rate
+
+    def identities_response(self, items):
+        """
+        TBD TEST
+        """
+        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        items['host_name'] = 'foo'
 
 if __name__ == '__main__':
     #*** Instantiate config class which imports configuration file

@@ -65,5 +65,73 @@
 
     var packetinsView = new PacketInsView();
 
+    //-------- Identities:
+    //-------- Models:
+    var Identity = Backbone.Model.extend({
+        defaults:{
+            participantImage:"img/participant.png",
+            host_name: "not found",
+            ip_address: "not found"
+        },
+    });
+
+    //-------- Model of multiple Identity models:
+    var Identities = Backbone.Collection.extend({
+        model:Identity,
+        url:'/v1/identities/current',
+        parse:function (response) {
+            console.log(response);
+            response.id = response._id;
+            return response._items;
+        }
+    });
+
+    //-------- Views:
+    var IdentityView = Backbone.View.extend({
+        tagName:"tr",
+        className:"identityContainer",
+        template:$("#identityTemplate").html(),
+
+        render:function () {
+            var tmpl = _.template(this.template);
+
+            this.$el.html(tmpl(this.model.toJSON()));
+            return this;
+        }
+    });
+
+    //-------- View of multiple Identities:
+    var IdentitiesView = Backbone.View.extend({
+        el:$("#identities"),
+
+        initialize: function(){
+          this.collection = new Identities();
+            this.collection.fetch({
+                error:function () {
+                    console.log(arguments);
+                }
+            });
+          this.render();
+
+          this.collection.on("add", this.renderIdentity, this);
+        },
+
+        render:function () {
+            var that = this;
+            _.each(this.collection.models, function (item) {
+                that.renderIdentity(item);
+            });
+        },
+
+        renderIdentity:function(item){
+            var identityView = new IdentityView({
+                model: item
+            });
+            this.$el.append(identityView.render().el);
+        }
+    });
+
+    var identitiesView = new IdentitiesView();
+
 
 })(jQuery);

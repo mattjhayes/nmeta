@@ -44,8 +44,13 @@ from baseclass import BaseClass
 #*** For Regular Expression searches:
 import re
 
-#*** How long in seconds to cache ARP responses for:
-ARP_CACHE_TIME = 60
+#*** For hashing of identities:
+import hashlib
+
+#*** How long in seconds to cache ARP responses for (in seconds):
+ARP_CACHE_TIME = 14400
+#*** DHCP lease time to use if none present (in seconds):
+DHCP_DEFAULT_LEASE_TIME = 3600
 
 class Identities(BaseClass):
     """
@@ -129,6 +134,7 @@ class Identities(BaseClass):
             self.user_id = ""
             self.valid_from = ""
             self.valid_to = ""
+            self.id_hash = ""
 
         def dbdict(self):
             """
@@ -151,6 +157,7 @@ class Identities(BaseClass):
             dbdictresult['user_id'] = self.user_id
             dbdictresult['valid_from'] = self.valid_from
             dbdictresult['valid_to'] = self.valid_to
+            dbdictresult['id_hash'] = self.id_hash
             return dbdictresult
 
     def harvest(self, pkt, flow_pkt):
@@ -206,6 +213,7 @@ class Identities(BaseClass):
                 ident.valid_from = flow_pkt.timestamp
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, ARP_CACHE_TIME)
+                ident.id_hash = self._hash_identity(ident)
                 db_dict = ident.dbdict()
                 #*** Write ARP identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -220,6 +228,8 @@ class Identities(BaseClass):
         indicators to metadata
         """
         self.logger.debug("Harvesting metadata from DHCP request")
+        dhcp_hostname = ""
+        dhcp_leasetime = 0
         #*** Use dpkt to parse UDP DHCP data:
         try:
             pkt_dhcp = dpkt.dhcp.DHCP(flow_pkt.payload)
@@ -230,13 +240,14 @@ class Identities(BaseClass):
                          exc_type, exc_value, exc_traceback)
             return 0
         if pkt_dhcp.opts:
-            #*** Iterate through options looking for Option 12 (Host Name):
+            #*** Iterate through options looking for Option 12 (Host Name)
+            #*** and Option 51 (IP Address Lease Time)
             for opt in pkt_dhcp.opts:
                 if opt[0] == 12:
                     #*** Found option 12 so grab the host name:
                     dhcp_hostname = opt[1]
                     self.logger.debug("dhcp host_name=%s", dhcp_hostname)
-                    #*** Instantiate an instance of Indentity class:
+                    #*** Instantiate an instance of Identity class:
                     ident = self.Identity()
                     ident.dpid = flow_pkt.dpid
                     ident.in_port = flow_pkt.in_port
@@ -246,14 +257,27 @@ class Identities(BaseClass):
                     ident.host_name = dhcp_hostname
                     ident.harvest_time = flow_pkt.timestamp
                     ident.valid_from = flow_pkt.timestamp
-                    # TBD, FIX THIS:
-                    ident.valid_to = flow_pkt.timestamp + \
-                                    datetime.timedelta(0, ARP_CACHE_TIME)
-                    db_dict = ident.dbdict()
-                    #*** Write DHCP identity metadata to db collection:
-                    self.logger.debug("writing db_dict=%s", db_dict)
-                    self.identities.insert_one(db_dict)
-                    return 1
+                elif opt[0] == 51:
+                    #*** Found option 12 so grab the lease time:
+                    dhcp_leasetime = opt[1]
+
+            if dhcp_hostname:
+                #*** Calculate validity:
+                if not dhcp_leasetime:
+                    dhcp_leasetime = DHCP_DEFAULT_LEASE_TIME
+                ident.valid_to = flow_pkt.timestamp + \
+                                    datetime.timedelta(0, dhcp_leasetime)
+                ident.id_hash = self._hash_identity(ident)
+                db_dict = ident.dbdict()
+                #*** Write DHCP identity metadata to db collection:
+                self.logger.debug("writing db_dict=%s", db_dict)
+                self.identities.insert_one(db_dict)
+                return 1
+            else:
+                self.logger.debug("DHCP packet with no hostname")
+        else:
+            self.logger.warning("DHCP packet with no options")
+            return 0
 
     def harvest_lldp(self, flow_pkt):
         """
@@ -298,6 +322,7 @@ class Identities(BaseClass):
         else:
             self.logger.debug("Could not find IP for LLDP flow_hash=%s",
                                     flow_pkt.flow_hash)
+        ident.id_hash = self._hash_identity(ident)
         #*** Write LLDP identity metadata to db collection:
         db_dict = ident.dbdict()
         self.logger.debug("writing db_dict=%s", db_dict)
@@ -335,6 +360,7 @@ class Identities(BaseClass):
                 ident.valid_from = flow_pkt.timestamp
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, answer.ttl)
+                ident.id_hash = self._hash_identity(ident)
                 db_dict = ident.dbdict()
                 #*** Write DNS identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -351,6 +377,7 @@ class Identities(BaseClass):
                 ident.valid_from = flow_pkt.timestamp
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, answer.ttl)
+                ident.id_hash = self._hash_identity(ident)
                 db_dict = ident.dbdict()
                 #*** Write DNS identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -437,6 +464,25 @@ class Identities(BaseClass):
         else:
             self.logger.debug("service_name=%s not found", service_name)
             return 0
+
+    def _hash_identity(self, ident):
+        """
+        Generate a hash of the current identity used for deduplication
+        where the same identity is received periodically, or from multiple
+        sources.
+        """
+        hash_result = hashlib.md5()
+        id_tuple = (ident.mac_address,
+                    ident.ip_address,
+                    ident.harvest_type,
+                    ident.host_name,
+                    ident.service_name,
+                    ident.user_id)
+        #*** TEMP!!!!
+        id_tuple = (ident.host_name)
+        id_tuple_as_string = str(id_tuple)
+        hash_result.update(id_tuple_as_string)
+        return hash_result.hexdigest()
 
     #=================== PRIVATE ==============================================
     def _parse_lldp_detail(self, lldpPayload):

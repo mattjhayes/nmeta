@@ -53,6 +53,8 @@ URL_TEST_I_C_PI_RATE = \
 
 URL_TEST_IDENTITIES = 'http://localhost:8081/v1/identities/'
 
+URL_TEST_IDENTITIES_CURRENT = 'http://localhost:8081/v1/identities/current/'
+
 #*** Instantiate the ExternalAPI class:
 api = api_external.ExternalAPI(config)
 
@@ -172,11 +174,88 @@ def test_identities():
     assert api_result['_items'][0]['host_name'] == 'pc1.example.com'
     assert api_result['_items'][0]['harvest_type'] == 'LLDP'
     assert api_result['_items'][0]['mac_address'] == '08:00:27:2a:d6:dd'
+    #*** Should be 3 as no deduplication of the pc1 identities:
+    assert len(api_result['_items']) == 3
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
+
+def test_identities_current():
+    """
+    Harvest identity data and test that the identities/current API resource
+    returns the correct information.
+    The identities/current resource does deduplication, so test that this
+    works correctly
+    TBD: test for only current identity data returned
+    """
+
+    #*** Test DPIDs and in ports:
+    DPID1 = 1
+    INPORT1 = 1
+
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+
+    #*** Sleep to allow api_external to start fully:
+    time.sleep(.5)
+
+    #*** Instantiate a flow object:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    #*** Ingest LLDP from pc1
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[0], flow.packet)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_IDENTITIES_CURRENT)
+
+    logger.debug("api_result=%s", api_result)
+
+    #*** Test identity results for first LDAP packet:
+    assert api_result['_items'][0]['host_name'] == 'pc1.example.com'
+    assert api_result['_items'][0]['harvest_type'] == 'LLDP'
+    assert api_result['_items'][0]['mac_address'] == '08:00:27:2a:d6:dd'
+    assert len(api_result['_items']) == 1
+
+    #*** Ingest LLDP from sw1:
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[1], flow.packet)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_IDENTITIES_CURRENT)
+
+    logger.debug("api_result=%s", api_result)
+
+    #*** Test identity results for second LDAP packet:
+    assert api_result['_items'][0]['host_name'] == 'sw1.example.com'
+    assert api_result['_items'][0]['harvest_type'] == 'LLDP'
+    assert api_result['_items'][0]['mac_address'] == '08:00:27:f7:25:13'
+    assert len(api_result['_items']) == 2
+
+    #*** Ingest LLDP from pc1 (again, to test deduplication):
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[0], flow.packet)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_IDENTITIES_CURRENT)
+
+    logger.debug("api_result=%s", api_result)
+
+    #*** Test identity results for first LDAP packet:
+    assert api_result['_items'][0]['host_name'] == 'pc1.example.com'
+    assert api_result['_items'][0]['harvest_type'] == 'LLDP'
+    assert api_result['_items'][0]['mac_address'] == '08:00:27:2a:d6:dd'
     #*** Should be 2, not 3, as has deduplicated the pc1 identities:
     assert len(api_result['_items']) == 2
 
     #*** Stop api_external sub-process:
     api_ps.terminate()
+
 
 def get_api_result(url):
     """

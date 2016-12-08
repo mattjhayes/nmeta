@@ -148,12 +148,8 @@ class ExternalAPI(BaseClass):
             }
         }
 
-        #*** Eve Settings for Identities Objects. Note the reverse sort
-        #*** by harvest time:
-        identities_settings = {
-            'url': 'identities',
-            'item_title': 'identity',
-            'schema': {
+        #*** Define the identity schema separately as used in multiple places:
+        identity_schema = {
                 'dpid': {
                     'type': 'string'
                 },
@@ -202,65 +198,35 @@ class ExternalAPI(BaseClass):
                 'id_hash': {
                     'type': 'string'
                 }
-            },
+            }
+        #*** Eve Settings for Identities Objects. Note the reverse sort
+        #*** by harvest time:
+        identities_settings = {
+            'url': 'identities',
+            'item_title': 'identity',
+            'schema': identity_schema,
             'datasource': {
                 'default_sort': [('harvest_time', -1)],
-                'aggregation' : {
-                    'pipeline': [
-                            {
-                            '$group': {
-                                'originalId': {'$first': '$_id'},
-                                '_id': '$id_hash',
-                                'dpid': {'$first': '$dpid'},
-                                'in_port': {'$first': '$in_port'},
-                                'mac_address': {'$first': '$mac_address'},
-                                'ip_address': {'$first': '$ip_address'},
-                                'harvest_type': {'$first': '$harvest_type'},
-                                'harvest_time': {'$first': '$harvest_time'},
-                                'host_name': {'$first': '$host_name'},
-                                'host_type': {'$first': '$host_type'},
-                                'host_os': {'$first': '$host_os'},
-                                'host_desc': {'$first': '$host_desc'},
-                                'service_name': {'$first': '$service_name'},
-                                'service_alias': {'$first': '$service_alias'},
-                                'user_id': {'$first': '$user_id'},
-                                'valid_from': {'$first': '$valid_from'},
-                                'valid_to': {'$first': '$valid_to'}
-                            },
-                            '$project': {
-                                '_id': '$originalId',
-                                'id_hash': '$_id',
-                                'dpid': '$dpid',
-                                'in_port': '$in_port',
-                                'mac_address': '$mac_address',
-                                'ip_address': '$ip_address',
-                                'harvest_type': '$harvest_type',
-                                'harvest_time': '$harvest_time',
-                                'host_name': '$host_name',
-                                'host_type': '$host_type',
-                                'host_os': '$host_os',
-                                'host_desc': '$host_desc',
-                                'service_name': '$service_name',
-                                'service_alias': '$service_alias',
-                                'user_id': '$user_id',
-                                'valid_from': '$valid_from',
-                                'valid_to': '$valid_to'
-                            }
-                        }
-                    ]
-                }
             }
         }
-
+        #*** Eve Settings for identities/current Objects. Database lookup
+        #*** with deduplication and validitity filter done by hook function
+        identities_current_settings = {
+            'url': 'identities/current',
+            'item_title': 'current identities',
+            'schema': identity_schema
+        }
+        #*** Eve Domain for the whole API:
         eve_domain = {
-                    'packet_ins': packet_ins_settings,
-                    'i_c_pi_rate': i_c_pi_rate_settings,
-                    'identities': identities_settings
-                    }
+            'packet_ins': packet_ins_settings,
+            'i_c_pi_rate': i_c_pi_rate_settings,
+            'identities': identities_settings,
+            'identities_current': identities_current_settings
+        }
 
         #*** Set up a settings dictionary for starting Eve app:datasource
         eve_settings = {}
-        eve_settings['HATEOAS'] =  True
+        eve_settings['HATEOAS'] = True
         eve_settings['MONGO_HOST'] =  \
                 self.config.get_value('mongo_addr')
         eve_settings['MONGO_PORT'] =  \
@@ -286,11 +252,12 @@ class ExternalAPI(BaseClass):
         self.app = Eve(settings=eve_settings, static_folder=static_folder)
         self.logger.debug("static_folder=%s", static_folder)
 
-        #*** Measurement API updates to returned resource:
+        #*** Hook for adding pi_rate to returned resource:
         self.app.on_fetched_resource_i_c_pi_rate += self.i_c_pi_rate_response
 
-        #*** TEST:
-        self.app.on_fetched_resource_identities += self.identities_response
+        #*** Hook for filtered identities response:
+        self.app.on_fetched_resource_identities_current += \
+                                               self.identities_current_response
 
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
@@ -323,12 +290,29 @@ class ExternalAPI(BaseClass):
         self.logger.debug("pi_rate=%s", pi_rate)
         items['pi_rate'] = pi_rate
 
-    def identities_response(self, items):
+    def identities_current_response(self, items):
         """
-        TBD TEST
+        Populate the response with identities that are filtered:
+         - Reverse sort by harvest time
+         - Deduplicate by id_hash, only returning most recent per id_hash
+         - Remove any stale records
+        Hooked from on_fetched_resource_<name>
         """
+        known_hashes = []
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
-        items['host_name'] = 'foo'
+        #*** Get database and query it:
+        identities = self.app.data.driver.db['identities']
+        #*** Filter by documents that are still within 'best before' time:
+        db_data = {'valid_to': {'$gte': datetime.datetime.now()}}
+        #*** Reverse sort:
+        packet_cursor = identities.find(db_data).sort('$natural', -1)
+        #*** Iterate, adding only new id_hashes to the response:
+        for record in packet_cursor:
+            if not record['id_hash'] in known_hashes:
+                #*** Add to items dictionary which is returned in response:
+                items['_items'].append(record)
+                #*** Add hash so we don't do it again:
+                known_hashes.append(record['id_hash'])
 
 if __name__ == '__main__':
     #*** Instantiate config class which imports configuration file

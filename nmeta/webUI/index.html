@@ -19,12 +19,12 @@
     <div class="row">
       <div class="col-md-4" id="packetins">
         <kbd>Infrastructure Summary</kbd>
-
-<script id="packetinTemplate" type="text/template">
+        <!-- Script inserts a div wrapper -->
+        <script id="packetinTemplate" type="text/template">
           <img src="<%= packetinImage %>"/>
           Packet-In Rate: <%= pi_rate %> pps
-</script>
-
+        </script>
+        <!-- End of div wrapper script -->
       </div>
       <div class="col-md-8">
         <!-- TBD -->
@@ -42,13 +42,8 @@
             </tr>
           </thead>
           <tbody>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-<script id="identityTemplate" type="text/template">
+            <!-- Script inserts a tr per identity entry -->
+            <script id="identityTemplate" type="text/template">
               <td>
                 <img src="<%= participantImage %>"/>
               </td>
@@ -67,7 +62,13 @@
               <td>&nbsp;
                 <%= ip_address %>
               </td>
-</script>
+            </script>
+            <!-- End of tr script -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
 <script src="js/libraries/jquery-2.2.4.js" type="text/javascript"></script>
 <script src="js/libraries/underscore-1.8.3.js" type="text/javascript"></script>

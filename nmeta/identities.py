@@ -91,6 +91,11 @@ class Identities(BaseClass):
         #*** How far back in time to go back looking for an identity:
         self.identity_time_limit = datetime.timedelta \
                               (seconds=config.get_value("identity_time_limit"))
+        #*** Max bytes of the dhcp_messages capped collection:
+        dhcp_messages_max_bytes = config.get_value("dhcp_messages_max_bytes")
+        #*** How far back in time to go back looking for an dhcp message:
+        self.dhcp_messages_time_limit = datetime.timedelta \
+                         (seconds=config.get_value("dhcp_messages_time_limit"))
 
         #*** Start mongodb:
         self.logger.info("Connecting to MongoDB database...")
@@ -108,9 +113,22 @@ class Identities(BaseClass):
         self.identities = db_nmeta.create_collection('identities', capped=True,
                                             size=identities_max_bytes)
 
-        #*** Index ip_address key to
-        #*** improve look-up performance:
+        #*** Index ip_address key to improve look-up performance:
         self.identities.create_index([('ip_address', pymongo.TEXT)],
+                                                                unique=False)
+
+        #*** Delete (drop) previous dhcp_messages collection if it exists:
+        self.logger.debug("Deleting previous dhcp_messages MongoDB "
+                                                               "collection...")
+        db_nmeta.dhcp_messages.drop()
+
+        #*** Create the dhcp_messages collection, specifying capped option
+        #*** with max size in bytes, so MongoDB handles data retention:
+        self.dhcp_messages = db_nmeta.create_collection('dhcp_messages',
+                                     capped=True, size=dhcp_messages_max_bytes)
+
+        #*** Index transaction_id key to improve look-up performance:
+        self.dhcp_messages.create_index([('transaction_id', pymongo.TEXT)],
                                                                 unique=False)
 
     class Identity(object):
@@ -160,6 +178,35 @@ class Identities(BaseClass):
             dbdictresult['id_hash'] = self.id_hash
             return dbdictresult
 
+    class DHCPMessage(object):
+        """
+        An object that represents an individual DHCP message.
+        Used for storing DHCP state by recording DHCP events
+        """
+        def __init__(self):
+            #*** Initialise identity variables:
+            self.dpid = 0
+            self.in_port = 0
+            self.ingest_time = 0
+            self.eth_src = 0
+            self.eth_dst = 0
+            self.ip_src = 0
+            self.ip_dst = 0
+            self.tp_src = 0
+            self.tp_dst = 0
+            self.transaction_id = 0
+            self.message_type = 0
+            self.host_name = ""
+            self.ip_assigned = 0
+            self.ip_dhcp_server = 0
+            self.lease_time = 0
+        def dbdict(self):
+            """
+            Return a dictionary object of dhcp message
+            parameters for storing in the database
+            """
+            return self.__dict__
+
     def harvest(self, pkt, flow_pkt):
         """
         Passed a raw packet and packet metadata from flow object.
@@ -172,7 +219,7 @@ class Identities(BaseClass):
 
         #*** DHCP:
         elif flow_pkt.eth_type == 2048 and flow_pkt.proto == 17 and \
-                                                         flow_pkt.tp_dst == 67:
+                              (flow_pkt.tp_dst == 67 or flow_pkt.tp_dst == 68):
             self.harvest_dhcp(flow_pkt)
 
         #*** LLDP:
@@ -239,34 +286,106 @@ class Identities(BaseClass):
                         "Exception %s, %s, %s",
                          exc_type, exc_value, exc_traceback)
             return 0
-        if pkt_dhcp.opts:
-            #*** Iterate through options looking for Option 12 (Host Name)
-            #*** and Option 51 (IP Address Lease Time)
-            for opt in pkt_dhcp.opts:
-                if opt[0] == 12:
-                    #*** Found option 12 so grab the host name:
-                    dhcp_hostname = opt[1]
-                    self.logger.debug("dhcp host_name=%s", dhcp_hostname)
-                    #*** Instantiate an instance of Identity class:
-                    ident = self.Identity()
-                    ident.dpid = flow_pkt.dpid
-                    ident.in_port = flow_pkt.in_port
-                    ident.mac_address = flow_pkt.eth_src
-                    ident.ip_address = flow_pkt.ip_src
-                    ident.harvest_type = 'DHCP'
-                    ident.host_name = dhcp_hostname
-                    ident.harvest_time = flow_pkt.timestamp
-                    ident.valid_from = flow_pkt.timestamp
-                elif opt[0] == 51:
-                    #*** Found option 12 so grab the lease time:
-                    dhcp_leasetime = opt[1]
-
-            if dhcp_hostname:
+        #*** Turn DHCP options list of tuples into a dictionary:
+        dhcp_opts = dict(pkt_dhcp.opts)
+        self.logger.debug("dhcp_opts=%s", dhcp_opts)
+        #*** Get the type of the DHCP message:
+        try:
+            dhcp_type = ord(dhcp_opts[53])
+        except:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            self.logger.error("DHCP type extraction failed "
+                        "Exception %s, %s, %s",
+                         exc_type, exc_value, exc_traceback)
+            return 0
+        #*** Do stuff based on the DHCP message type:
+        if dhcp_type == dpkt.dhcp.DHCPDISCOVER:
+            self.logger.debug("Matched DHCPDISCOVER, TBD - not handled")
+        elif dhcp_type == dpkt.dhcp.DHCPOFFER:
+            self.logger.debug("Matched DHCPOFFER, TBD - not handled")
+        elif dhcp_type == dpkt.dhcp.DHCPREQUEST:
+            self.logger.debug("Matched DHCPREQUEST")
+            if dpkt.dhcp.DHCP_OPT_HOSTNAME in dhcp_opts:
+                #*** Instantiate an instance of DHCP class:
+                self.dhcp_msg = self.DHCPMessage()
+                self.dhcp_msg.dpid = flow_pkt.dpid
+                self.dhcp_msg.in_port = flow_pkt.in_port
+                self.dhcp_msg.ingest_time = flow_pkt.timestamp
+                self.dhcp_msg.eth_src = flow_pkt.eth_src
+                self.dhcp_msg.eth_dst = flow_pkt.eth_dst
+                self.dhcp_msg.ip_src = flow_pkt.ip_src
+                self.dhcp_msg.ip_dst = flow_pkt.ip_dst
+                self.dhcp_msg.tp_src = flow_pkt.tp_src
+                self.dhcp_msg.tp_dst = flow_pkt.tp_dst
+                self.dhcp_msg.transaction_id = hex(pkt_dhcp.xid)
+                self.dhcp_msg.host_name = str(dhcp_opts
+                                                 [dpkt.dhcp.DHCP_OPT_HOSTNAME])
+                self.dhcp_msg.message_type = 'DHCPREQUEST'
+                #*** Record DHCP event to db collection:
+                db_dict = self.dhcp_msg.dbdict()
+                #*** Write DHCP message to db collection:
+                self.logger.debug("writing dhcp_messages db_dict=%s", db_dict)
+                self.dhcp_messages.insert_one(db_dict)
+                return 1
+        elif dhcp_type == dpkt.dhcp.DHCPDECLINE:
+            self.logger.debug("Matched DHCPDECLINE, TBD - not handled")
+        elif dhcp_type == dpkt.dhcp.DHCPACK:
+            self.logger.debug("Matched DHCPACK")
+            xid = hex(pkt_dhcp.xid)
+            #*** Look up dhcp db collection for DHCPREQUEST:
+            db_data = {'transaction_id': xid,
+                        'message_type': 'DHCPREQUEST'}
+            #*** Filter by documents that are still within 'best before' time:
+            db_data['ingest_time'] = {'$gte': datetime.datetime.now() -
+                                                 self.dhcp_messages_time_limit}
+            #*** Run db search:
+            result = self.dhcp_messages.find(db_data).sort('$natural', -1).limit(1)
+            if result.count():
+                result0 = list(result)[0]
+                self.logger.debug("Found DHCPREQUEST for DHCPACK")
+                #*** Found a DHCP Request for the ACK, record results:
+                #*** Instantiate an instance of DHCP class:
+                self.dhcp_msg = self.DHCPMessage()
+                self.dhcp_msg.dpid = flow_pkt.dpid
+                self.dhcp_msg.in_port = flow_pkt.in_port
+                self.dhcp_msg.ingest_time = flow_pkt.timestamp
+                self.dhcp_msg.eth_src = flow_pkt.eth_src
+                self.dhcp_msg.eth_dst = flow_pkt.eth_dst
+                self.dhcp_msg.ip_src = flow_pkt.ip_src
+                self.dhcp_msg.ip_dst = flow_pkt.ip_dst
+                self.dhcp_msg.tp_src = flow_pkt.tp_src
+                self.dhcp_msg.tp_dst = flow_pkt.tp_dst
+                self.dhcp_msg.transaction_id = hex(pkt_dhcp.xid)
+                self.dhcp_msg.ip_assigned = \
+                            socket.inet_ntoa(struct.pack(">L",pkt_dhcp.yiaddr))
+                if dpkt.dhcp.DHCP_OPT_LEASE_SEC in dhcp_opts:
+                    self.dhcp_msg.lease_time = struct.unpack('>L', dhcp_opts
+                                            [dpkt.dhcp.DHCP_OPT_LEASE_SEC])[0]
+                    self.logger.debug("Found dhcp_leasetime=%s",
+                                                      self.dhcp_msg.lease_time)
+                else:
+                    self.dhcp_msg.lease_time = DHCP_DEFAULT_LEASE_TIME
+                    self.logger.debug("Using default dhcp_leasetime=%s",
+                                                      self.dhcp_msg.lease_time)
+                self.dhcp_msg.message_type = 'DHCPACK'
+                #*** Record DHCP event to db collection:
+                db_dict = self.dhcp_msg.dbdict()
+                #*** Write DHCP message to db collection:
+                self.logger.debug("writing dhcp_messages db_dict=%s", db_dict)
+                self.dhcp_messages.insert_one(db_dict)
+                #*** Instantiate an instance of Identity class:
+                ident = self.Identity()
+                ident.dpid = flow_pkt.dpid
+                ident.in_port = flow_pkt.in_port
+                ident.mac_address = flow_pkt.eth_dst
+                ident.ip_address = self.dhcp_msg.ip_assigned
+                ident.harvest_type = 'DHCP'
+                ident.host_name = result0['host_name']
+                ident.harvest_time = flow_pkt.timestamp
+                ident.valid_from = flow_pkt.timestamp
                 #*** Calculate validity:
-                if not dhcp_leasetime:
-                    dhcp_leasetime = DHCP_DEFAULT_LEASE_TIME
                 ident.valid_to = flow_pkt.timestamp + \
-                                    datetime.timedelta(0, dhcp_leasetime)
+                                datetime.timedelta(0, self.dhcp_msg.lease_time)
                 ident.id_hash = self._hash_identity(ident)
                 db_dict = ident.dbdict()
                 #*** Write DHCP identity metadata to db collection:
@@ -274,9 +393,16 @@ class Identities(BaseClass):
                 self.identities.insert_one(db_dict)
                 return 1
             else:
-                self.logger.debug("DHCP packet with no hostname")
+                self.logger.debug("Prev DHCP host_name not found")
+                return 0
+        elif dhcp_type == dpkt.dhcp.DHCPNAK:
+            self.logger.debug("Matched DHCPNAK, TBD - not handled")
+        elif dhcp_type == dpkt.dhcp.DHCPRELEASE:
+            self.logger.debug("Matched DHCPRELEASE, TBD - not handled")
+        elif dhcp_type == dpkt.dhcp.DHCPINFORM:
+            self.logger.debug("Matched DHCPINFORM, TBD - not handled")
         else:
-            self.logger.warning("DHCP packet with no options")
+            self.logger.debug("Unknown DHCP option 53 value: %s", dhcp_type)
             return 0
 
     def harvest_lldp(self, flow_pkt):
@@ -408,7 +534,7 @@ class Identities(BaseClass):
         can set:
           regex=True       Treat service_name as a regular expression
           harvest_type=    Specify what type of harvest (i.e. DHCP)
-        Returns boolean
+        Returns a dictionary version of an Identity class, or 0 if not found
         """
         db_data = {'host_name': host_name}
         if harvest_type != 'any':

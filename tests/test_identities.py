@@ -77,6 +77,8 @@ def test_harvest_ARP():
 def test_harvest_DHCP():
     """
     Test harvesting identity metadata from an IPv4 DHCP request
+    Note: this test is very basic and does not cover much...
+    TBD: cover more scenarios and DHCP message types
     """
 
     #*** Test DPIDs and in ports:
@@ -106,7 +108,9 @@ def test_harvest_DHCP():
     assert identities.dhcp_msg.message_type == 'DHCPREQUEST'
 
     #*** Server to Client DHCP ACK:
-    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    #*** Set ingest time so we can check validity based on lease
+    ingest_time = datetime.datetime.now()
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], ingest_time)
     identities.harvest(pkts_dhcp.RAW[3], flow.packet)
     flow_pkt = flow.packet
 
@@ -120,23 +124,15 @@ def test_harvest_DHCP():
     assert identities.dhcp_msg.tp_dst == flow_pkt.tp_dst
     assert identities.dhcp_msg.transaction_id == '0xabc5667f'
     assert identities.dhcp_msg.host_name == ''
+    assert identities.dhcp_msg.ip_assigned == '10.1.0.1'
     assert identities.dhcp_msg.message_type == 'DHCPACK'
+    assert identities.dhcp_msg.lease_time == 300
 
-    # BREAK
-    assert 1 == 0
-
-    #*** Set ingest time so we can check validity based on lease
-    ingest_time = datetime.datetime.now()
-
-    #*** Server DHCP ACK:
-    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[3], ingest_time)
-    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
     result_identity = identities.findbynode('pc1')
+    logger.debug("result_identity=%s", result_identity)
+    assert result_identity['mac_address'] == pkts_dhcp.ETH_SRC[2]
+    assert result_identity['ip_address'] == '10.1.0.1'
 
-    assert result_identity['host_name'] == 'pc1'
-
-    #assert result_identity['valid_to'] == ingest_time + \
-    #                               datetime.timedelta(0, identities.)
 
 def test_harvest_LLDP():
     """

@@ -80,6 +80,10 @@ identity_time_limit: 86400
 classifications_max_bytes: 2000000
 classification_time_limit: 86400
 #
+#*** dhcp_messages capped collection
+dhcp_messages_max_bytes: 2000000
+dhcp_messages_time_limit: 4492800
+#
 #========== External API =============================
 #*** External API version used in base of URL:
 external_api_version: v1

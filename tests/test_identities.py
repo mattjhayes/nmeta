@@ -81,20 +81,31 @@ def test_harvest_DHCP():
 
     #*** Test DPIDs and in ports:
     DPID1 = 1
-    DPID2 = 2
     INPORT1 = 1
-    INPORT2 = 2
 
     #*** Instantiate flow and identities objects:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
 
+    #*** Client to Server DHCP Discover:
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[0], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[0], flow.packet)
+
+    # BREAK
+    assert 1 == 0
+
+    #*** Set ingest time so we can check validity based on lease
+    ingest_time = datetime.datetime.now()
+
     #*** Server DHCP ACK:
-    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
-    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[3], ingest_time)
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
     result_identity = identities.findbynode('pc1')
 
     assert result_identity['host_name'] == 'pc1'
+
+    #assert result_identity['valid_to'] == ingest_time + \
+    #                               datetime.timedelta(0, identities.)
 
 def test_harvest_LLDP():
     """

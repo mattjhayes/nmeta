@@ -75,6 +75,8 @@ CONFIG_TEMPLATE = \
     'identity_time_limit': 86400,
     'classifications_max_bytes': 2000000,
     'classification_time_limit': 300,
+    'dhcp_messages_max_bytes': 2000000,
+    'dhcp_messages_time_limit': 4492800,
     'external_api_version': 'v1',
     'external_api_host': '0.0.0.0',
     'external_api_port': 8081,

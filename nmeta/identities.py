@@ -289,10 +289,7 @@ class Identities(BaseClass):
         #*** Turn DHCP options list of tuples into a dictionary:
         dhcp_opts = dict(pkt_dhcp.opts)
         self.logger.debug("dhcp_opts=%s", dhcp_opts)
-
-        #dhcp_opts={12: 'pc1', 53: '\x01', 55: '\x01\x1c\x02\x03\x0f\x06w\x0c,/\x1ay*y\xf9!\xfc*'}
-        #self.logger.debug("Raw 53=%s", dhcp_opts[53])
-        #self.logger.debug("Integer 53=%s", ord(dhcp_opts[53]))
+        #*** Get the type of the DHCP message:
         try:
             dhcp_type = ord(dhcp_opts[53])
         except:
@@ -301,38 +298,54 @@ class Identities(BaseClass):
                         "Exception %s, %s, %s",
                          exc_type, exc_value, exc_traceback)
             return 0
-
+        #*** Do stuff based on the DHCP message type:
         if dhcp_type == dpkt.dhcp.DHCPDISCOVER:
             self.logger.debug("Matched DHCPDISCOVER")
-            if dpkt.dhcp.DHCP_OPT_HOSTNAME in dhcp_opts:
-                #*** Instantiate an instance of DHCP class:
-                dhcp_msg = self.DHCPMessage()
-                dhcp_msg.dpid = flow_pkt.dpid
-                dhcp_msg.in_port = flow_pkt.in_port
-                dhcp_msg.ingest_time = flow_pkt.timestamp
-                dhcp_msg.eth_src = flow_pkt.eth_src
-                dhcp_msg.eth_dst = flow_pkt.eth_dst
-                dhcp_msg.ip_src = flow_pkt.ip_src
-                dhcp_msg.ip_dst = flow_pkt.ip_dst
-                dhcp_msg.tp_src = flow_pkt.tp_src
-                dhcp_msg.tp_dst = flow_pkt.tp_dst
-                dhcp_msg.transaction_id = str(dpkt.dhcp.DHCP.xid)
-                dhcp_msg.host_name = dpkt.dhcp.DHCP_OPT_HOSTNAME
-                dhcp_msg.message_type = 'DHCPDISCOVER'
-                #*** Record DHCP event to db collection:
-                db_dict = dhcp_msg.dbdict()
-                #*** Write DHCP identity metadata to db collection:
-                self.logger.debug("writing dhcp_messages db_dict=%s", db_dict)
-                self.dhcp_messages.insert_one(db_dict)
-                return 1
         elif dhcp_type == dpkt.dhcp.DHCPOFFER:
             self.logger.debug("Matched DHCPOFFER")
         elif dhcp_type == dpkt.dhcp.DHCPREQUEST:
             self.logger.debug("Matched DHCPREQUEST")
+            if dpkt.dhcp.DHCP_OPT_HOSTNAME in dhcp_opts:
+                #*** Instantiate an instance of DHCP class:
+                self.dhcp_msg = self.DHCPMessage()
+                self.dhcp_msg.dpid = flow_pkt.dpid
+                self.dhcp_msg.in_port = flow_pkt.in_port
+                self.dhcp_msg.ingest_time = flow_pkt.timestamp
+                self.dhcp_msg.eth_src = flow_pkt.eth_src
+                self.dhcp_msg.eth_dst = flow_pkt.eth_dst
+                self.dhcp_msg.ip_src = flow_pkt.ip_src
+                self.dhcp_msg.ip_dst = flow_pkt.ip_dst
+                self.dhcp_msg.tp_src = flow_pkt.tp_src
+                self.dhcp_msg.tp_dst = flow_pkt.tp_dst
+                self.dhcp_msg.transaction_id = hex(pkt_dhcp.xid)
+                self.dhcp_msg.host_name = str(dhcp_opts
+                                                 [dpkt.dhcp.DHCP_OPT_HOSTNAME])
+                self.dhcp_msg.message_type = 'DHCPREQUEST'
+                #*** Record DHCP event to db collection:
+                db_dict = self.dhcp_msg.dbdict()
+                #*** Write DHCP message to db collection:
+                self.logger.debug("writing dhcp_messages db_dict=%s", db_dict)
+                self.dhcp_messages.insert_one(db_dict)
+                return 1
         elif dhcp_type == dpkt.dhcp.DHCPDECLINE:
             self.logger.debug("Matched DHCPDECLINE")
         elif dhcp_type == dpkt.dhcp.DHCPACK:
             self.logger.debug("Matched DHCPACK")
+            #*** Look up dhcp db collection for DHCPREQUEST:
+            db_data = {'transaction_id': hex(pkt_dhcp.xid),
+                        'message_type': 'DHCPREQUEST'}
+            #*** Filter by documents that are still within 'best before' time:
+            db_data['ingest_time'] = {'$gte': datetime.datetime.now() -
+                      datetime.timedelta(0, self.dhcp_messages_time_limit)}
+            #*** Run db search:
+            result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+            if result.count():
+                result0 = list(result)[0]
+                self.logger.debug("found result=%s len=%s", result0, len(result0))
+                return result0
+            else:
+                self.logger.debug("host_name=%s not found", host_name)
+                return 0
         elif dhcp_type == dpkt.dhcp.DHCPNAK:
             self.logger.debug("Matched DHCPNAK")
         elif dhcp_type == dpkt.dhcp.DHCPRELEASE:

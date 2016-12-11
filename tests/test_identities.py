@@ -82,14 +82,45 @@ def test_harvest_DHCP():
     #*** Test DPIDs and in ports:
     DPID1 = 1
     INPORT1 = 1
+    INPORT2 = 2
 
     #*** Instantiate flow and identities objects:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
 
-    #*** Client to Server DHCP Discover:
-    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[0], datetime.datetime.now())
-    identities.harvest(pkts_dhcp.RAW[0], flow.packet)
+    #*** Client to Server DHCP Request:
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+    flow_pkt = flow.packet
+
+    assert identities.dhcp_msg.dpid == DPID1
+    assert identities.dhcp_msg.in_port == INPORT1
+    assert identities.dhcp_msg.eth_src == flow_pkt.eth_src
+    assert identities.dhcp_msg.eth_dst == flow_pkt.eth_dst
+    assert identities.dhcp_msg.ip_src == flow_pkt.ip_src
+    assert identities.dhcp_msg.ip_dst == flow_pkt.ip_dst
+    assert identities.dhcp_msg.tp_src == flow_pkt.tp_src
+    assert identities.dhcp_msg.tp_dst == flow_pkt.tp_dst
+    assert identities.dhcp_msg.transaction_id == '0xabc5667f'
+    assert identities.dhcp_msg.host_name == 'pc1'
+    assert identities.dhcp_msg.message_type == 'DHCPREQUEST'
+
+    #*** Server to Client DHCP ACK:
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+    flow_pkt = flow.packet
+
+    assert identities.dhcp_msg.dpid == DPID1
+    assert identities.dhcp_msg.in_port == INPORT2
+    assert identities.dhcp_msg.eth_src == flow_pkt.eth_src
+    assert identities.dhcp_msg.eth_dst == flow_pkt.eth_dst
+    assert identities.dhcp_msg.ip_src == flow_pkt.ip_src
+    assert identities.dhcp_msg.ip_dst == flow_pkt.ip_dst
+    assert identities.dhcp_msg.tp_src == flow_pkt.tp_src
+    assert identities.dhcp_msg.tp_dst == flow_pkt.tp_dst
+    assert identities.dhcp_msg.transaction_id == '0xabc5667f'
+    assert identities.dhcp_msg.host_name == ''
+    assert identities.dhcp_msg.message_type == 'DHCPACK'
 
     # BREAK
     assert 1 == 0

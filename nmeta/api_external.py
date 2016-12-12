@@ -48,6 +48,8 @@ from flask import jsonify
 #*** Amount of time (seconds) to go back for to calculate Packet-In rate:
 PACKET_IN_RATE_INTERVAL = 10
 
+FLOW_LIMIT = 25
+
 class ExternalAPI(BaseClass):
     """
     This class provides methods for the External API
@@ -85,70 +87,13 @@ class ExternalAPI(BaseClass):
         """
         Run the External API instance
         """
-        packet_ins_settings = {
-            'schema': {
-                'flow_hash': {
-                    'type': 'string',
-                },
-                'dpid': {
-                    'type': 'string',
-                },
-                'in_port': {
-                    'type': 'integer',
-                },
-                'timestamp': {
-                    'type': 'string',
-                },
-                'length': {
-                    'type': 'integer',
-                },
-                'eth_src': {
-                    'type': 'string',
-                },
-                'eth_dst': {
-                    'type': 'string',
-                },
-                'ip_src': {
-                    'type': 'string',
-                },
-                'ip_dst': {
-                    'type': 'string',
-                },
-                'proto': {
-                    'type': 'string',
-                },
-                'tp_src': {
-                    'type': 'string',
-                },
-                'tp_dst': {
-                    'type': 'string',
-                },
-                'tp_flags': {
-                    'type': 'string',
-                },
-                'tp_seq_src': {
-                    'type': 'string',
-                },
-                'tp_seq_dst': {
-                    'type': 'string',
-                },
-                'payload': {
-                    'type': 'string',
-                }
-            }
-        }
-
-        #*** Eve Settings for Measurements of Packet In Rates:
-        i_c_pi_rate_settings = {
-            'url': 'infrastructure/controllers/pi_rate',
-            'schema': {
+        #*** Define the Eve pi_rate schema for what data the API returns:
+        i_c_pi_rate_schema = {
                 'pi_rate': {
                     'type': 'float'
-                },
+                }
             }
-        }
-
-        #*** Define the identity schema separately as used in multiple places:
+        #*** Define the Eve identity schema for what data the API returns:
         identity_schema = {
                 'dpid': {
                     'type': 'string'
@@ -199,6 +144,62 @@ class ExternalAPI(BaseClass):
                     'type': 'string'
                 }
             }
+        #*** Define the Eve flow schema  for what data the API returns:
+        flow_schema = {
+                'dpid': {
+                    'type': 'string'
+                },
+                'in_port': {
+                    'type': 'string'
+                },
+                'harvest_time': {
+                    'type': 'string'
+                },
+                'harvest_type': {
+                    'type': 'string'
+                },
+                'mac_address': {
+                    'type': 'string'
+                },
+                'ip_address': {
+                    'type': 'string'
+                },
+                'host_name': {
+                    'type': 'string'
+                },
+                'host_type': {
+                    'type': 'string'
+                },
+                'host_os': {
+                    'type': 'string'
+                },
+                'host_desc': {
+                    'type': 'string'
+                },
+                'service_name': {
+                    'type': 'string'
+                },
+                'service_alias': {
+                    'type': 'string'
+                },
+                'user_id': {
+                    'type': 'string'
+                },
+                'valid_from': {
+                    'type': 'string'
+                },
+                'valid_to': {
+                    'type': 'string'
+                },
+                'id_hash': {
+                    'type': 'string'
+                }
+            }
+        #*** Eve Settings for Measurements of Packet In Rates:
+        i_c_pi_rate_settings = {
+            'url': 'infrastructure/controllers/pi_rate',
+            'schema': i_c_pi_rate_schema
+        }
         #*** Eve Settings for Identities Objects. Note the reverse sort
         #*** by harvest time:
         identities_settings = {
@@ -216,12 +217,19 @@ class ExternalAPI(BaseClass):
             'item_title': 'current identities',
             'schema': identity_schema
         }
+        #*** Eve Settings for flows/current Objects. Database lookup
+        #*** with deduplication and validitity filter done by hook function
+        flows_current_settings = {
+            'url': 'flows/current',
+            'item_title': 'current identities',
+            'schema': flow_schema
+        }
         #*** Eve Domain for the whole API:
         eve_domain = {
-            'packet_ins': packet_ins_settings,
             'i_c_pi_rate': i_c_pi_rate_settings,
             'identities': identities_settings,
-            'identities_current': identities_current_settings
+            'identities_current': identities_current_settings,
+            'flows_current': flows_current_settings
         }
 
         #*** Set up a settings dictionary for starting Eve app:datasource
@@ -258,6 +266,10 @@ class ExternalAPI(BaseClass):
         #*** Hook for filtered identities response:
         self.app.on_fetched_resource_identities_current += \
                                                self.identities_current_response
+
+        #*** Hook for filtered flows response:
+        self.app.on_fetched_resource_flows_current += \
+                                               self.flows_current_response
 
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
@@ -313,6 +325,28 @@ class ExternalAPI(BaseClass):
                 items['_items'].append(record)
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['id_hash'])
+
+    def flows_current_response(self, items):
+        """
+        Populate the response with flow entries that are filtered:
+         - Reverse sort by initial ingest time
+         - Deduplicate by flow_hash, only returning most recent per flow_hash
+         - Enrich with TBD
+        Hooked from on_fetched_resource_<name>
+        """
+        known_hashes = []
+        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        #*** Get packet_ins database collection and query it:
+        flows = self.app.data.driver.db['packet_ins']
+        #*** Reverse sort:
+        packet_cursor = flows.find().limit(FLOW_LIMIT).sort('$natural', -1)
+        #*** Iterate, adding only new id_hashes to the response:
+        for record in packet_cursor:
+            if not record['flow_hash'] in known_hashes:
+                #*** Add to items dictionary which is returned in response:
+                items['_items'].append(record)
+                #*** Add hash so we don't do it again:
+                known_hashes.append(record['flow_hash'])
 
 if __name__ == '__main__':
     #*** Instantiate config class which imports configuration file

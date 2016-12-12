@@ -27,7 +27,7 @@
         <!-- End of div wrapper script -->
       </div>
       <div class="col-md-8">
-        <!-- TBD -->
+        <!-- Identities Pane -->
         <kbd>Identities</kbd>
 
         <table class="table" id="identities">
@@ -42,7 +42,7 @@
             </tr>
           </thead>
           <tbody>
-            <!-- Script inserts a tr per identity entry -->
+            <!-- Script inserts a tr tag per identity entry -->
             <script id="identityTemplate" type="text/template">
               <td>
                 <img src="<%= participantImage %>"/>
@@ -63,7 +63,61 @@
                 <%= ip_address %>
               </td>
             </script>
-            <!-- End of tr script -->
+            <!-- End of tr tagged script -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <!-- Flows Pane -->
+        <kbd>Flows</kbd>
+        <table class="table" id="flows">
+          <thead>
+            <tr>
+              <th>&nbsp;</th>
+              <th>Eth Src</th>
+              <th>Eth Dst</th>
+              <th>Eth Type</th>
+              <th>IP Src</th>
+              <th>IP Dst</th>
+              <th>IP Proto</th>
+              <th>TP Src</th>
+              <th>TP Dst</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Script inserts a tr tag per flow entry -->
+            <script id="flowTemplate" type="text/template">
+              <td>
+                <img src="<%= flowImage %>"/>
+              </td>
+              <td>&nbsp;
+                <%= eth_src %>
+              </td>
+              <td>&nbsp;
+                <%= eth_dst %>
+              </td>
+              <td>&nbsp;
+                <%= eth_type %>
+              </td>
+              <td>&nbsp;
+                <%= ip_src %>
+              </td>
+              <td>&nbsp;
+                <%= ip_dst %>
+              </td>
+              <td>&nbsp;
+                <%= proto %>
+              </td>
+              <td>&nbsp;
+                <%= tp_src %>
+              </td>
+              <td>&nbsp;
+                <%= tp_dst %>
+              </td>
+            </script>
+            <!-- End of tr tagged script -->
           </tbody>
         </table>
       </div>

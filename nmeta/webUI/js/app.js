@@ -82,6 +82,7 @@
         parse:function (response) {
             console.log(response);
             response.id = response._id;
+            //--- Parse response data from under _items key:
             return response._items;
         }
     });
@@ -133,5 +134,71 @@
 
     var identitiesView = new IdentitiesView();
 
+    //-------- Flows:
+    //-------- Models:
+    var Flow = Backbone.Model.extend({
+        defaults:{
+            flowImage:"img/flow.png"
+        },
+    });
+
+    //-------- Model of multiple Flow models:
+    var Flows = Backbone.Collection.extend({
+        model:Flow,
+        url:'/v1/flows/current',
+        parse:function (response) {
+            console.log(response);
+            response.id = response._id;
+            //--- Parse response data from under _items key:
+            return response._items;
+        }
+    });
+
+    //-------- Views:
+    var FlowView = Backbone.View.extend({
+        tagName:"tr",
+        className:"flowContainer",
+        template:$("#flowTemplate").html(),
+
+        render:function () {
+            var tmpl = _.template(this.template);
+
+            this.$el.html(tmpl(this.model.toJSON()));
+            return this;
+        }
+    });
+
+    //-------- View of multiple Flows:
+    var FlowsView = Backbone.View.extend({
+        el:$("#flows"),
+
+        initialize: function(){
+          this.collection = new Flows();
+            this.collection.fetch({
+                error:function () {
+                    console.log(arguments);
+                }
+            });
+          this.render();
+
+          this.collection.on("add", this.renderFlow, this);
+        },
+
+        render:function () {
+            var that = this;
+            _.each(this.collection.models, function (item) {
+                that.renderFlow(item);
+            });
+        },
+
+        renderFlow:function(item){
+            var flowView = new FlowView({
+                model: item
+            });
+            this.$el.append(flowView.render().el);
+        }
+    });
+
+    var flowsView = new FlowsView();
 
 })(jQuery);

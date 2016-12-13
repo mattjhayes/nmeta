@@ -50,6 +50,24 @@ PACKET_IN_RATE_INTERVAL = 10
 
 FLOW_LIMIT = 25
 
+#*** Number of previous IP identity records to search for a hostname before
+#*** giving up. Used for augmenting flows with identity metadata:
+HOST_LIMIT = 25
+
+#*** Enumerate some proto numbers, someone's probably already done this...
+ETH_TYPES = {
+        2048: 'IPv4',
+        2054: 'ARP',
+        35020: 'LLDP'
+        }
+IP_PROTOS = {
+        1: 'ICMP',
+        2: 'IGMP',
+        6: 'TCP',
+        17: 'UDP',
+        41: 'IPv6'
+        }
+
 class ExternalAPI(BaseClass):
     """
     This class provides methods for the External API
@@ -80,8 +98,11 @@ class ExternalAPI(BaseClass):
         #*** Connect to MongoDB nmeta database:
         db_nmeta = mongo_client.mongo_dbname
 
-        #*** Variable for Packet-Ins Collection:
+        #*** Variable for packet_ins Collection:
         self.packet_ins = db_nmeta.packet_ins
+
+        #*** Variable for identities Collection:
+        self.identities = db_nmeta.packet_ins
 
     def run(self):
         """
@@ -304,19 +325,60 @@ class ExternalAPI(BaseClass):
                 if record['eth_type'] == 2048:
                     #*** It's IPv4:
                     flow['src'] = record['ip_src']
+                    flow['src_host'] = self.get_host_by_ip(record['ip_src'])
                     flow['dst'] = record['ip_dst']
-                    flow['proto'] = record['proto']
+                    flow['dst_host'] = self.get_host_by_ip(record['ip_dst'])
+                    flow['proto'] = enumerate_ip_proto(record['proto'])
                 else:
                     #*** It's not IPv4 (TBD, handle IPv6)
                     flow['src'] = record['eth_src']
+                    flow['src_host'] = ""
                     flow['dst'] = record['eth_dst']
-                    flow['proto'] = record['eth_type']
+                    flow['dst_host'] = ""
+                    flow['proto'] = enumerate_eth_type(record['eth_type'])
                 flow['tp_src'] = record['tp_src']
                 flow['tp_dst'] = record['tp_dst']
                 #*** Add to items dictionary which is returned in response:
                 items['_items'].append(flow)
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+    def get_host_by_ip(self, ip_addr):
+        """
+        Passed an IP address. Look this up in the identities db collection
+        and return a host name if present, otherwise an empty string
+        """
+        db_data = {'ip_address': ip_addr}
+        #*** Run db search:
+        packet_cursor = \
+                    self.identities.find(db_data).limit(HOST_LIMIT) \
+                    .sort('$natural', -1)
+        for record in packet_cursor:
+            if record['host_name'] != "":
+                return str(record['host_name'])
+        return ""
+
+def enumerate_eth_type(eth_type):
+    """
+    Passed an eth_type (in decimal) and return an enumerated version,
+    or if not found, return the original value.
+    Example, pass this function value 2054 and it return will be 'ARP'
+    """
+    if eth_type in ETH_TYPES:
+        return ETH_TYPES[eth_type]
+    else:
+        return eth_type
+
+def enumerate_ip_proto(ip_proto):
+    """
+    Passed an IP protocol number (in decimal) and return an
+    enumerated version, or if not found, return the original value.
+    Example, pass this function value 6 and it return will be 'TCP'
+    """
+    if ip_proto in IP_PROTOS:
+        return IP_PROTOS[ip_proto]
+    else:
+        return ip_proto
 
 if __name__ == '__main__':
     #*** Instantiate config class which imports configuration file

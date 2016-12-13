@@ -58,8 +58,6 @@ URL_TEST_IDENTITIES_UI = 'http://localhost:8081/v1/identities/ui/'
 #*** Instantiate the ExternalAPI class:
 api = api_external.ExternalAPI(config)
 
-
-
 #======================== api_external.py Unit Tests ==========================
 
 def test_i_c_pi_rate():
@@ -255,6 +253,17 @@ def test_identities_ui():
     #*** Stop api_external sub-process:
     api_ps.terminate()
 
+def test_enumerate_eth_type():
+    """
+    Test eth_type enumeration
+    """
+    assert api_external.enumerate_eth_type(2054) == 'ARP'
+
+def test_enumerate_ip_proto():
+    """
+    Test eth_type enumeration
+    """
+    assert api_external.enumerate_ip_proto(17) == 'UDP'
 
 def get_api_result(url):
     """

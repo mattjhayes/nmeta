@@ -144,54 +144,9 @@ class ExternalAPI(BaseClass):
                     'type': 'string'
                 }
             }
-        #*** Define the Eve flow schema  for what data the API returns:
-        flow_schema = {
-                'dpid': {
-                    'type': 'string'
-                },
-                'in_port': {
-                    'type': 'string'
-                },
-                'harvest_time': {
-                    'type': 'string'
-                },
-                'harvest_type': {
-                    'type': 'string'
-                },
-                'mac_address': {
-                    'type': 'string'
-                },
-                'ip_address': {
-                    'type': 'string'
-                },
-                'host_name': {
-                    'type': 'string'
-                },
-                'host_type': {
-                    'type': 'string'
-                },
-                'host_os': {
-                    'type': 'string'
-                },
-                'host_desc': {
-                    'type': 'string'
-                },
-                'service_name': {
-                    'type': 'string'
-                },
-                'service_alias': {
-                    'type': 'string'
-                },
-                'user_id': {
-                    'type': 'string'
-                },
-                'valid_from': {
-                    'type': 'string'
-                },
-                'valid_to': {
-                    'type': 'string'
-                },
-                'id_hash': {
+        #*** Define the Eve flow UI schema for what data the API returns:
+        flow_ui_schema = {
+                'flow_hash': {
                     'type': 'string'
                 }
             }
@@ -222,7 +177,7 @@ class ExternalAPI(BaseClass):
         flows_ui_settings = {
             'url': 'flows/ui',
             'item_title': 'Flows UI Data',
-            'schema': flow_schema
+            'schema': flow_ui_schema
         }
         #*** Eve Domain for the whole API:
         eve_domain = {
@@ -320,8 +275,10 @@ class ExternalAPI(BaseClass):
         for record in packet_cursor:
             if not record['id_hash'] in known_hashes:
                 #*** Add to items dictionary which is returned in response:
+                self.logger.debug("Appending _items with record=%s", record)
                 items['_items'].append(record)
                 #*** Add hash so we don't do it again:
+                self.logger.debug("Storing id_hash=%s ", record['id_hash'])
                 known_hashes.append(record['id_hash'])
 
     def flows_ui_response(self, items):
@@ -341,8 +298,23 @@ class ExternalAPI(BaseClass):
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
             if not record['flow_hash'] in known_hashes:
+                #*** Dictionary to hold our crafted record that has condensed
+                #*** columns for better use of UI real-estate:
+                flow = {}
+                if record['eth_type'] == 2048:
+                    #*** It's IPv4:
+                    flow['src'] = record['ip_src']
+                    flow['dst'] = record['ip_dst']
+                    flow['proto'] = record['proto']
+                else:
+                    #*** It's not IPv4 (TBD, handle IPv6)
+                    flow['src'] = record['eth_src']
+                    flow['dst'] = record['eth_dst']
+                    flow['proto'] = record['eth_type']
+                flow['tp_src'] = record['tp_src']
+                flow['tp_dst'] = record['tp_dst']
                 #*** Add to items dictionary which is returned in response:
-                items['_items'].append(record)
+                items['_items'].append(flow)
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
 

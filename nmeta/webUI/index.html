@@ -76,12 +76,9 @@
           <thead>
             <tr>
               <th>&nbsp;</th>
-              <th>Eth Src</th>
-              <th>Eth Dst</th>
-              <th>Eth Type</th>
-              <th>IP Src</th>
-              <th>IP Dst</th>
-              <th>IP Proto</th>
+              <th>Src</th>
+              <th>Dst</th>
+              <th>Proto</th>
               <th>TP Src</th>
               <th>TP Dst</th>
             </tr>
@@ -93,19 +90,10 @@
                 <img src="<%= flowImage %>"/>
               </td>
               <td>&nbsp;
-                <%= eth_src %>
+                <%= src %>
               </td>
               <td>&nbsp;
-                <%= eth_dst %>
-              </td>
-              <td>&nbsp;
-                <%= eth_type %>
-              </td>
-              <td>&nbsp;
-                <%= ip_src %>
-              </td>
-              <td>&nbsp;
-                <%= ip_dst %>
+                <%= dst %>
               </td>
               <td>&nbsp;
                 <%= proto %>

@@ -598,14 +598,10 @@ class Identities(BaseClass):
         sources.
         """
         hash_result = hashlib.md5()
-        id_tuple = (ident.mac_address,
-                    ident.ip_address,
-                    ident.harvest_type,
+        id_tuple = (ident.harvest_type,
                     ident.host_name,
                     ident.service_name,
                     ident.user_id)
-        #*** TEMP!!!!
-        id_tuple = (ident.host_name)
         id_tuple_as_string = str(id_tuple)
         hash_result.update(id_tuple_as_string)
         return hash_result.hexdigest()

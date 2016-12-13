@@ -78,7 +78,7 @@
     //-------- Model of multiple Identity models:
     var Identities = Backbone.Collection.extend({
         model:Identity,
-        url:'/v1/identities/current',
+        url:'/v1/identities/ui',
         parse:function (response) {
             console.log(response);
             response.id = response._id;
@@ -145,7 +145,7 @@
     //-------- Model of multiple Flow models:
     var Flows = Backbone.Collection.extend({
         model:Flow,
-        url:'/v1/flows/current',
+        url:'/v1/flows/ui',
         parse:function (response) {
             console.log(response);
             response.id = response._id;

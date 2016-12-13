@@ -53,7 +53,7 @@ URL_TEST_I_C_PI_RATE = \
 
 URL_TEST_IDENTITIES = 'http://localhost:8081/v1/identities/'
 
-URL_TEST_IDENTITIES_CURRENT = 'http://localhost:8081/v1/identities/current/'
+URL_TEST_IDENTITIES_UI = 'http://localhost:8081/v1/identities/ui/'
 
 #*** Instantiate the ExternalAPI class:
 api = api_external.ExternalAPI(config)
@@ -180,13 +180,12 @@ def test_identities():
     #*** Stop api_external sub-process:
     api_ps.terminate()
 
-def test_identities_current():
+def test_identities_ui():
     """
-    Harvest identity data and test that the identities/current API resource
+    Harvest identity data and test that the identities/ui API resource
     returns the correct information.
-    The identities/current resource does deduplication, so test that this
+    The identities/ui resource does deduplication, so test that this
     works correctly
-    TBD: test for only current identity data returned
     """
 
     #*** Test DPIDs and in ports:
@@ -212,7 +211,7 @@ def test_identities_current():
     identities.harvest(pkts_lldp.RAW[0], flow.packet)
 
     #*** Call the external API:
-    api_result = get_api_result(URL_TEST_IDENTITIES_CURRENT)
+    api_result = get_api_result(URL_TEST_IDENTITIES_UI)
 
     logger.debug("api_result=%s", api_result)
 
@@ -227,7 +226,7 @@ def test_identities_current():
     identities.harvest(pkts_lldp.RAW[1], flow.packet)
 
     #*** Call the external API:
-    api_result = get_api_result(URL_TEST_IDENTITIES_CURRENT)
+    api_result = get_api_result(URL_TEST_IDENTITIES_UI)
 
     logger.debug("api_result=%s", api_result)
 
@@ -242,7 +241,7 @@ def test_identities_current():
     identities.harvest(pkts_lldp.RAW[0], flow.packet)
 
     #*** Call the external API:
-    api_result = get_api_result(URL_TEST_IDENTITIES_CURRENT)
+    api_result = get_api_result(URL_TEST_IDENTITIES_UI)
 
     logger.debug("api_result=%s", api_result)
 

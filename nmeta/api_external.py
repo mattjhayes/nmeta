@@ -210,26 +210,26 @@ class ExternalAPI(BaseClass):
                 'default_sort': [('harvest_time', -1)],
             }
         }
-        #*** Eve Settings for identities/current Objects. Database lookup
-        #*** with deduplication and validitity filter done by hook function
-        identities_current_settings = {
-            'url': 'identities/current',
-            'item_title': 'current identities',
+        #*** Eve Settings for identities/ui Objects. Database lookup
+        #*** with deduplication and enhancement filter done by hook function
+        identities_ui_settings = {
+            'url': 'identities/ui',
+            'item_title': 'Identities UI Data',
             'schema': identity_schema
         }
-        #*** Eve Settings for flows/current Objects. Database lookup
-        #*** with deduplication and validitity filter done by hook function
-        flows_current_settings = {
-            'url': 'flows/current',
-            'item_title': 'current identities',
+        #*** Eve Settings for flows/ui Objects. Database lookup
+        #*** with deduplication and enhancements done by hook function
+        flows_ui_settings = {
+            'url': 'flows/ui',
+            'item_title': 'Flows UI Data',
             'schema': flow_schema
         }
         #*** Eve Domain for the whole API:
         eve_domain = {
             'i_c_pi_rate': i_c_pi_rate_settings,
             'identities': identities_settings,
-            'identities_current': identities_current_settings,
-            'flows_current': flows_current_settings
+            'identities_ui': identities_ui_settings,
+            'flows_ui': flows_ui_settings
         }
 
         #*** Set up a settings dictionary for starting Eve app:datasource
@@ -264,12 +264,12 @@ class ExternalAPI(BaseClass):
         self.app.on_fetched_resource_i_c_pi_rate += self.i_c_pi_rate_response
 
         #*** Hook for filtered identities response:
-        self.app.on_fetched_resource_identities_current += \
-                                               self.identities_current_response
+        self.app.on_fetched_resource_identities_ui += \
+                                               self.identities_ui_response
 
         #*** Hook for filtered flows response:
-        self.app.on_fetched_resource_flows_current += \
-                                               self.flows_current_response
+        self.app.on_fetched_resource_flows_ui += \
+                                               self.flows_ui_response
 
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
@@ -302,22 +302,20 @@ class ExternalAPI(BaseClass):
         self.logger.debug("pi_rate=%s", pi_rate)
         items['pi_rate'] = pi_rate
 
-    def identities_current_response(self, items):
+    def identities_ui_response(self, items):
         """
         Populate the response with identities that are filtered:
          - Reverse sort by harvest time
          - Deduplicate by id_hash, only returning most recent per id_hash
-         - Remove any stale records
+         - Includes possibly stale records
         Hooked from on_fetched_resource_<name>
         """
         known_hashes = []
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
         #*** Get database and query it:
         identities = self.app.data.driver.db['identities']
-        #*** Filter by documents that are still within 'best before' time:
-        db_data = {'valid_to': {'$gte': datetime.datetime.now()}}
         #*** Reverse sort:
-        packet_cursor = identities.find(db_data).sort('$natural', -1)
+        packet_cursor = identities.find().sort('$natural', -1)
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
             if not record['id_hash'] in known_hashes:
@@ -326,7 +324,7 @@ class ExternalAPI(BaseClass):
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['id_hash'])
 
-    def flows_current_response(self, items):
+    def flows_ui_response(self, items):
         """
         Populate the response with flow entries that are filtered:
          - Reverse sort by initial ingest time

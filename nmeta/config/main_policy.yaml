@@ -1,19 +1,25 @@
-#*** Main Policy for nmeta - Identity Regression Test
+---
+#*** Main Policy for nmeta - Static Regression Test
 #*** Written in YAML
-#
-# Client (pc1) has it's bandwidth constrained
 #
 tc_rules:
     # Traffic Classification Rulesets and Rules
     tc_ruleset_1:
-        - comment: Constrained Bandwidth Traffic
+        - comment: Control Static Rule that doesn't do anything
           match_type: any
           conditions_list:
               - match_type: any
-                identity_lldp_systemname_re: 'pc.*\.example\.com'
+                tcp_src: 123
           actions:
-            set_qos_tag: QoS_treatment=constrained_bw
-            set_desc_tag: description="Constrained Bandwidth Traffic"
+              set_desc: "Foo"
+#
+qos_treatment:
+  # Control Quality of Service (QoS) treatment mapping of
+  #  names to output queue numbers:
+  default_priority: 0
+  constrained_bw: 1
+  high_priority: 2
+  low_priority: 3
 #
 identity:
     # Control how identity information is collected

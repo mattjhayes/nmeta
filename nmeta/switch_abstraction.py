@@ -19,8 +19,6 @@ It provides functions that abstract the details of OpenFlow calls, including
 differences between OpenFlow versions where practical
 """
 
-import logging
-import logging.handlers
 import sys
 import struct
 
@@ -33,6 +31,9 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
+
+#*** For logging configuration:
+from baseclass import BaseClass
 
 #*** For OVS version comparisons:
 from distutils.version import LooseVersion
@@ -70,7 +71,7 @@ OF_MATCH_COMPAT = {'dl_dst': {'1': 'dl_dst', '4': 'eth_dst'},
                  'vlan_vid': {'1': 'dl_vlan', '4': 'vlan_vid'},
                  }
 
-class SwitchAbstract(object):
+class SwitchAbstract(BaseClass):
     """
     This class is instantiated by various other modules
     and provides methods for interacting with switches
@@ -78,43 +79,14 @@ class SwitchAbstract(object):
     program to know calls specific to the version of
     OpenFlow that the switch runs (where practical...)
     """
-    def __init__(self, _config):
-        #*** Get logging config values from config class:
-        _logging_level_s = _config.get_value \
-                                    ('sa_logging_level_s')
-        _logging_level_c = _config.get_value \
-                                    ('sa_logging_level_c')
-        _syslog_enabled = _config.get_value('syslog_enabled')
-        _loghost = _config.get_value('loghost')
-        _logport = _config.get_value('logport')
-        _logfacility = _config.get_value('logfacility')
-        _syslog_format = _config.get_value('syslog_format')
-        _console_log_enabled = _config.get_value('console_log_enabled')
-        _console_format = _config.get_value('console_format')
-        #*** Set up Logging:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
-        #*** Syslog:
-        if _syslog_enabled:
-            #*** Log to syslog on host specified in config.yaml:
-            self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport),
-                                                facility=_logfacility)
-            syslog_formatter = logging.Formatter(_syslog_format)
-            self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(_logging_level_s)
-            #*** Add syslog log handler to logger:
-            self.logger.addHandler(self.syslog_handler)
-        #*** Console logging:
-        if _console_log_enabled:
-            #*** Log to the console:
-            self.console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(_console_format)
-            self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(_logging_level_c)
-            #*** Add console log handler to logger:
-            self.logger.addHandler(self.console_handler)
+    def __init__(self, config):
+        #*** Required for BaseClass:
+        self.config = config
+        #*** Run the BaseClass init to set things up:
+        super(SwitchAbstract, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("sa_logging_level_s",
+                                       "sa_logging_level_c")
 
     def add_flow_tcp(self, datapath, msg, **kwargs):
         """

@@ -81,6 +81,79 @@ Install simplejson
 
   sudo pip install simplejson
 
+Install eve
+===========
+Eve is used to power the external API
+
+.. code-block:: text
+
+  sudo pip install eve
+
+Install coloredlogs
+===================
+
+Install coloredlogs to improve readability of terminal logs by colour-coding:
+
+.. code-block:: text
+
+  sudo pip install coloredlogs
+
+***************
+Install MongoDB
+***************
+
+MongoDB is the database used by nmeta. Install MongoDB as per `their instructions <https://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_ :
+
+Import the MongoDB public GPG Key:
+
+.. code-block:: text
+
+  sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
+
+Create a list file for MongoDB:
+
+.. code-block:: text
+
+  echo "deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
+
+Reload local package database:
+
+.. code-block:: text
+
+  sudo apt-get update
+
+Install MongoDB:
+
+.. code-block:: text
+
+  sudo apt-get install -y mongodb-org
+
+Add pymongo for a Python API into MongoDB:
+
+.. code-block:: text
+
+  sudo apt-get install build-essential python-dev
+  sudo pip install pymongo
+
+Turn on smallfiles to cope with small file system size:
+
+.. code-block:: text
+
+  sudo vi /etc/mongod.conf
+
+Add this to the storage section of the config:
+
+.. code-block:: text
+
+  mmapv1:
+    smallFiles: true
+
+Start MongoDB (if required) with:
+
+.. code-block:: text
+
+  sudo service mongod start
+
 *************
 Install nmeta
 *************
@@ -118,12 +191,14 @@ Paste in the following:
 
 .. code-block:: text
 
+  # Test nmeta:
+  alias nmt='cd ~/nmeta/tests/; py.test'
+  #
   # Run nmeta:
   alias nm="cd; cd ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta/nmeta.py"
   #
-  # Retrieve nmeta network metadata:
-  alias idmac="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/mac/"
-  alias idip="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/ip/"
-  alias idsvc="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/service/"
-  alias idsys="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/systemtable/"
-  alias idnic="sudo python nmeta/misc/jsonpretty.py http://127.0.0.1:8080/nmeta/identity/nictable/"
+  # Run nmeta external API:
+  alias nma='~/nmeta/nmeta/api_external.py'
+  #
+  # Retrieve Packet-In rate via external API:
+  alias nma_pi_rate='curl http://localhost:8081/v1/infrastructure/controllers/pi_rate/ | python -m json.tool'

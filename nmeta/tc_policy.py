@@ -22,31 +22,24 @@ that this program expects. See constant tuples at start of program for valid
 attributes to use.
 """
 
-import logging
-import logging.handlers
-
 import sys
 import os
 
-#*** Packet-related imports:
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import arp
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import ipv6
-from ryu.lib.packet import udp
-from ryu.lib.packet import tcp
+import time
 
 #*** nmeta imports:
 import tc_static
 import tc_identity
-import tc_statistical
-import tc_payload
+import tc_custom
 
 #*** Import dpkt for DNS extraction, as not native to Ryu:
-import dpkt
+#import dpkt
 
 #*** YAML for config and policy file parsing:
 import yaml
+
+#*** For logging configuration:
+from baseclass import BaseClass
 
 #*** Describe supported syntax in main_policy.yaml so that it can be tested
 #*** for validity. Here are valid policy rule attributes:
@@ -66,74 +59,42 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'identity_lldp_systemname_re': 'String',
                                'identity_service_dns': 'String',
                                'identity_service_dns_re': 'String',
-                               'payload_type': 'String',
-                               'statistical_qos_bandwidth_1': 'String',
+                               'custom': 'String',
                                'match_type': 'MatchType',
                                'conditions_list': 'PolicyConditions'}
-TC_CONFIG_ACTIONS = ('set_qos_tag',
-                     'set_desc_tag',
-                     'pass_return_tags')
+TC_CONFIG_ACTIONS = ('qos_treatment',
+                     'set_desc')
 TC_CONFIG_MATCH_TYPES = ('any',
-                         'all',
-                         'statistical')
+                         'all')
 #*** Keys that must exist under 'identity' in the policy:
 IDENTITY_KEYS = ('arp',
                  'lldp',
                  'dns',
                  'dhcp')
 
-class TrafficClassificationPolicy(object):
+class TrafficClassificationPolicy(BaseClass):
     """
     This class is instantiated by nmeta.py and provides methods
     to ingest the policy file main_policy.yaml and check flows
     against policy to see if actions exist
     """
-    def __init__(self, _config):
-        #*** Get logging config values from config class:
-        _logging_level_s = _config.get_value \
-                                    ('tc_policy_logging_level_s')
-        _logging_level_c = _config.get_value \
-                                    ('tc_policy_logging_level_c')
-        _syslog_enabled = _config.get_value('syslog_enabled')
-        _loghost = _config.get_value('loghost')
-        _logport = _config.get_value('logport')
-        _logfacility = _config.get_value('logfacility')
-        _syslog_format = _config.get_value('syslog_format')
-        _console_log_enabled = _config.get_value('console_log_enabled')
-        _console_format = _config.get_value('console_format')
-        #*** Set up Logging:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
-        #*** Syslog:
-        if _syslog_enabled:
-            #*** Log to syslog on host specified in config.yaml:
-            self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport),
-                                                facility=_logfacility)
-            syslog_formatter = logging.Formatter(_syslog_format)
-            self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(_logging_level_s)
-            #*** Add syslog log handler to logger:
-            self.logger.addHandler(self.syslog_handler)
-        #*** Console logging:
-        if _console_log_enabled:
-            #*** Log to the console:
-            self.console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(_console_format)
-            self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(_logging_level_c)
-            #*** Add console log handler to logger:
-            self.logger.addHandler(self.console_handler)
+    def __init__(self, config, pol_dir="config", pol_file="main_policy.yaml"):
+        #*** Required for BaseClass:
+        self.config = config
+        #*** Run the BaseClass init to set things up:
+        super(TrafficClassificationPolicy, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("tc_policy_logging_level_s",
+                                       "tc_policy_logging_level_c")
 
-        #*** Name of the config file:
-        self.policy_filename = "main_policy.yaml"
-        self.config_directory = "config"
+        #*** Name of the main_policy file:
+        self.policy_filename = pol_file
+        self.policy_directory = pol_dir
         #*** Get working directory:
         self.working_directory = os.path.dirname(__file__)
         #*** Build the full path and filename for the config file:
         self.fullpathname = os.path.join(self.working_directory,
-                                         self.config_directory,
+                                         self.policy_directory,
                                          self.policy_filename)
         self.logger.info("About to open config file=%s", self.fullpathname)
         #*** Ingest the policy file:
@@ -146,15 +107,86 @@ class TrafficClassificationPolicy(object):
                               self.fullpathname, exception)
             sys.exit("Exiting nmeta. Please create traffic classification "
                              "policy file")
+        #*** List to be populated with names of any custom classifiers:
+        self.custom_classifiers = []
         #*** Instantiate Classes:
-        self.static = tc_static.StaticInspect(_config)
-        self.identity = tc_identity.IdentityInspect(_config)
-        self.payload = tc_payload.PayloadInspect(_config)
-        self.statistical = tc_statistical.StatisticalInspect \
-                                (_config)
+        self.static = tc_static.StaticInspect(config)
+        self.identity = tc_identity.IdentityInspect(config)
+        self.custom = tc_custom.CustomInspect(config)
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
+        #*** Instantiate any custom classifiers:
+        self.custom.instantiate_classifiers(self.custom_classifiers)
+
+    class Rule(object):
+        """
+        An object that represents a traffic classification rule
+        (a set of conditions), including any decision collateral
+        on matches and actions
+        """
+        def __init__(self):
+            """
+            Initialise variables
+            """
+            self.match = 0
+            self.continue_to_inspect = 0
+            self.match_type = ""
+            self.actions = {}
+            #*** List for conditions objects:
+            self.conditions = []
+
+        def to_dict(self):
+            """
+            Return a dictionary object of the condition object
+            """
+            return self.__dict__
+
+    class Conditions(object):
+        """
+        An object that represents traffic classification conditions,
+        including any decision collateral on matches and actions
+        """
+        def __init__(self):
+            """
+            Initialise variables
+            """
+            self.match = 0
+            self.continue_to_inspect = 0
+            self.match_type = ""
+            self.actions = {}
+            #*** List for condition objects:
+            self.condition = []
+
+        def to_dict(self):
+            """
+            Return a dictionary object of the condition object
+            """
+            return self.__dict__
+
+    class Condition(object):
+        """
+        An object that represents a traffic classification condition,
+        including any decision collateral on match test
+        """
+        def __init__(self):
+            """
+            Initialise variables
+            """
+            self.match = 0
+            self.continue_to_inspect = 0
+            self.policy_attr = ""
+            self.policy_attr_type = ""
+            self.policy_value = ""
+            self.classification_tag = ""
+            self.actions = {}
+
+        def to_dict(self):
+            """
+            Return a dictionary object of the condition object
+            """
+            return self.__dict__
+
 
     def validate_policy(self):
         """
@@ -197,10 +229,11 @@ class TrafficClassificationPolicy(object):
                                          "invalid: %s ", policy_rule_parameter)
                     sys.exit("Exiting nmeta. Please fix error in "
                              "main_policy.yaml file")
-                if policy_rule_parameter == 'conditions':
-                    #*** Call function to validate the policy condition and
-                    #*** any nested policy conditions that it may contain:
-                    self._validate_conditions(tc_rule[policy_rule_parameter])
+                if policy_rule_parameter == 'conditions_list':
+                    for conditions in tc_rule[policy_rule_parameter]:
+                        #*** Call function to validate the policy condition and
+                        #*** any nested policy conditions that it may contain:
+                        self._validate_conditions(conditions)
                 if policy_rule_parameter == 'actions':
                     #*** Check actions are valid:
                     for action in tc_rule[policy_rule_parameter].keys():
@@ -253,6 +286,12 @@ class TrafficClassificationPolicy(object):
                 " is invalid: %s", policy_condition)
                 sys.exit("Exiting nmeta. Please fix error in "
                          "main_policy.yaml file")
+            #*** Accumulate names of any custom classifiers for later loading:
+            if policy_condition == 'custom':
+                custom_name = policy_conditions[policy_condition]
+                self.logger.debug("custom_classifier=%s", custom_name)
+                if custom_name not in self.custom_classifiers:
+                    self.custom_classifiers.append(custom_name)
             #*** Check policy condition value is valid:
             if not policy_condition[0:10] == 'conditions':
                 pc_value_type = TC_CONFIG_CONDITIONS[policy_condition]
@@ -343,281 +382,182 @@ class TrafficClassificationPolicy(object):
             #*** Reset to zero as otherwise can break parent evaluations:
             self.has_match_type = 0
 
-    def check_policy(self, pkt, dpid, inport):
+    def check_policy(self, flow, ident):
         """
-        Passed a packet-in packet, a Data Path ID (dpid) and an in port.
+        Passed a flows object, set in context of current packet-in event,
+        and an identities object.
         Check if packet matches against any policy
-        rules and if it does return the associated actions.
-        This function is written for efficiency as it will be called for
-        every packet-in event and delays will slow down the transmission
-        of these packets. For efficiency, it assumes that the main policy
-        is valid as it has been checked after ingestion or update.
-        It also performs an additional function of gathering identity
-        metadata
+        rules and if it does, update the classifications portion of
+        the flows object to reflect details of the classification.
         """
-        if self._main_policy['identity']['lldp'] == 1:
-            #*** Check to see if it is an LLDP packet
-            #*** and if so pass to the identity module to process:
-            pkt_eth = pkt.get_protocol(ethernet.ethernet)
-            if pkt_eth.ethertype == 35020:
-                self.identity.lldp_in(pkt, dpid, inport)
-        #*** Check to see if it is an IPv4 packet
-        #*** and if so pass to the identity module to process:
-        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        if pkt_ip4:
-            self.identity.ip4_in(pkt)
-        #*** EXPERIMENTAL AND UNDER CONSTRUCTION...
-        #*** context is future-proofing for when the system will support
-        #*** multiple contexts. For now just set to 'default':
-        context = 'default'
-        pkt_tcp = pkt.get_protocol(tcp.tcp)
-        pkt_udp = pkt.get_protocol(udp.udp)
-
-        if self._main_policy['identity']['arp'] == 1:
-            #*** Check to see if it is an IPv4 ARP reply
-            #***  and if so harvest the information:
-            pkt_arp = pkt.get_protocol(arp.arp)
-            if pkt_arp:
-                #*** It's an ARP, but is it a reply (opcode 2) for IPv4?:
-                if pkt_arp.opcode == 2 and pkt_arp.proto == 2048:
-                    self.logger.debug("event=ARP reply arp=%s", pkt_arp)
-                    self.identity.arp_reply_in \
-                                (pkt_arp.src_ip, pkt_arp.src_mac, context)
-
-        if self._main_policy['identity']['dhcp'] == 1:
-            #*** Check to see if it is an IPv4 DHCP ACK
-            #***  and if so harvest the information:
-            #*** Use dpkt as Ryu library doesn't appear to work???
-            if pkt_udp:
-                if pkt_udp.src_port == 67 or pkt_udp.dst_port == 67:
-                    pkt_dhcp = 0
-                    #*** Use dpkt to parse UDP DNS data:
-                    try:
-                        pkt_dhcp = dpkt.dhcp.DHCP(pkt.protocols[-1])
-                    except:
-                        exc_type, exc_value, exc_traceback = sys.exc_info()
-                        self.logger.error("DHCP extraction failed "
-                            "Exception %s, %s, %s",
-                             exc_type, exc_value, exc_traceback)
-                    if pkt_dhcp:
-                        if pkt_dhcp.opts:
-                            #*** Iterate through options looking for 12:
-                            for opt in pkt_dhcp.opts:
-                                if opt[0] == 12:
-                                    #*** Found option 12 so grab the host name:
-                                    dhcp_hostname = opt[1]
-                                    self.logger.debug("dhcp host name is %s",
-                                                          dhcp_hostname)
-                                    if pkt_ip4:
-                                        ip = pkt_ip4.src
-                                    elif pkt_ip6:
-                                        ip = pkt_ip6.src
-                                    else:
-                                        ip = 0
-                                    #*** Call identity class with hostname etc:
-                                    self.identity.dhcp_in(pkt_eth.src,
-                                                          ip,
-                                                          dhcp_hostname,
-                                                          context)
-
-        if self._main_policy['identity']['dns'] == 1:
-            #*** Check to see if it is an IPv4 DNS packet
-            #***  and if so pass to the identity module to process
-            #*** At the time of writing there isn't a DNS parser in Ryu
-            #***  so do some dodgy stuff here in the interim...
-            dns = 0
-            if pkt_udp:
-                if pkt_udp.src_port == 53 or pkt_udp.dst_port == 53:
-                    #*** Use dpkt to parse UDP DNS data:
-                    try:
-                        dns = dpkt.dns.DNS(pkt.protocols[-1])
-                    except:
-                        exc_type, exc_value, exc_traceback = sys.exc_info()
-                        self.logger.error("DNS extraction failed "
-                            "Exception %s, %s, %s",
-                             exc_type, exc_value, exc_traceback)
-            if pkt_tcp:
-                if pkt_tcp.src_port == 53 or pkt_tcp.dst_port == 53:
-                    #*** Use dpkt to parse TCP DNS data:
-                    try:
-                        dns = dpkt.dns.DNS(pkt.protocols[-1])
-                    except:
-                        exc_type, exc_value, exc_traceback = sys.exc_info()
-                        self.logger.error("DNS extraction failed "
-                            "Exception %s, %s, %s",
-                             exc_type, exc_value, exc_traceback)
-            if dns:
-                #*** Call identity class with DNS parameters:
-                self.identity.dns_reply_in(dns.qd, dns.an, context)
-
+        self.flow = flow
+        self.pkt = flow.packet
+        self.ident = ident
         #*** Check against TC policy:
         for tc_rule in self.tc_ruleset:
             #*** Check the rule:
-            _result_dict = self._check_rule(pkt, tc_rule, context)
-            if _result_dict['match']:
-                #self.logger.debug("Matched policy rule, _result_dict=%s",
-                #                                _result_dict)
-                #*** Need to merge the actions configured on the rule
-                #*** with those returned by the classifiers
-                #*** Do type inspection to ensure only dealing with non-Null
-                #*** items. There has to be a better way...!!!?
-                self.logger.debug("tc_rule['actions']=%s, "
-                                    "_result_dict['actions']=%s",
-                                    tc_rule['actions'],
-                                    _result_dict['actions'])
-                if (isinstance(tc_rule['actions'], dict) and
-                        isinstance(_result_dict['actions'], dict)):
-                    _merged_actions = dict(tc_rule['actions'].items()
-                                        + _result_dict['actions'].items())
-                    self.logger.debug("#1 _merged_actions=%s", _merged_actions)
-                elif isinstance(tc_rule['actions'], dict):
-                    _merged_actions = tc_rule['actions']
-                    self.logger.debug("#2 _merged_actions=%s", _merged_actions)
-                elif isinstance(_result_dict['actions'], dict):
-                    _merged_actions = _result_dict['actions']
-                    self.logger.debug("#3 _merged_actions=%s", _merged_actions)
+            rule = self._check_rule(tc_rule)
+            if rule.match:
+                self.logger.debug("Matched policy rule=%s", rule.to_dict())
+                #*** Only set 'classified' if continue_to_inspect not set:
+                if not rule.continue_to_inspect:
+                    flow.classification.classified = True
                 else:
-                    _merged_actions = False
-                    self.logger.debug("#4 _merged_actions=%s", _merged_actions)
-                _result_dict['actions'] = _merged_actions
-                self.logger.debug("returning result=%s", _result_dict)
-                return _result_dict
-        #*** No hits so return false on everything:
-        _result_dict = {'match':False, 'continue_to_inspect':False,
-                    'actions': False}
-        return _result_dict
+                    flow.classification.classified = False
+                flow.classification.classification_tag = \
+                                                 tc_rule['actions']['set_desc']
+                flow.classification.classification_time = time.time()
+                #*** Accumulate any actions. (will overwrite with rule action)
+                #*** Firstly, any actions on the rule:
+                flow.classification.actions.update(tc_rule['actions'])
+                #*** Secondly, any actions returned from custom classifiers:
+                flow.classification.actions.update(rule.actions)
+                return 1
 
-    def _check_rule(self, pkt, rule, ctx):
+        #*** No matches. Mark as classified so we don't process again:
+        flow.classification.classified = True
+        return 0
+
+    def _check_rule(self, rule_stanza):
         """
-        Passed a main_policy.yaml tc_rule.
+        Passed a main_policy.yaml tc_rule stanza.
         Check to see if packet matches conditions as per the
-        rule.
-        Return a results dictionary
+        rule. Return a rule object
         """
-        _result_dict = {'match':True, 'continue_to_inspect':False,
-                    'actions': False}
-        self.rule_match_type = rule['match_type']
+        #*** Instantiate a Rule class for results:
+        rule = self.Rule()
+        rule.match_type = rule_stanza['match_type']
         #*** Iterate through the conditions list:
-        for condition_stanza in rule['conditions_list']:
-            _result = self._check_conditions(pkt, condition_stanza, ctx)
-            #self.logger.debug("_result=%s", _result)
-            _match = _result['match']
-            #*** Carry over actions from pass_return_tag classifiers if any:
-            if _result['actions'] != 'False':
-                #self.logger.debug("Passing actions from classifier")
-                _result_dict['actions'] = _result['actions']
+        for condition_stanza in rule_stanza['conditions_list']:
+            conditions = self._check_conditions(condition_stanza)
+            self.logger.debug("condition_stanza=%s, conditions=%s", condition_stanza, conditions.to_dict())
             #*** Decide what to do based on match result and match type:
-            if _match and self.rule_match_type == "any":
-                _result_dict['match'] = True
-                return _result_dict
-            elif not _match and self.rule_match_type == "all":
-                _result_dict['match'] = False
-                return _result_dict
+            if conditions.match and rule.match_type == "any":
+                rule.match = True
+                rule.actions.update(conditions.actions)
+                if conditions.continue_to_inspect:
+                    rule.continue_to_inspect = 1
+                return rule
+            elif not conditions.match and rule.match_type == "all":
+                rule.match = False
+                return rule
             else:
                 #*** Not a condition that we take action on so keep going:
                 pass
         #*** We've finished loop through all conditions and haven't returned.
         #***  Work out what action to take:
-        if not _match and self.rule_match_type == "any":
-            _result_dict['match'] = False
-            return _result_dict
-        elif _match and self.rule_match_type == "all":
-            _result_dict['match'] = True
-            return _result_dict
+        if not conditions.match and rule.match_type == "any":
+            rule.match = False
+            return rule
+        elif conditions.match and rule.match_type == "all":
+            rule.match = True
+            rule.actions.update(conditions.actions)
+            if conditions.continue_to_inspect:
+                rule.continue_to_inspect = 1
+            return rule
         else:
             #*** Unexpected result:
             self.logger.error("Unexpected result at "
-                "end of loop through attributes. policy_attr=%s, _match=%s, "
-                "self.match_type=%s", policy_attr, _match,
-                 self.rule_match_type)
-            _result_dict['match'] = False
-            return _result_dict
+                "end of loop through rule=%s", rule.to_dict())
+            rule.match = False
+            return rule
 
-    def _check_conditions(self, pkt, conditions, ctx):
+    def _check_conditions(self, conditions_stanza):
         """
-        Passed a packet-in packet and a conditions stanza (part of a
-        conditions list).
-        Check to see if packet matches conditions as per the
-        match type, and if so return in the dictionary attribute "match" with
-        the boolean value True otherwise boolean False.
-        A match_type of 'any' will return true as soon as a valid
-        match is made and false if end of matching is reached.
-        A match_type of 'all' will return false as soon as an invalid
-        match is made and true if end of matching is reached.
+        Passed a conditions stanza
+        Check to see if self.packet matches conditions as per the
+        match type.
+        Return a condition object with match information.
         """
-        #*** initial settings for results dictionary:
-        _result_dict = {'match':True, 'continue_to_inspect':False,
-                    'actions': False}
-        self.match_type = conditions['match_type']
-        #*** Loop through conditions checking match:
-        for policy_attr in conditions.keys():
-            policy_value = conditions[policy_attr]
-            #*** Policy Attribute Type is for non-static classifiers to
-            #*** hold the attribute prefix (i.e. identity).
-            #*** Exclude nested conditions dictionaries from this check:
-            if policy_attr[0:10] == 'conditions':
-                policy_attr_type = "conditions"
-            else:
-                policy_attr_type = policy_attr.split("_")
-                policy_attr_type = policy_attr_type[0]
-            _match = False
-            #*** Main if/elif/else check on condition attribute type:
-            if policy_attr_type == "identity":
-                _match = self.identity.check_identity(policy_attr,
-                                             policy_value, pkt, ctx)
-            elif policy_attr == "statistical_qos_bandwidth_1":
-                _match = self.statistical.check_statistical(policy_attr,
-                                                            policy_value, pkt)
-                self.logger.debug("statistical_qos_bandwidth_1 _match=%s",
-                                                            _match)
-                #*** Need this line for any classifier that returns actions:
-                _result_dict['actions'] = _match['actions']
-            elif policy_attr_type == "payload":
-                _payload_dict = self.payload.check_payload(policy_attr,
-                                         policy_value, pkt)
-                if _payload_dict["match"]:
-                    _match = True
-                    _result_dict["continue_to_inspect"] = \
-                                     _payload_dict["continue_to_inspect"]
-            elif policy_attr_type == "conditions_list":
-                #*** Do a recursive call on nested conditions:
-                _nested_dict = self._check_conditions(pkt, policy_value, ctx)
-                _match = _nested_dict["match"]
-                #*** TBD: How do we deal with nested continue to inspect
-                #***  results that conflict?
-                _result_dict["continue_to_inspect"] = \
-                                    _nested_dict["continue_to_inspect"]
-            elif policy_attr == "match_type":
+        self.logger.debug("conditions_stanza=%s", conditions_stanza)
+        #*** Instantiate a conditions class for results:
+        conditions = self.Conditions()
+        conditions.match_type = conditions_stanza['match_type']
+        #*** Loop through conditions_stanza checking match:
+        for policy_attr in conditions_stanza.keys():
+            if policy_attr == "match_type":
                 #*** Nothing to do:
-                pass
+                continue
+            #*** Instantiate a condition class for result:
+            condition = self.Condition()
+            condition.policy_attr = policy_attr
+            condition.policy_value = conditions_stanza[policy_attr]
+            self.logger.debug("looping checking policy_attr=%s "
+                                  "policy_value=%s", condition.policy_attr,
+                                  condition.policy_value)
+            #*** Policy Attribute Type is for identity classifiers
+            #*** Exclude nested conditions dictionaries from this check:
+            if condition.policy_attr[0:10] == 'conditions':
+                condition.policy_attr_type = "conditions"
+            else:
+                condition.policy_attr_type = policy_attr.split("_")[0]
+            #*** Main if/elif/else check on condition attribute type:
+            if condition.policy_attr_type == "identity":
+                self.identity.check_identity(condition, self.pkt, self.ident)
+            elif condition.policy_attr == "custom":
+                self.custom.check_custom(condition, self.flow, self.ident)
+            #elif condition.policy_attr_type == "conditions_list":
+                # TBD: Do a recursive call on nested conditions
             else:
                 #*** default to doing a Static Classification match:
-                _match = self.static.check_static(policy_attr,
-                                                        policy_value, pkt)
+                self.static.check_static(condition, self.pkt)
+                self.logger.debug("static match=%s", condition.to_dict())
             #*** Decide what to do based on match result and match type:
-            if _match and self.match_type == "any":
-                _result_dict["match"] = True
-                return _result_dict
-            elif not _match and self.match_type == "all":
-                _result_dict["match"] = False
-                return _result_dict
+            if condition.match and conditions.match_type == "any":
+                conditions.condition.append(condition)
+                #*** Accumulate actions:
+                for condn in conditions.condition:
+                    conditions.actions.update(condn.actions)
+                    if condn.continue_to_inspect:
+                        conditions.continue_to_inspect = 1
+                conditions.match = True
+                return conditions
+            elif not condition.match and not condition.policy_attr == \
+                            "match_type" and conditions.match_type == "all":
+                conditions.condition.append(condition)
+                conditions.match = False
+                return conditions
             else:
                 #*** Not a condition that we take action on so keep going:
                 pass
         #*** We've finished loop through all conditions and haven't returned.
         #***  Work out what action to take:
-        if not _match and self.match_type == "any":
-            _result_dict["match"] = False
-            return _result_dict
-        elif _match and self.match_type == "all":
-            _result_dict["match"] = True
-            return _result_dict
+        if not condition.match and conditions.match_type == "any":
+            conditions.condition.append(condition)
+            conditions.match = False
+            return conditions
+        elif condition.match and conditions.match_type == "all":
+            conditions.condition.append(condition)
+            #*** Accumulate actions:
+            for condn in conditions.condition:
+                conditions.actions.update(condn.actions)
+                if condn.continue_to_inspect:
+                    conditions.continue_to_inspect = 1
+            conditions.match = True
+            return conditions
         else:
             #*** Unexpected result:
-            self.logger.error("Unexpected result at "
-                "end of loop through attributes. policy_attr=%s, _match=%s, "
-                "self.match_type=%s", policy_attr, _match, self.match_type)
-            _result_dict["match"] = False
-            return _result_dict
+            self.logger.error("Unexpected result at end of loop through "
+                                        "attributes. condition=%s, ",
+                                        condition.to_dict())
+            conditions.match = False
+            return conditions
 
+    def qos(self, qos_treatment):
+        """
+        Passed a QoS treatment string and return the relevant
+        QoS queue number to use, otherwise 0. Works by lookup
+        on qos_treatment section of main_policy
+        """
+        qos_policy = self._main_policy['qos_treatment']
+        if qos_treatment in qos_policy:
+            return qos_policy[qos_treatment]
+        elif qos_treatment == 'classifier_return':
+            #*** This happens:
+            self.logger.debug("custom classifier did not return "
+                                                               "qos_treatment")
+            return 0
+        else:
+            self.logger.error("qos_treatment=%s not found in main_policy",
+                                                                 qos_treatment)
+            return 0

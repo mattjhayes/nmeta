@@ -18,10 +18,6 @@ This module is part of the nmeta suite running on top of Ryu SDN controller
 to provide network identity and flow (traffic classification) metadata
 """
 
-import logging
-import logging.handlers
-import struct
-import time
 import sys
 
 #*** Import netaddr for IP address checking:
@@ -30,114 +26,55 @@ from netaddr import IPNetwork
 from netaddr import EUI
 from netaddr import iter_iprange
 
-#*** Ryu imports:
-from ryu.lib import addrconv
-from ryu.lib.packet import packet
-from ryu.lib.packet import ethernet
-from ryu.lib.packet import lldp
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import tcp
+#*** For logging configuration:
+from baseclass import BaseClass
 
-#*** nmeta imports:
-import nmisc
-
-class StaticInspect(object):
+class StaticInspect(BaseClass):
     """
-    This class is instantiated by tc_policy.py 
-    (class: TrafficClassificationPolicy) and provides methods to 
+    This class is instantiated by tc_policy.py
+    (class: TrafficClassificationPolicy) and provides methods to
     query static traffic classification matches
     """
-    def __init__(self, _config):
-        #*** Get logging config values from config class:
-        _logging_level_s = _config.get_value \
-                                    ('tc_static_logging_level_s')
-        _logging_level_c = _config.get_value \
-                                    ('tc_static_logging_level_c')
-        _syslog_enabled = _config.get_value ('syslog_enabled')
-        _loghost = _config.get_value ('loghost')
-        _logport = _config.get_value ('logport')
-        _logfacility = _config.get_value ('logfacility')
-        _syslog_format = _config.get_value ('syslog_format')
-        _console_log_enabled = _config.get_value ('console_log_enabled')
-        _console_format = _config.get_value ('console_format')
-        #*** Set up Logging:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        self.logger.propagate = False
-        #*** Syslog:
-        if _syslog_enabled:
-            #*** Log to syslog on host specified in config.yaml:
-            self.syslog_handler = logging.handlers.SysLogHandler(address=(
-                                                _loghost, _logport), 
-                                                facility=_logfacility)
-            syslog_formatter = logging.Formatter(_syslog_format)
-            self.syslog_handler.setFormatter(syslog_formatter)
-            self.syslog_handler.setLevel(_logging_level_s)
-            #*** Add syslog log handler to logger:
-            self.logger.addHandler(self.syslog_handler)
-        #*** Console logging:
-        if _console_log_enabled:
-            #*** Log to the console:
-            self.console_handler = logging.StreamHandler()
-            console_formatter = logging.Formatter(_console_format)
-            self.console_handler.setFormatter(console_formatter)
-            self.console_handler.setLevel(_logging_level_c)
-            #*** Add console log handler to logger:
-            self.logger.addHandler(self.console_handler)
-       
-    def check_static(self, policy_attr, policy_value, pkt):
+    def __init__(self, config):
+        #*** Required for BaseClass:
+        self.config = config
+        #*** Run the BaseClass init to set things up:
+        super(StaticInspect, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("tc_static_logging_level_s",
+                                       "tc_static_logging_level_c")
+
+    def check_static(self, condition, pkt):
         """
-        Passed a static classification attribute, value and packet and
-        return 1 for is match and 0 for not a match or any type of error
+        Passed condition and flows packet objects
+        Update the condition match with boolean of result
+        of match checks
         """
-        pkt_eth = pkt.get_protocol(ethernet.ethernet)
-        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)
-        if (policy_attr == 'eth_src'):
-            if pkt_eth:
-                return self.is_match_macaddress(pkt_eth.src, policy_value)
-            else:
-                return 0
-        elif (policy_attr == 'eth_dst'):
-            if pkt_eth:
-                return self.is_match_macaddress(pkt_eth.dst, policy_value)
-            else:
-                return 0
-        elif (policy_attr == 'eth_type'):
-            if pkt_eth:
-                return self.is_match_ethertype(pkt_eth.ethertype, policy_value)
-            else:
-                return 0
-        elif (policy_attr == 'ip_src'):
-            if pkt_ip4:
-                if pkt_ip4.src:
-                    return self.is_match_ip_space(pkt_ip4.src, policy_value)
-                else:
-                    return False
-        elif (policy_attr == 'ip_dst'):
-            if pkt_ip4:
-                if pkt_ip4.dst:
-                    return self.is_match_ip_space(pkt_ip4.dst, policy_value)
-                else:
-                    return False   
-        elif (policy_attr == 'tcp_src'):
-            if pkt_tcp:
-                if pkt_tcp.src_port == policy_value:
-                    return True
-                else:
-                    return False                     
-        elif (policy_attr == 'tcp_dst'):
-            if pkt_tcp:
-                if pkt_tcp.dst_port == policy_value:
-                    return True
-                else:
-                    return False   
+        policy_attr = condition.policy_attr
+        policy_value = condition.policy_value
+        if policy_attr == 'eth_src':
+            condition.match = pkt.eth_src == policy_value
+        elif policy_attr == 'eth_dst':
+            condition.match = pkt.eth_dst == policy_value
+        elif policy_attr == 'eth_type':
+            condition.match = pkt.eth_type == policy_value
+        elif policy_attr == 'ip_src':
+            condition.match = pkt.ip_src == policy_value
+        elif policy_attr == 'ip_dst':
+            condition.match = pkt.ip_dst == policy_value
+        elif policy_attr == 'tcp_src':
+            condition.match = pkt.proto == 6 and pkt.tp_src == policy_value
+        elif policy_attr == 'tcp_dst':
+            condition.match = pkt.proto == 6 and pkt.tp_dst == policy_value
+        elif policy_attr == 'udp_src':
+            condition.match = pkt.proto == 17 and pkt.tp_src == policy_value
+        elif policy_attr == 'udp_dst':
+            condition.match = pkt.proto == 17 and pkt.tp_dst == policy_value
         else:
             #*** didn't match any policy conditions so return false and
             #***  log an error:
-            self.logger.error("Policy attribute %s "
-                                  "did not match", policy_attr)            
-            return False                           
+            self.logger.error("Unsupported policy_attr=%s", policy_attr)
+            condition.match = False
 
     def is_valid_macaddress(self, value_to_check):
         """
@@ -153,7 +90,7 @@ class StaticInspect(object):
                 return 0
         except:
             self.logger.debug("Check of "
-                    "is_valid_macaddress on %s raised an exception", 
+                    "is_valid_macaddress on %s raised an exception",
                     value_to_check)
             return 0
         return 1
@@ -175,7 +112,7 @@ class StaticInspect(object):
                     return 0
             except:
                 self.logger.debug("Check of "
-                    "is_valid_ethertype as hex on %s raised an exception", 
+                    "is_valid_ethertype as hex on %s raised an exception",
                         value_to_check)
                 return 0
         else:
@@ -189,11 +126,11 @@ class StaticInspect(object):
                     return 0
             except:
                 self.logger.debug("Check of "
-                    "is_valid_ethertype as decimal on %s raised an exception", 
+                    "is_valid_ethertype as decimal on %s raised an exception",
                         value_to_check)
                 return 0
         return 1
-        
+
     def is_valid_ip_space(self, value_to_check):
         """
         Passed a prospective IP address and check that
@@ -210,7 +147,7 @@ class StaticInspect(object):
                     return 0
             except:
                 self.logger.debug("Network check of "
-                    "is_valid_ip_space on %s raised an exception", 
+                    "is_valid_ip_space on %s raised an exception",
                     value_to_check)
                 return 0
             return 1
@@ -219,7 +156,7 @@ class StaticInspect(object):
             ip_range = value_to_check.split("-")
             if len(ip_range) != 2:
                 self.logger.debug("Range check of "
-                    "is_valid_ip_space on %s failed as not 2 items in list", 
+                    "is_valid_ip_space on %s failed as not 2 items in list",
                     value_to_check)
                 return 0
             try:
@@ -230,13 +167,13 @@ class StaticInspect(object):
                     return 0
             except:
                 self.logger.debug("Range check of "
-                    "is_valid_ip_space on %s raised an exception", 
+                    "is_valid_ip_space on %s raised an exception",
                     value_to_check)
                 return 0
             #*** Check second value in range greater than first value:
             if IPAddress(ip_range[0]).value >= IPAddress(ip_range[1]).value:
                 self.logger.debug("Range check of "
-                    "is_valid_ip_space on %s failed as range is negative", 
+                    "is_valid_ip_space on %s failed as range is negative",
                     value_to_check)
                 return 0
             #*** Check both IP addresses are the same version:
@@ -257,7 +194,7 @@ class StaticInspect(object):
                     return 0
             except:
                 self.logger.debug("Check of "
-                    "is_valid_ip_space on %s raised an exception", 
+                    "is_valid_ip_space on %s raised an exception",
                     value_to_check)
                 return 0
         return 1
@@ -270,14 +207,14 @@ class StaticInspect(object):
         number
         """
         try:
-            if not (int(value_to_check)>0 and int(value_to_check)<65536):
+            if not (int(value_to_check) > 0 and int(value_to_check) < 65536):
                 self.logger.debug("Check of "
                     "is_valid_transport_port on %s returned false",
                     value_to_check)
                 return 0
         except:
             self.logger.debug("Check of "
-                "is_valid_transport_port on %s raised an exception", 
+                "is_valid_transport_port on %s raised an exception",
                 value_to_check)
             return 0
         return 1
@@ -296,7 +233,7 @@ class StaticInspect(object):
                 return 0
         except:
             self.logger.debug("Check of "
-                    "is_match_macaddress on %s vs %s raised an exception", 
+                    "is_match_macaddress on %s vs %s raised an exception",
                     value_to_check1, value_to_check2)
             return 0
         return 1
@@ -376,7 +313,7 @@ class StaticInspect(object):
             ip_range = ip_space.split("-")
             if len(ip_range) != 2:
                 self.logger.error("error=E1000016 "
-                    "Range split of ip_space %s on - was not len 2 but %s", 
+                    "Range split of ip_space %s on - was not len 2 but %s",
                     ip_space, len(ip_range))
                 return 0
             try:

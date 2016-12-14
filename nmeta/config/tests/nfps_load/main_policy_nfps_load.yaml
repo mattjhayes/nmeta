@@ -1,3 +1,4 @@
+---
 #*** Main Policy for nmeta - NFPS Load Test
 #*** Written in YAML
 #
@@ -11,8 +12,16 @@ tc_rules:
                 tcp_src: 1234
                 tcp_dst: 1234
           actions:
-            set_qos_tag: QoS_treatment=constrained_bw
-            set_desc_tag: description="Constrained Bandwidth Traffic"
+            set_desc: "Constrained Bandwidth Traffic"
+            qos_treatment: constrained_bw
+#
+qos_treatment:
+  # Control Quality of Service (QoS) treatment mapping of
+  #  names to output queue numbers:
+  default_priority: 0
+  constrained_bw: 1
+  high_priority: 2
+  low_priority: 3
 #
 identity:
     # Control how identity information is collected

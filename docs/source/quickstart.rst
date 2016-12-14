@@ -35,8 +35,6 @@ then connect them up.
 
 .. code-block:: text
 
-  cd
-  cd ryu
-  PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta.py
+  cd; cd ryu; PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta/nmeta.py
 
 Now start experimenting. Use the calls in the aliases to show network metadata

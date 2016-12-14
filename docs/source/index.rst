@@ -21,6 +21,7 @@ Contents:
    install
    quickstart
    configguide
+   webui
    apiguide
    loggingguide
    datastructures

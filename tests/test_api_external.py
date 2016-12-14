@@ -253,6 +253,32 @@ def test_identities_ui():
     #*** Stop api_external sub-process:
     api_ps.terminate()
 
+def test_get_host_by_ip():
+    """
+    Test get_host_by_ip
+    """
+    #*** Test DPIDs and in ports:
+    DPID1 = 1
+    INPORT1 = 1
+
+    #*** Instantiate a flow object:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    #*** Ingest LLDP from pc1
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[0], flow.packet)
+
+    #*** Call the get_host_by_ip:
+    get_host_by_ip_result = api.get_host_by_ip('10.1.0.1')
+
+    logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
+
+    # TBD, no tests here yet. There's issues to think about. LLDP
+    # relies on a prior ARP to match to an IP address
+    # Need to do DHCP too, but needs extra logic
+
+
 def test_enumerate_eth_type():
     """
     Test eth_type enumeration

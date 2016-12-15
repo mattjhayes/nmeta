@@ -36,6 +36,7 @@ import api_external
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
 import packets_lldp as pkts_lldp
+import packets_ipv4_ARP as pkts_arp
 
 #*** Import library to do HTTP GET requests:
 import requests
@@ -265,6 +266,10 @@ def test_get_host_by_ip():
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
 
+    #*** Ingest ARP reply for MAC of pc1 so can ref later:
+    flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[3], flow.packet)
+
     #*** Ingest LLDP from pc1
     flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
     identities.harvest(pkts_lldp.RAW[0], flow.packet)
@@ -274,9 +279,9 @@ def test_get_host_by_ip():
 
     logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
 
-    # TBD, no tests here yet. There's issues to think about. LLDP
-    # relies on a prior ARP to match to an IP address
-    # Need to do DHCP too, but needs extra logic
+    assert get_host_by_ip_result == 'pc1.example.com'
+
+    # TBD do DHCP too, but needs extra logic
 
 
 def test_enumerate_eth_type():

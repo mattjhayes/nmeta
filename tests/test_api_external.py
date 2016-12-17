@@ -37,6 +37,7 @@ import api_external
 import packets_ipv4_http as pkts
 import packets_lldp as pkts_lldp
 import packets_ipv4_ARP as pkts_arp
+import packets_ipv4_DHCP_firsttime as pkts_dhcp
 
 #*** Import library to do HTTP GET requests:
 import requests
@@ -56,6 +57,11 @@ URL_TEST_IDENTITIES = 'http://localhost:8081/v1/identities/'
 
 URL_TEST_IDENTITIES_UI = 'http://localhost:8081/v1/identities/ui/'
 
+#*** Test DPIDs and in ports:
+DPID1 = 1
+INPORT1 = 1
+INPORT2 = 2
+
 #*** Instantiate the ExternalAPI class:
 api = api_external.ExternalAPI(config)
 
@@ -66,11 +72,6 @@ def test_i_c_pi_rate():
     Test ingesting packets from an IPv4 HTTP flow, and check packet-in rate
     is as expected at various points
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Start api_external as separate process:
     logger.info("Starting api_external")
     api_ps = multiprocessing.Process(
@@ -111,11 +112,6 @@ def test_identities():
     Harvest identity data and test that the identities API resource
     returns the correct information
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Start api_external as separate process:
     logger.info("Starting api_external")
     api_ps = multiprocessing.Process(
@@ -186,11 +182,6 @@ def test_identities_ui():
     The identities/ui resource does deduplication, so test that this
     works correctly
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Start api_external as separate process:
     logger.info("Starting api_external")
     api_ps = multiprocessing.Process(
@@ -258,10 +249,6 @@ def test_get_host_by_ip():
     """
     Test get_host_by_ip
     """
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Instantiate a flow object:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
@@ -281,8 +268,22 @@ def test_get_host_by_ip():
 
     assert get_host_by_ip_result == 'pc1.example.com'
 
-    # TBD do DHCP too, but needs extra logic
+    #*** Test DHCP to host by IP
 
+    #*** Client to Server DHCP Request:
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+
+    #*** Server to Client DHCP ACK:
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+
+    #*** Call the get_host_by_ip:
+    get_host_by_ip_result = api.get_host_by_ip('10.1.0.1')
+
+    logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
+
+    assert get_host_by_ip_result == 'pc1'
 
 def test_enumerate_eth_type():
     """

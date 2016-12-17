@@ -21,7 +21,7 @@ Do not use this code for production deployments - it is proof of concept code
 and carries no warrantee whatsoever. You have been warned.
 """
 
-#*** Note: see api.py module for REST API calls
+#*** Note: see api_external.py module for REST API calls
 
 #*** General Imports:
 import struct
@@ -42,15 +42,11 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
 
-#*** Required for api module context:
-from ryu.app.wsgi import WSGIApplication
-
 #*** nmeta imports:
 import tc_policy
 import config
 import switch_abstraction
 import forwarding
-import api
 import flows
 import identities
 import of_error_decode
@@ -68,9 +64,6 @@ class NMeta(app_manager.RyuApp, BaseClass):
     #*** Supports OpenFlow versions 1.0 and 1.3:
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
                     ofproto_v1_3.OFP_VERSION]
-
-    #*** Used to call api module:
-    _CONTEXTS = {'wsgi': WSGIApplication}
 
     def __init__(self, *args, **kwargs):
         super(NMeta, self).__init__(*args, **kwargs)
@@ -100,8 +93,6 @@ class NMeta(app_manager.RyuApp, BaseClass):
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.sa = switch_abstraction.SwitchAbstract(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
-        wsgi = kwargs['wsgi']
-        self.api = api.Api(self, self.config, wsgi)
 
         #*** Instantiate a flow object for conversation metadata:
         self.flow = flows.Flow(self.config)

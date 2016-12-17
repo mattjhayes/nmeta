@@ -321,18 +321,14 @@ class ExternalAPI(BaseClass):
                 #*** columns for better use of UI real-estate:
                 flow = {}
                 if record['eth_type'] == 2048:
-                    #*** It's IPv4:
-                    flow['src'] = record['ip_src']
-                    flow['src_host'] = self.get_host_by_ip(record['ip_src'])
-                    flow['dst'] = record['ip_dst']
-                    flow['dst_host'] = self.get_host_by_ip(record['ip_dst'])
+                    #*** It's IPv4, see if we can augment with identity:
+                    flow['src'] = self.get_id_augment(record['ip_src'])
+                    flow['dst'] = self.get_id_augment(record['ip_dst'])
                     flow['proto'] = enumerate_ip_proto(record['proto'])
                 else:
                     #*** It's not IPv4 (TBD, handle IPv6)
                     flow['src'] = record['eth_src']
-                    flow['src_host'] = ""
                     flow['dst'] = record['eth_dst']
-                    flow['dst_host'] = ""
                     flow['proto'] = enumerate_eth_type(record['eth_type'])
                 flow['tp_src'] = record['tp_src']
                 flow['tp_dst'] = record['tp_dst']
@@ -340,6 +336,28 @@ class ExternalAPI(BaseClass):
                 items['_items'].append(flow)
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+    def get_id_augment(self, ip_addr):
+        """
+        Passed an IP address. Look this up for matching identity
+        metadata and return a string that contains either the original
+        IP address or an identity string
+        """
+        host = self.get_host_by_ip(ip_addr)
+        service = self.get_service_by_ip(ip_addr)
+        if host and service:
+            return "<span data-toggle=\"tooltip\" title=\"" + \
+                        ip_addr + "\">" + host + "<br>service=" + service + \
+                        "</span>"
+        elif host:
+            return "<span data-toggle=\"tooltip\" title=\"" + \
+                        ip_addr + "\">" + host + "</span>"
+        elif service:
+            return "<span data-toggle=\"tooltip\" title=\"" + \
+                        ip_addr + "\">service=" + service + "</span>"
+        else:
+            return ip_addr
+
 
     def get_host_by_ip(self, ip_addr):
         """
@@ -363,10 +381,9 @@ class ExternalAPI(BaseClass):
         """
         db_data = {'ip_address': ip_addr}
         #*** Run db search:
-        packet_cursor = \
-                    self.identities.find(db_data).limit(SERVICE_LIMIT) \
-                    .sort('$natural', -1)
-        for record in packet_cursor:
+        cursor = self.identities.find(db_data).limit(SERVICE_LIMIT) \
+                                                          .sort('$natural', -1)
+        for record in cursor:
             if record['service_name'] != "":
                 return str(record['service_name'])
         return ""

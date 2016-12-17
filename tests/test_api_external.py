@@ -38,6 +38,7 @@ import packets_ipv4_http as pkts
 import packets_lldp as pkts_lldp
 import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
+import packets_ipv4_dns as pkts_dns
 
 #*** Import library to do HTTP GET requests:
 import requests
@@ -244,6 +245,22 @@ def test_identities_ui():
 
     #*** Stop api_external sub-process:
     api_ps.terminate()
+
+def test_get_dns_ip():
+    """
+    Test looking up a DNS CNAME to get an IP address
+    """
+    #*** Instantiate flow and identities objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+
+    logger.debug("Testing lookup of CNAME=%s", pkts_dns.DNS_CNAME[1])
+    result_ip = api.get_dns_ip(pkts_dns.DNS_CNAME[1])
+    assert result_ip == pkts_dns.DNS_IP[1]
 
 def test_get_host_by_ip():
     """

@@ -59,6 +59,7 @@ SERVICE_LIMIT = 250
 ETH_TYPES = {
         2048: 'IPv4',
         2054: 'ARP',
+        34525: 'IPv6',
         35020: 'LLDP'
         }
 IP_PROTOS = {
@@ -282,6 +283,7 @@ class ExternalAPI(BaseClass):
          - Reverse sort by harvest time
          - Deduplicate by id_hash, only returning most recent per id_hash
          - Includes possibly stale records
+         - Check DNS A records to see if they are from a CNAME
         Hooked from on_fetched_resource_<name>
         """
         known_hashes = []
@@ -293,6 +295,10 @@ class ExternalAPI(BaseClass):
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
             if not record['id_hash'] in known_hashes:
+                if record['harvest_type'] == 'DNS_CNAME':
+                    #*** Check if A record exists, and if so update response:
+                    record['ip_address'] = \
+                                       self.get_dns_ip(record['service_alias'])
                 #*** Add to items dictionary which is returned in response:
                 self.logger.debug("Appending _items with record=%s", record)
                 items['_items'].append(record)
@@ -329,13 +335,26 @@ class ExternalAPI(BaseClass):
                     #*** It's not IPv4 (TBD, handle IPv6)
                     flow['src'] = record['eth_src']
                     flow['dst'] = record['eth_dst']
-                    flow['proto'] = enumerate_eth_type(record['eth_type'])
+                    flow['proto'] = self.get_proto_augment(record['eth_type'])
                 flow['tp_src'] = record['tp_src']
                 flow['tp_dst'] = record['tp_dst']
                 #*** Add to items dictionary which is returned in response:
                 items['_items'].append(flow)
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+    def get_proto_augment(self, eth_type):
+        """
+        Passed an ethernet type and return either the original value
+        or augmented HTTP if a lookup of value succeeds
+        """
+        aug_eth_type = enumerate_eth_type(eth_type)
+        if aug_eth_type:
+            return "<span data-toggle=\"tooltip\" title=\"eth_type: " + \
+                        str(eth_type) + " (decimal)\">" + str(aug_eth_type) + \
+                        "</span>"
+        else:
+            return eth_type
 
     def get_id_augment(self, ip_addr):
         """
@@ -358,6 +377,24 @@ class ExternalAPI(BaseClass):
         else:
             return ip_addr
 
+    def get_dns_ip(self, service_name):
+        """
+        Use this to get an IP address for a DNS lookup that returned a CNAME
+        Passed a DNS CNAME and look this up in identities
+        collection to see if there is a DNS A record, and if so return the
+        IP address, otherwise return an empty string.
+        """
+        db_data = {'service_name': service_name}
+        #*** Run db search:
+        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if result.count():
+            result0 = list(result)[0]
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
+            return result0['ip_address']
+        else:
+            self.logger.debug("A record for DNS CNAME=%s not found",
+                                                                  service_name)
+            return ""
 
     def get_host_by_ip(self, ip_addr):
         """

@@ -33,7 +33,7 @@ from eve import Eve
 #*** Inherit logging etc:
 from baseclass import BaseClass
 
-#*** MongoDB Database Import:
+#*** mongodb Database Import:
 from pymongo import MongoClient
 
 #*** nmeta imports
@@ -52,7 +52,8 @@ FLOW_LIMIT = 25
 
 #*** Number of previous IP identity records to search for a hostname before
 #*** giving up. Used for augmenting flows with identity metadata:
-HOST_LIMIT = 25
+HOST_LIMIT = 250
+SERVICE_LIMIT = 250
 
 #*** Enumerate some proto numbers, someone's probably already done this...
 ETH_TYPES = {
@@ -85,24 +86,21 @@ class ExternalAPI(BaseClass):
                                        "external_api_logging_level_c")
 
         #*** MongoDB Setup:
-        self.logger.info("Connecting to Decision API MongoDB "
-                                                "database...")
         #*** Get database parameters from config:
         mongo_addr = self.config.get_value("mongo_addr")
         mongo_port = self.config.get_value("mongo_port")
         mongo_dbname = self.config.get_value("mongo_dbname")
+        self.logger.info("Connecting to the %s MongoDB database on %s %s",
+                                mongo_addr, mongo_port, mongo_dbname)
 
-        #*** Use Pymongo to connect to Decision API database:
+        #*** Use Pymongo to connect to the nmeta MongoDB database:
         mongo_client = MongoClient(mongo_addr, mongo_port)
 
         #*** Connect to MongoDB nmeta database:
-        db_nmeta = mongo_client.mongo_dbname
-
-        #*** Variable for packet_ins Collection:
-        self.packet_ins = db_nmeta.packet_ins
+        db_nmeta = mongo_client[mongo_dbname]
 
         #*** Variable for identities Collection:
-        self.identities = db_nmeta.packet_ins
+        self.identities = db_nmeta.identities
 
     def run(self):
         """
@@ -323,18 +321,14 @@ class ExternalAPI(BaseClass):
                 #*** columns for better use of UI real-estate:
                 flow = {}
                 if record['eth_type'] == 2048:
-                    #*** It's IPv4:
-                    flow['src'] = record['ip_src']
-                    flow['src_host'] = self.get_host_by_ip(record['ip_src'])
-                    flow['dst'] = record['ip_dst']
-                    flow['dst_host'] = self.get_host_by_ip(record['ip_dst'])
+                    #*** It's IPv4, see if we can augment with identity:
+                    flow['src'] = self.get_id_augment(record['ip_src'])
+                    flow['dst'] = self.get_id_augment(record['ip_dst'])
                     flow['proto'] = enumerate_ip_proto(record['proto'])
                 else:
                     #*** It's not IPv4 (TBD, handle IPv6)
                     flow['src'] = record['eth_src']
-                    flow['src_host'] = ""
                     flow['dst'] = record['eth_dst']
-                    flow['dst_host'] = ""
                     flow['proto'] = enumerate_eth_type(record['eth_type'])
                 flow['tp_src'] = record['tp_src']
                 flow['tp_dst'] = record['tp_dst']
@@ -343,6 +337,28 @@ class ExternalAPI(BaseClass):
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
 
+    def get_id_augment(self, ip_addr):
+        """
+        Passed an IP address. Look this up for matching identity
+        metadata and return a string that contains either the original
+        IP address or an identity string
+        """
+        host = self.get_host_by_ip(ip_addr)
+        service = self.get_service_by_ip(ip_addr)
+        if host and service:
+            return "<span data-toggle=\"tooltip\" title=\"" + \
+                        ip_addr + "\">" + host + "<br>service=" + service + \
+                        "</span>"
+        elif host:
+            return "<span data-toggle=\"tooltip\" title=\"" + \
+                        ip_addr + "\">" + host + "</span>"
+        elif service:
+            return "<span data-toggle=\"tooltip\" title=\"" + \
+                        ip_addr + "\">service=" + service + "</span>"
+        else:
+            return ip_addr
+
+
     def get_host_by_ip(self, ip_addr):
         """
         Passed an IP address. Look this up in the identities db collection
@@ -350,12 +366,26 @@ class ExternalAPI(BaseClass):
         """
         db_data = {'ip_address': ip_addr}
         #*** Run db search:
-        packet_cursor = \
-                    self.identities.find(db_data).limit(HOST_LIMIT) \
-                    .sort('$natural', -1)
-        for record in packet_cursor:
+        cursor = self.identities.find(db_data).limit(HOST_LIMIT) \
+                                                          .sort('$natural', -1)
+        for record in cursor:
+            self.logger.debug("record is %s", record)
             if record['host_name'] != "":
                 return str(record['host_name'])
+        return ""
+
+    def get_service_by_ip(self, ip_addr):
+        """
+        Passed an IP address. Look this up in the identities db collection
+        and return a service name if present, otherwise an empty string
+        """
+        db_data = {'ip_address': ip_addr}
+        #*** Run db search:
+        cursor = self.identities.find(db_data).limit(SERVICE_LIMIT) \
+                                                          .sort('$natural', -1)
+        for record in cursor:
+            if record['service_name'] != "":
+                return str(record['service_name'])
         return ""
 
 def enumerate_eth_type(eth_type):

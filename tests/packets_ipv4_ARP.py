@@ -70,7 +70,7 @@ PAYLOAD = []
 #*** Packet direction, c2s (client to server) or s2c
 DIRECTION = []
 
-#*** Packet 1 - ARP request for 10.1.0.2
+#*** Packet 0 - ARP request for 10.1.0.2
 # 60 08:00:27:2a:d6:dd ff:ff:ff:ff:ff:ff ARP Who has 10.1.0.2? Tell 10.1.0.1
 RAW.append(binascii.unhexlify("ffffffffffff0800272ad6dd080600010800060400010800272ad6dd0a0100010000000000000a010002000000000000000000000000000000000000"))
 LEN.append(60)
@@ -92,7 +92,7 @@ TCP_ACK.append(0)
 PAYLOAD.append("00010800060400010800272ad6dd0a0100010000000000000a010002")
 DIRECTION.append("")
 
-#*** Packet 2 - ARP reply for 10.1.0.2
+#*** Packet 1 - ARP reply for 10.1.0.2
 # 42 08:00:27:c8:db:91 08:00:27:2a:d6:dd ARP 10.1.0.2 is at 08:00:27:c8:db:91
 RAW.append(binascii.unhexlify("0800272ad6dd080027c8db9108060001080006040002080027c8db910a0100020800272ad6dd0a010001"))
 LEN.append(42)
@@ -112,6 +112,50 @@ TCP_RST.append(0)
 TCP_PSH.append(0)
 TCP_ACK.append(0)
 PAYLOAD.append("0001080006040002080027c8db910a0100020800272ad6dd0a010001")
+DIRECTION.append("")
+
+#*** Packet 2 - ARP request for 10.1.0.1
+# 42 08:00:27:c8:db:91 ff:ff:ff:ff:ff:ff ARP Who has 10.1.0.1? Tell 10.1.0.2
+RAW.append(binascii.unhexlify("ffffffffffff080027c8db9108060001080006040001080027c8db910a0100020000000000000a010001"))
+LEN.append(42)
+ETH_SRC.append('08:00:27:c8:db:91')
+ETH_DST.append('ff:ff:ff:ff:ff:ff')
+ETH_TYPE.append(2054)
+IP_SRC.append('')
+IP_DST.append('')
+PROTO.append(0)
+TP_SRC.append(0)
+TP_DST.append(0)
+TP_SEQ_SRC.append(0)
+TP_SEQ_DST.append(0)
+TCP_SYN.append(0)
+TCP_FIN.append(0)
+TCP_RST.append(0)
+TCP_PSH.append(0)
+TCP_ACK.append(0)
+PAYLOAD.append("0001080006040001080027c8db910a0100020000000000000a010001")
+DIRECTION.append("")
+
+#*** Packet 3 - ARP reply for 10.1.0.1
+#  60 08:00:27:2a:d6:dd 08:00:27:c8:db:91 ARP 10.1.0.1 is at 08:00:27:2a:d6:dd
+RAW.append(binascii.unhexlify("080027c8db910800272ad6dd080600010800060400020800272ad6dd0a010001080027c8db910a010002000000000000000000000000000000000000"))
+LEN.append(60)
+ETH_SRC.append('08:00:27:2a:d6:dd')
+ETH_DST.append('08:00:27:c8:db:91')
+ETH_TYPE.append(2054)
+IP_SRC.append('')
+IP_DST.append('')
+PROTO.append(0)
+TP_SRC.append(0)
+TP_DST.append(0)
+TP_SEQ_SRC.append(0)
+TP_SEQ_DST.append(0)
+TCP_SYN.append(0)
+TCP_FIN.append(0)
+TCP_RST.append(0)
+TCP_PSH.append(0)
+TCP_ACK.append(0)
+PAYLOAD.append("00010800060400020800272ad6dd0a010001080027c8db910a010002")
 DIRECTION.append("")
 
 #*** Metadata for whole flow:

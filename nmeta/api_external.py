@@ -25,7 +25,7 @@ It leverages the Eve Python REST API Framework
 #*** Python 3 style division results as floating point:
 from __future__ import division
 
-import sys, os, ast
+import os
 
 #*** Import Eve for REST API Framework:
 from eve import Eve
@@ -42,9 +42,6 @@ import config
 #*** For timestamps:
 import datetime
 
-#*** To convert results into JSON:
-from flask import jsonify
-
 #*** Amount of time (seconds) to go back for to calculate Packet-In rate:
 PACKET_IN_RATE_INTERVAL = 10
 
@@ -54,6 +51,9 @@ FLOW_LIMIT = 25
 #*** giving up. Used for augmenting flows with identity metadata:
 HOST_LIMIT = 250
 SERVICE_LIMIT = 250
+
+#*** How far back in time to go back looking for packets in flow:
+FLOW_TIME_LIMIT = datetime.timedelta(seconds=3600)
 
 #*** Enumerate some proto numbers, someone's probably already done this...
 ETH_TYPES = {
@@ -100,7 +100,8 @@ class ExternalAPI(BaseClass):
         #*** Connect to MongoDB nmeta database:
         db_nmeta = mongo_client[mongo_dbname]
 
-        #*** Variable for identities Collection:
+        #*** Variables for MongoDB Collections:
+        self.packet_ins = db_nmeta.packet_ins
         self.identities = db_nmeta.identities
 
     def run(self):
@@ -323,6 +324,8 @@ class ExternalAPI(BaseClass):
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
             if not record['flow_hash'] in known_hashes:
+                #*** Normalise the direction of the flow:
+                record = self.flow_normalise_direction(record)
                 #*** Dictionary to hold our crafted record that has condensed
                 #*** columns for better use of UI real-estate:
                 flow = {}
@@ -342,6 +345,53 @@ class ExternalAPI(BaseClass):
                 items['_items'].append(flow)
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+    def flow_normalise_direction(self, record):
+        """
+        Passed a dictionary of an identity record and return a similar
+        dictionary that has sources and destinations normalised to the
+        direction of the first observed packet in the flow
+        """
+        #*** Lookup the first source IP seen for the flow:
+        client_ip = self.get_flow_client_ip(record['flow_hash'])
+        if not client_ip:
+            return record
+        if client_ip == record['ip_src']:
+            return record
+        elif client_ip == record['ip_dst']:
+            #*** Need to transpose source and destinations:
+            orig_ip_src = record['ip_src']
+            orig_ip_dst = record['ip_dst']
+            orig_tp_src = record['tp_src']
+            orig_tp_dst = record['tp_dst']
+            record['ip_src'] = orig_ip_dst
+            record['ip_dst'] = orig_ip_src
+            record['tp_src'] = orig_tp_dst
+            record['tp_dst'] = orig_tp_src
+            return record
+        else:
+            #*** First source IP doesn't match src or dst. Strange. Log error:
+            self.logger.error("First source ip=%s does not match ip_src=%s or "
+                        "ip_dst=%s", client_ip, record['ip_src'],
+                        record['ip_dst'])
+            return record
+
+    def get_flow_client_ip(self, flow_hash):
+        """
+        Find the IP that is the originator of a flow searching
+        forward by flow_hash
+
+        Finds first packet seen for the flow_hash within the time
+        limit and returns the source IP, otherwise 0,
+        """
+        db_data = {'flow_hash': flow_hash,
+              'timestamp': {'$gte': datetime.datetime.now() - FLOW_TIME_LIMIT}}
+        packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
+        if packets.count():
+            return list(packets)[0]['ip_src']
+        else:
+            self.logger.warning("no packets found")
+            return 0
 
     def get_proto_augment(self, eth_type):
         """

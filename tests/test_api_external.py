@@ -246,6 +246,42 @@ def test_identities_ui():
     #*** Stop api_external sub-process:
     api_ps.terminate()
 
+def test_flow_normalise_direction():
+    """
+    Test normalising direction of flow.
+    Pass a dictionary of an identity record check return a similar
+    dictionary that has sources and destinations normalised to the
+    direction of the first observed packet in the flow
+    """
+    #*** Instantiate a flow object:
+    flow = flow_class.Flow(config)
+
+    #*** Test Flow 1 Packet 0 (Client TCP SYN):
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    original_record = flow.packet.dbdict()
+    assert original_record['ip_src'] == pkts.IP_SRC[0]
+    assert original_record['ip_dst'] == pkts.IP_DST[0]
+    assert original_record['tp_src'] == pkts.TP_SRC[0]
+    assert original_record['tp_dst'] == pkts.TP_DST[0]
+    normalised_record = api.flow_normalise_direction(original_record)
+    assert normalised_record['ip_src'] == pkts.IP_SRC[0]
+    assert normalised_record['ip_dst'] == pkts.IP_DST[0]
+    assert normalised_record['tp_src'] == pkts.TP_SRC[0]
+    assert normalised_record['tp_dst'] == pkts.TP_DST[0]
+
+    #*** Test Flow 1 Packet 1 (Server TCP SYN ACK). This should be transposed:
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
+    original_record = flow.packet.dbdict()
+    assert original_record['ip_src'] == pkts.IP_SRC[1]
+    assert original_record['ip_dst'] == pkts.IP_DST[1]
+    assert original_record['tp_src'] == pkts.TP_SRC[1]
+    assert original_record['tp_dst'] == pkts.TP_DST[1]
+    normalised_record = api.flow_normalise_direction(original_record)
+    assert normalised_record['ip_src'] == pkts.IP_DST[1]
+    assert normalised_record['ip_dst'] == pkts.IP_SRC[1]
+    assert normalised_record['tp_src'] == pkts.TP_DST[1]
+    assert normalised_record['tp_dst'] == pkts.TP_SRC[1]
+
 def test_get_dns_ip():
     """
     Test looking up a DNS CNAME to get an IP address

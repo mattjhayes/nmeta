@@ -54,6 +54,7 @@ SERVICE_LIMIT = 250
 
 #*** How far back in time to go back looking for packets in flow:
 FLOW_TIME_LIMIT = datetime.timedelta(seconds=3600)
+CLASSIFICATION_TIME_LIMIT = datetime.timedelta(seconds=4000)
 
 #*** Enumerate some proto numbers, someone's probably already done this...
 ETH_TYPES = {
@@ -103,6 +104,7 @@ class ExternalAPI(BaseClass):
         #*** Variables for MongoDB Collections:
         self.packet_ins = db_nmeta.packet_ins
         self.identities = db_nmeta.identities
+        self.classifications = db_nmeta.classifications
 
     def run(self):
         """
@@ -323,6 +325,7 @@ class ExternalAPI(BaseClass):
         packet_cursor = flows.find().limit(FLOW_LIMIT).sort('$natural', -1)
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
+            #*** Only return unique flow records:
             if not record['flow_hash'] in known_hashes:
                 #*** Normalise the direction of the flow:
                 record = self.flow_normalise_direction(record)
@@ -331,24 +334,54 @@ class ExternalAPI(BaseClass):
                 flow = {}
                 if record['eth_type'] == 2048:
                     #*** It's IPv4, see if we can augment with identity:
-                    flow['src'] = self.get_id_augment(record['ip_src'])
-                    flow['dst'] = self.get_id_augment(record['ip_dst'])
+                    flow['src'] = self.get_html_id(record['ip_src'])
+                    flow['dst'] = self.get_html_id(record['ip_dst'])
                     flow['proto'] = enumerate_ip_proto(record['proto'])
                 else:
                     #*** It's not IPv4 (TBD, handle IPv6)
                     flow['src'] = record['eth_src']
                     flow['dst'] = record['eth_dst']
-                    flow['proto'] = self.get_proto_augment(record['eth_type'])
+                    flow['proto'] = self.get_html_proto(record['eth_type'])
                 flow['tp_src'] = record['tp_src']
                 flow['tp_dst'] = record['tp_dst']
-                #*** Add to items dictionary which is returned in response:
+                #*** Enrich with classification and action(s):
+                classification = self.get_classification(record['flow_hash'])
+                flow['classification'] = \
+                                self.get_html_classification(classification)
+                #self.classifications
+                #*** Add to items dictionary, which is returned in response:
                 items['_items'].append(flow)
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
 
+    def get_classification(self, flow_hash):
+        """
+        Passed flow_hash and return a dictionary
+        of a classification object for the flow_hash (if found), otherwise
+        a dictionary of an empty classification object.
+        """
+        db_data = {'flow_hash': flow_hash,
+              'timestamp': {'$gte': datetime.datetime.now() -
+                                    CLASSIFICATION_TIME_LIMIT}}
+        results = self.classifications.find(db_data). \
+                                                  sort('$natural', -1).limit(1)
+        if results.count():
+            return list(results)[0]
+        else:
+            self.logger.debug("Classification for flow_hash=%s not found",
+                                                                     flow_hash)
+            return {
+                'flow_hash': flow_hash,
+                'classified': 0,
+                'classification_type': '',
+                'classification_tag': '',
+                'classification_time': 0,
+                'self.actions': {}
+            }
+
     def flow_normalise_direction(self, record):
         """
-        Passed a dictionary of an identity record and return a similar
+        Passed a dictionary of an flow record and return a similar
         dictionary that has sources and destinations normalised to the
         direction of the first observed packet in the flow
         """
@@ -393,7 +426,17 @@ class ExternalAPI(BaseClass):
             self.logger.warning("no packets found")
             return 0
 
-    def get_proto_augment(self, eth_type):
+    def get_html_classification(self, classification):
+        """
+        Passed classification dictionary and return a
+        string of augmented HTTP describing the classification
+        """
+        return "<span data-toggle=\"tooltip\" title=\"classification_type: " \
+                        + classification['classification_type'] + "\">" + \
+                        classification['classification_tag'] + \
+                        "</span>"
+
+    def get_html_proto(self, eth_type):
         """
         Passed an ethernet type and return either the original value
         or augmented HTTP if a lookup of value succeeds
@@ -406,7 +449,7 @@ class ExternalAPI(BaseClass):
         else:
             return eth_type
 
-    def get_id_augment(self, ip_addr):
+    def get_html_id(self, ip_addr):
         """
         Passed an IP address. Look this up for matching identity
         metadata and return a string that contains either the original

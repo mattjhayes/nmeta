@@ -497,7 +497,7 @@ class Flow(BaseClass):
         #*** Generate a packet_hash unique to the packet:
         self.packet.packet_hash = self._hash_packet()
 
-        #*** Instantiate classification data for this flow:
+        #*** Instantiate classification data for this flow in context:
         self.classification = self.Classification(self.flow_hash,
                                                 self.classifications,
                                                 self.classification_time_limit)

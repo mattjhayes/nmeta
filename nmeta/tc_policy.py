@@ -26,6 +26,7 @@ import sys
 import os
 
 import time
+import datetime
 
 #*** nmeta imports:
 import tc_static
@@ -406,7 +407,8 @@ class TrafficClassificationPolicy(BaseClass):
                     flow.classification.classified = False
                 flow.classification.classification_tag = \
                                                  tc_rule['actions']['set_desc']
-                flow.classification.classification_time = time.time()
+                flow.classification.classification_time = \
+                                                        datetime.datetime.now()
                 #*** Accumulate any actions. (will overwrite with rule action)
                 #*** Firstly, any actions on the rule:
                 flow.classification.actions.update(tc_rule['actions'])

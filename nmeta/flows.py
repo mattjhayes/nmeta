@@ -361,7 +361,7 @@ class Flow(BaseClass):
         """
         An object that represents an individual traffic classification
         """
-        def __init__(self, flow_hash, clsfn, time_limit):
+        def __init__(self, flow_hash, clsfn, time_limit, logger):
             """
             Retrieve classification data from MongoDB collection for a
             particular flow hash within a time range.
@@ -374,15 +374,18 @@ class Flow(BaseClass):
             self.classification_tag = ""
             self.classification_time = 0
             self.actions = {}
+            self.clsfn = clsfn
+            self.logger = logger
 
             #*** Put into context of current flow by querying
             #*** classifications database collection:
             db_data = {'flow_hash': self.flow_hash}
             #*** Filter to only recent classifications:
             db_data['classification_time'] = {'$gte': datetime.datetime.now()-
-                                                time_limit}
+                                                                    time_limit}
             #*** Run db search:
             result = clsfn.find(db_data).sort('$natural', -1).limit(1)
+            self.logger.debug("result.count=%s", result.count())
             if result.count():
                 #*** We have classification data for this flow:
                 result0 = list(result)[0]
@@ -390,11 +393,11 @@ class Flow(BaseClass):
                 if 'classified' in result0:
                     self.classified = result0['classified']
                 if 'classification_tag' in result0:
-                    self.classified = result0['classification_tag']
+                    self.classification_tag = result0['classification_tag']
                 if 'classification_time' in result0:
-                    self.classified = result0['classification_time']
+                    self.classification_time = result0['classification_time']
                 if 'actions' in result0:
-                    self.classified = result0['actions']
+                    self.actions = result0['actions']
 
         def dbdict(self):
             """
@@ -414,10 +417,9 @@ class Flow(BaseClass):
             Record current state of flow classification into MongoDB
             classifications collection.
             """
-            db_dict = self.classification.dbdict()
-            self.logger.debug("classification=%s", db_dict)
+            db_dict = self.dbdict()
             #*** Write classification to database collection:
-            self.classifications.insert_one(db_dict)
+            self.clsfn.insert_one(db_dict)
 
     def ingest_packet(self, dpid, in_port, pkt, timestamp):
         """
@@ -500,8 +502,9 @@ class Flow(BaseClass):
         #*** Instantiate classification data for this flow in context:
         self.classification = self.Classification(self.flow_hash,
                                                 self.classifications,
-                                                self.classification_time_limit)
-
+                                                self.classification_time_limit,
+                                                self.logger)
+        self.logger.debug("clasfn=%s", self.classification.dbdict())
         db_dict = self.packet.dbdict()
         self.logger.debug("packet_in=%s", db_dict)
 

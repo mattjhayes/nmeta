@@ -249,7 +249,8 @@ def test_classification_static():
     #*** Retrieve a classification object for this particular flow:
     clasfn = flow.Classification(flow.packet.flow_hash,
                                     flow.classifications,
-                                    flow.classification_time_limit)
+                                    flow.classification_time_limit,
+                                    logger)
 
     #*** Base classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -295,6 +296,8 @@ def test_classification_static():
     #*** Classify the packet:
     tc.check_policy(flow, ident)
 
+    logger.debug("pkt0 flow classification is %s", flow.classification.dbdict())
+
     #*** Matched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 1
@@ -302,10 +305,24 @@ def test_classification_static():
     assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
                                    'set_desc': 'Constrained Bandwidth Traffic'}
 
+    #*** Write classification result to classifications collection:
+    flow.classification.commit()
+
     #*** Ingest Flow 1 Packet 1 (Client TCP SYN+ACK):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
-    #*** Classify the packet:
-    tc.check_policy(flow, ident)
+
+    logger.debug("pkt1a flow classification is %s", flow.classification.dbdict())
+
+    assert flow.classification.classified == 1
+
+    #*** We would never run this as otherwise above test would have failed.
+    #*** Left it in here to make the point that you shouldn't classify if
+    #*** classified is set.
+    if not flow.classification.classified:
+        #*** Classify the packet:
+        tc.check_policy(flow, ident)
+
+    logger.debug("pkt1b flow classification is %s", flow.classification.dbdict())
 
     #*** Matched classification state (shouldn't be changed by second packet):
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -346,7 +363,8 @@ def test_classification_identity():
     #*** Retrieve a classification object for this particular flow:
     clasfn = flow.Classification(flow.packet.flow_hash,
                                     flow.classifications,
-                                    flow.classification_time_limit)
+                                    flow.classification_time_limit,
+                                    logger)
 
     #*** Unmatched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -374,7 +392,8 @@ def test_classification_identity():
     #*** Retrieve a classification object for this particular flow:
     clasfn = flow.Classification(flow.packet.flow_hash,
                                     flow.classifications,
-                                    flow.classification_time_limit)
+                                    flow.classification_time_limit,
+                                    logger)
 
     #*** Matched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash

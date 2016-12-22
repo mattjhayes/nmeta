@@ -346,9 +346,7 @@ class ExternalAPI(BaseClass):
                 flow['tp_dst'] = record['tp_dst']
                 #*** Enrich with classification and action(s):
                 classification = self.get_classification(record['flow_hash'])
-                flow['classification'] = \
-                                self.get_html_classification(classification)
-                #self.classifications
+                flow['classification'] = classification['classification_tag']
                 #*** Add to items dictionary, which is returned in response:
                 items['_items'].append(flow)
                 #*** Add hash so we don't do it again:
@@ -361,7 +359,7 @@ class ExternalAPI(BaseClass):
         a dictionary of an empty classification object.
         """
         db_data = {'flow_hash': flow_hash,
-              'timestamp': {'$gte': datetime.datetime.now() -
+              'classification_time': {'$gte': datetime.datetime.now() -
                                     CLASSIFICATION_TIME_LIMIT}}
         results = self.classifications.find(db_data). \
                                                   sort('$natural', -1).limit(1)
@@ -373,7 +371,6 @@ class ExternalAPI(BaseClass):
             return {
                 'flow_hash': flow_hash,
                 'classified': 0,
-                'classification_type': '',
                 'classification_tag': '',
                 'classification_time': 0,
                 'self.actions': {}
@@ -425,16 +422,6 @@ class ExternalAPI(BaseClass):
         else:
             self.logger.warning("no packets found")
             return 0
-
-    def get_html_classification(self, classification):
-        """
-        Passed classification dictionary and return a
-        string of augmented HTTP describing the classification
-        """
-        return "<span data-toggle=\"tooltip\" title=\"classification_type: " \
-                        + classification['classification_type'] + "\">" + \
-                        classification['classification_tag'] + \
-                        "</span>"
 
     def get_html_proto(self, eth_type):
         """

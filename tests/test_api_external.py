@@ -32,6 +32,7 @@ import config
 import flows as flow_class
 import identities as identities_class
 import api_external
+import tc_policy
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -337,6 +338,37 @@ def test_get_host_by_ip():
     logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
 
     assert get_host_by_ip_result == 'pc1'
+
+def test_get_classification():
+    """
+    Test get_classification which takes a flow_hash
+    and return a dictionary of a classification object
+    for the flow_hash (if found), otherwise
+    a dictionary of an empty classification object.
+    """
+    #*** Instantiate classes:
+    flow = flow_class.Flow(config)
+    ident = identities_class.Identities(config)
+
+    #*** Initial main_policy that matches tcp-80:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir="config/tests/regression",
+                            pol_file="main_policy_regression_static_3.yaml")
+
+    #*** Ingest Flow 1 Packet 0 (Client TCP SYN):
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+
+    logger.debug("pkt0 flow classification is %s", flow.classification.dbdict())
+
+    #*** Write classification result to classifications collection:
+    flow.classification.commit()
+
+    #*** Retrieve classification via get_classification and check results:
+    clasfn_result = api.get_classification(flow.classification.flow_hash)
+    assert clasfn_result['classified'] ==  1
+    assert clasfn_result['classification_tag'] ==  "Constrained Bandwidth Traffic"
 
 def test_enumerate_eth_type():
     """

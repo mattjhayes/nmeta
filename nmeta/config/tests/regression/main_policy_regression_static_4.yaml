@@ -5,13 +5,14 @@
 tc_rules:
     # Traffic Classification Rulesets and Rules
     tc_ruleset_1:
-        - comment: Static Rule for testing
+        - comment: Constrained Bandwidth Traffic
           match_type: any
           conditions_list:
               - match_type: any
                 tcp_dst: 80
           actions:
-              set_desc: "Intranet Traffic"
+            set_desc: "Constrained Bandwidth Traffic"
+            qos_treatment: constrained_bw
 #
 qos_treatment:
   # Control Quality of Service (QoS) treatment mapping of

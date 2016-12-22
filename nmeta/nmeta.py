@@ -170,6 +170,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
             self.tc_policy.check_policy(self.flow, self.ident)
             self.logger.debug("classification=%s",
                                              self.flow.classification.dbdict())
+            #*** Write classification result to classifications collection:
+            self.flow.classification.commit()
 
         #*** Call Forwarding module to determine output port:
         out_port = self.forwarding.basic_switch(ev, in_port)

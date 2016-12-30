@@ -71,6 +71,9 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** config.yaml and provides access to keys/values:
         self.config = config.Config()
 
+        #*** Now set config module to log properly:
+        self.config.inherit_logging(self.config)
+
         #*** Run the BaseClass init to set things up:
         super(NMeta, self).__init__()
         #*** Set up Logging with inherited base class method:

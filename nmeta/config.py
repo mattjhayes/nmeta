@@ -11,79 +11,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#*** nmeta - Network Metadata - Configuration file loading and access to values
-
 """
-This module is part of the nmeta suite running on top of the
-Ryu SDN controller to provide network identity and flow
-(traffic classification) metadata.
-It expects a file called "config.yaml" to be in the same directory
-containing properly formed YAML
+The config module is part of the nmeta suite.
+
+It represents nmeta configuration data.
+
+It loads configuration from file, validates keys and provides
+access to values
+
+It expects a file called "config.yaml" to be in the config
+subdirectory, containing properly formed YAML
 """
 
 import logging
 import logging.handlers
+import coloredlogs
+
 import sys
 import os
+
+#*** For logging configuration:
+from baseclass import BaseClass
 
 #*** YAML for config and policy file parsing:
 import yaml
 
-#*** This dictionary is used to check validity of config file attributes
-#*** and to assign default values if the attribute is missing:
-CONFIG_TEMPLATE = \
-    {
-    'miss_send_len': 1500,
-    'ofpc_frag': 0,
-    'nmeta_logging_level_c': 'INFO',
-    'tc_policy_logging_level_c': 'INFO',
-    'tc_static_logging_level_c': 'INFO',
-    'tc_identity_logging_level_c': 'INFO',
-    'tc_custom_logging_level_c': 'INFO',
-    'sa_logging_level_c': 'INFO',
-    'forwarding_logging_level_c': 'INFO',
-    'api_logging_level_c': 'INFO',
-    'flows_logging_level_c': 'INFO',
-    'identities_logging_level_c': 'INFO',
-    'external_api_logging_level_c': 'INFO',
-    'nmeta_logging_level_s': 'INFO',
-    'tc_policy_logging_level_s': 'INFO',
-    'tc_static_logging_level_s': 'INFO',
-    'tc_identity_logging_level_s': 'INFO',
-    'tc_custom_logging_level_s': 'INFO',
-    'sa_logging_level_s': 'INFO',
-    'forwarding_logging_level_s': 'INFO',
-    'api_logging_level_s': 'INFO',
-    'flows_logging_level_s': 'INFO',
-    'identities_logging_level_s': 'INFO',
-    'external_api_logging_level_s': 'INFO',
-    'syslog_enabled': 0,
-    'loghost': 'localhost',
-    'logport': 514,
-    'logfacility': 19,
-    'syslog_format': \
-        "sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s",
-    'console_log_enabled': 1,
-    'coloredlogs_enabled': 1,
-    'console_format': "%(levelname)s: %(name)s %(funcName)s: %(message)s",
-    'mongo_addr': 'localhost',
-    'mongo_port': 27017,
-    'mongo_dbname': 'nmeta_database',
-    'packet_ins_max_bytes': 2000000,
-    'flow_time_limit': 30,
-    'identities_max_bytes': 2000000,
-    'identity_time_limit': 86400,
-    'classifications_max_bytes': 2000000,
-    'classification_time_limit': 300,
-    'dhcp_messages_max_bytes': 2000000,
-    'dhcp_messages_time_limit': 4492800,
-    'external_api_version': 'v1',
-    'external_api_host': '0.0.0.0',
-    'external_api_port': 8081,
-    'external_api_debug': False
-}
+#*** Default config file location parameters:
+CONFIG_DIR_DEFAULT = "config"
+CONFIG_DIR_USER = "config/user"
+CONFIG_FILENAME = "config.yaml"
 
-class Config(object):
+class Config(BaseClass):
     """
     This class is instantiated by nmeta.py and provides methods to
     ingest the configuration file and provides access to the
@@ -91,8 +49,27 @@ class Config(object):
     Config file is in YAML in config subdirectory and is
     called 'config.yaml'
     """
-    def __init__(self, config_dir="config", config_filename="config.yaml"):
-        #*** Set up logging to write to syslog:
+    def __init__(self, dir_default=None, dir_user=None, config_filename=None):
+
+        #*** Set defaults:
+        if not dir_default:
+            self.dir_default = CONFIG_DIR_DEFAULT
+        else:
+            self.dir_default = dir_default
+        if not dir_user:
+            self.dir_user = CONFIG_DIR_USER
+        else:
+            self.dir_user = dir_user
+        if not config_filename:
+            self.config_filename = CONFIG_FILENAME
+        else:
+            self.config_filename = config_filename
+        #*** Run the BaseClass init to set things up:
+        super(Config, self).__init__()
+
+        #*** Set up basic logging, as can't use
+        #*** inherited method due to chicken and egg issue
+        #*** (set up properly later)
         logging.basicConfig(level=logging.DEBUG)
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -103,51 +80,91 @@ class Config(object):
             ('sev=%(levelname)s module=%(name)s func=%(funcName)s %(message)s')
         self.handler.setFormatter(formatter)
         self.logger.addHandler(self.handler)
-        #*** Name of the config file:
-        self.config_filename = config_filename
-        self.config_directory = config_dir
+        coloredlogs.install(level="DEBUG",
+                logger=self.logger, fmt="%(asctime)s.%(msecs)03d %(name)s[%(process)d] %(funcName)s %(levelname)s %(message)s", datefmt='%H:%M:%S')
+
+        self.logger.debug("dir_default=%s dir_user=%s config_filename=%s",
+                         self.dir_default, self.dir_user, self.config_filename)
+
+        self.ingest_config_default(self.config_filename, self.dir_default)
+        self.ingest_config_user(self.config_filename, self.dir_user)
+
+    def ingest_config_default(self, config_filename, dir_default):
+        """
+        Ingest default config file
+        """
         #*** Get working directory:
-        self.working_directory = os.path.dirname(__file__)
+        working_directory = os.path.dirname(__file__)
         #*** Build the full path and filename for the config file:
-        self.fullpathname = os.path.join(self.working_directory,
-                                         self.config_directory,
-                                         self.config_filename)
-        self.logger.info("About to open config file %s",
-                          self.fullpathname)
-        #*** Ingest the config file:
-        try:
-            with open(self.fullpathname, 'r') as f:
-                self._config_yaml = yaml.load(f)
-        except (IOError, OSError) as e:
-            self.logger.error("Failed to open config "
-                                "file %s", self.fullpathname)
-            sys.exit("Exiting config module. Please create config file")
-        #*** Now for some DATA CLEANSING of the config...
-        #*** Check that all attributes are valid and if not, remove them:
-        _for_deletion = []
-        for key, value in self._config_yaml.iteritems():
-            #*** Check if key exists in CONFIG_TEMPLATE dict:
-            if not key in CONFIG_TEMPLATE:
-                self.logger.error("File config.yaml "
-                                  "attribute %s is invalid", key)
-                _for_deletion.append(key)
-        #*** Now iterate over the list of references to delete any invalid
-        #***  attributes:
-        for _del_ref in _for_deletion:
-            self.logger.info("Deleting %s from "
-                               "self._config_yaml", _del_ref)
-            del self._config_yaml[_del_ref]
-        #*** Now check for any missing attributes and add them with default
-        #*** value:
-        for key, value in CONFIG_TEMPLATE.iteritems():
-            if not key in self._config_yaml:
-                #*** Add attribute and the default value:
-                self.logger.info("Creating missing key %s"
-                                 " with default value %s, as not in config "
-                                 "file. You may want to fix this...",
-                                 key, value)
+        fullpathname = os.path.join(working_directory,
+                                         dir_default,
+                                         config_filename)
+        self._config_yaml = self.ingest_config_file(fullpathname)
+
+    def ingest_config_user(self, config_filename, dir_user):
+        """
+        Ingest user config file that overrides values set in the
+        default config file.
+        """
+        #*** Get working directory:
+        working_directory = os.path.dirname(__file__)
+        #*** Build the full path and filename for the config file:
+        fullpathname = os.path.join(working_directory,
+                                         dir_user,
+                                         config_filename)
+        #*** File doesn't have to exist, so check if it exists:
+        if not os.path.isfile(fullpathname):
+            self.logger.info("User-defined config file does not exist, "
+                                "file=%s, skipping", fullpathname)
+            return 1
+
+        #*** Ingest user-defined config file:
+        _user_config_yaml = self.ingest_config_file(fullpathname)
+        #*** Go through all keys checking key exists in default yaml.
+        #***  If doesn't exist, raise warning
+        #***  If does exist, overwrite the value in internal config
+        if not isinstance(_user_config_yaml, dict):
+            self.logger.info("User-defined config missing, skipping")
+            return 1
+        if len(_user_config_yaml) == 0:
+            self.logger.info("User-defined config is empty, skipping")
+            return 1
+        for key, value in _user_config_yaml.iteritems():
+            if key in self._config_yaml:
+                self.logger.info("Overriding a default config parameter"
+                                    " with key=%s value=%s", key, value)
                 self._config_yaml[key] = value
-        #*** TBD - check values are valid...
+            else:
+                self.logger.error("key=%s does not exist in default "
+                        "config so not importing, value=%s", key, value)
+
+    def ingest_config_file(self, fullpath):
+        """
+        Passed full path to a YAML-formatted config file
+        and ingest into a dictionary
+        """
+        _config = {}
+        self.logger.info("Ingesting config file=%s", fullpath)
+        try:
+            with open(fullpath, 'r') as file_:
+                _config = yaml.safe_load(file_)
+        except (IOError, OSError) as exception:
+            #*** IO exception:
+            self.logger.critical("Failed to open config file %s, "
+                                    "error=%s", fullpath, exception)
+            sys.exit("Exiting config module. Please create config file")
+        except yaml.YAMLError, exception:
+            #*** YAML exception:
+            if hasattr(exception, 'problem_mark'):
+                mark = exception.problem_mark
+                self.logger.critical("Failed to open config file %s, "
+                    "error=%s on line=%s character=%s. Exiting",
+                    fullpath, exception, mark.line+1, mark.column+1)
+            else:
+                self.logger.critical("Failed to open config file=%s, "
+                    "error=%s. Exiting", fullpath, exception)
+            sys.exit("Exiting config module. Please fix config file")
+        return _config
 
     def get_value(self, config_key):
         """
@@ -161,3 +178,13 @@ class Config(object):
                                 "not exist", config_key)
             return 0
 
+    def inherit_logging(self, config):
+        """
+        Call base class method to set up logging properly for
+        this class now that it is running
+        """
+        self.config = config
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("config_logging_level_s",
+                                       "config_logging_level_c")
+        self.logger.info("Logging configured fully now for config")

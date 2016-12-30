@@ -240,8 +240,9 @@ def test_classification_static():
     ident = identities.Identities(config)
     #*** Initial main_policy won't match as looking for tcp-1234:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_static.yaml")
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
 
     #*** Ingest Flow 2 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
@@ -271,8 +272,9 @@ def test_classification_static():
 
     #*** Initial main_policy that matches tcp-80:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_static_3.yaml")
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static_3.yaml")
 
     #*** Classify the packet:
     tc.check_policy(flow, ident)
@@ -288,8 +290,9 @@ def test_classification_static():
     #***  on same flow.
     #*** Load main_policy that matches dst tcp-80:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_static_4.yaml")
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static_4.yaml")
 
     #*** Ingest Flow 1 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
@@ -344,8 +347,9 @@ def test_classification_identity():
     #*** Load main_policy that matches identity pc1
     #*** and has action to constrain it's bandwidth:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_identity_2.yaml")
+                        pol_dir_default="config/tests/regression",
+                        pol_dir_user="config/tests/foo",
+                        pol_filename="main_policy_regression_identity_2.yaml")
 
     #*** Ingest and harvest LLDP Packet 2 (lg1) that shouldn't match:
     # 206 08:00:27:21:4f:ea 01:80:c2:00:00:0e LLDP NoS = 08:00:27:21:4f:ea

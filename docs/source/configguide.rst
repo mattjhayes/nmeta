@@ -12,13 +12,30 @@ A YAML file holds the system configuration. It's location is:
 
   ~/nmeta/nmeta/config/config.yaml
 
+These default configuration parameters can be overwritten by creating a file:
+
+.. code-block:: text
+
+  ~/nmeta/nmeta/config/user/config.yaml
+
+Add the parameters to the file that you want to override. For example, to
+override the default console logging level for the tc_policy module, add
+the following line to the user config file:
+
+.. code-block:: text
+
+  tc_policy_logging_level_c: INFO
+
+Note that the user-defined config file will not be part of the git
+distribution, as it is excluded in the .gitignore file.
+
 *********************
 Configure Main Policy
 *********************
 
 The main policy configures how nmeta works with data plane traffic.
 This includes traffic classification rules.
-The main policy is stored in the YAML file:
+The default main policy is stored in the YAML file:
 
 .. code-block:: text
 
@@ -26,6 +43,16 @@ The main policy is stored in the YAML file:
 
 It is used to control what classifiers are used, in what order and what
 actions are taken.
+
+If a user-defined main policy file is present, it will usurp the default one.
+The user-defined main policy file (if used) is at:
+
+.. code-block:: text
+
+  ~/nmeta/nmeta/config/user/main_policy.yaml
+
+Note that a user-defined main policy file will not be part of the git
+distribution, as it is excluded in the .gitignore file.
 
 The traffic classification policy is based off a root key *tc_rules*.
 This root contains a *ruleset* name (only one ruleset supported at this

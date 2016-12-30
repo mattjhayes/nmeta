@@ -24,8 +24,6 @@ attributes to use.
 
 import sys
 import os
-
-import time
 import datetime
 
 #*** nmeta imports:
@@ -73,13 +71,20 @@ IDENTITY_KEYS = ('arp',
                  'dns',
                  'dhcp')
 
+#*** Default policy file location parameters:
+POL_DIR_DEFAULT = "config"
+POL_DIR_USER = "config/user"
+POL_FILENAME = "main_policy.yaml"
+
 class TrafficClassificationPolicy(BaseClass):
     """
     This class is instantiated by nmeta.py and provides methods
     to ingest the policy file main_policy.yaml and check flows
     against policy to see if actions exist
     """
-    def __init__(self, config, pol_dir="config", pol_file="main_policy.yaml"):
+    def __init__(self, config, pol_dir_default=POL_DIR_DEFAULT,
+                    pol_dir_user=POL_DIR_USER,
+                    pol_filename=POL_FILENAME):
         #*** Required for BaseClass:
         self.config = config
         #*** Run the BaseClass init to set things up:
@@ -87,17 +92,25 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Set up Logging with inherited base class method:
         self.configure_logging("tc_policy_logging_level_s",
                                        "tc_policy_logging_level_c")
-
-        #*** Name of the main_policy file:
-        self.policy_filename = pol_file
-        self.policy_directory = pol_dir
+        self.policy_dir_default = pol_dir_default
+        self.policy_dir_user = pol_dir_user
+        self.policy_filename = pol_filename
         #*** Get working directory:
         self.working_directory = os.path.dirname(__file__)
-        #*** Build the full path and filename for the config file:
+        #*** Build the full path and filename for the user policy file:
         self.fullpathname = os.path.join(self.working_directory,
-                                         self.policy_directory,
+                                         self.policy_dir_user,
                                          self.policy_filename)
-        self.logger.info("About to open config file=%s", self.fullpathname)
+        if os.path.isfile(self.fullpathname):
+            self.logger.info("Opening user policy file=%s", self.fullpathname)
+        else:
+            self.logger.info("User policy file=%s not found",
+                                                            self.fullpathname)
+            self.fullpathname = os.path.join(self.working_directory,
+                                         self.policy_dir_default,
+                                         self.policy_filename)
+            self.logger.info("Opening default policy file=%s",
+                                                            self.fullpathname)
         #*** Ingest the policy file:
         try:
             with open(self.fullpathname, 'r') as filename:
@@ -106,8 +119,7 @@ class TrafficClassificationPolicy(BaseClass):
             self.logger.error("Failed to open policy "
                               "file=%s exception=%s",
                               self.fullpathname, exception)
-            sys.exit("Exiting nmeta. Please create traffic classification "
-                             "policy file")
+            sys.exit("Exiting nmeta. Please create policy file")
         #*** List to be populated with names of any custom classifiers:
         self.custom_classifiers = []
         #*** Instantiate Classes:
@@ -432,7 +444,8 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Iterate through the conditions list:
         for condition_stanza in rule_stanza['conditions_list']:
             conditions = self._check_conditions(condition_stanza)
-            self.logger.debug("condition_stanza=%s, conditions=%s", condition_stanza, conditions.to_dict())
+            self.logger.debug("condition_stanza=%s, conditions=%s",
+                                        condition_stanza, conditions.to_dict())
             #*** Decide what to do based on match result and match type:
             if conditions.match and rule.match_type == "any":
                 rule.match = True

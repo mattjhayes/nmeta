@@ -352,8 +352,9 @@ def test_get_classification():
 
     #*** Initial main_policy that matches tcp-80:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_static_3.yaml")
+                        pol_dir_default="config/tests/regression",
+                        pol_dir_user="config/tests/foo",
+                        pol_filename="main_policy_regression_static_3.yaml")
 
     #*** Ingest Flow 1 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())

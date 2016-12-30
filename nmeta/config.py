@@ -49,21 +49,9 @@ class Config(BaseClass):
     Config file is in YAML in config subdirectory and is
     called 'config.yaml'
     """
-    def __init__(self, dir_default=None, dir_user=None, config_filename=None):
-
-        #*** Set defaults:
-        if not dir_default:
-            self.dir_default = CONFIG_DIR_DEFAULT
-        else:
-            self.dir_default = dir_default
-        if not dir_user:
-            self.dir_user = CONFIG_DIR_USER
-        else:
-            self.dir_user = dir_user
-        if not config_filename:
-            self.config_filename = CONFIG_FILENAME
-        else:
-            self.config_filename = config_filename
+    def __init__(self, dir_default=CONFIG_DIR_DEFAULT,
+                    dir_user=CONFIG_DIR_USER,
+                    config_filename=CONFIG_FILENAME):
         #*** Run the BaseClass init to set things up:
         super(Config, self).__init__()
 
@@ -84,10 +72,10 @@ class Config(BaseClass):
                 logger=self.logger, fmt="%(asctime)s.%(msecs)03d %(name)s[%(process)d] %(funcName)s %(levelname)s %(message)s", datefmt='%H:%M:%S')
 
         self.logger.debug("dir_default=%s dir_user=%s config_filename=%s",
-                         self.dir_default, self.dir_user, self.config_filename)
+                         dir_default, dir_user, config_filename)
 
-        self.ingest_config_default(self.config_filename, self.dir_default)
-        self.ingest_config_user(self.config_filename, self.dir_user)
+        self.ingest_config_default(config_filename, dir_default)
+        self.ingest_config_user(config_filename, dir_user)
 
     def ingest_config_default(self, config_filename, dir_default):
         """
@@ -187,4 +175,4 @@ class Config(BaseClass):
         #*** Set up Logging with inherited base class method:
         self.configure_logging("config_logging_level_s",
                                        "config_logging_level_c")
-        self.logger.info("Logging configured fully now for config")
+        self.logger.info("Config logging now fully configured")

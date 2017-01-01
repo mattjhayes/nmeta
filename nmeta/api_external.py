@@ -370,7 +370,7 @@ class ExternalAPI(BaseClass):
                     flow.src = self.get_id(record['ip_src'])
                     if flow.src != record['ip_src']:
                         flow.src_hover = hovertext_ip_addr(record['ip_src'])
-                    flow.dst = get_id(record['ip_dst'])
+                    flow.dst = self.get_id(record['ip_dst'])
                     if flow.dst != record['ip_dst']:
                         flow.dst_hover = hovertext_ip_addr(record['ip_dst'])
                     flow.proto = enumerate_ip_proto(record['proto'])
@@ -387,7 +387,6 @@ class ExternalAPI(BaseClass):
                         #*** Eth type enumerated, set hover decimal eth_type:
                         flow.proto_hover = \
                                          hovertext_eth_type(record['eth_type'])
-
                 flow.tp_src = record['tp_src']
                 flow.tp_dst = record['tp_dst']
                 #*** Enrich with classification and action(s):
@@ -572,8 +571,8 @@ def hovertext_ip_proto(ip_proto):
 
 def hovertext_ip_addr(ip_addr):
     """
-    Passed an IP protocol number (decimal, not enumerated) and
-    return it wrapped in extra text to convey context
+    Passed an IP address and return it
+    wrapped in extra text to convey context
     """
     return "IP Address: " + str(ip_addr)
 

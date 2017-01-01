@@ -55,6 +55,12 @@ config = config.Config()
 
 logger = logging.getLogger(__name__)
 
+#*** Test DPIDs and in ports:
+DPID1 = 1
+DPID2 = 2
+INPORT1 = 1
+INPORT2 = 2
+
 #======================== flows.py Unit Tests ============================
 
 def test_flow_ipv4_http():
@@ -63,13 +69,6 @@ def test_flow_ipv4_http():
     from a different flow ingested mid-stream.
     This flow is not torn down.
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    DPID2 = 2
-    INPORT1 = 1
-    INPORT2 = 2
-
     #*** Sanity check can read into dpkt:
     eth = dpkt.ethernet.Ethernet(pkts.RAW[0])
     eth_src = mac_addr(eth.src)
@@ -116,13 +115,6 @@ def test_flow_ipv4_http2():
     successful retrieval of an HTTP object with connection close
     so TCP session nicely torn down with FINs
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    DPID2 = 2
-    INPORT1 = 1
-    INPORT2 = 2
-
     #*** Instantiate a flow object:
     flow = flow_class.Flow(config)
 
@@ -182,13 +174,6 @@ def test_flow_ipv4_tcp_reset():
     Test ingesting packets from an IPv4 TCP flow that is immediately
     shutdown with a TCP RST
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    DPID2 = 2
-    INPORT1 = 1
-    INPORT2 = 2
-
     #*** Instantiate a flow object:
     flow = flow_class.Flow(config)
 
@@ -205,12 +190,6 @@ def test_flow_LLDP():
     """
     Test ingesting LLDP (non-IP) packets
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    DPID2 = 2
-    INPORT1 = 1
-    INPORT2 = 2
 
     #*** Instantiate a flow object:
     flow = flow_class.Flow(config)
@@ -256,25 +235,23 @@ def test_classification_static():
     Create a classification object, record it to DB then check
     that classification can be retrieved
     """
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Instantiate classes:
     flow = flow_class.Flow(config)
     ident = identities.Identities(config)
     #*** Initial main_policy won't match as looking for tcp-1234:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_static.yaml")
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
 
-    #*** Ingest Flow 2 Packet 1 (Client TCP SYN):
+    #*** Ingest Flow 2 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
 
     #*** Retrieve a classification object for this particular flow:
     clasfn = flow.Classification(flow.packet.flow_hash,
                                     flow.classifications,
-                                    flow.classification_time_limit)
+                                    flow.classification_time_limit,
+                                    logger)
 
     #*** Base classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -295,13 +272,62 @@ def test_classification_static():
 
     #*** Initial main_policy that matches tcp-80:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_static_3.yaml")
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static_3.yaml")
 
     #*** Classify the packet:
     tc.check_policy(flow, ident)
 
     #*** Matched classification state:
+    assert flow.classification.flow_hash == flow.packet.flow_hash
+    assert flow.classification.classified == 1
+    assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
+    assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
+                                   'set_desc': 'Constrained Bandwidth Traffic'}
+
+    #*** Now test that classification remains after ingesting more packets
+    #***  on same flow.
+    #*** Load main_policy that matches dst tcp-80:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static_4.yaml")
+
+    #*** Ingest Flow 1 Packet 0 (Client TCP SYN):
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+
+    logger.debug("pkt0 flow classification is %s", flow.classification.dbdict())
+
+    #*** Matched classification state:
+    assert flow.classification.flow_hash == flow.packet.flow_hash
+    assert flow.classification.classified == 1
+    assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
+    assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
+                                   'set_desc': 'Constrained Bandwidth Traffic'}
+
+    #*** Write classification result to classifications collection:
+    flow.classification.commit()
+
+    #*** Ingest Flow 1 Packet 1 (Client TCP SYN+ACK):
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
+
+    logger.debug("pkt1a flow classification is %s", flow.classification.dbdict())
+
+    assert flow.classification.classified == 1
+
+    #*** We would never run this as otherwise above test would have failed.
+    #*** Left it in here to make the point that you shouldn't classify if
+    #*** classified is set.
+    if not flow.classification.classified:
+        #*** Classify the packet:
+        tc.check_policy(flow, ident)
+
+    logger.debug("pkt1b flow classification is %s", flow.classification.dbdict())
+
+    #*** Matched classification state (shouldn't be changed by second packet):
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 1
     assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
@@ -315,18 +341,15 @@ def test_classification_identity():
     Create a classification object, record it to DB then check
     that classification can be retrieved
     """
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Instantiate classes:
     flow = flow_class.Flow(config)
     ident = identities.Identities(config)
     #*** Load main_policy that matches identity pc1
     #*** and has action to constrain it's bandwidth:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_identity_2.yaml")
+                        pol_dir_default="config/tests/regression",
+                        pol_dir_user="config/tests/foo",
+                        pol_filename="main_policy_regression_identity_2.yaml")
 
     #*** Ingest and harvest LLDP Packet 2 (lg1) that shouldn't match:
     # 206 08:00:27:21:4f:ea 01:80:c2:00:00:0e LLDP NoS = 08:00:27:21:4f:ea
@@ -344,7 +367,8 @@ def test_classification_identity():
     #*** Retrieve a classification object for this particular flow:
     clasfn = flow.Classification(flow.packet.flow_hash,
                                     flow.classifications,
-                                    flow.classification_time_limit)
+                                    flow.classification_time_limit,
+                                    logger)
 
     #*** Unmatched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -372,7 +396,8 @@ def test_classification_identity():
     #*** Retrieve a classification object for this particular flow:
     clasfn = flow.Classification(flow.packet.flow_hash,
                                     flow.classifications,
-                                    flow.classification_time_limit)
+                                    flow.classification_time_limit,
+                                    logger)
 
     #*** Matched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash

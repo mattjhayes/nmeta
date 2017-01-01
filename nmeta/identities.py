@@ -56,19 +56,34 @@ class Identities(BaseClass):
     """
     An object that represents identity metadata
 
-    Variables available for Classifiers (assumes class instantiated as
-    an object called 'ident'):
-
-        ident.TBD
-          TBD
+    Main function used to harvest identity metadata:
+    (assumes class instantiated as an object called 'ident')
 
         ident.harvest(pkt, flow.packet)
-          TBD
+            Passed a raw packet and packet metadata from flow object.
+            Check a packet_in event and harvest any relevant identity
+            indicators to metadata
+
+    Functions available for Classifiers:
+    (assumes class instantiated as an object called 'ident')
 
         ident.findbymac(mac_address)
+            Look up identity object for a MAC address
 
-    Challenges (not handled - yet):
-     - TBD
+        ident.findbynode(host_name)
+            Look up identity object by host name (aka node)
+            Additionally, can set:
+                regex=True       Treat service_name as a regular expression
+                harvest_type=    Specify what type of harvest (i.e. DHCP)
+
+        ident.findbyservice(service_name)
+            Look up identity object by service name
+            Additionally, can set:
+                regex=True        Treat service_name as a regular expression
+                harvest_type=     Specify what type of harvest (i.e. DNS_A)
+                ip_address=       Look for specific IP address
+
+    See function docstrings for more information
     """
 
     def __init__(self, config):
@@ -514,8 +529,9 @@ class Identities(BaseClass):
 
     def findbymac(self, mac_addr):
         """
-        TEST FIND BY MAC ADDR
-        DOC TBD
+        Passed a MAC address and reverse search identities collection
+        returning first match as a dictionary version of
+        an Identity class, or empty dictionary if not found
         """
         db_data = {'mac_address': mac_addr}
         result = self.identities.find(db_data).sort('$natural', -1).limit(1)
@@ -567,7 +583,6 @@ class Identities(BaseClass):
           ip_address=       Look for specific IP address
         Returns boolean
         """
-        self.logger.debug("TEMP: in findbyservice")
         db_data = {'service_name': service_name}
         if harvest_type != 'any':
             #*** Filter by harvest type:

@@ -25,7 +25,7 @@ It leverages the Eve Python REST API Framework
 #*** Python 3 style division results as floating point:
 from __future__ import division
 
-import sys, os, ast
+import os
 
 #*** Import Eve for REST API Framework:
 from eve import Eve
@@ -33,7 +33,7 @@ from eve import Eve
 #*** Inherit logging etc:
 from baseclass import BaseClass
 
-#*** MongoDB Database Import:
+#*** mongodb Database Import:
 from pymongo import MongoClient
 
 #*** nmeta imports
@@ -42,9 +42,6 @@ import config
 #*** For timestamps:
 import datetime
 
-#*** To convert results into JSON:
-from flask import jsonify
-
 #*** Amount of time (seconds) to go back for to calculate Packet-In rate:
 PACKET_IN_RATE_INTERVAL = 10
 
@@ -52,12 +49,18 @@ FLOW_LIMIT = 25
 
 #*** Number of previous IP identity records to search for a hostname before
 #*** giving up. Used for augmenting flows with identity metadata:
-HOST_LIMIT = 25
+HOST_LIMIT = 250
+SERVICE_LIMIT = 250
+
+#*** How far back in time to go back looking for packets in flow:
+FLOW_TIME_LIMIT = datetime.timedelta(seconds=3600)
+CLASSIFICATION_TIME_LIMIT = datetime.timedelta(seconds=4000)
 
 #*** Enumerate some proto numbers, someone's probably already done this...
 ETH_TYPES = {
         2048: 'IPv4',
         2054: 'ARP',
+        34525: 'IPv6',
         35020: 'LLDP'
         }
 IP_PROTOS = {
@@ -85,24 +88,57 @@ class ExternalAPI(BaseClass):
                                        "external_api_logging_level_c")
 
         #*** MongoDB Setup:
-        self.logger.info("Connecting to Decision API MongoDB "
-                                                "database...")
         #*** Get database parameters from config:
         mongo_addr = self.config.get_value("mongo_addr")
         mongo_port = self.config.get_value("mongo_port")
         mongo_dbname = self.config.get_value("mongo_dbname")
+        self.logger.info("Connecting to the %s MongoDB database on %s %s",
+                                mongo_addr, mongo_port, mongo_dbname)
 
-        #*** Use Pymongo to connect to Decision API database:
+        #*** Use Pymongo to connect to the nmeta MongoDB database:
         mongo_client = MongoClient(mongo_addr, mongo_port)
 
         #*** Connect to MongoDB nmeta database:
-        db_nmeta = mongo_client.mongo_dbname
+        db_nmeta = mongo_client[mongo_dbname]
 
-        #*** Variable for packet_ins Collection:
+        #*** Variables for MongoDB Collections:
         self.packet_ins = db_nmeta.packet_ins
+        self.identities = db_nmeta.identities
+        self.classifications = db_nmeta.classifications
 
-        #*** Variable for identities Collection:
-        self.identities = db_nmeta.packet_ins
+    class FlowUI(object):
+        """
+        An object that represents a flow record to be sent in response
+        to the WebUI. Features:
+         - Flow direction normalised to direction of
+           first packet in flow
+         - Src and Dst are IP or Layer 2 to optimise screen space
+         - Extra data included for hover-over tips
+        Note that there should not be any display-specific data (i.e. don't
+        send any HTML, leave this to the client code)
+        """
+        def __init__(self):
+            #*** Initialise flow variables:
+            self.src = ""
+            self.src_hover = ""
+            self.dst = ""
+            self.dst_hover = ""
+            self.proto = ""
+            self.proto_hover = ""
+            self.tp_src = ""
+            self.tp_src_hover = ""
+            self.tp_dst = ""
+            self.tp_dst_hover = ""
+            self.classification = ""
+            self.classification_hover = ""
+            self.actions = ""
+            self.actions_hover = ""
+        def response(self):
+            """
+            Return a dictionary object of flow parameters
+            for sending in response
+            """
+            return self.__dict__
 
     def run(self):
         """
@@ -284,6 +320,7 @@ class ExternalAPI(BaseClass):
          - Reverse sort by harvest time
          - Deduplicate by id_hash, only returning most recent per id_hash
          - Includes possibly stale records
+         - Check DNS A records to see if they are from a CNAME
         Hooked from on_fetched_resource_<name>
         """
         known_hashes = []
@@ -295,6 +332,10 @@ class ExternalAPI(BaseClass):
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
             if not record['id_hash'] in known_hashes:
+                if record['harvest_type'] == 'DNS_CNAME':
+                    #*** Check if A record exists, and if so update response:
+                    record['ip_address'] = \
+                                       self.get_dns_ip(record['service_alias'])
                 #*** Add to items dictionary which is returned in response:
                 self.logger.debug("Appending _items with record=%s", record)
                 items['_items'].append(record)
@@ -318,30 +359,150 @@ class ExternalAPI(BaseClass):
         packet_cursor = flows.find().limit(FLOW_LIMIT).sort('$natural', -1)
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
+            #*** Only return unique flow records:
             if not record['flow_hash'] in known_hashes:
-                #*** Dictionary to hold our crafted record that has condensed
-                #*** columns for better use of UI real-estate:
-                flow = {}
+                #*** Normalise the direction of the flow:
+                record = self.flow_normalise_direction(record)
+                #*** Instantiate an instance of FlowUI class:
+                flow = self.FlowUI()
                 if record['eth_type'] == 2048:
-                    #*** It's IPv4:
-                    flow['src'] = record['ip_src']
-                    flow['src_host'] = self.get_host_by_ip(record['ip_src'])
-                    flow['dst'] = record['ip_dst']
-                    flow['dst_host'] = self.get_host_by_ip(record['ip_dst'])
-                    flow['proto'] = enumerate_ip_proto(record['proto'])
+                    #*** It's IPv4, see if we can augment with identity:
+                    flow.src = self.get_id(record['ip_src'])
+                    if flow.src != record['ip_src']:
+                        flow.src_hover = hovertext_ip_addr(record['ip_src'])
+                    flow.dst = self.get_id(record['ip_dst'])
+                    if flow.dst != record['ip_dst']:
+                        flow.dst_hover = hovertext_ip_addr(record['ip_dst'])
+                    flow.proto = enumerate_ip_proto(record['proto'])
+                    if flow.proto != record['proto']:
+                        #*** IP proto enumerated, set hover decimal text:
+                        flow.proto_hover = \
+                                         hovertext_ip_proto(record['proto'])
                 else:
                     #*** It's not IPv4 (TBD, handle IPv6)
-                    flow['src'] = record['eth_src']
-                    flow['src_host'] = ""
-                    flow['dst'] = record['eth_dst']
-                    flow['dst_host'] = ""
-                    flow['proto'] = enumerate_eth_type(record['eth_type'])
-                flow['tp_src'] = record['tp_src']
-                flow['tp_dst'] = record['tp_dst']
-                #*** Add to items dictionary which is returned in response:
-                items['_items'].append(flow)
+                    flow.src = record['eth_src']
+                    flow.dst = record['eth_dst']
+                    flow.proto = enumerate_eth_type(record['eth_type'])
+                    if flow.proto != record['eth_type']:
+                        #*** Eth type enumerated, set hover decimal eth_type:
+                        flow.proto_hover = \
+                                         hovertext_eth_type(record['eth_type'])
+                flow.tp_src = record['tp_src']
+                flow.tp_dst = record['tp_dst']
+                #*** Enrich with classification and action(s):
+                classification = self.get_classification(record['flow_hash'])
+                flow.classification = classification['classification_tag']
+                #*** Add to items dictionary, which is returned in response:
+                items['_items'].append(flow.response())
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+    def get_classification(self, flow_hash):
+        """
+        Passed flow_hash and return a dictionary
+        of a classification object for the flow_hash (if found), otherwise
+        a dictionary of an empty classification object.
+        """
+        db_data = {'flow_hash': flow_hash,
+              'classification_time': {'$gte': datetime.datetime.now() -
+                                    CLASSIFICATION_TIME_LIMIT}}
+        results = self.classifications.find(db_data). \
+                                                  sort('$natural', -1).limit(1)
+        if results.count():
+            return list(results)[0]
+        else:
+            self.logger.debug("Classification for flow_hash=%s not found",
+                                                                     flow_hash)
+            return {
+                'flow_hash': flow_hash,
+                'classified': 0,
+                'classification_tag': '',
+                'classification_time': 0,
+                'self.actions': {}
+            }
+
+    def flow_normalise_direction(self, record):
+        """
+        Passed a dictionary of an flow record and return a similar
+        dictionary that has sources and destinations normalised to the
+        direction of the first observed packet in the flow
+        """
+        #*** Lookup the first source IP seen for the flow:
+        client_ip = self.get_flow_client_ip(record['flow_hash'])
+        if not client_ip:
+            return record
+        if client_ip == record['ip_src']:
+            return record
+        elif client_ip == record['ip_dst']:
+            #*** Need to transpose source and destinations:
+            orig_ip_src = record['ip_src']
+            orig_ip_dst = record['ip_dst']
+            orig_tp_src = record['tp_src']
+            orig_tp_dst = record['tp_dst']
+            record['ip_src'] = orig_ip_dst
+            record['ip_dst'] = orig_ip_src
+            record['tp_src'] = orig_tp_dst
+            record['tp_dst'] = orig_tp_src
+            return record
+        else:
+            #*** First source IP doesn't match src or dst. Strange. Log error:
+            self.logger.error("First source ip=%s does not match ip_src=%s or "
+                        "ip_dst=%s", client_ip, record['ip_src'],
+                        record['ip_dst'])
+            return record
+
+    def get_flow_client_ip(self, flow_hash):
+        """
+        Find the IP that is the originator of a flow searching
+        forward by flow_hash
+
+        Finds first packet seen for the flow_hash within the time
+        limit and returns the source IP, otherwise 0,
+        """
+        db_data = {'flow_hash': flow_hash,
+              'timestamp': {'$gte': datetime.datetime.now() - FLOW_TIME_LIMIT}}
+        packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
+        if packets.count():
+            return list(packets)[0]['ip_src']
+        else:
+            self.logger.warning("no packets found")
+            return 0
+
+    def get_id(self, ip_addr):
+        """
+        Passed an IP address. Look this up for matching identity
+        metadata and return a string that contains either the original
+        IP address or an identity string
+        """
+        host = self.get_host_by_ip(ip_addr)
+        service = self.get_service_by_ip(ip_addr)
+        if host and service:
+            return host + ", " + service
+        elif host:
+            return host
+        elif service:
+            return service
+        else:
+            return ip_addr
+
+    def get_dns_ip(self, service_name):
+        """
+        Use this to get an IP address for a DNS lookup that returned a CNAME
+        Passed a DNS CNAME and look this up in identities
+        collection to see if there is a DNS A record, and if so return the
+        IP address, otherwise return an empty string.
+        """
+        db_data = {'service_name': service_name}
+        #*** Run db search:
+        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if result.count():
+            result0 = list(result)[0]
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
+            return result0['ip_address']
+        else:
+            self.logger.debug("A record for DNS CNAME=%s not found",
+                                                                  service_name)
+            return ""
 
     def get_host_by_ip(self, ip_addr):
         """
@@ -350,12 +511,26 @@ class ExternalAPI(BaseClass):
         """
         db_data = {'ip_address': ip_addr}
         #*** Run db search:
-        packet_cursor = \
-                    self.identities.find(db_data).limit(HOST_LIMIT) \
-                    .sort('$natural', -1)
-        for record in packet_cursor:
+        cursor = self.identities.find(db_data).limit(HOST_LIMIT) \
+                                                          .sort('$natural', -1)
+        for record in cursor:
+            self.logger.debug("record is %s", record)
             if record['host_name'] != "":
                 return str(record['host_name'])
+        return ""
+
+    def get_service_by_ip(self, ip_addr):
+        """
+        Passed an IP address. Look this up in the identities db collection
+        and return a service name if present, otherwise an empty string
+        """
+        db_data = {'ip_address': ip_addr}
+        #*** Run db search:
+        cursor = self.identities.find(db_data).limit(SERVICE_LIMIT) \
+                                                          .sort('$natural', -1)
+        for record in cursor:
+            if record['service_name'] != "":
+                return str(record['service_name'])
         return ""
 
 def enumerate_eth_type(eth_type):
@@ -369,6 +544,13 @@ def enumerate_eth_type(eth_type):
     else:
         return eth_type
 
+def hovertext_eth_type(eth_type):
+    """
+    Passed an eth_type (decimal, not enumerated) and
+    return it wrapped in extra text to convey context
+    """
+    return "Ethernet Type: " + str(eth_type) + " (decimal)"
+
 def enumerate_ip_proto(ip_proto):
     """
     Passed an IP protocol number (in decimal) and return an
@@ -379,6 +561,20 @@ def enumerate_ip_proto(ip_proto):
         return IP_PROTOS[ip_proto]
     else:
         return ip_proto
+
+def hovertext_ip_proto(ip_proto):
+    """
+    Passed an IP protocol number (decimal, not enumerated) and
+    return it wrapped in extra text to convey context
+    """
+    return "IP Protocol: " + str(ip_proto) + " (decimal)"
+
+def hovertext_ip_addr(ip_addr):
+    """
+    Passed an IP address and return it
+    wrapped in extra text to convey context
+    """
+    return "IP Address: " + str(ip_addr)
 
 if __name__ == '__main__':
     #*** Instantiate config class which imports configuration file

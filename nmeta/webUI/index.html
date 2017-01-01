@@ -44,22 +44,22 @@
           <tbody>
             <!-- Script inserts a tr tag per identity entry -->
             <script id="identityTemplate" type="text/template">
-              <td>
+              <td class="align-top">
                 <img src="<%= participantImage %>"/>
               </td>
-              <td>&nbsp;
+              <td class="align-top">
                 <%= harvest_type %>
               </td>
-              <td>&nbsp;
+              <td class="align-top">
                 <%= host_name %>
               </td>
-              <td>&nbsp;
+              <td class="align-top">
                 <%= service_name %>
               </td>
-              <td>&nbsp;
+              <td class="align-top">
                 <%= mac_address %>
               </td>
-              <td>&nbsp;
+              <td class="align-top">
                 <%= ip_address %>
               </td>
             </script>
@@ -77,12 +77,11 @@
             <tr>
               <th>&nbsp;</th>
               <th>Src</th>
-              <th>Src Host</th>
               <th>Dst</th>
-              <th>Dst Host</th>
               <th>Proto</th>
               <th>TP Src</th>
               <th>TP Dst</th>
+              <th>Classification</th>
             </tr>
           </thead>
           <tbody>
@@ -91,26 +90,29 @@
               <td>
                 <img src="<%= flowImage %>"/>
               </td>
-              <td>&nbsp;
+              <td>
+                <span data-toggle="tooltip" title="<%= src_hover %>">
                 <%= src %>
+                </span>
               </td>
-              <td>&nbsp;
-                <%= src_host %>
-              </td>
-              <td>&nbsp;
+              <td>
+                <span data-toggle="tooltip" title="<%= dst_hover %>">
                 <%= dst %>
+                </span>
               </td>
-              <td>&nbsp;
-                <%= dst_host %>
+              <td>
+                <span data-toggle="tooltip" title="<%= proto_hover %>">
+                  <%= proto %>
+                </span>
               </td>
-              <td>&nbsp;
-                <%= proto %>
-              </td>
-              <td>&nbsp;
+              <td>
                 <%= tp_src %>
               </td>
-              <td>&nbsp;
+              <td>
                 <%= tp_dst %>
+              </td>
+              <td>
+                <%= classification %>
               </td>
             </script>
             <!-- End of tr tagged script -->
@@ -119,6 +121,13 @@
       </div>
     </div>
   </div>
+
+<!-- Script to enable Bootstrap Tooltips -->
+<script>
+$(document).ready(function(){
+    $('[data-toggle="tooltip"]').tooltip();
+});
+</script>
 
 <script src="js/libraries/jquery-2.2.4.js" type="text/javascript"></script>
 <script src="js/libraries/underscore-1.8.3.js" type="text/javascript"></script>

@@ -32,10 +32,14 @@ import config
 import flows as flow_class
 import identities as identities_class
 import api_external
+import tc_policy
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
 import packets_lldp as pkts_lldp
+import packets_ipv4_ARP as pkts_arp
+import packets_ipv4_DHCP_firsttime as pkts_dhcp
+import packets_ipv4_dns as pkts_dns
 
 #*** Import library to do HTTP GET requests:
 import requests
@@ -55,6 +59,11 @@ URL_TEST_IDENTITIES = 'http://localhost:8081/v1/identities/'
 
 URL_TEST_IDENTITIES_UI = 'http://localhost:8081/v1/identities/ui/'
 
+#*** Test DPIDs and in ports:
+DPID1 = 1
+INPORT1 = 1
+INPORT2 = 2
+
 #*** Instantiate the ExternalAPI class:
 api = api_external.ExternalAPI(config)
 
@@ -65,11 +74,6 @@ def test_i_c_pi_rate():
     Test ingesting packets from an IPv4 HTTP flow, and check packet-in rate
     is as expected at various points
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Start api_external as separate process:
     logger.info("Starting api_external")
     api_ps = multiprocessing.Process(
@@ -110,11 +114,6 @@ def test_identities():
     Harvest identity data and test that the identities API resource
     returns the correct information
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Start api_external as separate process:
     logger.info("Starting api_external")
     api_ps = multiprocessing.Process(
@@ -185,11 +184,6 @@ def test_identities_ui():
     The identities/ui resource does deduplication, so test that this
     works correctly
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Start api_external as separate process:
     logger.info("Starting api_external")
     api_ps = multiprocessing.Process(
@@ -253,17 +247,69 @@ def test_identities_ui():
     #*** Stop api_external sub-process:
     api_ps.terminate()
 
+def test_flow_normalise_direction():
+    """
+    Test normalising direction of flow.
+    Pass a dictionary of an identity record check return a similar
+    dictionary that has sources and destinations normalised to the
+    direction of the first observed packet in the flow
+    """
+    #*** Instantiate a flow object:
+    flow = flow_class.Flow(config)
+
+    #*** Test Flow 1 Packet 0 (Client TCP SYN):
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    original_record = flow.packet.dbdict()
+    assert original_record['ip_src'] == pkts.IP_SRC[0]
+    assert original_record['ip_dst'] == pkts.IP_DST[0]
+    assert original_record['tp_src'] == pkts.TP_SRC[0]
+    assert original_record['tp_dst'] == pkts.TP_DST[0]
+    normalised_record = api.flow_normalise_direction(original_record)
+    assert normalised_record['ip_src'] == pkts.IP_SRC[0]
+    assert normalised_record['ip_dst'] == pkts.IP_DST[0]
+    assert normalised_record['tp_src'] == pkts.TP_SRC[0]
+    assert normalised_record['tp_dst'] == pkts.TP_DST[0]
+
+    #*** Test Flow 1 Packet 1 (Server TCP SYN ACK). This should be transposed:
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
+    original_record = flow.packet.dbdict()
+    assert original_record['ip_src'] == pkts.IP_SRC[1]
+    assert original_record['ip_dst'] == pkts.IP_DST[1]
+    assert original_record['tp_src'] == pkts.TP_SRC[1]
+    assert original_record['tp_dst'] == pkts.TP_DST[1]
+    normalised_record = api.flow_normalise_direction(original_record)
+    assert normalised_record['ip_src'] == pkts.IP_DST[1]
+    assert normalised_record['ip_dst'] == pkts.IP_SRC[1]
+    assert normalised_record['tp_src'] == pkts.TP_DST[1]
+    assert normalised_record['tp_dst'] == pkts.TP_SRC[1]
+
+def test_get_dns_ip():
+    """
+    Test looking up a DNS CNAME to get an IP address
+    """
+    #*** Instantiate flow and identities objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+
+    logger.debug("Testing lookup of CNAME=%s", pkts_dns.DNS_CNAME[1])
+    result_ip = api.get_dns_ip(pkts_dns.DNS_CNAME[1])
+    assert result_ip == pkts_dns.DNS_IP[1]
+
 def test_get_host_by_ip():
     """
     Test get_host_by_ip
     """
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Instantiate a flow object:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
+
+    #*** Ingest ARP reply for MAC of pc1 so can ref later:
+    flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[3], flow.packet)
 
     #*** Ingest LLDP from pc1
     flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
@@ -274,10 +320,56 @@ def test_get_host_by_ip():
 
     logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
 
-    # TBD, no tests here yet. There's issues to think about. LLDP
-    # relies on a prior ARP to match to an IP address
-    # Need to do DHCP too, but needs extra logic
+    assert get_host_by_ip_result == 'pc1.example.com'
 
+    #*** Test DHCP to host by IP
+
+    #*** Client to Server DHCP Request:
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+
+    #*** Server to Client DHCP ACK:
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+
+    #*** Call the get_host_by_ip:
+    get_host_by_ip_result = api.get_host_by_ip('10.1.0.1')
+
+    logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
+
+    assert get_host_by_ip_result == 'pc1'
+
+def test_get_classification():
+    """
+    Test get_classification which takes a flow_hash
+    and return a dictionary of a classification object
+    for the flow_hash (if found), otherwise
+    a dictionary of an empty classification object.
+    """
+    #*** Instantiate classes:
+    flow = flow_class.Flow(config)
+    ident = identities_class.Identities(config)
+
+    #*** Initial main_policy that matches tcp-80:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                        pol_dir_default="config/tests/regression",
+                        pol_dir_user="config/tests/foo",
+                        pol_filename="main_policy_regression_static_3.yaml")
+
+    #*** Ingest Flow 1 Packet 0 (Client TCP SYN):
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+
+    logger.debug("pkt0 flow classification is %s", flow.classification.dbdict())
+
+    #*** Write classification result to classifications collection:
+    flow.classification.commit()
+
+    #*** Retrieve classification via get_classification and check results:
+    clasfn_result = api.get_classification(flow.classification.flow_hash)
+    assert clasfn_result['classified'] ==  1
+    assert clasfn_result['classification_tag'] ==  "Constrained Bandwidth Traffic"
 
 def test_enumerate_eth_type():
     """

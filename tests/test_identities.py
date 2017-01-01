@@ -44,6 +44,12 @@ import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_lldp as pkts_lldp
 import packets_ipv4_dns as pkts_dns
 
+#*** Test DPIDs and in ports:
+DPID1 = 1
+DPID2 = 2
+INPORT1 = 1
+INPORT2 = 2
+
 #*** Instantiate Config class:
 config = config.Config()
 
@@ -55,13 +61,6 @@ def test_harvest_ARP():
     """
     Test harvesting identity metadata from an IPv4 ARP reply.
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    DPID2 = 2
-    INPORT1 = 1
-    INPORT2 = 2
-
     #*** Instantiate flow and identities objects:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
@@ -80,12 +79,6 @@ def test_harvest_DHCP():
     Note: this test is very basic and does not cover much...
     TBD: cover more scenarios and DHCP message types
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-    INPORT2 = 2
-
     #*** Instantiate flow and identities objects:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
@@ -138,13 +131,6 @@ def test_harvest_LLDP():
     """
     Test harvesting identity metadata from LLDP packets
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    DPID2 = 2
-    INPORT1 = 1
-    INPORT2 = 2
-
     #*** Instantiate flow and identities objects:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
@@ -190,13 +176,6 @@ def test_harvest_DNS():
     """
     Test harvesting identity metadata from DNS packets
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    DPID2 = 2
-    INPORT1 = 1
-    INPORT2 = 2
-
     #*** Instantiate flow and identities objects:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)

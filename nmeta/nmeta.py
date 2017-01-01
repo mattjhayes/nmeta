@@ -21,7 +21,7 @@ Do not use this code for production deployments - it is proof of concept code
 and carries no warrantee whatsoever. You have been warned.
 """
 
-#*** Note: see api.py module for REST API calls
+#*** Note: see api_external.py module for REST API calls
 
 #*** General Imports:
 import struct
@@ -42,15 +42,11 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
 
-#*** Required for api module context:
-from ryu.app.wsgi import WSGIApplication
-
 #*** nmeta imports:
 import tc_policy
 import config
 import switch_abstraction
 import forwarding
-import api
 import flows
 import identities
 import of_error_decode
@@ -69,14 +65,14 @@ class NMeta(app_manager.RyuApp, BaseClass):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
                     ofproto_v1_3.OFP_VERSION]
 
-    #*** Used to call api module:
-    _CONTEXTS = {'wsgi': WSGIApplication}
-
     def __init__(self, *args, **kwargs):
         super(NMeta, self).__init__(*args, **kwargs)
         #*** Instantiate config class which imports configuration file
         #*** config.yaml and provides access to keys/values:
         self.config = config.Config()
+
+        #*** Now set config module to log properly:
+        self.config.inherit_logging(self.config)
 
         #*** Run the BaseClass init to set things up:
         super(NMeta, self).__init__()
@@ -100,8 +96,6 @@ class NMeta(app_manager.RyuApp, BaseClass):
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
         self.sa = switch_abstraction.SwitchAbstract(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
-        wsgi = kwargs['wsgi']
-        self.api = api.Api(self, self.config, wsgi)
 
         #*** Instantiate a flow object for conversation metadata:
         self.flow = flows.Flow(self.config)
@@ -179,6 +173,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
             self.tc_policy.check_policy(self.flow, self.ident)
             self.logger.debug("classification=%s",
                                              self.flow.classification.dbdict())
+            #*** Write classification result to classifications collection:
+            self.flow.classification.commit()
 
         #*** Call Forwarding module to determine output port:
         out_port = self.forwarding.basic_switch(ev, in_port)

@@ -19,7 +19,6 @@ Contents:
    introduction
    howitworks
    install
-   quickstart
    configguide
    webui
    apiguide

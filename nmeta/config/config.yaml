@@ -27,6 +27,7 @@ syslog_format: "sev=%(levelname)s module=%(module)s func=%(funcName)s %(message)
 #*** Syslog Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
 nmeta_logging_level_s: INFO
+config_logging_level_s: INFO
 tc_policy_logging_level_s: INFO
 tc_static_logging_level_s: INFO
 tc_identity_logging_level_s: INFO
@@ -51,6 +52,7 @@ console_format: "%(asctime)s %(module)s[%(process)d] %(funcName)s %(levelname)s 
 #*** Console Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
 nmeta_logging_level_c: DEBUG
+config_logging_level_c: DEBUG
 tc_policy_logging_level_c: DEBUG
 tc_static_logging_level_c: DEBUG
 tc_identity_logging_level_c: DEBUG

@@ -104,8 +104,9 @@ def test_check_policy():
     #*** Instantiate tc_policy, flows and identities classes, specifying
     #*** a particular main_policy file to use:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                                pol_dir="config/tests/regression",
-                                pol_file="main_policy_regression_static.yaml")
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
     flow = flow_class.Flow(config)
     ident = identities.Identities(config)
 
@@ -126,8 +127,9 @@ def test_check_policy():
 
     #*** Re-instantiate tc_policy with different policy that should classify:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                               pol_dir="config/tests/regression",
-                               pol_file="main_policy_regression_static_3.yaml")
+                        pol_dir_default="config/tests/regression",
+                        pol_dir_user="config/tests/foo",
+                        pol_filename="main_policy_regression_static_3.yaml")
 
     #*** Re-ingest packet:
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
@@ -211,16 +213,18 @@ def test_custom_classifiers():
     #*** Instantiate tc_policy, specifying
     #*** a particular main_policy file to use that has no custom classifiers:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_static.yaml")
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/regression",
+                            pol_filename="main_policy_regression_static.yaml")
     assert tc.custom_classifiers == []
 
     #*** Instantiate tc_policy, specifying
     #*** a custom statistical main_policy file to use that has a
     #*** custom classifier:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_statistical.yaml")
+                        pol_dir_default="config/tests/regression",
+                        pol_dir_user="config/tests/foo",
+                        pol_filename="main_policy_regression_statistical.yaml")
     assert tc.custom_classifiers == ['statistical_qos_bandwidth_1']
 
 def test_qos():
@@ -230,8 +234,9 @@ def test_qos():
     #*** Instantiate tc_policy, specifying
     #*** a particular main_policy file to use that has no custom classifiers:
     tc = tc_policy.TrafficClassificationPolicy(config,
-                            pol_dir="config/tests/regression",
-                            pol_file="main_policy_regression_static.yaml")
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
     assert tc.qos('default_priority') == 0
     assert tc.qos('constrained_bw') == 1
     assert tc.qos('high_priority') == 2

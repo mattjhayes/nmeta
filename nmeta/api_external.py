@@ -106,6 +106,40 @@ class ExternalAPI(BaseClass):
         self.identities = db_nmeta.identities
         self.classifications = db_nmeta.classifications
 
+    class FlowUI(object):
+        """
+        An object that represents a flow record to be sent in response
+        to the WebUI. Features:
+         - Flow direction normalised to direction of
+           first packet in flow
+         - Src and Dst are IP or Layer 2 to optimise screen space
+         - Extra data included for hover-over tips
+        Note that there should not be any display-specific data (i.e. don't
+        send any HTML, leave this to the client code)
+        """
+        def __init__(self):
+            #*** Initialise flow variables:
+            self.src = ""
+            self.src_hover = ""
+            self.dst = ""
+            self.dst_hover = ""
+            self.proto = ""
+            self.proto_hover = ""
+            self.tp_src = ""
+            self.tp_src_hover = ""
+            self.tp_dst = ""
+            self.tp_dst_hover = ""
+            self.classification = ""
+            self.classification_hover = ""
+            self.actions = ""
+            self.actions_hover = ""
+        def response(self):
+            """
+            Return a dictionary object of flow parameters
+            for sending in response
+            """
+            return self.__dict__
+
     def run(self):
         """
         Run the External API instance
@@ -329,26 +363,37 @@ class ExternalAPI(BaseClass):
             if not record['flow_hash'] in known_hashes:
                 #*** Normalise the direction of the flow:
                 record = self.flow_normalise_direction(record)
-                #*** Dictionary to hold our crafted record that has condensed
-                #*** columns for better use of UI real-estate:
-                flow = {}
+                #*** Instantiate an instance of FlowUI class:
+                flow = self.FlowUI()
                 if record['eth_type'] == 2048:
                     #*** It's IPv4, see if we can augment with identity:
-                    flow['src'] = self.get_html_id(record['ip_src'])
-                    flow['dst'] = self.get_html_id(record['ip_dst'])
-                    flow['proto'] = enumerate_ip_proto(record['proto'])
+                    flow.src = self.get_id(record['ip_src'])
+                    if flow.src != record['ip_src']:
+                        flow.src_hover = hovertext_ip_addr(record['ip_src'])
+                    flow.dst = self.get_id(record['ip_dst'])
+                    if flow.dst != record['ip_dst']:
+                        flow.dst_hover = hovertext_ip_addr(record['ip_dst'])
+                    flow.proto = enumerate_ip_proto(record['proto'])
+                    if flow.proto != record['proto']:
+                        #*** IP proto enumerated, set hover decimal text:
+                        flow.proto_hover = \
+                                         hovertext_ip_proto(record['proto'])
                 else:
                     #*** It's not IPv4 (TBD, handle IPv6)
-                    flow['src'] = record['eth_src']
-                    flow['dst'] = record['eth_dst']
-                    flow['proto'] = self.get_html_proto(record['eth_type'])
-                flow['tp_src'] = record['tp_src']
-                flow['tp_dst'] = record['tp_dst']
+                    flow.src = record['eth_src']
+                    flow.dst = record['eth_dst']
+                    flow.proto = enumerate_eth_type(record['eth_type'])
+                    if flow.proto != record['eth_type']:
+                        #*** Eth type enumerated, set hover decimal eth_type:
+                        flow.proto_hover = \
+                                         hovertext_eth_type(record['eth_type'])
+                flow.tp_src = record['tp_src']
+                flow.tp_dst = record['tp_dst']
                 #*** Enrich with classification and action(s):
                 classification = self.get_classification(record['flow_hash'])
-                flow['classification'] = classification['classification_tag']
+                flow.classification = classification['classification_tag']
                 #*** Add to items dictionary, which is returned in response:
-                items['_items'].append(flow)
+                items['_items'].append(flow.response())
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
 
@@ -423,20 +468,7 @@ class ExternalAPI(BaseClass):
             self.logger.warning("no packets found")
             return 0
 
-    def get_html_proto(self, eth_type):
-        """
-        Passed an ethernet type and return either the original value
-        or augmented HTTP if a lookup of value succeeds
-        """
-        aug_eth_type = enumerate_eth_type(eth_type)
-        if aug_eth_type:
-            return "<span data-toggle=\"tooltip\" title=\"eth_type: " + \
-                        str(eth_type) + " (decimal)\">" + str(aug_eth_type) + \
-                        "</span>"
-        else:
-            return eth_type
-
-    def get_html_id(self, ip_addr):
+    def get_id(self, ip_addr):
         """
         Passed an IP address. Look this up for matching identity
         metadata and return a string that contains either the original
@@ -445,15 +477,11 @@ class ExternalAPI(BaseClass):
         host = self.get_host_by_ip(ip_addr)
         service = self.get_service_by_ip(ip_addr)
         if host and service:
-            return "<span data-toggle=\"tooltip\" title=\"" + \
-                        ip_addr + "\">" + host + "<br>service=" + service + \
-                        "</span>"
+            return host + ", " + service
         elif host:
-            return "<span data-toggle=\"tooltip\" title=\"" + \
-                        ip_addr + "\">" + host + "</span>"
+            return host
         elif service:
-            return "<span data-toggle=\"tooltip\" title=\"" + \
-                        ip_addr + "\">service=" + service + "</span>"
+            return service
         else:
             return ip_addr
 
@@ -516,6 +544,13 @@ def enumerate_eth_type(eth_type):
     else:
         return eth_type
 
+def hovertext_eth_type(eth_type):
+    """
+    Passed an eth_type (decimal, not enumerated) and
+    return it wrapped in extra text to convey context
+    """
+    return "Ethernet Type: " + str(eth_type) + " (decimal)"
+
 def enumerate_ip_proto(ip_proto):
     """
     Passed an IP protocol number (in decimal) and return an
@@ -526,6 +561,20 @@ def enumerate_ip_proto(ip_proto):
         return IP_PROTOS[ip_proto]
     else:
         return ip_proto
+
+def hovertext_ip_proto(ip_proto):
+    """
+    Passed an IP protocol number (decimal, not enumerated) and
+    return it wrapped in extra text to convey context
+    """
+    return "IP Protocol: " + str(ip_proto) + " (decimal)"
+
+def hovertext_ip_addr(ip_addr):
+    """
+    Passed an IP address and return it
+    wrapped in extra text to convey context
+    """
+    return "IP Address: " + str(ip_addr)
 
 if __name__ == '__main__':
     #*** Instantiate config class which imports configuration file

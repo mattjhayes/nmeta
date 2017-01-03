@@ -81,6 +81,9 @@ mongo_dbname: nmeta_database
 packet_ins_max_bytes: 2000000
 flow_time_limit: 30
 #
+#*** flow_rems capped collection
+flow_rems_max_bytes: 500000
+#
 #*** identities capped collection
 identities_max_bytes: 2000000
 identity_time_limit: 86400

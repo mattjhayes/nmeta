@@ -379,6 +379,7 @@ class FlowTables(object):
                                 idle_timeout=idle_timeout,
                                 hard_timeout=hard_timeout,
                                 priority=priority,
+                                flags=ofproto.OFPFF_SEND_FLOW_REM,
                                 match=match,
                                 instructions=inst)
         self.logger.debug("Installing Flow Entry to dpid=%s", self.dpid)

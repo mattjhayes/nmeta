@@ -164,7 +164,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
             if self.flow.classification.classified:
                 suppress_result = flowtables.suppress_flow(msg, in_port,
                                                            out_port, out_queue)
-                self.logger.debug("event=suppress_flow flow_hash=%s dpid=%s"
+                self.logger.debug("event=suppress_flow flow_hash=%s dpid=%s "
                                     "suppress_result=%s",
                                     self.flow.flow_hash, dpid, suppress_result)
             else:
@@ -197,16 +197,18 @@ class NMeta(app_manager.RyuApp, BaseClass):
             reason = 'GROUP DELETE'
         else:
             reason = 'unknown'
-        self.logger.info('Flow removed msg '
+        self.logger.info('Idle Flow removed dpid=%s '
                               'cookie=%d priority=%d reason=%s table_id=%d '
                               'duration_sec=%d '
                               'idle_timeout=%d hard_timeout=%d '
                               'packets=%d bytes=%d match=%s',
-                              msg.cookie, msg.priority, reason, msg.table_id,
-                              msg.duration_sec,
+                              datapath.id, msg.cookie, msg.priority, reason,
+                              msg.table_id, msg.duration_sec,
                               msg.idle_timeout, msg.hard_timeout,
                               msg.packet_count, msg.byte_count, msg.match)
-        # TBD, use flows mod to record this into the flow_rems db col.
+        if reason == 'IDLE TIMEOUT':
+            #*** Record flow removal into the flow_rems database collection:
+            self.flow.record_removal(msg)
 
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])

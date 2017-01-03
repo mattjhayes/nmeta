@@ -9,10 +9,9 @@ Code Documentation
    tc_static
    tc_identity
    tc_custom
-   api
    api_external
    config
    flows
    identities
    forwarding
-   switch_abstraction
+   switches

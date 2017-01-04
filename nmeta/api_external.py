@@ -105,6 +105,7 @@ class ExternalAPI(BaseClass):
         self.packet_ins = db_nmeta.packet_ins
         self.identities = db_nmeta.identities
         self.classifications = db_nmeta.classifications
+        self.flow_rems = db_nmeta.flow_rems
 
     class FlowUI(object):
         """
@@ -133,6 +134,10 @@ class ExternalAPI(BaseClass):
             self.classification_hover = ""
             self.actions = ""
             self.actions_hover = ""
+            self.data_sent = ""
+            self.data_sent_hover = ""
+            self.data_received = ""
+            self.data_received_hover = ""
         def response(self):
             """
             Return a dictionary object of flow parameters
@@ -392,10 +397,51 @@ class ExternalAPI(BaseClass):
                 #*** Enrich with classification and action(s):
                 classification = self.get_classification(record['flow_hash'])
                 flow.classification = classification['classification_tag']
+                #*** Enrich with data xfer (only applies to flows that
+                #***  have had idle timeout)
+                data_xfer = self.get_flow_data_xfer(record['flow_hash'],
+                                                              record['ip_src'])
+                if data_xfer['tx_found']:
+                    flow.data_sent = data_xfer['tx_bytes']
+                    flow.data_sent_hover = data_xfer['tx_pkts']
+                if data_xfer['rx_found']:
+                    flow.data_received = data_xfer['rx_bytes']
+                    flow.data_received_hover = data_xfer['rx_pkts']
                 #*** Add to items dictionary, which is returned in response:
                 items['_items'].append(flow.response())
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+    def get_flow_data_xfer(self, flow_hash, ip_A):
+        """
+        Enrich a flow entry by looking up data transfer stats
+        (which may not exist) and return dictionary of the values
+
+        Use flow source IP to distinguish between data sent (tx) and
+        received (rx) records which both have same flow hash
+        """
+        #*** Set blank result:
+        result = {'tx_found': 0, 'rx_found': 0, 'tx_bytes': 0, 'rx_bytes': 0,
+                        'tx_pkts': 0, 'rx_pkts': 0}
+        #*** Search flow_rems database collection:
+        db_data_tx = {'flow_hash': flow_hash, 'ip_A': ip_A,
+              'classification_time': {'$gte': datetime.datetime.now() -
+                                    CLASSIFICATION_TIME_LIMIT}}
+        db_data_rx = {'flow_hash': flow_hash, 'ip_B': ip_A,
+              'classification_time': {'$gte': datetime.datetime.now() -
+                                    CLASSIFICATION_TIME_LIMIT}}
+        tx = self.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
+        rx = self.flow_rems.find(db_data_rx).sort('$natural', -1).limit(1)
+        #*** Analyse database results and update result:
+        if tx.count():
+            result['tx_found'] = 1
+            result['tx_bytes'] = list(tx)[0]['byte_count']
+            result['tx_pkts'] = list(tx)[0]['packet_count']
+        if rx.count():
+            result['rx_found'] = 1
+            result['rx_bytes'] = list(rx)[0]['byte_count']
+            result['rx_pkts'] = list(rx)[0]['packet_count']
+        return result
 
     def get_classification(self, flow_hash):
         """

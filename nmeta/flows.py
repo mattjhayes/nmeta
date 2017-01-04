@@ -557,35 +557,15 @@ class Flow(BaseClass):
                 #*** IPv4:
                 self.logger.debug("Removed flow was IPv4 unknown protocol")
                 # TBD
+
             elif match['eth_type'] == 34525:
                 #*** IPv6:
                 self.logger.debug("Removed flow was IPv6 unknown protocol")
                 # TBD
+
             else:
                 self.logger.warning("Removed flow was unhandled eth_type")
                 return 0
-
-
-# 14:38:02 nmeta[4037] flow_removed_handler INFO Flow removed msg cookie=0
-# priority=1 reason=IDLE TIMEOUT table_id=0 duration_sec=5 idle_timeout=5
-# hard_timeout=0 packets=0 bytes=0
-
-# match=OFPMatch(oxm_fields={
-# 'ipv4_dst': '10.1.0.2', 'tcp_src': 52625, 'ipv4_src': '10.1.0.1',
-# 'eth_type': 2048, 'tcp_dst': 80, 'ip_proto': 6})
-
-
-               # self.logger.info('Flow removed msg '
-               #               'cookie=%d priority=%d reason=%s table_id=%d '
-               #               'duration_sec=%d '
-               #               'idle_timeout=%d hard_timeout=%d '
-               #               'packets=%d bytes=%d match=%s',
-               #               msg.cookie, msg.priority, reason, msg.table_id,
-               #               msg.duration_sec,
-               #               msg.idle_timeout, msg.hard_timeout,
-               #               msg.packet_count, msg.byte_count, msg.match)
-
-
 
     def ingest_packet(self, dpid, in_port, pkt, timestamp):
         """

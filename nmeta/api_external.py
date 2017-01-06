@@ -415,32 +415,38 @@ class ExternalAPI(BaseClass):
     def get_flow_data_xfer(self, flow_hash, ip_A):
         """
         Enrich a flow entry by looking up data transfer stats
-        (which may not exist) and return dictionary of the values
+        (which may not exist) in flow_rems database collection
+        and return dictionary of the values.
 
         Use flow source IP to distinguish between data sent (tx) and
-        received (rx) records which both have same flow hash
+        received (rx) records which both have same flow hash.
         """
+        self.logger.debug("In get_flow_data_xfer")
         #*** Set blank result:
         result = {'tx_found': 0, 'rx_found': 0, 'tx_bytes': 0, 'rx_bytes': 0,
                         'tx_pkts': 0, 'rx_pkts': 0}
         #*** Search flow_rems database collection:
         db_data_tx = {'flow_hash': flow_hash, 'ip_A': ip_A,
-              'classification_time': {'$gte': datetime.datetime.now() -
+              'removal_time': {'$gte': datetime.datetime.now() -
                                     CLASSIFICATION_TIME_LIMIT}}
         db_data_rx = {'flow_hash': flow_hash, 'ip_B': ip_A,
-              'classification_time': {'$gte': datetime.datetime.now() -
+              'removal_time': {'$gte': datetime.datetime.now() -
                                     CLASSIFICATION_TIME_LIMIT}}
         tx = self.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
         rx = self.flow_rems.find(db_data_rx).sort('$natural', -1).limit(1)
         #*** Analyse database results and update result:
         if tx.count():
+            self.logger.debug("Found TX, count is %s", tx.count())
             result['tx_found'] = 1
             result['tx_bytes'] = list(tx)[0]['byte_count']
             result['tx_pkts'] = list(tx)[0]['packet_count']
         if rx.count():
+            self.logger.debug("Found RX, count is %s", rx.count())
             result['rx_found'] = 1
-            result['rx_bytes'] = list(rx)[0]['byte_count']
-            result['rx_pkts'] = list(rx)[0]['packet_count']
+            result_rx = list(rx)[0]
+            self.logger.debug("list(rx)[0] is %s", result_rx)
+            result['rx_bytes'] = result_rx['byte_count']
+            result['rx_pkts'] = result_rx['packet_count']
         return result
 
     def get_classification(self, flow_hash):
@@ -630,3 +636,4 @@ if __name__ == '__main__':
     api = ExternalAPI(config)
     #*** Start the External API:
     api.run()
+

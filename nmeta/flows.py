@@ -444,6 +444,7 @@ class Flow(BaseClass):
             self.logger = logger
             self.flow_rems = flow_rems
             #*** Initialise removed flow parameters:
+            self.removal_time = datetime.datetime.now()
             self.cookie = msg.cookie
             self.priority = msg.priority
             self.reason = msg.reason
@@ -492,6 +493,7 @@ class Flow(BaseClass):
             """
             dbdictresult = {}
             dbdictresult['flow_hash'] = self.flow_hash
+            dbdictresult['removal_time'] = self.removal_time
             dbdictresult['cookie'] = self.cookie
             dbdictresult['priority'] = self.priority
             dbdictresult['reason'] = self.reason
@@ -523,6 +525,7 @@ class Flow(BaseClass):
             Record removed flow into MongoDB
             flow_rems collection.
             """
+            self.logger.debug("Writing flow removal to database")
             #*** Write to database collection:
             self.flow_rems.insert_one(self.dbdict(reverse=reverse))
 
@@ -969,3 +972,4 @@ def _mac_addr(address):
     Convert a MAC address to a readable/printable string
     """
     return ':'.join('%02x' % ord(b) for b in address)
+

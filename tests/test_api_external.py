@@ -283,6 +283,34 @@ def test_flow_normalise_direction():
     assert normalised_record['tp_src'] == pkts.TP_DST[1]
     assert normalised_record['tp_dst'] == pkts.TP_SRC[1]
 
+def test_get_flow_data_xfer():
+    """
+    Test the get_flow_data_xfer method
+    """
+    #*** Create flow removed records in the flow_rems db collection:
+    #*** Instantiate a flow object:
+    flow = flow_class.Flow(config)
+
+    #08:59:50 nmeta[3128] flow_removed_handler INFO Idle Flow removed
+    # dpid=8796748549206 cookie=0 priority=1 reason=IDLE TIMEOUT
+    # table_id=0 duration_sec=5 idle_timeout=5 hard_timeout=0 packets=10
+    # bytes=744 match=OFPMatch(oxm_fields={'ipv4_dst': '10.1.0.2',
+    # 'tcp_src': 46215, 'ipv4_src': '10.1.0.1', 'eth_type': 2048,
+    # 'tcp_dst': 80, 'ip_proto': 6})
+
+    #08:59:50 flows[3128] record_removal DEBUG Removed flow was TCP,
+    #dbdict={'packet_count': 10, 'duration_sec': 5, 'hard_timeout': 0, 'byte_count': 744, 'tp_A': 46215, 'reason': 0, 'priority': 1, 'flow_hash': '24b0c27adb1d593ef5513d09f06b03b9', 'table_id': 0, 'tp_B': 80, 'ip_proto': 6, 'cookie': 0, 'ip_A': '10.1.0.1', 'ip_B': '10.1.0.2', 'idle_timeout': 5, 'eth_type': 2048}
+
+    #08:59:50 nmeta[3128] flow_removed_handler INFO Idle Flow removed
+    # dpid=8796748549206 cookie=0 priority=1 reason=IDLE TIMEOUT table_id=0 duration_sec=5 idle_timeout=5 hard_timeout=0 packets=9 bytes=6644 match=OFPMatch(oxm_fields={'ipv4_dst': '10.1.0.1', 'tcp_src': 80, 'ipv4_src': '10.1.0.2', 'eth_type': 2048, 'tcp_dst': 46215, 'ip_proto': 6})
+    #*** Test retrieval of data with get_flow_data_xfer method:
+
+    #*** Instantiate class to hold removed flow record:
+    #remf = self.RemovedFlow(self.logger, self.flow_rems, msg)
+
+    #self, flow_hash, ip_A
+
+
 def test_get_dns_ip():
     """
     Test looking up a DNS CNAME to get an IP address

@@ -41,6 +41,16 @@ import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_ipv4_dns as pkts_dns
 
+#*** Ryu imports:
+from ryu.base import app_manager  # To suppress cyclic import
+from ryu.controller import controller
+from ryu.controller import handler
+from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ofproto_v1_3_parser
+from ryu.ofproto import ofproto_protocol
+from ryu.ofproto import ofproto_parser
+from ryu.lib import addrconv
+
 #*** Import library to do HTTP GET requests:
 import requests
 
@@ -285,31 +295,51 @@ def test_flow_normalise_direction():
 
 def test_get_flow_data_xfer():
     """
-    Test the get_flow_data_xfer method
+    Test the get_flow_data_xfer method.
+
+    Synthesise flow removal messages to test with.
     """
-    #*** Create flow removed records in the flow_rems db collection:
-    #*** Instantiate a flow object:
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate Flow class:
     flow = flow_class.Flow(config)
 
-    #08:59:50 nmeta[3128] flow_removed_handler INFO Idle Flow removed
-    # dpid=8796748549206 cookie=0 priority=1 reason=IDLE TIMEOUT
-    # table_id=0 duration_sec=5 idle_timeout=5 hard_timeout=0 packets=10
-    # bytes=744 match=OFPMatch(oxm_fields={'ipv4_dst': '10.1.0.2',
-    # 'tcp_src': 46215, 'ipv4_src': '10.1.0.1', 'eth_type': 2048,
-    # 'tcp_dst': 80, 'ip_proto': 6})
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
 
-    #08:59:50 flows[3128] record_removal DEBUG Removed flow was TCP,
-    #dbdict={'packet_count': 10, 'duration_sec': 5, 'hard_timeout': 0, 'byte_count': 744, 'tp_A': 46215, 'reason': 0, 'priority': 1, 'flow_hash': '24b0c27adb1d593ef5513d09f06b03b9', 'table_id': 0, 'tp_B': 80, 'ip_proto': 6, 'cookie': 0, 'ip_A': '10.1.0.1', 'ip_B': '10.1.0.2', 'idle_timeout': 5, 'eth_type': 2048}
+    #*** Set up fake datapath and synthesise messages:
+    datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
+    msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
 
-    #08:59:50 nmeta[3128] flow_removed_handler INFO Idle Flow removed
-    # dpid=8796748549206 cookie=0 priority=1 reason=IDLE TIMEOUT table_id=0 duration_sec=5 idle_timeout=5 hard_timeout=0 packets=9 bytes=6644 match=OFPMatch(oxm_fields={'ipv4_dst': '10.1.0.1', 'tcp_src': 80, 'ipv4_src': '10.1.0.2', 'eth_type': 2048, 'tcp_dst': 46215, 'ip_proto': 6})
-    #*** Test retrieval of data with get_flow_data_xfer method:
+    logger.debug("msg_tx=%s", msg_tx)
 
-    #*** Instantiate class to hold removed flow record:
-    #remf = self.RemovedFlow(self.logger, self.flow_rems, msg)
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx)
+    flow.record_removal(msg_rx)
 
-    #self, flow_hash, ip_A
+    #*** Now, test the get_flow_data_xfer method:
+    record = {'ip_src': '10.1.0.1',
+              'ip_dst': '10.1.0.2',
+              'tp_src': 46215,
+              'tp_dst': 80,
+              'proto': 6,
+              'flow_hash': '24b0c27adb1d593ef5513d09f06b03b9'}
+    xfer = api.get_flow_data_xfer(record)
+    logger.debug("xfer=%s", xfer)
 
+    assert xfer['tx_found'] == 1
+    assert xfer['tx_bytes'] == 744
+    assert xfer['tx_pkts'] == 10
+    assert xfer['rx_found'] == 1
+    assert xfer['rx_bytes'] == 6644
+    assert xfer['rx_pkts'] == 9
 
 def test_get_dns_ip():
     """

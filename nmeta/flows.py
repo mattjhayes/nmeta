@@ -482,14 +482,11 @@ class Flow(BaseClass):
                                                                 self.ip_proto)
             self.flow_hash = _hash_tuple(flow_tuple)
 
-        def dbdict(self, reverse=0):
+        def dbdict(self):
             """
             Return a dictionary object of parameters
             from the removed flow for storing in the flow_rems
             database collection
-
-            If reverse is set then flip the IP addresses and
-            transport ports
             """
             dbdictresult = {}
             dbdictresult['flow_hash'] = self.flow_hash
@@ -509,25 +506,16 @@ class Flow(BaseClass):
             dbdictresult['ip_proto'] = self.ip_proto
             dbdictresult['tp_A'] = self.tp_A
             dbdictresult['tp_B'] = self.tp_B
-            if reverse:
-                #*** Flip direction, including flipping flow hash:
-                dbdictresult['ip_A'] = self.ip_B
-                dbdictresult['ip_B'] = self.ip_A
-                dbdictresult['tp_A'] = self.tp_B
-                dbdictresult['tp_B'] = self.tp_A
-                flow_tuple = (self.ip_B, self.ip_A,
-                              self.tp_B, self.tp_A, self.ip_proto)
-                dbdictresult['flow_hash'] = _hash_tuple(flow_tuple)
             return dbdictresult
 
-        def commit(self, reverse=0):
+        def commit(self):
             """
             Record removed flow into MongoDB
             flow_rems collection.
             """
             self.logger.debug("Writing flow removal to database")
             #*** Write to database collection:
-            self.flow_rems.insert_one(self.dbdict(reverse=reverse))
+            self.flow_rems.insert_one(self.dbdict())
 
     def record_removal(self, msg):
         """
@@ -546,7 +534,6 @@ class Flow(BaseClass):
                 self.logger.debug("Removed flow was TCP, dbdict=%s",
                                                              remf.dbdict())
                 remf.commit()
-                remf.commit(reverse=1)
                 return 1
             else:
                 #*** Non-TCP IP flow

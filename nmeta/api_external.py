@@ -39,6 +39,9 @@ from pymongo import MongoClient
 #*** nmeta imports
 import config
 
+#*** For hashing flow 5-tuples:
+import hashlib
+
 #*** For timestamps:
 import datetime
 
@@ -399,8 +402,7 @@ class ExternalAPI(BaseClass):
                 flow.classification = classification['classification_tag']
                 #*** Enrich with data xfer (only applies to flows that
                 #***  have had idle timeout)
-                data_xfer = self.get_flow_data_xfer(record['flow_hash'],
-                                                              record['ip_src'])
+                data_xfer = self.get_flow_data_xfer(record)
                 if data_xfer['tx_found']:
                     flow.data_sent = data_xfer['tx_bytes']
                     flow.data_sent_hover = data_xfer['tx_pkts']
@@ -412,24 +414,35 @@ class ExternalAPI(BaseClass):
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
 
-    def get_flow_data_xfer(self, flow_hash, ip_A):
+    def get_flow_data_xfer(self, record):
         """
-        Enrich a flow entry by looking up data transfer stats
-        (which may not exist) in flow_rems database collection
+        Passed a record of a single flow from the packet_ins
+        database collection.
+
+        Enrich this by looking up data transfer stats
+        (which may not exist) in flow_rems database collection,
         and return dictionary of the values.
 
-        Use flow source IP to distinguish between data sent (tx) and
-        received (rx) records which both have same flow hash.
+        Note that the data sent (tx) and received (rx) records
+        will have different flow hashes.
         """
         self.logger.debug("In get_flow_data_xfer")
         #*** Set blank result:
         result = {'tx_found': 0, 'rx_found': 0, 'tx_bytes': 0, 'rx_bytes': 0,
                         'tx_pkts': 0, 'rx_pkts': 0}
+        ip_A = record['ip_src']
+        ip_B = record['ip_dst']
+        tp_A = record['tp_src']
+        tp_B = record['tp_dst']
+        proto = record['proto']
+        flow_hash_tx = record['flow_hash']
+        #*** Get reverse flow hash:
+        flow_hash_rx = _hash_tuple((ip_B, ip_A, tp_B, tp_A, proto))
         #*** Search flow_rems database collection:
-        db_data_tx = {'flow_hash': flow_hash, 'ip_A': ip_A,
+        db_data_tx = {'flow_hash': flow_hash_tx, 'ip_A': ip_A,
               'removal_time': {'$gte': datetime.datetime.now() -
                                     CLASSIFICATION_TIME_LIMIT}}
-        db_data_rx = {'flow_hash': flow_hash, 'ip_B': ip_A,
+        db_data_rx = {'flow_hash': flow_hash_rx, 'ip_B': ip_A,
               'removal_time': {'$gte': datetime.datetime.now() -
                                     CLASSIFICATION_TIME_LIMIT}}
         tx = self.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
@@ -438,15 +451,16 @@ class ExternalAPI(BaseClass):
         if tx.count():
             self.logger.debug("Found TX, count is %s", tx.count())
             result['tx_found'] = 1
-            result['tx_bytes'] = list(tx)[0]['byte_count']
-            result['tx_pkts'] = list(tx)[0]['packet_count']
+            tx_result = list(tx)[0]
+            result['tx_bytes'] = tx_result['byte_count']
+            result['tx_pkts'] = tx_result['packet_count']
         if rx.count():
             self.logger.debug("Found RX, count is %s", rx.count())
             result['rx_found'] = 1
-            result_rx = list(rx)[0]
-            self.logger.debug("list(rx)[0] is %s", result_rx)
-            result['rx_bytes'] = result_rx['byte_count']
-            result['rx_pkts'] = result_rx['packet_count']
+            rx_result = list(rx)[0]
+            self.logger.debug("list(rx)[0] is %s", rx_result)
+            result['rx_bytes'] = rx_result['byte_count']
+            result['rx_pkts'] = rx_result['packet_count']
         return result
 
     def get_classification(self, flow_hash):
@@ -627,6 +641,16 @@ def hovertext_ip_addr(ip_addr):
     wrapped in extra text to convey context
     """
     return "IP Address: " + str(ip_addr)
+
+def _hash_tuple(hash_tuple):
+    """
+    Simple function to hash a tuple with MD5.
+    Returns a hash value for the tuple
+    """
+    hash_result = hashlib.md5()
+    tuple_as_string = str(hash_tuple)
+    hash_result.update(tuple_as_string)
+    return hash_result.hexdigest()
 
 if __name__ == '__main__':
     #*** Instantiate config class which imports configuration file

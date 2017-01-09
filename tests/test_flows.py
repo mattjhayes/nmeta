@@ -354,7 +354,7 @@ def test_record_removal():
     Test the recording of an idle-timeout flow removal message
     sent by a switch into the flow_rems database collection
 
-    Create mock flow removal messages to test with.
+    Synthesise flow removal messages to test with.
     """
     #*** Supports OpenFlow version 1.3:
     OFP_VERSION = ofproto_v1_3.OFP_VERSION
@@ -375,17 +375,35 @@ def test_record_removal():
     msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
     msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
 
+    logger.debug("msg_tx=%s", msg_tx)
+
     #*** Call our method that we're testing with the synthesised flow rems:
     flow.record_removal(msg_tx)
     flow.record_removal(msg_rx)
 
     #*** Check that messages recorded correctly in database collection:
-    db_data_tx = {'ip_A': '10.1.0.1'}
+    db_data_tx = {'ip_A': '10.1.0.1', 'tp_B': 80}
     result = flow.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
-    logger.debug("result=%s", list(result)[0])
+    result_tx = list(result)[0]
+    logger.debug("result=%s", result_tx)
+    assert result_tx['table_id'] == 1
+    assert result_tx['ip_B'] == '10.1.0.2'
+    assert result_tx['tp_A'] == 46215
+    assert result_tx['packet_count'] == 10
+    assert result_tx['flow_hash'] == flow_class._hash_tuple(('10.1.0.1',
+                                                     '10.1.0.2', 46215, 80, 6))
 
-    # TBD HERE
-    assert 1 == 0
+    #*** Return leg of flow:
+    db_data_tx = {'ip_B': '10.1.0.1', 'tp_A': 80}
+    result = flow.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
+    result_tx = list(result)[0]
+    logger.debug("result=%s", result_tx)
+    assert result_tx['table_id'] == 1
+    assert result_tx['ip_A'] == '10.1.0.2'
+    assert result_tx['tp_B'] == 46215
+    assert result_tx['packet_count'] == 9
+    assert result_tx['flow_hash'] == flow_class._hash_tuple(('10.1.0.2',
+                                                     '10.1.0.1', 80, 46215, 6))
 
 def test_classification_identity():
     """

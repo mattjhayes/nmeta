@@ -41,7 +41,7 @@
                   "OXMTlv": {
                      "field": "tcp_src",
                      "mask": null,
-                     "value": 46215
+                     "value": 43297
                   }
                },
                {

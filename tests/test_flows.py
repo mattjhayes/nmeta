@@ -388,10 +388,10 @@ def test_record_removal():
     logger.debug("result=%s", result_tx)
     assert result_tx['table_id'] == 1
     assert result_tx['ip_B'] == '10.1.0.2'
-    assert result_tx['tp_A'] == 46215
+    assert result_tx['tp_A'] == 43297
     assert result_tx['packet_count'] == 10
     assert result_tx['flow_hash'] == flow_class._hash_tuple(('10.1.0.1',
-                                                     '10.1.0.2', 46215, 80, 6))
+                                                     '10.1.0.2', 43297, 80, 6))
 
     #*** Return leg of flow:
     db_data_tx = {'ip_B': '10.1.0.1', 'tp_A': 80}
@@ -400,10 +400,10 @@ def test_record_removal():
     logger.debug("result=%s", result_tx)
     assert result_tx['table_id'] == 1
     assert result_tx['ip_A'] == '10.1.0.2'
-    assert result_tx['tp_B'] == 46215
+    assert result_tx['tp_B'] == 43297
     assert result_tx['packet_count'] == 9
     assert result_tx['flow_hash'] == flow_class._hash_tuple(('10.1.0.2',
-                                                     '10.1.0.1', 80, 46215, 6))
+                                                     '10.1.0.1', 80, 43297, 6))
 
 def test_classification_identity():
     """

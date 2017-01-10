@@ -478,9 +478,9 @@ class Flow(BaseClass):
             if 'tcp_dst' in match:
                 self.tp_B = match['tcp_dst']
             #*** Set flow hash:
-            flow_tuple = (self.ip_A, self.ip_B, self.tp_A, self.tp_B,
-                                                                self.ip_proto)
-            self.flow_hash = _hash_tuple(flow_tuple)
+            self.flow_hash = _hash_tuple((self.ip_A, self.ip_B,
+                                          self.tp_A, self.tp_B,
+                                          self.ip_proto))
 
         def dbdict(self):
             """
@@ -530,7 +530,7 @@ class Flow(BaseClass):
         match = msg.match
         if 'ip_proto' in match:
             if match['ip_proto'] == 6:
-                #*** TCP. Write records to database for both directions.
+                #*** TCP. Write record to database:
                 self.logger.debug("Removed flow was TCP, dbdict=%s",
                                                              remf.dbdict())
                 remf.commit()

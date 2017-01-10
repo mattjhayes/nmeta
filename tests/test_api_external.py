@@ -304,6 +304,8 @@ def test_get_flow_data_xfer():
 
     #*** Instantiate Flow class:
     flow = flow_class.Flow(config)
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts.RAW[1], datetime.datetime.now())
 
     #*** Load JSON representations of flow removed messages:
     with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
@@ -325,12 +327,13 @@ def test_get_flow_data_xfer():
     flow.record_removal(msg_rx)
 
     #*** Now, test the get_flow_data_xfer method:
+
     record = {'ip_src': '10.1.0.1',
               'ip_dst': '10.1.0.2',
-              'tp_src': 46215,
+              'tp_src': 43297,
               'tp_dst': 80,
               'proto': 6,
-              'flow_hash': '24b0c27adb1d593ef5513d09f06b03b9'}
+              'flow_hash': '9822b2867652ee0957892482b9f004c3'}
     xfer = api.get_flow_data_xfer(record)
     logger.debug("xfer=%s", xfer)
 

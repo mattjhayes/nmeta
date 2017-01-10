@@ -215,6 +215,7 @@ class Identities(BaseClass):
             self.ip_assigned = 0
             self.ip_dhcp_server = 0
             self.lease_time = 0
+
         def dbdict(self):
             """
             Return a dictionary object of dhcp message

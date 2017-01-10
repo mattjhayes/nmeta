@@ -32,7 +32,7 @@ tc_policy_logging_level_s: INFO
 tc_static_logging_level_s: INFO
 tc_identity_logging_level_s: INFO
 tc_custom_logging_level_s: INFO
-sa_logging_level_s: INFO
+switches_logging_level_s: INFO
 forwarding_logging_level_s: INFO
 api_logging_level_s: INFO
 flows_logging_level_s: INFO
@@ -57,12 +57,19 @@ tc_policy_logging_level_c: DEBUG
 tc_static_logging_level_c: DEBUG
 tc_identity_logging_level_c: DEBUG
 tc_custom_logging_level_c: DEBUG
-sa_logging_level_c: DEBUG
+switches_logging_level_c: DEBUG
 forwarding_logging_level_c: DEBUG
 api_logging_level_c: DEBUG
 flows_logging_level_c: DEBUG
 identities_logging_level_c: DEBUG
 external_api_logging_level_c: DEBUG
+#
+#========== Flow Tables ==========================
+#*** Maximum idle time for suppression flow entries in seconds.
+suppress_idle_timeout: 5
+suppress_hard_timeout: 0
+#*** Priority for suppression flow entries:
+suppress_priority: 1
 #
 #========== Mongodb Database ==========================
 mongo_addr: localhost
@@ -73,6 +80,9 @@ mongo_dbname: nmeta_database
 #*** flows packet_ins capped collection
 packet_ins_max_bytes: 2000000
 flow_time_limit: 30
+#
+#*** flow_rems capped collection
+flow_rems_max_bytes: 500000
 #
 #*** identities capped collection
 identities_max_bytes: 2000000

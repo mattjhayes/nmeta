@@ -19,6 +19,7 @@ TBD: UDP
 
 #*** Handle tests being in different directory branch to app code:
 import sys
+import struct
 
 sys.path.insert(0, '../nmeta')
 
@@ -35,6 +36,20 @@ import datetime
 
 #*** Import dpkt for packet parsing:
 import dpkt
+
+#*** Testing imports:
+import mock
+import unittest
+
+#*** Ryu imports:
+from ryu.base import app_manager  # To suppress cyclic import
+from ryu.controller import controller
+from ryu.controller import handler
+from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ofproto_v1_3_parser
+from ryu.ofproto import ofproto_protocol
+from ryu.ofproto import ofproto_parser
+from ryu.lib import addrconv
 
 #*** nmeta imports:
 import nmeta
@@ -334,6 +349,62 @@ def test_classification_static():
     assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
                                    'set_desc': 'Constrained Bandwidth Traffic'}
 
+def test_record_removal():
+    """
+    Test the recording of an idle-timeout flow removal message
+    sent by a switch into the flow_rems database collection
+
+    Synthesise flow removal messages to test with.
+    """
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate Flow class:
+    flow = flow_class.Flow(config)
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
+
+    #*** Set up fake datapath and synthesise messages:
+    datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
+    msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
+
+    logger.debug("msg_tx=%s", msg_tx)
+
+    #*** Call our method that we're testing with the synthesised flow rems:
+    flow.record_removal(msg_tx)
+    flow.record_removal(msg_rx)
+
+    #*** Check that messages recorded correctly in database collection:
+    db_data_tx = {'ip_A': '10.1.0.1', 'tp_B': 80}
+    result = flow.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
+    result_tx = list(result)[0]
+    logger.debug("result=%s", result_tx)
+    assert result_tx['table_id'] == 1
+    assert result_tx['ip_B'] == '10.1.0.2'
+    assert result_tx['tp_A'] == 43297
+    assert result_tx['packet_count'] == 10
+    assert result_tx['flow_hash'] == flow_class._hash_tuple(('10.1.0.1',
+                                                     '10.1.0.2', 43297, 80, 6))
+
+    #*** Return leg of flow:
+    db_data_tx = {'ip_B': '10.1.0.1', 'tp_A': 80}
+    result = flow.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
+    result_tx = list(result)[0]
+    logger.debug("result=%s", result_tx)
+    assert result_tx['table_id'] == 1
+    assert result_tx['ip_A'] == '10.1.0.2'
+    assert result_tx['tp_B'] == 43297
+    assert result_tx['packet_count'] == 9
+    assert result_tx['flow_hash'] == flow_class._hash_tuple(('10.1.0.2',
+                                                     '10.1.0.1', 80, 43297, 6))
+
 def test_classification_identity():
     """
     Test that classification returns correct information for an identity
@@ -442,3 +513,13 @@ def mac_addr(address):
     Convert a MAC address to a readable/printable string
     """
     return ':'.join('%02x' % ord(b) for b in address)
+
+def _ipv4_t2i(ip_text):
+    """
+    Turns an IPv4 address in text format into an integer.
+    Borrowed from rest_router.py code
+    """
+    if ip_text == 0:
+        return ip_text
+    assert isinstance(ip_text, str)
+    return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]

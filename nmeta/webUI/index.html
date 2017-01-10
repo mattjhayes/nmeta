@@ -82,6 +82,9 @@
               <th>TP Src</th>
               <th>TP Dst</th>
               <th>Classification</th>
+              <th>Actions</th>
+              <th>Sent</th>
+              <th>Received</th>
             </tr>
           </thead>
           <tbody>
@@ -113,6 +116,21 @@
               </td>
               <td>
                 <%= classification %>
+              </td>
+              <td>
+                <span data-toggle="tooltip" title="<%= actions_hover %>">
+                <%= actions %>
+                </span>
+              </td>
+              <td>
+                <span data-toggle="tooltip" title="<%= data_sent_hover %>">
+                  <%= data_sent %>
+                </span>
+              </td>
+              <td>
+                <span data-toggle="tooltip" title="<%= data_received_hover %>">
+                  <%= data_received %>
+                </span>
               </td>
             </script>
             <!-- End of tr tagged script -->

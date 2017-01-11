@@ -57,6 +57,7 @@ import config
 import flows as flow_class
 import tc_policy
 import identities
+import nethash
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -225,24 +226,6 @@ def test_flow_LLDP():
     assert flow.packet.eth_src == pkts_lldp.ETH_SRC[0]
     assert flow.packet.eth_dst == pkts_lldp.ETH_DST[0]
 
-def test_flow_hashing():
-    """
-    Test flow counts for packet retransmissions. For flow packets
-    (i.e. TCP), all retx should be counted (if from same DPID)
-
-    For non-flow packets, the flow packet count should always be 1
-    """
-    # TBD
-    pass
-
-def test_packet_hashing():
-    """
-    Test that same flow packet (i.e. TCP) retx adds to count whereas
-    retx of non-flow packet has count of 1
-    """
-    # TBD
-    pass
-
 def test_classification_static():
     """
     Test that classification returns correct information for a static
@@ -372,6 +355,7 @@ def test_record_removal():
 
     #*** Set up fake datapath and synthesise messages:
     datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath.id = 1
     msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
     msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
 
@@ -390,7 +374,7 @@ def test_record_removal():
     assert result_tx['ip_B'] == '10.1.0.2'
     assert result_tx['tp_A'] == 43297
     assert result_tx['packet_count'] == 10
-    assert result_tx['flow_hash'] == flow_class._hash_tuple(('10.1.0.1',
+    assert result_tx['flow_hash'] == nethash.hash_flow(('10.1.0.1',
                                                      '10.1.0.2', 43297, 80, 6))
 
     #*** Return leg of flow:
@@ -402,7 +386,7 @@ def test_record_removal():
     assert result_tx['ip_A'] == '10.1.0.2'
     assert result_tx['tp_B'] == 43297
     assert result_tx['packet_count'] == 9
-    assert result_tx['flow_hash'] == flow_class._hash_tuple(('10.1.0.2',
+    assert result_tx['flow_hash'] == nethash.hash_flow(('10.1.0.2',
                                                      '10.1.0.1', 80, 43297, 6))
 
 def test_classification_identity():

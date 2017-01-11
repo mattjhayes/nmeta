@@ -39,14 +39,14 @@ import dpkt
 import pymongo
 from pymongo import MongoClient
 
-#*** For hashing flow 5-tuples:
-import hashlib
-
 #*** For timestamps:
 import datetime
 
 #*** For logging configuration:
 from baseclass import BaseClass
+
+#*** nmeta imports:
+import nethash
 
 class Flow(BaseClass):
     """
@@ -444,6 +444,7 @@ class Flow(BaseClass):
             self.logger = logger
             self.flow_rems = flow_rems
             #*** Initialise removed flow parameters:
+            self.dpid = msg.datapath.id
             self.removal_time = datetime.datetime.now()
             self.cookie = msg.cookie
             self.priority = msg.priority
@@ -454,6 +455,8 @@ class Flow(BaseClass):
             self.hard_timeout = msg.hard_timeout
             self.packet_count = msg.packet_count
             self.byte_count = msg.byte_count
+            self.eth_A = ""
+            self.eth_B = ""
             self.eth_type = ""
             self.ip_A = ""
             self.ip_B = ""
@@ -461,6 +464,10 @@ class Flow(BaseClass):
             self.tp_A = ""
             self.tp_B = ""
             #*** Set values from the match where they exist:
+            if 'eth_src' in match:
+                self.eth_A = match['eth_src']
+            if 'eth_dst' in match:
+                self.eth_B = match['eth_dst']
             if 'eth_type' in match:
                 self.eth_type = match['eth_type']
             if 'ipv4_src' in match:
@@ -478,8 +485,13 @@ class Flow(BaseClass):
             if 'tcp_dst' in match:
                 self.tp_B = match['tcp_dst']
             #*** Set flow hash:
-            self.flow_hash = _hash_tuple((self.ip_A, self.ip_B,
+            if self.ip_proto == 6:
+                self.flow_hash = nethash.hash_flow((self.ip_A, self.ip_B,
                                           self.tp_A, self.tp_B,
+                                          self.ip_proto))
+            else:
+                self.flow_hash = nethash.hash_flow((self.eth_A, self.eth_B,
+                                          self.dpid, self.removal_time,
                                           self.ip_proto))
 
         def dbdict(self):
@@ -489,6 +501,7 @@ class Flow(BaseClass):
             database collection
             """
             dbdictresult = {}
+            dbdictresult['dpid'] = self.dpid
             dbdictresult['flow_hash'] = self.flow_hash
             dbdictresult['removal_time'] = self.removal_time
             dbdictresult['cookie'] = self.cookie
@@ -500,6 +513,8 @@ class Flow(BaseClass):
             dbdictresult['hard_timeout'] = self.hard_timeout
             dbdictresult['packet_count'] = self.packet_count
             dbdictresult['byte_count'] = self.byte_count
+            dbdictresult['eth_A'] = self.eth_A
+            dbdictresult['eth_B'] = self.eth_B
             dbdictresult['eth_type'] = self.eth_type
             dbdictresult['ip_A'] = self.ip_A
             dbdictresult['ip_B'] = self.ip_B
@@ -557,7 +572,7 @@ class Flow(BaseClass):
                 self.logger.warning("Removed flow was unhandled eth_type")
                 return 0
 
-    def ingest_packet(self, dpid, in_port, pkt, timestamp):
+    def ingest_packet(self, dpid, in_port, packet, timestamp):
         """
         Ingest a packet into the packet_ins collection and put the flow object
         into the context of the packet.
@@ -565,75 +580,83 @@ class Flow(BaseClass):
         """
         #*** Instantiate an instance of Packet class:
         self.packet = self.Packet()
+        pkt = self.packet
 
         #*** DPID of the switch that sent the Packet-In message:
-        self.packet.dpid = dpid
+        pkt.dpid = dpid
         #*** Port packet was received on:
-        self.packet.in_port = in_port
+        pkt.in_port = in_port
         #*** Packet receive time:
-        self.packet.timestamp = timestamp
+        pkt.timestamp = timestamp
         #*** Packet length on the wire:
-        self.packet.length = len(pkt)
+        pkt.length = len(packet)
 
         #*** Read packet into dpkt to parse headers:
-        eth = dpkt.ethernet.Ethernet(pkt)
+        eth = dpkt.ethernet.Ethernet(packet)
 
         #*** Ethernet parameters:
-        self.packet.eth_src = _mac_addr(eth.src)
-        self.packet.eth_dst = _mac_addr(eth.dst)
-        self.packet.eth_type = eth.type
+        pkt.eth_src = _mac_addr(eth.src)
+        pkt.eth_dst = _mac_addr(eth.dst)
+        pkt.eth_type = eth.type
 
         if eth.type == 2048:
             #*** IPv4 (TBD: add IPv6 support)
             ip = eth.data
-            self.packet.ip_src = socket.inet_ntop(socket.AF_INET, ip.src)
-            self.packet.ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
-            self.packet.proto = ip.p
+            pkt.ip_src = socket.inet_ntop(socket.AF_INET, ip.src)
+            pkt.ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
+            pkt.proto = ip.p
             if ip.p == 6:
                 #*** TCP
                 tcp = ip.data
-                self.packet.tp_src = tcp.sport
-                self.packet.tp_dst = tcp.dport
-                self.packet.tp_flags = tcp.flags
-                self.packet.tp_seq_src = tcp.seq
-                self.packet.tp_seq_dst = tcp.ack
-                self.packet.payload = tcp.data
+                pkt.tp_src = tcp.sport
+                pkt.tp_dst = tcp.dport
+                pkt.tp_flags = tcp.flags
+                pkt.tp_seq_src = tcp.seq
+                pkt.tp_seq_dst = tcp.ack
+                pkt.payload = tcp.data
             elif ip.p == 17:
                 #*** UDP
                 udp = ip.data
-                self.packet.tp_src = udp.sport
-                self.packet.tp_dst = udp.dport
-                self.packet.tp_flags = ""
-                self.packet.tp_seq_src = 0
-                self.packet.tp_seq_dst = 0
-                self.packet.payload = udp.data
+                pkt.tp_src = udp.sport
+                pkt.tp_dst = udp.dport
+                pkt.tp_flags = ""
+                pkt.tp_seq_src = 0
+                pkt.tp_seq_dst = 0
+                pkt.payload = udp.data
             else:
                 #*** Not a transport layer that we understand:
                 # TBD: add other transport protocols
-                self.packet.tp_src = 0
-                self.packet.tp_dst = 0
-                self.packet.tp_flags = 0
-                self.packet.tp_seq_src = 0
-                self.packet.tp_seq_dst = 0
-                self.packet.payload = ip.data
+                pkt.tp_src = 0
+                pkt.tp_dst = 0
+                pkt.tp_flags = 0
+                pkt.tp_seq_src = 0
+                pkt.tp_seq_dst = 0
+                pkt.payload = ip.data
         else:
             #*** Non-IP:
-            self.packet.ip_src = ''
-            self.packet.ip_dst = ''
-            self.packet.proto = 0
-            self.packet.tp_src = 0
-            self.packet.tp_dst = 0
-            self.packet.tp_flags = 0
-            self.packet.tp_seq_src = 0
-            self.packet.tp_seq_dst = 0
-            self.packet.payload = eth.data
+            pkt.ip_src = ''
+            pkt.ip_dst = ''
+            pkt.proto = 0
+            pkt.tp_src = 0
+            pkt.tp_dst = 0
+            pkt.tp_flags = 0
+            pkt.tp_seq_src = 0
+            pkt.tp_seq_dst = 0
+            pkt.payload = eth.data
 
         #*** Generate a flow_hash unique to flow for pkts in either direction:
-        self.packet.flow_hash = self._hash_flow()
+        if pkt.proto == 6:
+            self.packet.flow_hash = nethash.hash_flow((pkt.ip_src, pkt.ip_dst,
+                                          pkt.tp_src, pkt.tp_dst,
+                                          pkt.proto))
+        else:
+            self.packet.flow_hash = nethash.hash_flow((pkt.eth_src, pkt.eth_dst,
+                                          dpid, pkt.timestamp,
+                                          pkt.proto))
         self.flow_hash = self.packet.flow_hash
 
         #*** Generate a packet_hash unique to the packet:
-        self.packet.packet_hash = self._hash_packet()
+        self.packet.packet_hash = nethash.hash_packet(self.packet)
 
         #*** Instantiate classification data for this flow in context:
         self.classification = self.Classification(self.flow_hash,
@@ -847,92 +870,7 @@ class Flow(BaseClass):
         #TBD
         pass
 
-    def _hash_flow(self):
-        """
-        Generate a predictable flow_hash for the 5-tuple which is the
-        same not matter which direction the traffic is travelling
-        for packets that are part of a flow.
-
-        For packets that we don't understand as a flow, create a hash
-        that is unique to the packet to avoid retrieving unrelated
-        packets
-        """
-        proto = self.packet.proto
-        if proto == 6:
-            #*** Is a flow (TBD, do UDP):
-            ip_A = self.packet.ip_src
-            ip_B = self.packet.ip_dst
-            tp_src = self.packet.tp_src
-            tp_dst = self.packet.tp_dst
-            if ip_A > ip_B:
-                direction = 1
-            elif ip_B > ip_A:
-                direction = 2
-            elif tp_src > tp_dst:
-                direction = 1
-            elif tp_dst > tp_src:
-                direction = 2
-            else:
-                direction = 1
-        else:
-            #*** Isn't a flow, so make hash unique to packet by including
-            #*** the DPID and timestamp in the hash:
-            ip_A = self.packet.eth_src
-            ip_B = self.packet.eth_dst
-            tp_src = self.packet.dpid
-            tp_dst = self.packet.timestamp
-            direction = 1
-        if direction == 1:
-            flow_tuple = (ip_A, ip_B, tp_src, tp_dst, proto)
-        else:
-            flow_tuple = (ip_B, ip_A, tp_dst, tp_src, proto)
-        return _hash_tuple(flow_tuple)
-
-    def _hash_packet(self):
-        """
-        Generate a hash of the current packet used for deduplication
-        where the same packet is received from multiple switches.
-
-        Retransmissions of a packet that is part of a flow should have
-        same hash value, so that retransmissions can be measured.
-
-        The packet hash is an indexed uni-directionally packet identifier
-
-        For flow-packets, the hash is derived from:
-          ip_src, ip_dst, proto, tp_src, tp_dst, tp_seq_src, tp_seq_dst
-
-        For non-flow packets, the hash is derived from:
-          eth_src, eth_dst, eth_type, dpid, timestamp
-        """
-        if self.packet.proto == 6:
-            #*** Is a flow (TBD, do UDP):
-            packet_tuple = (self.packet.ip_src,
-                        self.packet.ip_dst,
-                        self.packet.proto,
-                        self.packet.tp_src,
-                        self.packet.tp_dst,
-                        self.packet.tp_seq_src,
-                        self.packet.tp_seq_dst)
-        else:
-            #*** Isn't a flow, so make hash unique to packet by including
-            #*** the DPID and timestamp in the hash:
-            packet_tuple = (self.packet.eth_src,
-                        self.packet.eth_dst,
-                        self.packet.eth_type,
-                        self.packet.dpid,
-                        self.packet.timestamp)
-        return _hash_tuple(packet_tuple)
-
 #================== PRIVATE FUNCTIONS ==================
-def _hash_tuple(hash_tuple):
-    """
-    Simple function to hash a tuple with MD5.
-    Returns a hash value for the tuple
-    """
-    hash_result = hashlib.md5()
-    tuple_as_string = str(hash_tuple)
-    hash_result.update(tuple_as_string)
-    return hash_result.hexdigest()
 
 def _is_tcp_syn(tcp_flags):
     """

@@ -317,6 +317,7 @@ def test_get_flow_data_xfer():
 
     #*** Set up fake datapath and synthesise messages:
     datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath.id = 1
     msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
     msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
 

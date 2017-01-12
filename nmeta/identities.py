@@ -526,7 +526,7 @@ class Identities(BaseClass):
                 self.identities.insert_one(db_dict)
             else:
                 #*** Not a type that we handle yet
-                pass
+                self.logger.debug("Unhandled DNS answer type=%s", answer.type)
 
     def findbymac(self, mac_addr):
         """

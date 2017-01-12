@@ -53,6 +53,10 @@ config = config.Config()
 
 logger = logging.getLogger(__name__)
 
+#*** Test DPIDs and in ports:
+DPID1 = 1
+INPORT1 = 1
+
 #======================== tc_identity.py Tests ================================
 
 def test_LLDP_identity():
@@ -60,11 +64,6 @@ def test_LLDP_identity():
     Test harvesting identity metadata from LLDP packets and then
     using this to validate an identity
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Instantiate class objects:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)
@@ -143,11 +142,6 @@ def test_DNS_identity():
     Test harvesting identity metadata from DNS packets and then
     using this to validate an identity
     """
-
-    #*** Test DPIDs and in ports:
-    DPID1 = 1
-    INPORT1 = 1
-
     #*** Instantiate class objects:
     flow = flow_class.Flow(config)
     identities = identities_class.Identities(config)

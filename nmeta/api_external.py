@@ -576,19 +576,32 @@ class ExternalAPI(BaseClass):
                 return str(record['host_name'])
         return ""
 
-    def get_service_by_ip(self, ip_addr):
+    def get_service_by_ip(self, ip_addr, alias=1):
         """
         Passed an IP address. Look this up in the identities db collection
-        and return a service name if present, otherwise an empty string
+        and return a service name if present, otherwise an empty string.
+
+        If alias is set, do additional lookup on success to see if service
+        name is an alias for another name, and if so return that.
         """
-        db_data = {'ip_address': ip_addr}
-        #*** Run db search:
-        cursor = self.identities.find(db_data).limit(SERVICE_LIMIT) \
-                                                          .sort('$natural', -1)
-        for record in cursor:
-            if record['service_name'] != "":
-                return str(record['service_name'])
-        return ""
+        db_data = {'ip_address': ip_addr, "service_name": {'$ne':""}}
+        db_result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if db_result.count():
+            service_result = list(db_result)[0]
+            service = service_result['service_name']
+            self.logger.debug("service name is %s", service)
+        else:
+            #*** Didn't find anything, return empty string:
+            return ""
+        if alias:
+            #*** Look up service name as alias:
+            db_data = {"service_alias": service}
+            db_result = self.identities.find(db_data).sort('$natural', -1). \
+                                                                       limit(1)
+            if db_result.count():
+                service_result = list(db_result)[0]
+                service = service_result['service_name']
+        return service
 
 def enumerate_eth_type(eth_type):
     """

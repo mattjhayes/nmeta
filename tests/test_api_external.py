@@ -33,6 +33,7 @@ import flows as flow_class
 import identities as identities_class
 import api_external
 import tc_policy
+import tc_identity
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -400,6 +401,26 @@ def test_get_host_by_ip():
     logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
 
     assert get_host_by_ip_result == 'pc1'
+
+def test_get_service_by_ip():
+    """
+    Test ability of get_service_by_ip to resolve
+    IPs to service names
+    """
+    #*** Instantiate class objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+    tc_ident = tc_identity.IdentityInspect(config)
+    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
+    # A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+
+    #*** Call the get_service_by_ip:
+    get_service_by_ip_result = api.get_service_by_ip('179.60.193.36')
+    logger.debug("get_service_by_ip_result=%s", get_service_by_ip_result)
+
+    assert get_service_by_ip_result == 'www.facebook.com'
 
 def test_get_classification():
     """

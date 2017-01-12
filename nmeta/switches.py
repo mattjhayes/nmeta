@@ -30,6 +30,7 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
+from ryu.lib.packet import udp
 
 #*** For logging configuration:
 from baseclass import BaseClass
@@ -303,20 +304,31 @@ class FlowTables(object):
         """
         Add flow entries to a switch to suppress further packet-in
         events while the flow is active.
+
         Prefer to do fine-grained match where possible.
         Install reverse matches as well for TCP flows.
+
+        Do not install suppression for these types of flow:
+        - DNS (want to harvest identity)
+        - ARP (want to harvest identity)
+        - DHCP (want to harvest identity)
+        - LLDP (want to harvest identity)
         """
         #*** Extract parameters:
         pkt = packet.Packet(msg.data)
         pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
         pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
         pkt_tcp = pkt.get_protocol(tcp.tcp)
+        pkt_udp = pkt.get_protocol(udp.udp)
         idle_timeout = self.suppress_idle_timeout
         hard_timeout = self.suppress_hard_timeout
         priority = self.suppress_priority
         self.logger.debug("event=add_flow out_queue=%s", out_queue)
         #*** Install flow entry(ies) based on type of flow:
         if pkt_tcp:
+            #*** Do not suppress TCP DNS:
+            if pkt_tcp.src_port == 53 or pkt_tcp.dst_port == 53:
+                return 0
             #*** Install two flow entries for TCP so that return traffic
             #*** is also suppressed:
             if pkt_ip4:
@@ -349,6 +361,11 @@ class FlowTables(object):
                                  hard_timeout=hard_timeout)
             return 1
         else:
+            if pkt_udp:
+                #*** Do not suppress UDP DNS OR DHCP:
+                if (pkt_udp.src_port == 53 or pkt_udp.dst_port == 53 or
+                             pkt_udp.src_port == 67 or pkt_udp.dst_port == 67):
+                    return 0
             if pkt_ip4:
                 #*** Match IPv4 packet
                 match = self.match_ipv4(pkt_ip4.src, pkt_ip4.dst)

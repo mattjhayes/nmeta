@@ -38,7 +38,6 @@ from pymongo import MongoClient
 
 #*** nmeta imports
 import config
-import nethash
 
 #*** For timestamps:
 import datetime
@@ -55,6 +54,7 @@ SERVICE_LIMIT = 250
 
 #*** How far back in time to go back looking for packets in flow:
 FLOW_TIME_LIMIT = datetime.timedelta(seconds=3600)
+FLOW_REM_TIME_LIMIT = datetime.timedelta(seconds=3600)
 CLASSIFICATION_TIME_LIMIT = datetime.timedelta(seconds=4000)
 
 #*** Enumerate some proto numbers, someone's probably already done this...
@@ -429,40 +429,29 @@ class ExternalAPI(BaseClass):
         result = {'tx_found': 0, 'rx_found': 0, 'tx_bytes': 0, 'rx_bytes': 0,
                         'tx_pkts': 0, 'rx_pkts': 0}
         ip_A = record['ip_src']
-        ip_B = record['ip_dst']
-        tp_A = record['tp_src']
-        tp_B = record['tp_dst']
-        proto = record['proto']
         flow_hash = record['flow_hash']
         #*** Search flow_rems database collection:
-        #db_data_tx = {'flow_hash': flow_hash_tx, 'ip_A': ip_A,
-        #      'removal_time': {'$gte': datetime.datetime.now() -
-        #                            CLASSIFICATION_TIME_LIMIT}}
-        db_data_tx = {'flow_hash': flow_hash, 'ip_A': ip_A}
-
-        #db_data_rx = {'flow_hash': flow_hash_rx, 'ip_B': ip_A,
-        #      'removal_time': {'$gte': datetime.datetime.now() -
-        #                            CLASSIFICATION_TIME_LIMIT}}
-        db_data_rx = {'flow_hash': flow_hash, 'ip_B': ip_A}
+        db_data_tx = {'flow_hash': flow_hash, 'ip_A': ip_A,
+              'removal_time': {'$gte': datetime.datetime.now() -
+                                    FLOW_REM_TIME_LIMIT}}
+        db_data_rx = {'flow_hash': flow_hash, 'ip_B': ip_A,
+              'removal_time': {'$gte': datetime.datetime.now() -
+                                    FLOW_REM_TIME_LIMIT}}
         tx = self.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
         rx = self.flow_rems.find(db_data_rx).sort('$natural', -1).limit(1)
         #*** Analyse database results and update result:
         if tx.count():
-            self.logger.debug("Found TX, count is %s", tx.count())
             result['tx_found'] = 1
             tx_result = list(tx)[0]
             self.logger.debug("tx_result is %s", tx_result)
             result['tx_bytes'] = tx_result['byte_count']
             result['tx_pkts'] = tx_result['packet_count']
         if rx.count():
-            self.logger.debug("Found RX, count is %s", rx.count())
             result['rx_found'] = 1
             rx_result = list(rx)[0]
             self.logger.debug("rx_result is %s", rx_result)
             result['rx_bytes'] = rx_result['byte_count']
             result['rx_pkts'] = rx_result['packet_count']
-        self.logger.debug("get_flow_data_xfer for flow_hash_tx=%s",
-                                                            flow_hash, result)
         return result
 
     def get_classification(self, flow_hash):

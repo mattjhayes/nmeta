@@ -42,6 +42,9 @@ import config
 #*** For timestamps:
 import datetime
 
+#*** To get request parameters:
+from flask import request
+
 #*** Amount of time (seconds) to go back for to calculate Packet-In rate:
 PACKET_IN_RATE_INTERVAL = 10
 
@@ -331,6 +334,14 @@ class ExternalAPI(BaseClass):
         """
         known_hashes = []
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+
+        #*** Get URL parameters:
+        if 'filter_dns' in request.args:
+            filter_dns = request.args['filter_dns']
+        else:
+            filter_dns = 0
+        self.logger.debug("filter_dns=%s", filter_dns)
+
         #*** Get database and query it:
         identities = self.app.data.driver.db['identities']
         #*** Reverse sort:
@@ -338,6 +349,11 @@ class ExternalAPI(BaseClass):
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
             if not record['id_hash'] in known_hashes:
+                #*** Skip DNS results if filter_dns enabled:
+                if filter_dns and (record['harvest_type'] == 'DNS_CNAME' or
+                            record['harvest_type'] == 'DNS_A'):
+                    continue
+                #*** Get IP for DNS CNAME:
                 if record['harvest_type'] == 'DNS_CNAME':
                     #*** Check if A record exists, and if so update response:
                     record['ip_address'] = \

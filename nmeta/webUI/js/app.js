@@ -78,7 +78,7 @@
     //-------- Model of multiple Identity models:
     var Identities = Backbone.Collection.extend({
         model:Identity,
-        url:'/v1/identities/ui',
+        url:'/v1/identities/ui?filter_dns=1',
         parse:function (response) {
             console.log(response);
             response.id = response._id;

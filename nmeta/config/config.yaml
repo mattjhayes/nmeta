@@ -10,7 +10,7 @@ ofpc_frag: 0
 #
 #========== SYSLOG ==================================
 #*** Set to 1 if want to log to syslog:
-syslog_enabled: 1
+syslog_enabled: 0
 #
 #*** Where to send syslog (use localhost to keep on-box):
 loghost: localhost
@@ -51,18 +51,18 @@ console_format: "%(asctime)s %(module)s[%(process)d] %(funcName)s %(levelname)s 
 #
 #*** Console Logging Levels Per Module
 #*** Values can be one of CRITICAL|ERROR|WARNING|INFO|DEBUG:
-nmeta_logging_level_c: DEBUG
-config_logging_level_c: DEBUG
-tc_policy_logging_level_c: DEBUG
-tc_static_logging_level_c: DEBUG
-tc_identity_logging_level_c: DEBUG
-tc_custom_logging_level_c: DEBUG
-switches_logging_level_c: DEBUG
-forwarding_logging_level_c: DEBUG
-api_logging_level_c: DEBUG
-flows_logging_level_c: DEBUG
-identities_logging_level_c: DEBUG
-external_api_logging_level_c: DEBUG
+nmeta_logging_level_c: INFO
+config_logging_level_c: INFO
+tc_policy_logging_level_c: INFO
+tc_static_logging_level_c: INFO
+tc_identity_logging_level_c: INFO
+tc_custom_logging_level_c: INFO
+switches_logging_level_c: INFO
+forwarding_logging_level_c: INFO
+api_logging_level_c: INFO
+flows_logging_level_c: INFO
+identities_logging_level_c: INFO
+external_api_logging_level_c: INFO
 #
 #========== Flow Tables ==========================
 #*** Maximum idle time for suppression flow entries in seconds.

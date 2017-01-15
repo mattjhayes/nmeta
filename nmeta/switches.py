@@ -111,7 +111,7 @@ class Switches(BaseClass):
         """
         dpid = datapath.id
         self.logger.info("Adding switch dpid=%s", dpid)
-        switch = Switch(self.logger, self.config, datapath)
+        switch = Switch(self.config, datapath)
         switch.dpid = dpid
         #*** Record class instance into dictionary to make it accessible:
         self.switches[datapath.id] = switch
@@ -163,14 +163,20 @@ class Switches(BaseClass):
         else:
             return 0
 
-class Switch(object):
+class Switch(BaseClass):
     """
     This class provides an abstraction for an OpenFlow
     Switch
     """
-    def __init__(self, logger, config, datapath):
+    def __init__(self, config, datapath):
+        #*** Required for BaseClass:
+        self.config = config
+        #*** Run the BaseClass init to set things up:
+        super(Switch, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("switches_logging_level_s",
+                                       "switches_logging_level_c")
         #*** Initialise switch variables:
-        self.logger = logger
         self.config = config
         self.datapath = datapath
         self.switch_hash = ""
@@ -185,7 +191,7 @@ class Switch(object):
         self.serial_num = ""
         self.dp_desc = ""
         #*** Instantiate a class that represents flow tables:
-        self.flowtables = FlowTables(self.logger, config, datapath)
+        self.flowtables = FlowTables(config, datapath)
 
     def dbdict(self):
         """
@@ -285,13 +291,19 @@ class Switch(object):
                                                 match=match, instructions=inst)
         self.datapath.send_msg(mod)
 
-class FlowTables(object):
+class FlowTables(BaseClass):
     """
     This class provides an abstraction for the flow tables on
     an OpenFlow Switch
     """
-    def __init__(self, logger, config, datapath):
-        self.logger = logger
+    def __init__(self, config, datapath):
+        #*** Required for BaseClass:
+        self.config = config
+        #*** Run the BaseClass init to set things up:
+        super(FlowTables, self).__init__()
+        #*** Set up Logging with inherited base class method:
+        self.configure_logging("switches_logging_level_s",
+                                       "switches_logging_level_c")
         self.config = config
         self.datapath = datapath
         self.dpid = datapath.id
@@ -399,7 +411,8 @@ class FlowTables(object):
                                 flags=ofproto.OFPFF_SEND_FLOW_REM,
                                 match=match,
                                 instructions=inst)
-        self.logger.debug("Installing Flow Entry to dpid=%s", self.dpid)
+        self.logger.debug("Installing Flow Entry to dpid=%s match=%s",
+                                    self.dpid, match)
         self.datapath.send_msg(mod)
 
     def actions(self, out_port, out_queue, no_queue=0):

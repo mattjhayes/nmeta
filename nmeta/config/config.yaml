@@ -66,7 +66,7 @@ external_api_logging_level_c: INFO
 #
 #========== Flow Tables ==========================
 #*** Maximum idle time for suppression flow entries in seconds.
-suppress_idle_timeout: 5
+suppress_idle_timeout: 30
 suppress_hard_timeout: 0
 #*** Priority for suppression flow entries:
 suppress_priority: 1
@@ -76,7 +76,6 @@ mongo_addr: localhost
 mongo_port: 27017
 mongo_dbname: nmeta_database
 #
-#========== Data Structures ===========================
 #*** flows packet_ins capped collection
 packet_ins_max_bytes: 2000000
 flow_time_limit: 30

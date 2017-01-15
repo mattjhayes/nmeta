@@ -34,10 +34,8 @@ class Forwarding(BaseClass):
     def __init__(self, config):
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(Forwarding, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("forwarding_logging_level_s",
+        self.configure_logging(__name__, "forwarding_logging_level_s",
                                        "forwarding_logging_level_c")
         #*** Initiate the mac_to_port dictionary for switching:
         self.mac_to_port = {}

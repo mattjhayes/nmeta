@@ -52,9 +52,6 @@ class Config(BaseClass):
     def __init__(self, dir_default=CONFIG_DIR_DEFAULT,
                     dir_user=CONFIG_DIR_USER,
                     config_filename=CONFIG_FILENAME):
-        #*** Run the BaseClass init to set things up:
-        super(Config, self).__init__()
-
         #*** Set up basic logging, as can't use
         #*** inherited method due to chicken and egg issue
         #*** (set up properly later)
@@ -173,6 +170,6 @@ class Config(BaseClass):
         """
         self.config = config
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("config_logging_level_s",
+        self.configure_logging(__name__, "config_logging_level_s",
                                        "config_logging_level_c")
         self.logger.info("Config logging now fully configured")

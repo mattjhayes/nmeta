@@ -38,10 +38,8 @@ class StaticInspect(BaseClass):
     def __init__(self, config):
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(StaticInspect, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("tc_static_logging_level_s",
+        self.configure_logging(__name__, "tc_static_logging_level_s",
                                        "tc_static_logging_level_c")
 
     def check_static(self, condition, pkt):

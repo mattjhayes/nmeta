@@ -92,10 +92,8 @@ class Identities(BaseClass):
         """
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(Identities, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("identities_logging_level_s",
+        self.configure_logging(__name__, "identities_logging_level_s",
                                        "identities_logging_level_c")
         #*** Get parameters from config:
         mongo_addr = config.get_value("mongo_addr")

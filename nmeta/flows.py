@@ -202,10 +202,8 @@ class Flow(BaseClass):
         """
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(Flow, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("flows_logging_level_s",
+        self.configure_logging(__name__, "flows_logging_level_s",
                                        "flows_logging_level_c")
         self.flow_hash = 0
 

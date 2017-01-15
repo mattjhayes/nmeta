@@ -60,10 +60,8 @@ class Switches(BaseClass):
     def __init__(self, config):
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(Switches, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("switches_logging_level_s",
+        self.configure_logging(__name__, "switches_logging_level_s",
                                        "switches_logging_level_c")
 
         #*** Set up database collections:
@@ -171,10 +169,8 @@ class Switch(BaseClass):
     def __init__(self, config, datapath):
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(Switch, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("switches_logging_level_s",
+        self.configure_logging(__name__, "switches_logging_level_s",
                                        "switches_logging_level_c")
         #*** Initialise switch variables:
         self.config = config
@@ -299,10 +295,8 @@ class FlowTables(BaseClass):
     def __init__(self, config, datapath):
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(FlowTables, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("switches_logging_level_s",
+        self.configure_logging(__name__, "switches_logging_level_s",
                                        "switches_logging_level_c")
         self.config = config
         self.datapath = datapath

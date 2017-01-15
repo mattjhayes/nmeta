@@ -30,10 +30,8 @@ class IdentityInspect(BaseClass):
     def __init__(self, config):
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(IdentityInspect, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("tc_identity_logging_level_s",
+        self.configure_logging(__name__, "tc_identity_logging_level_s",
                                        "tc_identity_logging_level_c")
 
     def check_identity(self, condition, pkt, ident):

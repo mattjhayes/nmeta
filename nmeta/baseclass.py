@@ -32,14 +32,18 @@ class BaseClass(object):
         """
         pass
 
-    def configure_logging(self, s_name, c_name):
+    def configure_logging(self, name, s_name, c_name):
         """
         Configure logging for the class that has inherited
         this method
         """
+        #*** Set up Logging:
+        self.logger = logging.getLogger(name)
+
         #*** Get logging config values from config class:
         _logging_level_s = self.config.get_value(s_name)
         _logging_level_c = self.config.get_value(c_name)
+
         _syslog_enabled = self.config.get_value('syslog_enabled')
         _loghost = self.config.get_value('loghost')
         _logport = self.config.get_value('logport')
@@ -48,9 +52,7 @@ class BaseClass(object):
         _console_log_enabled = self.config.get_value('console_log_enabled')
         _coloredlogs_enabled = self.config.get_value('coloredlogs_enabled')
         _console_format = self.config.get_value('console_format')
-        #*** Set up Logging:
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
+
         self.logger.propagate = False
 
         #*** Syslog:
@@ -78,5 +80,3 @@ class BaseClass(object):
                 self.console_handler.setFormatter(console_formatter)
                 self.console_handler.setLevel(_logging_level_c)
                 self.logger.addHandler(self.console_handler)
-        # NEED THIS TO SUPPORT DEBUG LEVEL BUT NOT SURE WHY???:
-        self.logger.setLevel(_logging_level_c)

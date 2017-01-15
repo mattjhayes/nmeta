@@ -70,10 +70,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Now set config module to log properly:
         self.config.inherit_logging(self.config)
 
-        #*** Run the BaseClass init to set things up:
-        super(NMeta, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("nmeta_logging_level_s",
+        self.configure_logging(__name__, "nmeta_logging_level_s",
                                        "nmeta_logging_level_c")
 
         #*** Instantiate Module Classes:
@@ -193,7 +191,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
             reason = 'GROUP DELETE'
         else:
             reason = 'unknown'
-        self.logger.info('Idle Flow removed dpid=%s '
+        self.logger.debug('Idle Flow removed dpid=%s '
                               'cookie=%d priority=%d reason=%s table_id=%d '
                               'duration_sec=%d '
                               'idle_timeout=%d hard_timeout=%d '

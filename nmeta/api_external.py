@@ -156,6 +156,35 @@ class ExternalAPI(BaseClass):
                     'type': 'float'
                 }
             }
+        switches_schema = {
+                'dpid': {
+                    'type': 'integer'
+                },
+                'ip_address': {
+                    'type': 'string'
+                },
+                'port': {
+                    'type': 'integer'
+                },
+                'time_connected': {
+                    'type': 'string'
+                },
+                'mfr_desc': {
+                    'type': 'string'
+                },
+                'hw_desc': {
+                    'type': 'string'
+                },
+                'sw_desc': {
+                    'type': 'string'
+                },
+                'serial_num': {
+                    'type': 'string'
+                },
+                'dp_desc': {
+                    'type': 'string'
+                }
+            }
         #*** Define the Eve identity schema for what data the API returns:
         identity_schema = {
                 'dpid': {
@@ -218,6 +247,12 @@ class ExternalAPI(BaseClass):
             'url': 'infrastructure/controllers/pi_rate',
             'schema': i_c_pi_rate_schema
         }
+        #*** OpenFlow Switches:
+        switches_settings = {
+            'url': 'infrastructure/switches',
+            'item_title': 'OpenFlow Switches',
+            'schema': switches_schema
+        }
         #*** Eve Settings for Identities Objects. Note the reverse sort
         #*** by harvest time:
         identities_settings = {
@@ -245,6 +280,7 @@ class ExternalAPI(BaseClass):
         #*** Eve Domain for the whole API:
         eve_domain = {
             'i_c_pi_rate': i_c_pi_rate_settings,
+            'switches_col': switches_settings,
             'identities': identities_settings,
             'identities_ui': identities_ui_settings,
             'flows_ui': flows_ui_settings

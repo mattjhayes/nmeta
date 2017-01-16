@@ -27,10 +27,12 @@ import struct
 from ryu.lib import addrconv
 from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
-from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
+
+#*** For timestamps:
+import datetime
 
 #*** For logging configuration:
 from baseclass import BaseClass
@@ -79,13 +81,13 @@ class Switches(BaseClass):
 
         #*** Delete (drop) previous switches collection if it exists:
         self.logger.debug("Deleting previous switches MongoDB collection...")
-        db_nmeta.switches.drop()
+        db_nmeta.switches_col.drop()
 
         #*** Create the switches collection:
-        self.switches = db_nmeta.create_collection('switches')
+        self.switches_col = db_nmeta.create_collection('switches_col')
 
         #*** Index dpid key to improve look-up performance:
-        self.switches.create_index([('dpid', pymongo.TEXT)], unique=False)
+        self.switches_col.create_index([('dpid', pymongo.TEXT)], unique=False)
 
         #*** Get max bytes of new flow packets to send to controller from
         #*** config file:
@@ -111,11 +113,20 @@ class Switches(BaseClass):
         self.logger.info("Adding switch dpid=%s", dpid)
         switch = Switch(self.config, datapath)
         switch.dpid = dpid
+        (ip_address, port) = datapath.address
         #*** Record class instance into dictionary to make it accessible:
         self.switches[datapath.id] = switch
         #*** Record switch in database collection:
-        # TBD
-
+        self.switches_col.update_one({'dpid': dpid},
+                                {
+                                "$set":
+                                    {
+                                    'dpid': dpid,
+                                    'time_connected': datetime.datetime.now(),
+                                    'ip_address': ip_address,
+                                    'port': port
+                                }
+                        }, upsert=True)
         #*** Set the switch up for operation:
         switch.set_switch_config(self.ofpc_frag, self.miss_send_len)
         switch.request_switch_desc()
@@ -142,8 +153,18 @@ class Switches(BaseClass):
             switch.dp_desc = body.dp_desc
 
             #*** Update switch details in database collection:
-            # TBD
-
+            self.switches_col.update_one({'dpid': dpid},
+                                {
+                                "$set":
+                                    {
+                                    'dpid': dpid,
+                                    'mfr_desc': switch.mfr_desc,
+                                    'hw_desc': switch.hw_desc,
+                                    'sw_desc': switch.sw_desc,
+                                    'serial_num': switch.serial_num,
+                                    'dp_desc': switch.dp_desc
+                                }
+                        }, upsert=True)
         else:
             self.logger.warning("Ignoring DescStats reply from unknown switch"
                                                               " dpid=%s", dpid)

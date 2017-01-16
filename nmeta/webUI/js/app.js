@@ -65,7 +65,74 @@
 
     var packetinsView = new PacketInsView();
 
-    //-------- Identities:
+    //---------------------------SWITCHES:
+    //-------- Models:
+    var Switch = Backbone.Model.extend({
+        defaults:{
+            ip_address: "not found"
+        },
+    });
+
+    //-------- Model of multiple Switch models:
+    var Switches = Backbone.Collection.extend({
+        model:Switch,
+        url:'/v1/infrastructure/switches',
+        parse:function (response) {
+            console.log(response);
+            response.id = response._id;
+            //--- Parse response data from under _items key:
+            return response._items;
+        }
+    });
+
+    //-------- Views:
+    var SwitchView = Backbone.View.extend({
+        tagName:"tr",
+        className:"switchContainer",
+        template:$("#switchTemplate").html(),
+
+        render:function () {
+            var tmpl = _.template(this.template);
+
+            this.$el.html(tmpl(this.model.toJSON()));
+            return this;
+        }
+    });
+
+    //-------- View of multiple Switches:
+    var SwitchesView = Backbone.View.extend({
+        el:$("#switches"),
+
+        initialize: function(){
+          this.collection = new Switches();
+            this.collection.fetch({
+                error:function () {
+                    console.log(arguments);
+                }
+            });
+          this.render();
+
+          this.collection.on("add", this.renderSwitch, this);
+        },
+
+        render:function () {
+            var that = this;
+            _.each(this.collection.models, function (item) {
+                that.renderSwitch(item);
+            });
+        },
+
+        renderSwitch:function(item){
+            var switchView = new SwitchView({
+                model: item
+            });
+            this.$el.append(switchView.render().el);
+        }
+    });
+
+    var switchesView = new SwitchesView();
+
+    //----------------------------------- Identities:
     //-------- Models:
     var Identity = Backbone.Model.extend({
         defaults:{

@@ -182,6 +182,20 @@ class Switches(BaseClass):
         else:
             return 0
 
+    def delete(self, datapath):
+        """
+        Delete a switch from the Switches class
+        """
+        dpid = datapath.id
+        self.logger.info("Deleting switch dpid=%s", dpid)
+        #*** Get relevant instance of switch class:
+        switch = self.switches[dpid]
+        #*** Delete from dictionary of switches:
+        del self.switches[dpid]
+        #*** Delete switch from database collection:
+        self.switches_col.delete_one({'dpid': dpid})
+        return 1
+
 class Switch(BaseClass):
     """
     This class provides an abstraction for an OpenFlow

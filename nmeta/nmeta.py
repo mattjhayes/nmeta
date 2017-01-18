@@ -25,6 +25,7 @@ and carries no warrantee whatsoever. You have been warned.
 
 #*** General Imports:
 import struct
+import time
 import datetime
 
 #*** Ryu Imports:
@@ -32,7 +33,7 @@ from ryu import utils
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
-from ryu.controller.handler import HANDSHAKE_DISPATCHER
+from ryu.controller.handler import HANDSHAKE_DISPATCHER, DEAD_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
@@ -103,6 +104,13 @@ class NMeta(app_manager.RyuApp, BaseClass):
         """
         self.switches.stats_reply(ev.msg)
 
+    @set_ev_cls(ofp_event.EventOFPStateChange, DEAD_DISPATCHER)
+    def switch_down_handler(self, ev):
+        """
+        OpenFlow state has gone down for a given DPID
+        """
+        self.switches.delete(ev.msg.datapath)
+
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in(self, ev):
         """
@@ -114,6 +122,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         Finally, we send the packet out the switch port(s) via a
         Packet-Out message, with appropriate QoS queue set.
         """
+        pi_start_time = time.time()
         #*** Extract parameters:
         msg = ev.msg
         datapath = msg.datapath
@@ -171,6 +180,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** and with no queue option set:
             switch.packet_out(msg.data, in_port, out_port, out_queue=0,
                                                                     no_queue=1)
+        pi_delta = time.time() - pi_start_time
+        self.logger.debug("pi_delta=%s", pi_delta)
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removed_handler(self, ev):

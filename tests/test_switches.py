@@ -58,11 +58,28 @@ def test_switches():
         #*** Set up fake switch datapaths:
         datapath1 = controller.Datapath(sock_mock, addr_mock)
         datapath1.id = 12345
+        datapath1.address = ('172.16.1.10', 12345)
         datapath2 = controller.Datapath(sock_mock, addr_mock)
         datapath2.id = 67890
+        datapath2.address = ('172.16.1.11', 23456)
+
+        #*** Should have 0 switches:
+        assert len(switches.switches) == 0
+        assert switches.switches_col.count() == 0
 
         #*** Add switches
         assert switches.add(datapath1) == 1
         assert switches.add(datapath2) == 1
+
+        #*** Should have 2 switches:
+        assert len(switches.switches) == 2
+        assert switches.switches_col.count() == 2
+
+        #*** Delete switch
+        assert switches.delete(datapath2) == 1
+
+        #*** Should have 1 switch:
+        assert len(switches.switches) == 1
+        assert switches.switches_col.count() == 1
 
 # TBD

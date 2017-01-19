@@ -48,6 +48,9 @@ from flask import request
 #*** Amount of time (seconds) to go back for to calculate Packet-In rate:
 PACKET_IN_RATE_INTERVAL = 10
 
+#*** Amount of time (seconds) to go back for to calculate Packet-In rate:
+PACKET_TIME_PERIOD = 10
+
 FLOW_LIMIT = 25
 
 #*** Number of previous IP identity records to search for a hostname before
@@ -156,6 +159,17 @@ class ExternalAPI(BaseClass):
                     'type': 'float'
                 }
             }
+        pi_time_schema = {
+                'pi_time_min': {
+                    'type': 'float'
+                },
+                'pi_time_avg': {
+                    'type': 'float'
+                },
+                'pi_time_max': {
+                    'type': 'float'
+                }
+            }
         switches_schema = {
                 'dpid': {
                     'type': 'integer'
@@ -245,9 +259,16 @@ class ExternalAPI(BaseClass):
         #*** Eve Settings for Measurements of Packet In Rates:
         i_c_pi_rate_settings = {
             'url': 'infrastructure/controllers/pi_rate',
+            'item_title': 'Packet-In Receive Rate',
             'schema': i_c_pi_rate_schema
         }
-        #*** OpenFlow Switches:
+        #*** Eve Settings for Measurements of Packet In Rates:
+        pi_time_settings = {
+            'url': 'infrastructure/controllers/pi_time',
+            'item_title': 'Packet-In Processing Time',
+            'schema': pi_time_schema
+        }
+        #*** Eve Settings for OpenFlow Switches API:
         switches_settings = {
             'url': 'infrastructure/switches',
             'item_title': 'OpenFlow Switches',
@@ -257,7 +278,7 @@ class ExternalAPI(BaseClass):
         #*** by harvest time:
         identities_settings = {
             'url': 'identities',
-            'item_title': 'identity',
+            'item_title': 'Identity Records',
             'schema': identity_schema,
             'datasource': {
                 'default_sort': [('harvest_time', -1)],
@@ -280,6 +301,7 @@ class ExternalAPI(BaseClass):
         #*** Eve Domain for the whole API:
         eve_domain = {
             'i_c_pi_rate': i_c_pi_rate_settings,
+            'pi_time': pi_time_settings,
             'switches_col': switches_settings,
             'identities': identities_settings,
             'identities_ui': identities_ui_settings,
@@ -316,6 +338,9 @@ class ExternalAPI(BaseClass):
 
         #*** Hook for adding pi_rate to returned resource:
         self.app.on_fetched_resource_i_c_pi_rate += self.i_c_pi_rate_response
+
+        #*** Hook for adding pi_time to returned resource:
+        self.app.on_fetched_resource_pi_time += self.pi_time_response
 
         #*** Hook for filtered identities response:
         self.app.on_fetched_resource_identities_ui += \
@@ -355,6 +380,36 @@ class ExternalAPI(BaseClass):
         pi_rate = float(packet_cursor.count() / PACKET_IN_RATE_INTERVAL)
         self.logger.debug("pi_rate=%s", pi_rate)
         items['pi_rate'] = pi_rate
+
+    def pi_time_response(self, items):
+        """
+        Update the response with the packet_time min, avg and max.
+        Hooked from on_fetched_resource_<name>
+        """
+        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        #*** Get database and query it:
+        pi_time = self.app.data.driver.db['pi_time']
+
+        db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
+                          datetime.timedelta(seconds=PACKET_TIME_PERIOD)}}
+
+        pi_time_avg = pi_time.aggregate([{
+                            "$match": db_data
+                            },
+                            {
+                            "$group": {
+                                "_id": None,
+                                "avg_pi_time": {"$avg": "$pi_time"}
+                                }
+                            },
+                            {
+                            "$sort": {
+                                "$natural": -1
+                                }
+                            }
+                        ])
+        self.logger.debug("pi_time_avg =%s", pi_time_avg)
+        items['pi_time_avg '] = pi_time_avg
 
     def identities_ui_response(self, items):
         """

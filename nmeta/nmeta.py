@@ -147,8 +147,6 @@ class NMeta(app_manager.RyuApp, BaseClass):
         switch = self.switches[dpid]
         flowtables = switch.flowtables
         ofproto = datapath.ofproto
-
-        #*** Get the in port (OpenFlow version dependant call):
         in_port = msg.match['in_port']
 
         #*** Read packet into flow object for classifiers to work with:
@@ -170,6 +168,11 @@ class NMeta(app_manager.RyuApp, BaseClass):
 
         #*** Call Forwarding module to determine output port:
         out_port = self.forwarding.basic_switch(event, in_port)
+        if out_port == in_port:
+            #*** Sending out same port prohibited by IEEE 802.1D-2004 7.7.1c:
+            self.logger.warning("Dropping packet flow_hash=%s as out_port="
+                                    "in_port=%s", self.flow.flow_hash, in_port)
+            return
 
         #*** Set QoS queue based on any QoS actions:
         actions = self.flow.classification.actions

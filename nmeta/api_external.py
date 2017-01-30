@@ -389,26 +389,20 @@ class ExternalAPI(BaseClass):
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
         #*** Get database and query it:
         pi_time = self.app.data.driver.db['pi_time']
-
         db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
                           datetime.timedelta(seconds=PACKET_TIME_PERIOD)}}
-
-        pi_time_avg = pi_time.aggregate([{
-                            "$match": db_data
-                            },
-                            {
-                            "$group": {
-                                "_id": None,
-                                "avg_pi_time": {"$avg": "$pi_time"}
-                                }
-                            },
-                            {
-                            "$sort": {
-                                "$natural": -1
-                                }
-                            }
-                        ])
+        pi_time_cursor = pi_time.find(db_data).sort('$natural', -1)
+        pi_time_list = []
+        for record in pi_time_cursor:
+            pi_delta = record['pi_delta']
+            self.logger.debug("pi_delta=%s", pi_delta)
+            pi_time_list.append(pi_delta)
+        pi_time_max = max(pi_time_list)
+        pi_time_min = min(pi_time_list)
+        pi_time_avg = sum(pi_time_list)/len(pi_time_list)
         self.logger.debug("pi_time_avg =%s", pi_time_avg)
+        items['pi_time_max '] = pi_time_max
+        items['pi_time_min '] = pi_time_min
         items['pi_time_avg '] = pi_time_avg
 
     def identities_ui_response(self, items):

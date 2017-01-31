@@ -37,6 +37,8 @@ from ryu.controller.handler import HANDSHAKE_DISPATCHER, DEAD_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 from ryu.lib import addrconv
+from ryu.lib.packet import packet
+from ryu.lib.packet import ethernet
 
 #*** nmeta imports:
 import tc_policy
@@ -148,6 +150,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
         flowtables = switch.flowtables
         ofproto = datapath.ofproto
         in_port = msg.match['in_port']
+        pkt = packet.Packet(msg.data)
+        eth = pkt.get_protocol(ethernet.ethernet)
 
         #*** Read packet into flow object for classifiers to work with:
         self.flow.ingest_packet(dpid, in_port, msg.data,
@@ -172,6 +176,10 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** Sending out same port prohibited by IEEE 802.1D-2004 7.7.1c:
             self.logger.warning("Dropping packet flow_hash=%s as out_port="
                                     "in_port=%s", self.flow.flow_hash, in_port)
+            return
+        #*** Don't forward reserved MACs, as per IEEE 802.1D-2004 table 7-10:
+        if str(eth.dst)[0:16] == '01:80:c2:00:00:0':
+            self.logger.debug("Not forwarding reserved mac=%s", eth.dst)
             return
 
         #*** Set QoS queue based on any QoS actions:

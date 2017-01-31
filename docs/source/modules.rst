@@ -15,3 +15,4 @@ Code Documentation
    identities
    forwarding
    switches
+   nethash

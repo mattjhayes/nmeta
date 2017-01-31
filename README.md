@@ -5,7 +5,7 @@
 The nmeta project is a research platform for traffic classification on
 Software Defined Networking (SDN).
 
-News: Version 0.2.1 released 01/01/2017. See release notes at
+News: Version 0.3.0 released 31/01/2017. See release notes at
 https://github.com/mattjhayes/nmeta/releases
 
 Documentation is on Read the Docs (http://nmeta.readthedocs.io)

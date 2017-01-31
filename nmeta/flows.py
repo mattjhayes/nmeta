@@ -29,7 +29,6 @@ that flow with information from the current packet.
 There are various methods (see class docstring) that provide views
 into the state of the flow.
 """
-
 #*** For packet methods:
 import socket
 
@@ -40,14 +39,14 @@ import dpkt
 import pymongo
 from pymongo import MongoClient
 
-#*** For hashing flow 5-tuples:
-import hashlib
-
 #*** For timestamps:
 import datetime
 
 #*** For logging configuration:
 from baseclass import BaseClass
+
+#*** nmeta imports:
+import nethash
 
 class Flow(BaseClass):
     """
@@ -187,6 +186,9 @@ class Flow(BaseClass):
 
         classification.TBD
 
+    The Flow class also includes the record_removal method
+    that records a flow removal message from a switch to database
+
     Challenges (not handled - yet):
      - duplicate packets due to retransmissions or multiple switches
        in path
@@ -200,11 +202,11 @@ class Flow(BaseClass):
         """
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(Flow, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("flows_logging_level_s",
+        self.configure_logging(__name__, "flows_logging_level_s",
                                        "flows_logging_level_c")
+        self.flow_hash = 0
+
         #*** Get parameters from config:
         mongo_addr = config.get_value("mongo_addr")
         mongo_port = config.get_value("mongo_port")
@@ -213,10 +215,10 @@ class Flow(BaseClass):
         packet_ins_max_bytes = config.get_value("packet_ins_max_bytes")
         classifications_max_bytes = \
                                   config.get_value("classifications_max_bytes")
+        flow_rems_max_bytes = config.get_value("flow_rems_max_bytes")
         #*** How far back in time to go back looking for packets in flow:
         self.flow_time_limit = datetime.timedelta \
                                 (seconds=config.get_value("flow_time_limit"))
-
         self.classification_time_limit = datetime.timedelta \
                         (seconds=config.get_value("classification_time_limit"))
 
@@ -228,37 +230,40 @@ class Flow(BaseClass):
         db_nmeta = mongo_client[mongo_dbname]
 
         #*** packet_ins collection:
-        #*** Delete (drop) previous packet_ins collection if it exists:
-        self.logger.debug("Deleting previous packet_ins MongoDB collection...")
+        self.logger.debug("Deleting packet_ins MongoDB collection...")
         db_nmeta.packet_ins.drop()
-
         #*** Create the packet_ins collection, specifying capped option
         #*** with max size in bytes, so MongoDB handles data retention:
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=packet_ins_max_bytes)
-
         #*** Index flow_hash key of packet_ins collection to
         #*** improve look-up performance:
         self.packet_ins.create_index([('flow_hash', pymongo.TEXT)],
                                                                 unique=False)
 
         #*** classifications collection:
-        #*** Delete (drop) previous classifications collection if it exists:
-        self.logger.debug("Deleting previous classifications MongoDB "
-                                                               "collection...")
+        self.logger.debug("Deleting classifications MongoDB collection...")
         db_nmeta.classifications.drop()
-
         #*** Create the classifications collection, specifying capped option
         #*** with max size in bytes, so MongoDB handles data retention:
         self.classifications = db_nmeta.create_collection('classifications',
                                    capped=True, size=classifications_max_bytes)
-
         #*** Index flow_hash key of classifications collection to
         #*** improve look-up performance:
         self.classifications.create_index([('flow_hash', pymongo.TEXT)],
                                                                 unique=False)
 
-        self.flow_hash = 0
+        #*** flow_rems collection:
+        self.logger.debug("Deleting flow_rems MongoDB collection...")
+        db_nmeta.flow_rems.drop()
+        #*** Create the flow_rems collection, specifying capped option
+        #*** with max size in bytes, so MongoDB handles data retention:
+        self.flow_rems = db_nmeta.create_collection('flow_rems',
+                                   capped=True, size=flow_rems_max_bytes)
+        #*** Index flow_hash key of flow_rems collection to
+        #*** improve look-up performance:
+        self.flow_rems.create_index([('flow_hash', pymongo.TEXT)],
+                                                                unique=False)
 
     class Packet(object):
         """
@@ -421,7 +426,151 @@ class Flow(BaseClass):
             #*** Write classification to database collection:
             self.clsfn.insert_one(db_dict)
 
-    def ingest_packet(self, dpid, in_port, pkt, timestamp):
+    class RemovedFlow(object):
+        """
+        An object that represents an individual removed flow.
+        This is a flow that a switch has informed us it has
+        removed from its flow table because of an idle timeout
+        """
+        def __init__(self, logger, flow_rems, msg):
+            """
+            Initialise the class with logger and flow_rems db
+            collection. Initialise removed flow parameters to values
+            in the message
+            """
+            match = msg.match
+            self.logger = logger
+            self.flow_rems = flow_rems
+            #*** Initialise removed flow parameters:
+            self.dpid = msg.datapath.id
+            self.removal_time = datetime.datetime.now()
+            self.cookie = msg.cookie
+            self.priority = msg.priority
+            self.reason = msg.reason
+            self.table_id = msg.table_id
+            self.duration_sec = msg.duration_sec
+            self.idle_timeout = msg.idle_timeout
+            self.hard_timeout = msg.hard_timeout
+            self.packet_count = msg.packet_count
+            self.byte_count = msg.byte_count
+            self.eth_A = ""
+            self.eth_B = ""
+            self.eth_type = ""
+            self.ip_A = ""
+            self.ip_B = ""
+            self.ip_proto = ""
+            self.tp_A = ""
+            self.tp_B = ""
+            #*** Set values from the match where they exist:
+            if 'eth_src' in match:
+                self.eth_A = match['eth_src']
+            if 'eth_dst' in match:
+                self.eth_B = match['eth_dst']
+            if 'eth_type' in match:
+                self.eth_type = match['eth_type']
+            if 'ipv4_src' in match:
+                self.ip_A = match['ipv4_src']
+            if 'ipv4_dst' in match:
+                self.ip_B = match['ipv4_dst']
+            if 'ipv6_src' in match:
+                self.ip_A = match['ipv6_src']
+            if 'ipv6_dst' in match:
+                self.ip_B = match['ipv6_dst']
+            if 'ip_proto' in match:
+                self.ip_proto = match['ip_proto']
+            if 'tcp_src' in match:
+                self.tp_A = match['tcp_src']
+            if 'tcp_dst' in match:
+                self.tp_B = match['tcp_dst']
+            #*** Set flow hash:
+            if self.ip_proto == 6:
+                self.flow_hash = nethash.hash_flow((self.ip_A, self.ip_B,
+                                          self.tp_A, self.tp_B,
+                                          self.ip_proto))
+            else:
+                self.flow_hash = nethash.hash_flow((self.eth_A, self.eth_B,
+                                          self.dpid, self.removal_time,
+                                          self.ip_proto))
+
+        def dbdict(self):
+            """
+            Return a dictionary object of parameters
+            from the removed flow for storing in the flow_rems
+            database collection
+            """
+            dbdictresult = {}
+            dbdictresult['dpid'] = self.dpid
+            dbdictresult['flow_hash'] = self.flow_hash
+            dbdictresult['removal_time'] = self.removal_time
+            dbdictresult['cookie'] = self.cookie
+            dbdictresult['priority'] = self.priority
+            dbdictresult['reason'] = self.reason
+            dbdictresult['table_id'] = self.table_id
+            dbdictresult['duration_sec'] = self.duration_sec
+            dbdictresult['idle_timeout'] = self.idle_timeout
+            dbdictresult['hard_timeout'] = self.hard_timeout
+            dbdictresult['packet_count'] = self.packet_count
+            dbdictresult['byte_count'] = self.byte_count
+            dbdictresult['eth_A'] = self.eth_A
+            dbdictresult['eth_B'] = self.eth_B
+            dbdictresult['eth_type'] = self.eth_type
+            dbdictresult['ip_A'] = self.ip_A
+            dbdictresult['ip_B'] = self.ip_B
+            dbdictresult['ip_proto'] = self.ip_proto
+            dbdictresult['tp_A'] = self.tp_A
+            dbdictresult['tp_B'] = self.tp_B
+            return dbdictresult
+
+        def commit(self):
+            """
+            Record removed flow into MongoDB
+            flow_rems collection.
+            """
+            self.logger.debug("Writing flow removal to database")
+            #*** Write to database collection:
+            self.flow_rems.insert_one(self.dbdict())
+
+    def record_removal(self, msg):
+        """
+        Record an idle-timeout flow removal message.
+        Passed a Ryu message object for the flow removal.
+        Record entries in the flow_rems database collection with
+        a hash for each direction
+        """
+        #*** Instantiate class to hold removed flow record:
+        remf = self.RemovedFlow(self.logger, self.flow_rems, msg)
+        #*** Decide what to record based on the match:
+        match = msg.match
+        if 'ip_proto' in match:
+            if match['ip_proto'] == 6:
+                #*** TCP. Write record to database:
+                self.logger.debug("Removed flow was TCP, dbdict=%s",
+                                                             remf.dbdict())
+                remf.commit()
+                return 1
+            else:
+                #*** Non-TCP IP flow
+                self.logger.debug("Removed flow was non-TCP, dbdict=%s",
+                                                             remf.dbdict())
+                remf.commit()
+                return 1
+        else:
+            self.logger.info("match has eth_type=%s", match['eth_type'])
+            if match['eth_type'] == 2048:
+                #*** IPv4:
+                self.logger.debug("Removed flow was IPv4 unknown protocol")
+                # TBD
+
+            elif match['eth_type'] == 34525:
+                #*** IPv6:
+                self.logger.debug("Removed flow was IPv6 unknown protocol")
+                # TBD
+
+            else:
+                self.logger.warning("Removed flow was unhandled eth_type")
+                return 0
+
+    def ingest_packet(self, dpid, in_port, packet, timestamp):
         """
         Ingest a packet into the packet_ins collection and put the flow object
         into the context of the packet.
@@ -429,75 +578,83 @@ class Flow(BaseClass):
         """
         #*** Instantiate an instance of Packet class:
         self.packet = self.Packet()
+        pkt = self.packet
 
         #*** DPID of the switch that sent the Packet-In message:
-        self.packet.dpid = dpid
+        pkt.dpid = dpid
         #*** Port packet was received on:
-        self.packet.in_port = in_port
+        pkt.in_port = in_port
         #*** Packet receive time:
-        self.packet.timestamp = timestamp
+        pkt.timestamp = timestamp
         #*** Packet length on the wire:
-        self.packet.length = len(pkt)
+        pkt.length = len(packet)
 
         #*** Read packet into dpkt to parse headers:
-        eth = dpkt.ethernet.Ethernet(pkt)
+        eth = dpkt.ethernet.Ethernet(packet)
 
         #*** Ethernet parameters:
-        self.packet.eth_src = _mac_addr(eth.src)
-        self.packet.eth_dst = _mac_addr(eth.dst)
-        self.packet.eth_type = eth.type
+        pkt.eth_src = _mac_addr(eth.src)
+        pkt.eth_dst = _mac_addr(eth.dst)
+        pkt.eth_type = eth.type
 
         if eth.type == 2048:
             #*** IPv4 (TBD: add IPv6 support)
             ip = eth.data
-            self.packet.ip_src = socket.inet_ntop(socket.AF_INET, ip.src)
-            self.packet.ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
-            self.packet.proto = ip.p
+            pkt.ip_src = socket.inet_ntop(socket.AF_INET, ip.src)
+            pkt.ip_dst = socket.inet_ntop(socket.AF_INET, ip.dst)
+            pkt.proto = ip.p
             if ip.p == 6:
                 #*** TCP
                 tcp = ip.data
-                self.packet.tp_src = tcp.sport
-                self.packet.tp_dst = tcp.dport
-                self.packet.tp_flags = tcp.flags
-                self.packet.tp_seq_src = tcp.seq
-                self.packet.tp_seq_dst = tcp.ack
-                self.packet.payload = tcp.data
+                pkt.tp_src = tcp.sport
+                pkt.tp_dst = tcp.dport
+                pkt.tp_flags = tcp.flags
+                pkt.tp_seq_src = tcp.seq
+                pkt.tp_seq_dst = tcp.ack
+                pkt.payload = tcp.data
             elif ip.p == 17:
                 #*** UDP
                 udp = ip.data
-                self.packet.tp_src = udp.sport
-                self.packet.tp_dst = udp.dport
-                self.packet.tp_flags = ""
-                self.packet.tp_seq_src = 0
-                self.packet.tp_seq_dst = 0
-                self.packet.payload = udp.data
+                pkt.tp_src = udp.sport
+                pkt.tp_dst = udp.dport
+                pkt.tp_flags = ""
+                pkt.tp_seq_src = 0
+                pkt.tp_seq_dst = 0
+                pkt.payload = udp.data
             else:
                 #*** Not a transport layer that we understand:
                 # TBD: add other transport protocols
-                self.packet.tp_src = 0
-                self.packet.tp_dst = 0
-                self.packet.tp_flags = 0
-                self.packet.tp_seq_src = 0
-                self.packet.tp_seq_dst = 0
-                self.packet.payload = ip.data
+                pkt.tp_src = 0
+                pkt.tp_dst = 0
+                pkt.tp_flags = 0
+                pkt.tp_seq_src = 0
+                pkt.tp_seq_dst = 0
+                pkt.payload = ip.data
         else:
             #*** Non-IP:
-            self.packet.ip_src = ''
-            self.packet.ip_dst = ''
-            self.packet.proto = 0
-            self.packet.tp_src = 0
-            self.packet.tp_dst = 0
-            self.packet.tp_flags = 0
-            self.packet.tp_seq_src = 0
-            self.packet.tp_seq_dst = 0
-            self.packet.payload = eth.data
+            pkt.ip_src = ''
+            pkt.ip_dst = ''
+            pkt.proto = 0
+            pkt.tp_src = 0
+            pkt.tp_dst = 0
+            pkt.tp_flags = 0
+            pkt.tp_seq_src = 0
+            pkt.tp_seq_dst = 0
+            pkt.payload = eth.data
 
         #*** Generate a flow_hash unique to flow for pkts in either direction:
-        self.packet.flow_hash = self._hash_flow()
+        if pkt.proto == 6:
+            self.packet.flow_hash = nethash.hash_flow((pkt.ip_src, pkt.ip_dst,
+                                          pkt.tp_src, pkt.tp_dst,
+                                          pkt.proto))
+        else:
+            self.packet.flow_hash = nethash.hash_flow((pkt.eth_src, pkt.eth_dst,
+                                          dpid, pkt.timestamp,
+                                          pkt.proto))
         self.flow_hash = self.packet.flow_hash
 
         #*** Generate a packet_hash unique to the packet:
-        self.packet.packet_hash = self._hash_packet()
+        self.packet.packet_hash = nethash.hash_packet(self.packet)
 
         #*** Instantiate classification data for this flow in context:
         self.classification = self.Classification(self.flow_hash,
@@ -711,89 +868,6 @@ class Flow(BaseClass):
         #TBD
         pass
 
-    def _hash_flow(self):
-        """
-        Generate a predictable flow_hash for the 5-tuple which is the
-        same not matter which direction the traffic is travelling
-        for packets that are part of a flow.
-
-        For packets that we don't understand as a flow, create a hash
-        that is unique to the packet to avoid retrieving unrelated
-        packets
-        """
-        proto = self.packet.proto
-        if proto == 6:
-            #*** Is a flow (TBD, do UDP):
-            ip_A = self.packet.ip_src
-            ip_B = self.packet.ip_dst
-            tp_src = self.packet.tp_src
-            tp_dst = self.packet.tp_dst
-            if ip_A > ip_B:
-                direction = 1
-            elif ip_B > ip_A:
-                direction = 2
-            elif tp_src > tp_dst:
-                direction = 1
-            elif tp_dst > tp_src:
-                direction = 2
-            else:
-                direction = 1
-        else:
-            #*** Isn't a flow, so make hash unique to packet by including
-            #*** the DPID and timestamp in the hash:
-            ip_A = self.packet.eth_src
-            ip_B = self.packet.eth_dst
-            tp_src = self.packet.dpid
-            tp_dst = self.packet.timestamp
-            direction = 1
-
-        hash_5t = hashlib.md5()
-        if direction == 1:
-            flow_tuple = (ip_A, ip_B, tp_src, tp_dst, proto)
-        else:
-            flow_tuple = (ip_B, ip_A, tp_dst, tp_src, proto)
-        flow_tuple_as_string = str(flow_tuple)
-        hash_5t.update(flow_tuple_as_string)
-        return hash_5t.hexdigest()
-
-    def _hash_packet(self):
-        """
-        Generate a hash of the current packet used for deduplication
-        where the same packet is received from multiple switches.
-
-        Retransmissions of a packet that is part of a flow should have
-        same hash value, so that retransmissions can be measured.
-
-        The packet hash is an indexed uni-directionally packet identifier
-
-        For flow-packets, the hash is derived from:
-          ip_src, ip_dst, proto, tp_src, tp_dst, tp_seq_src, tp_seq_dst
-
-        For non-flow packets, the hash is derived from:
-          eth_src, eth_dst, eth_type, dpid, timestamp
-        """
-        hash_result = hashlib.md5()
-        if self.packet.proto == 6:
-            #*** Is a flow (TBD, do UDP):
-            packet_tuple = (self.packet.ip_src,
-                        self.packet.ip_dst,
-                        self.packet.proto,
-                        self.packet.tp_src,
-                        self.packet.tp_dst,
-                        self.packet.tp_seq_src,
-                        self.packet.tp_seq_dst)
-        else:
-            #*** Isn't a flow, so make hash unique to packet by including
-            #*** the DPID and timestamp in the hash:
-            packet_tuple = (self.packet.eth_src,
-                        self.packet.eth_dst,
-                        self.packet.eth_type,
-                        self.packet.dpid,
-                        self.packet.timestamp)
-        packet_tuple_as_string = str(packet_tuple)
-        hash_result.update(packet_tuple_as_string)
-        return hash_result.hexdigest()
-
 #================== PRIVATE FUNCTIONS ==================
 
 def _is_tcp_syn(tcp_flags):
@@ -821,3 +895,4 @@ def _mac_addr(address):
     Convert a MAC address to a readable/printable string
     """
     return ':'.join('%02x' % ord(b) for b in address)
+

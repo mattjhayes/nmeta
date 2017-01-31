@@ -92,10 +92,8 @@ class Identities(BaseClass):
         """
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(Identities, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("identities_logging_level_s",
+        self.configure_logging(__name__, "identities_logging_level_s",
                                        "identities_logging_level_c")
         #*** Get parameters from config:
         mongo_addr = config.get_value("mongo_addr")
@@ -215,6 +213,7 @@ class Identities(BaseClass):
             self.ip_assigned = 0
             self.ip_dhcp_server = 0
             self.lease_time = 0
+
         def dbdict(self):
             """
             Return a dictionary object of dhcp message
@@ -525,7 +524,7 @@ class Identities(BaseClass):
                 self.identities.insert_one(db_dict)
             else:
                 #*** Not a type that we handle yet
-                pass
+                self.logger.debug("Unhandled DNS answer type=%s", answer.type)
 
     def findbymac(self, mac_addr):
         """

@@ -87,10 +87,8 @@ class TrafficClassificationPolicy(BaseClass):
                     pol_filename=POL_FILENAME):
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(TrafficClassificationPolicy, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("tc_policy_logging_level_s",
+        self.configure_logging(__name__, "tc_policy_logging_level_s",
                                        "tc_policy_logging_level_c")
         self.policy_dir_default = pol_dir_default
         self.policy_dir_user = pol_dir_user

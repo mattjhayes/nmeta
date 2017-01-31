@@ -42,8 +42,14 @@ import config
 #*** For timestamps:
 import datetime
 
+#*** To get request parameters:
+from flask import request
+
 #*** Amount of time (seconds) to go back for to calculate Packet-In rate:
 PACKET_IN_RATE_INTERVAL = 10
+
+#*** Amount of time (seconds) to go back for to calculate Packet-In rate:
+PACKET_TIME_PERIOD = 10
 
 FLOW_LIMIT = 25
 
@@ -54,6 +60,7 @@ SERVICE_LIMIT = 250
 
 #*** How far back in time to go back looking for packets in flow:
 FLOW_TIME_LIMIT = datetime.timedelta(seconds=3600)
+FLOW_REM_TIME_LIMIT = datetime.timedelta(seconds=3600)
 CLASSIFICATION_TIME_LIMIT = datetime.timedelta(seconds=4000)
 
 #*** Enumerate some proto numbers, someone's probably already done this...
@@ -80,11 +87,8 @@ class ExternalAPI(BaseClass):
         Initialise the ExternalAPI class
         """
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(ExternalAPI, self).__init__()
-
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("external_api_logging_level_s",
+        self.configure_logging(__name__, "external_api_logging_level_s",
                                        "external_api_logging_level_c")
 
         #*** MongoDB Setup:
@@ -105,6 +109,7 @@ class ExternalAPI(BaseClass):
         self.packet_ins = db_nmeta.packet_ins
         self.identities = db_nmeta.identities
         self.classifications = db_nmeta.classifications
+        self.flow_rems = db_nmeta.flow_rems
 
     class FlowUI(object):
         """
@@ -133,6 +138,10 @@ class ExternalAPI(BaseClass):
             self.classification_hover = ""
             self.actions = ""
             self.actions_hover = ""
+            self.data_sent = ""
+            self.data_sent_hover = ""
+            self.data_received = ""
+            self.data_received_hover = ""
         def response(self):
             """
             Return a dictionary object of flow parameters
@@ -148,6 +157,46 @@ class ExternalAPI(BaseClass):
         i_c_pi_rate_schema = {
                 'pi_rate': {
                     'type': 'float'
+                }
+            }
+        pi_time_schema = {
+                'pi_time_min': {
+                    'type': 'float'
+                },
+                'pi_time_avg': {
+                    'type': 'float'
+                },
+                'pi_time_max': {
+                    'type': 'float'
+                }
+            }
+        switches_schema = {
+                'dpid': {
+                    'type': 'integer'
+                },
+                'ip_address': {
+                    'type': 'string'
+                },
+                'port': {
+                    'type': 'integer'
+                },
+                'time_connected': {
+                    'type': 'string'
+                },
+                'mfr_desc': {
+                    'type': 'string'
+                },
+                'hw_desc': {
+                    'type': 'string'
+                },
+                'sw_desc': {
+                    'type': 'string'
+                },
+                'serial_num': {
+                    'type': 'string'
+                },
+                'dp_desc': {
+                    'type': 'string'
                 }
             }
         #*** Define the Eve identity schema for what data the API returns:
@@ -210,13 +259,26 @@ class ExternalAPI(BaseClass):
         #*** Eve Settings for Measurements of Packet In Rates:
         i_c_pi_rate_settings = {
             'url': 'infrastructure/controllers/pi_rate',
+            'item_title': 'Packet-In Receive Rate',
             'schema': i_c_pi_rate_schema
+        }
+        #*** Eve Settings for Measurements of Packet In Rates:
+        pi_time_settings = {
+            'url': 'infrastructure/controllers/pi_time',
+            'item_title': 'Packet-In Processing Time',
+            'schema': pi_time_schema
+        }
+        #*** Eve Settings for OpenFlow Switches API:
+        switches_settings = {
+            'url': 'infrastructure/switches',
+            'item_title': 'OpenFlow Switches',
+            'schema': switches_schema
         }
         #*** Eve Settings for Identities Objects. Note the reverse sort
         #*** by harvest time:
         identities_settings = {
             'url': 'identities',
-            'item_title': 'identity',
+            'item_title': 'Identity Records',
             'schema': identity_schema,
             'datasource': {
                 'default_sort': [('harvest_time', -1)],
@@ -239,6 +301,8 @@ class ExternalAPI(BaseClass):
         #*** Eve Domain for the whole API:
         eve_domain = {
             'i_c_pi_rate': i_c_pi_rate_settings,
+            'pi_time': pi_time_settings,
+            'switches_col': switches_settings,
             'identities': identities_settings,
             'identities_ui': identities_ui_settings,
             'flows_ui': flows_ui_settings
@@ -274,6 +338,9 @@ class ExternalAPI(BaseClass):
 
         #*** Hook for adding pi_rate to returned resource:
         self.app.on_fetched_resource_i_c_pi_rate += self.i_c_pi_rate_response
+
+        #*** Hook for adding pi_time to returned resource:
+        self.app.on_fetched_resource_pi_time += self.pi_time_response
 
         #*** Hook for filtered identities response:
         self.app.on_fetched_resource_identities_ui += \
@@ -314,6 +381,30 @@ class ExternalAPI(BaseClass):
         self.logger.debug("pi_rate=%s", pi_rate)
         items['pi_rate'] = pi_rate
 
+    def pi_time_response(self, items):
+        """
+        Update the response with the packet_time min, avg and max.
+        Hooked from on_fetched_resource_<name>
+        """
+        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        #*** Get database and query it:
+        pi_time = self.app.data.driver.db['pi_time']
+        db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
+                          datetime.timedelta(seconds=PACKET_TIME_PERIOD)}}
+        pi_time_cursor = pi_time.find(db_data).sort('$natural', -1)
+        pi_time_list = []
+        for record in pi_time_cursor:
+            pi_delta = record['pi_delta']
+            self.logger.debug("pi_delta=%s", pi_delta)
+            pi_time_list.append(pi_delta)
+        pi_time_max = max(pi_time_list)
+        pi_time_min = min(pi_time_list)
+        pi_time_avg = sum(pi_time_list)/len(pi_time_list)
+        self.logger.debug("pi_time_avg =%s", pi_time_avg)
+        items['pi_time_max '] = pi_time_max
+        items['pi_time_min '] = pi_time_min
+        items['pi_time_avg '] = pi_time_avg
+
     def identities_ui_response(self, items):
         """
         Populate the response with identities that are filtered:
@@ -325,6 +416,14 @@ class ExternalAPI(BaseClass):
         """
         known_hashes = []
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+
+        #*** Get URL parameters:
+        if 'filter_dns' in request.args:
+            filter_dns = request.args['filter_dns']
+        else:
+            filter_dns = 0
+        self.logger.debug("filter_dns=%s", filter_dns)
+
         #*** Get database and query it:
         identities = self.app.data.driver.db['identities']
         #*** Reverse sort:
@@ -332,6 +431,11 @@ class ExternalAPI(BaseClass):
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
             if not record['id_hash'] in known_hashes:
+                #*** Skip DNS results if filter_dns enabled:
+                if filter_dns and (record['harvest_type'] == 'DNS_CNAME' or
+                            record['harvest_type'] == 'DNS_A'):
+                    continue
+                #*** Get IP for DNS CNAME:
                 if record['harvest_type'] == 'DNS_CNAME':
                     #*** Check if A record exists, and if so update response:
                     record['ip_address'] = \
@@ -392,10 +496,61 @@ class ExternalAPI(BaseClass):
                 #*** Enrich with classification and action(s):
                 classification = self.get_classification(record['flow_hash'])
                 flow.classification = classification['classification_tag']
+                #*** Enrich with data xfer (only applies to flows that
+                #***  have had idle timeout)
+                data_xfer = self.get_flow_data_xfer(record)
+                if data_xfer['tx_found']:
+                    flow.data_sent = data_xfer['tx_bytes']
+                    flow.data_sent_hover = data_xfer['tx_pkts']
+                if data_xfer['rx_found']:
+                    flow.data_received = data_xfer['rx_bytes']
+                    flow.data_received_hover = data_xfer['rx_pkts']
                 #*** Add to items dictionary, which is returned in response:
                 items['_items'].append(flow.response())
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+    def get_flow_data_xfer(self, record):
+        """
+        Passed a record of a single flow from the packet_ins
+        database collection.
+
+        Enrich this by looking up data transfer stats
+        (which may not exist) in flow_rems database collection,
+        and return dictionary of the values.
+
+        Note that the data sent (tx) and received (rx) records
+        will have different flow hashes.
+        """
+        self.logger.debug("In get_flow_data_xfer")
+        #*** Set blank result:
+        result = {'tx_found': 0, 'rx_found': 0, 'tx_bytes': 0, 'rx_bytes': 0,
+                        'tx_pkts': 0, 'rx_pkts': 0}
+        ip_A = record['ip_src']
+        flow_hash = record['flow_hash']
+        #*** Search flow_rems database collection:
+        db_data_tx = {'flow_hash': flow_hash, 'ip_A': ip_A,
+              'removal_time': {'$gte': datetime.datetime.now() -
+                                    FLOW_REM_TIME_LIMIT}}
+        db_data_rx = {'flow_hash': flow_hash, 'ip_B': ip_A,
+              'removal_time': {'$gte': datetime.datetime.now() -
+                                    FLOW_REM_TIME_LIMIT}}
+        tx = self.flow_rems.find(db_data_tx).sort('$natural', -1).limit(1)
+        rx = self.flow_rems.find(db_data_rx).sort('$natural', -1).limit(1)
+        #*** Analyse database results and update result:
+        if tx.count():
+            result['tx_found'] = 1
+            tx_result = list(tx)[0]
+            self.logger.debug("tx_result is %s", tx_result)
+            result['tx_bytes'] = tx_result['byte_count']
+            result['tx_pkts'] = tx_result['packet_count']
+        if rx.count():
+            result['rx_found'] = 1
+            rx_result = list(rx)[0]
+            self.logger.debug("rx_result is %s", rx_result)
+            result['rx_bytes'] = rx_result['byte_count']
+            result['rx_pkts'] = rx_result['packet_count']
+        return result
 
     def get_classification(self, flow_hash):
         """
@@ -519,19 +674,32 @@ class ExternalAPI(BaseClass):
                 return str(record['host_name'])
         return ""
 
-    def get_service_by_ip(self, ip_addr):
+    def get_service_by_ip(self, ip_addr, alias=1):
         """
         Passed an IP address. Look this up in the identities db collection
-        and return a service name if present, otherwise an empty string
+        and return a service name if present, otherwise an empty string.
+
+        If alias is set, do additional lookup on success to see if service
+        name is an alias for another name, and if so return that.
         """
-        db_data = {'ip_address': ip_addr}
-        #*** Run db search:
-        cursor = self.identities.find(db_data).limit(SERVICE_LIMIT) \
-                                                          .sort('$natural', -1)
-        for record in cursor:
-            if record['service_name'] != "":
-                return str(record['service_name'])
-        return ""
+        db_data = {'ip_address': ip_addr, "service_name": {'$ne':""}}
+        db_result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if db_result.count():
+            service_result = list(db_result)[0]
+            service = service_result['service_name']
+            self.logger.debug("service name is %s", service)
+        else:
+            #*** Didn't find anything, return empty string:
+            return ""
+        if alias:
+            #*** Look up service name as alias:
+            db_data = {"service_alias": service}
+            db_result = self.identities.find(db_data).sort('$natural', -1). \
+                                                                       limit(1)
+            if db_result.count():
+                service_result = list(db_result)[0]
+                service = service_result['service_name']
+        return service
 
 def enumerate_eth_type(eth_type):
     """
@@ -584,3 +752,4 @@ if __name__ == '__main__':
     api = ExternalAPI(config)
     #*** Start the External API:
     api.run()
+

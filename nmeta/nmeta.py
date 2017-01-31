@@ -25,6 +25,7 @@ and carries no warrantee whatsoever. You have been warned.
 
 #*** General Imports:
 import struct
+import time
 import datetime
 
 #*** Ryu Imports:
@@ -32,20 +33,17 @@ from ryu import utils
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
-from ryu.controller.handler import HANDSHAKE_DISPATCHER
+from ryu.controller.handler import HANDSHAKE_DISPATCHER, DEAD_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-from ryu.ofproto import ofproto_v1_0
 from ryu.ofproto import ofproto_v1_3
-from ryu.lib.packet import packet
 from ryu.lib import addrconv
+from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
-from ryu.lib.packet import ipv4, ipv6
-from ryu.lib.packet import tcp
 
 #*** nmeta imports:
 import tc_policy
 import config
-import switch_abstraction
+import switches
 import forwarding
 import flows
 import identities
@@ -54,6 +52,9 @@ import of_error_decode
 #*** For logging configuration:
 from baseclass import BaseClass
 
+#*** mongodb Database Import:
+from pymongo import MongoClient
+
 #*** Number of preceding seconds that events are averaged over:
 EVENT_RATE_INTERVAL = 60
 
@@ -61,9 +62,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
     """
     This is the main class used to run nmeta
     """
-    #*** Supports OpenFlow versions 1.0 and 1.3:
-    OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION,
-                    ofproto_v1_3.OFP_VERSION]
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
         super(NMeta, self).__init__(*args, **kwargs)
@@ -74,27 +74,13 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Now set config module to log properly:
         self.config.inherit_logging(self.config)
 
-        #*** Run the BaseClass init to set things up:
-        super(NMeta, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("nmeta_logging_level_s",
+        self.configure_logging(__name__, "nmeta_logging_level_s",
                                        "nmeta_logging_level_c")
-
-        #*** Get max bytes of new flow packets to send to controller from
-        #*** config file:
-        self.miss_send_len = self.config.get_value("miss_send_len")
-        if self.miss_send_len < 1500:
-            self.logger.info("Be aware that setting "
-                             "miss_send_len to less than a full size packet "
-                             "may result in errors due to truncation. "
-                             "Configured value is %s bytes",
-                             self.miss_send_len)
-        #*** Tell switch how to handle fragments (see OpenFlow spec):
-        self.ofpc_frag = self.config.get_value("ofpc_frag")
 
         #*** Instantiate Module Classes:
         self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
-        self.sa = switch_abstraction.SwitchAbstract(self.config)
+        self.switches = switches.Switches(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
 
         #*** Instantiate a flow object for conversation metadata:
@@ -102,8 +88,24 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Instantiate an identity object for participant metadata:
         self.ident = identities.Identities(self.config)
 
+        #*** Set up database collection for packet-in processing time:
+        mongo_addr = self.config.get_value("mongo_addr")
+        mongo_port = self.config.get_value("mongo_port")
+        mongo_dbname = self.config.get_value("mongo_dbname")
+        #*** Start mongodb:
+        self.logger.info("Connecting to MongoDB database...")
+        mongo_client = MongoClient(mongo_addr, mongo_port)
+        #*** Connect to MongoDB nmeta database:
+        db_nmeta = mongo_client[mongo_dbname]
+        #*** Delete (drop) previous pi_time collection if it exists:
+        self.logger.debug("Deleting previous pi_time MongoDB collection...")
+        db_nmeta.pi_time.drop()
+        #*** Create the pi_time collection:
+        self.pi_time = db_nmeta.create_collection('pi_time')
+
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_connection_handler(self, ev):
+    def switch_connection_handler(self, event):
         """
         A switch has connected to the SDN controller.
         We need to do some tasks to set the switch up properly
@@ -111,34 +113,25 @@ class NMeta(app_manager.RyuApp, BaseClass):
         and table miss packet length and requesting the
         switch description
         """
-        datapath = ev.msg.datapath
-        self.logger.info("In switch_connection_handler")
-        #*** Set config on the switch:
-        self.sa.set_switch_config(datapath, self.ofpc_frag, self.miss_send_len)
-
-        #*** Request the switch send us it's description:
-        self.sa.request_switch_desc(datapath)
+        self.switches.add(event.msg.datapath)
 
     @set_ev_cls(ofp_event.EventOFPDescStatsReply, MAIN_DISPATCHER)
-    def desc_stats_reply_handler(self, ev):
+    def desc_stats_reply_handler(self, event):
         """
         Receive a reply from a switch to a description
         statistics request
         """
-        body = ev.msg.body
-        datapath = ev.msg.datapath
-        dpid = datapath.id
-        self.logger.info('event=DescStats Switch dpid=%s is mfr_desc="%s" '
-                      'hw_desc="%s" sw_desc="%s" serial_num="%s" dp_desc="%s"',
-                      dpid, body.mfr_desc, body.hw_desc, body.sw_desc,
-                      body.serial_num, body.dp_desc)
-        #*** Some switches need a table miss flow entry installed to buffer
-        #*** packet and send a packet-in message to the controller:
-        self.sa.set_switch_table_miss(datapath, self.miss_send_len,
-                                                    body.hw_desc, body.sw_desc)
+        self.switches.stats_reply(event.msg)
+
+    @set_ev_cls(ofp_event.EventOFPStateChange, DEAD_DISPATCHER)
+    def switch_down_handler(self, event):
+        """
+        OpenFlow state has gone down for a given DPID
+        """
+        self.switches.delete(event.msg.datapath)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def packet_in(self, ev):
+    def packet_in(self, event):
         """
         This method is called for every Packet-In event from a Switch.
         We receive a copy of the Packet-In event, pass it to the
@@ -148,16 +141,17 @@ class NMeta(app_manager.RyuApp, BaseClass):
         Finally, we send the packet out the switch port(s) via a
         Packet-Out message, with appropriate QoS queue set.
         """
+        pi_start_time = time.time()
         #*** Extract parameters:
-        msg = ev.msg
+        msg = event.msg
         datapath = msg.datapath
         dpid = datapath.id
+        switch = self.switches[dpid]
+        flowtables = switch.flowtables
         ofproto = datapath.ofproto
+        in_port = msg.match['in_port']
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-
-        #*** Get the in port (OpenFlow version dependant call):
-        in_port = self.sa.get_in_port(msg, datapath, ofproto)
 
         #*** Read packet into flow object for classifiers to work with:
         self.flow.ingest_packet(dpid, in_port, msg.data,
@@ -177,7 +171,16 @@ class NMeta(app_manager.RyuApp, BaseClass):
             self.flow.classification.commit()
 
         #*** Call Forwarding module to determine output port:
-        out_port = self.forwarding.basic_switch(ev, in_port)
+        out_port = self.forwarding.basic_switch(event, in_port)
+        if out_port == in_port:
+            #*** Sending out same port prohibited by IEEE 802.1D-2004 7.7.1c:
+            self.logger.warning("Dropping packet flow_hash=%s as out_port="
+                                    "in_port=%s", self.flow.flow_hash, in_port)
+            return
+        #*** Don't forward reserved MACs, as per IEEE 802.1D-2004 table 7-10:
+        if str(eth.dst)[0:16] == '01:80:c2:00:00:0':
+            self.logger.debug("Not forwarding reserved mac=%s", eth.dst)
+            return
 
         #*** Set QoS queue based on any QoS actions:
         actions = self.flow.classification.actions
@@ -192,94 +195,29 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** has been classified.
             #*** Prefer to do fine-grained match where possible:
             if self.flow.classification.classified:
-                _add_flow_result = self._add_flow(ev, in_port, out_port,
-                                                                    out_queue)
-                self.logger.debug("event=add_flow flow_hash=%s result=%s",
-                                         self.flow.flow_hash, _add_flow_result)
+                flowtables.suppress_flow(msg, in_port, out_port, out_queue)
             else:
                 self.logger.debug("Flow entry for flow_hash=%s not added as "
                                      "not classified yet", self.flow.flow_hash)
             #*** Send Packet Out:
-            self.sa.packet_out(datapath, msg, in_port, out_port, out_queue, 0)
+            switch.packet_out(msg.data, in_port, out_port, out_queue)
         else:
             #*** It's a packet that's flooded, so send without specific queue
             #*** and with no queue option set:
-            self.sa.packet_out(datapath, msg, in_port, out_port, 0, 1)
-
-    def _add_flow(self, ev, in_port, out_port, out_queue):
-        """
-        Add a flow entry to a switch
-        Prefer to do fine-grained match where possible
-        """
-        #*** Extract parameters:
-        msg = ev.msg
-        datapath = msg.datapath
-        pkt = packet.Packet(msg.data)
-        eth = pkt.get_protocol(ethernet.ethernet)
-        eth_src = eth.src
-        eth_dst = eth.dst
-        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
-        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
-        pkt_tcp = pkt.get_protocol(tcp.tcp)
-        self.logger.debug("event=add_flow out_queue=%s", out_queue)
-        #*** Install a flow entry based on type of flow:
-        if pkt_tcp and pkt_ip4:
-            #*** Call abstraction layer to add TCP flow record:
-            self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
-                              "ip_dst=%s ip_ver=4 tcp_src=%s tcp_dst=%s",
-                              pkt_ip4.src, pkt_ip4.dst,
-                              pkt_tcp.src_port, pkt_tcp.dst_port)
-            _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
-                              out_port=out_port, out_queue=out_queue,
-                              priority=1, buffer_id=None,
-                              idle_timeout=5, hard_timeout=0)
-        elif pkt_tcp and pkt_ip6:
-            #*** Call abstraction layer to add TCP flow record:
-            self.logger.debug("event=add_flow match_type=tcp ip_src=%s "
-                              "ip_dst=%s ip_ver=6 tcp_src=%s tcp_dst=%s",
-                              pkt_ip6.src, pkt_ip6.dst,
-                              pkt_tcp.src_port, pkt_tcp.dst_port)
-            _result = self.sa.add_flow_tcp(datapath, msg, in_port=in_port,
-                              out_port=out_port, out_queue=out_queue,
-                              priority=1, buffer_id=None,
-                              idle_timeout=5, hard_timeout=0)
-        elif pkt_ip4:
-            #*** Call abstraction layer to add IP flow record:
-            self.logger.debug("event=add_flow match_type=ip ip_src=%s "
-                              "ip_dst=%s ip_proto=%s ip_ver=4",
-                              pkt_ip4.src, pkt_ip4.dst, pkt_ip4.proto)
-            _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
-                              out_port=out_port, out_queue=out_queue,
-                              priority=1, buffer_id=None,
-                              idle_timeout=5, hard_timeout=0)
-        elif pkt_ip6:
-            #*** Call abstraction layer to add IP flow record:
-            self.logger.debug("event=add_flow match_type=ip ip_src=%s "
-                              "ip_dst=%s ip_proto=%s ip_ver=6",
-                              pkt_ip6.src, pkt_ip6.dst, pkt_ip6.nxt)
-            _result = self.sa.add_flow_ip(datapath, msg, in_port=in_port,
-                              out_port=out_port, out_queue=out_queue,
-                              priority=1, buffer_id=None,
-                              idle_timeout=5, hard_timeout=0)
-        else:
-            #*** Call abstraction layer to add Ethernet flow record:
-            self.logger.debug("event=add_flow match_type=eth eth_src=%s "
-                              "eth_dst=%s eth_type=%s",
-                              eth_src, eth_dst, eth.ethertype)
-            _result = self.sa.add_flow_eth(datapath, msg, in_port=in_port,
-                              out_port=out_port, out_queue=out_queue,
-                              priority=1, buffer_id=None,
-                              idle_timeout=5, hard_timeout=0)
-        return _result
-
+            switch.packet_out(msg.data, in_port, out_port, out_queue=0,
+                                                                    no_queue=1)
+        #*** Calculate and log packet-in processing time:
+        pi_delta = time.time() - pi_start_time
+        self.logger.debug("pi_delta=%s", pi_delta)
+        self.pi_time.insert({'pi_delta': pi_delta})
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
-    def flow_removed_handler(self, ev):
+    def flow_removed_handler(self, event):
         """
         A switch has sent an event to us because it has removed
         a flow from a flow table
         """
-        msg = ev.msg
+        msg = event.msg
         datapath = msg.datapath
         ofp = datapath.ofproto
         if msg.reason == ofp.OFPRR_IDLE_TIMEOUT:
@@ -292,24 +230,26 @@ class NMeta(app_manager.RyuApp, BaseClass):
             reason = 'GROUP DELETE'
         else:
             reason = 'unknown'
-        self.logger.info('Flow removed msg '
+        self.logger.debug('Idle Flow removed dpid=%s '
                               'cookie=%d priority=%d reason=%s table_id=%d '
                               'duration_sec=%d '
                               'idle_timeout=%d hard_timeout=%d '
                               'packets=%d bytes=%d match=%s',
-                              msg.cookie, msg.priority, reason, msg.table_id,
-                              msg.duration_sec,
+                              datapath.id, msg.cookie, msg.priority, reason,
+                              msg.table_id, msg.duration_sec,
                               msg.idle_timeout, msg.hard_timeout,
                               msg.packet_count, msg.byte_count, msg.match)
-        # TBD, use flows mod to record this into the flow_rems db col.
+        if reason == 'IDLE TIMEOUT':
+            #*** Record flow removal into the flow_rems database collection:
+            self.flow.record_removal(msg)
 
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
-    def error_msg_handler(self, ev):
+    def error_msg_handler(self, event):
         """
         A switch has sent us an error event
         """
-        msg = ev.msg
+        msg = event.msg
         datapath = msg.datapath
         dpid = datapath.id
         self.logger.error('event=OFPErrorMsg_received: dpid=%s '
@@ -321,11 +261,11 @@ class NMeta(app_manager.RyuApp, BaseClass):
                                     code1, code2)
 
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-    def _port_status_handler(self, ev):
+    def _port_status_handler(self, event):
         """
         Switch Port Status event
         """
-        msg = ev.msg
+        msg = event.msg
         reason = msg.reason
         port_no = msg.desc.port_no
 

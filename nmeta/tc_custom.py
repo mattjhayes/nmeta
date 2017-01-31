@@ -36,10 +36,8 @@ class CustomInspect(BaseClass):
     def __init__(self, config):
         #*** Required for BaseClass:
         self.config = config
-        #*** Run the BaseClass init to set things up:
-        super(CustomInspect, self).__init__()
         #*** Set up Logging with inherited base class method:
-        self.configure_logging("tc_custom_logging_level_s",
+        self.configure_logging(__name__, "tc_custom_logging_level_s",
                                        "tc_custom_logging_level_c")
         #*** Dictionary to hold dynamically loaded custom classifiers:
         self.custom_classifiers = {}

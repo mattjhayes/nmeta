@@ -33,6 +33,7 @@ import flows as flow_class
 import identities as identities_class
 import api_external
 import tc_policy
+import tc_identity
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -40,6 +41,16 @@ import packets_lldp as pkts_lldp
 import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_ipv4_dns as pkts_dns
+
+#*** Ryu imports:
+from ryu.base import app_manager  # To suppress cyclic import
+from ryu.controller import controller
+from ryu.controller import handler
+from ryu.ofproto import ofproto_v1_3
+from ryu.ofproto import ofproto_v1_3_parser
+from ryu.ofproto import ofproto_protocol
+from ryu.ofproto import ofproto_parser
+from ryu.lib import addrconv
 
 #*** Import library to do HTTP GET requests:
 import requests
@@ -283,6 +294,58 @@ def test_flow_normalise_direction():
     assert normalised_record['tp_src'] == pkts.TP_DST[1]
     assert normalised_record['tp_dst'] == pkts.TP_SRC[1]
 
+def test_get_flow_data_xfer():
+    """
+    Test the get_flow_data_xfer method.
+
+    Synthesise flow removal messages to test with.
+    """
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate Flow class:
+    flow = flow_class.Flow(config)
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts.RAW[1], datetime.datetime.now())
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
+
+    #*** Set up fake datapath and synthesise messages:
+    datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath.id = 1
+    msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
+    msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
+
+    logger.debug("msg_tx=%s", msg_tx)
+
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx)
+    flow.record_removal(msg_rx)
+
+    #*** Now, test the get_flow_data_xfer method:
+
+    record = {'ip_src': '10.1.0.1',
+              'ip_dst': '10.1.0.2',
+              'tp_src': 43297,
+              'tp_dst': 80,
+              'proto': 6,
+              'flow_hash': '9822b2867652ee0957892482b9f004c3'}
+    xfer = api.get_flow_data_xfer(record)
+    logger.debug("xfer=%s", xfer)
+
+    assert xfer['tx_found'] == 1
+    assert xfer['tx_bytes'] == 744
+    assert xfer['tx_pkts'] == 10
+    assert xfer['rx_found'] == 1
+    assert xfer['rx_bytes'] == 6644
+    assert xfer['rx_pkts'] == 9
+
 def test_get_dns_ip():
     """
     Test looking up a DNS CNAME to get an IP address
@@ -338,6 +401,26 @@ def test_get_host_by_ip():
     logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
 
     assert get_host_by_ip_result == 'pc1'
+
+def test_get_service_by_ip():
+    """
+    Test ability of get_service_by_ip to resolve
+    IPs to service names
+    """
+    #*** Instantiate class objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+    tc_ident = tc_identity.IdentityInspect(config)
+    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
+    # A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+
+    #*** Call the get_service_by_ip:
+    get_service_by_ip_result = api.get_service_by_ip('179.60.193.36')
+    logger.debug("get_service_by_ip_result=%s", get_service_by_ip_result)
+
+    assert get_service_by_ip_result == 'www.facebook.com'
 
 def test_get_classification():
     """

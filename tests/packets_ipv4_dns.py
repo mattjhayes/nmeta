@@ -74,7 +74,7 @@ DNS_CNAME = []
 DNS_IP = []
 
 
-#*** Packet 1 - DNS Query A www.facebook.com
+#*** Packet 0 - DNS Query A www.facebook.com
 # 76 10.0.2.15 208.67.220.123 DNS Standard query 0x24e8 A www.facebook.com
 RAW.append(binascii.unhexlify("5254001235020800278308f008004500003ea14c40004011e0940a00020fd043dc7b1ad20035002a10dd24e801000001000000000000037777770866616365626f6f6b03636f6d0000010001"))
 LEN.append(76)
@@ -99,7 +99,7 @@ DNS_NAME.append("www.facebook.com")
 DNS_CNAME.append("")
 DNS_IP.append("")
 
-#*** Packet 2 -
+#*** Packet 1 -
 # 121 208.67.220.123 10.0.2.15 DNS Standard query response 0x24e8 A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
 RAW.append(binascii.unhexlify("0800278308f052540012350208004500006bcd1a00004011f499d043dc7b0a00020f00351ad2005777cf24e881800001000200000000037777770866616365626f6f6b03636f6d0000010001c00c0005000100000ab0001109737461722d6d696e690463313072c010c02e00010001000000330004b33cc124"))
 LEN.append(121)

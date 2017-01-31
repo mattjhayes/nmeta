@@ -36,8 +36,8 @@ from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import HANDSHAKE_DISPATCHER, DEAD_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
-from ryu.lib.packet import packet
 from ryu.lib import addrconv
+from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 
 #*** nmeta imports:
@@ -51,6 +51,9 @@ import of_error_decode
 
 #*** For logging configuration:
 from baseclass import BaseClass
+
+#*** mongodb Database Import:
+from pymongo import MongoClient
 
 #*** Number of preceding seconds that events are averaged over:
 EVENT_RATE_INTERVAL = 60
@@ -85,8 +88,24 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Instantiate an identity object for participant metadata:
         self.ident = identities.Identities(self.config)
 
+        #*** Set up database collection for packet-in processing time:
+        mongo_addr = self.config.get_value("mongo_addr")
+        mongo_port = self.config.get_value("mongo_port")
+        mongo_dbname = self.config.get_value("mongo_dbname")
+        #*** Start mongodb:
+        self.logger.info("Connecting to MongoDB database...")
+        mongo_client = MongoClient(mongo_addr, mongo_port)
+        #*** Connect to MongoDB nmeta database:
+        db_nmeta = mongo_client[mongo_dbname]
+        #*** Delete (drop) previous pi_time collection if it exists:
+        self.logger.debug("Deleting previous pi_time MongoDB collection...")
+        db_nmeta.pi_time.drop()
+        #*** Create the pi_time collection:
+        self.pi_time = db_nmeta.create_collection('pi_time')
+
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_connection_handler(self, ev):
+    def switch_connection_handler(self, event):
         """
         A switch has connected to the SDN controller.
         We need to do some tasks to set the switch up properly
@@ -94,25 +113,25 @@ class NMeta(app_manager.RyuApp, BaseClass):
         and table miss packet length and requesting the
         switch description
         """
-        self.switches.add(ev.msg.datapath)
+        self.switches.add(event.msg.datapath)
 
     @set_ev_cls(ofp_event.EventOFPDescStatsReply, MAIN_DISPATCHER)
-    def desc_stats_reply_handler(self, ev):
+    def desc_stats_reply_handler(self, event):
         """
         Receive a reply from a switch to a description
         statistics request
         """
-        self.switches.stats_reply(ev.msg)
+        self.switches.stats_reply(event.msg)
 
     @set_ev_cls(ofp_event.EventOFPStateChange, DEAD_DISPATCHER)
-    def switch_down_handler(self, ev):
+    def switch_down_handler(self, event):
         """
         OpenFlow state has gone down for a given DPID
         """
-        self.switches.delete(ev.msg.datapath)
+        self.switches.delete(event.msg.datapath)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
-    def packet_in(self, ev):
+    def packet_in(self, event):
         """
         This method is called for every Packet-In event from a Switch.
         We receive a copy of the Packet-In event, pass it to the
@@ -124,17 +143,15 @@ class NMeta(app_manager.RyuApp, BaseClass):
         """
         pi_start_time = time.time()
         #*** Extract parameters:
-        msg = ev.msg
+        msg = event.msg
         datapath = msg.datapath
         dpid = datapath.id
         switch = self.switches[dpid]
         flowtables = switch.flowtables
         ofproto = datapath.ofproto
+        in_port = msg.match['in_port']
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
-
-        #*** Get the in port (OpenFlow version dependant call):
-        in_port = msg.match['in_port']
 
         #*** Read packet into flow object for classifiers to work with:
         self.flow.ingest_packet(dpid, in_port, msg.data,
@@ -154,7 +171,16 @@ class NMeta(app_manager.RyuApp, BaseClass):
             self.flow.classification.commit()
 
         #*** Call Forwarding module to determine output port:
-        out_port = self.forwarding.basic_switch(ev, in_port)
+        out_port = self.forwarding.basic_switch(event, in_port)
+        if out_port == in_port:
+            #*** Sending out same port prohibited by IEEE 802.1D-2004 7.7.1c:
+            self.logger.warning("Dropping packet flow_hash=%s as out_port="
+                                    "in_port=%s", self.flow.flow_hash, in_port)
+            return
+        #*** Don't forward reserved MACs, as per IEEE 802.1D-2004 table 7-10:
+        if str(eth.dst)[0:16] == '01:80:c2:00:00:0':
+            self.logger.debug("Not forwarding reserved mac=%s", eth.dst)
+            return
 
         #*** Set QoS queue based on any QoS actions:
         actions = self.flow.classification.actions
@@ -180,16 +206,18 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** and with no queue option set:
             switch.packet_out(msg.data, in_port, out_port, out_queue=0,
                                                                     no_queue=1)
+        #*** Calculate and log packet-in processing time:
         pi_delta = time.time() - pi_start_time
         self.logger.debug("pi_delta=%s", pi_delta)
+        self.pi_time.insert({'pi_delta': pi_delta})
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
-    def flow_removed_handler(self, ev):
+    def flow_removed_handler(self, event):
         """
         A switch has sent an event to us because it has removed
         a flow from a flow table
         """
-        msg = ev.msg
+        msg = event.msg
         datapath = msg.datapath
         ofp = datapath.ofproto
         if msg.reason == ofp.OFPRR_IDLE_TIMEOUT:
@@ -217,11 +245,11 @@ class NMeta(app_manager.RyuApp, BaseClass):
 
     @set_ev_cls(ofp_event.EventOFPErrorMsg,
             [HANDSHAKE_DISPATCHER, CONFIG_DISPATCHER, MAIN_DISPATCHER])
-    def error_msg_handler(self, ev):
+    def error_msg_handler(self, event):
         """
         A switch has sent us an error event
         """
-        msg = ev.msg
+        msg = event.msg
         datapath = msg.datapath
         dpid = datapath.id
         self.logger.error('event=OFPErrorMsg_received: dpid=%s '
@@ -233,11 +261,11 @@ class NMeta(app_manager.RyuApp, BaseClass):
                                     code1, code2)
 
     @set_ev_cls(ofp_event.EventOFPPortStatus, MAIN_DISPATCHER)
-    def _port_status_handler(self, ev):
+    def _port_status_handler(self, event):
         """
         Switch Port Status event
         """
-        msg = ev.msg
+        msg = event.msg
         reason = msg.reason
         port_no = msg.desc.port_no
 

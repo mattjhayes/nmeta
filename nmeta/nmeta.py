@@ -128,7 +128,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         """
         OpenFlow state has gone down for a given DPID
         """
-        self.switches.delete(event.msg.datapath)
+        self.switches.delete(event.datapath)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in(self, event):
@@ -209,7 +209,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Calculate and log packet-in processing time:
         pi_delta = time.time() - pi_start_time
         self.logger.debug("pi_delta=%s", pi_delta)
-        self.pi_time.insert({'pi_delta': pi_delta})
+        self.pi_time.insert({'pi_delta': pi_delta,
+                             'timestamp': datetime.datetime.now()})
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removed_handler(self, event):

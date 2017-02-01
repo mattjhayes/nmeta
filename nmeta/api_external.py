@@ -369,7 +369,10 @@ class ExternalAPI(BaseClass):
     def i_c_pi_rate_response(self, items):
         """
         Update the response with the packet_in rate.
-        Hooked from on_fetched_resource_<name>
+        Hooked from on_fetched_resource_pi_rate
+
+        Returns key/values for packet-in processing time in API response:
+        - pi_rate
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
         #*** Get database and query it:
@@ -384,9 +387,21 @@ class ExternalAPI(BaseClass):
     def pi_time_response(self, items):
         """
         Update the response with the packet_time min, avg and max.
-        Hooked from on_fetched_resource_<name>
+        Hooked from on_fetched_resource_pi_time
+
+        Returns key/values for packet-in processing time in API response:
+        - pi_time_max
+        - pi_time_min
+        - pi_time_avg
+        - pi_time_period
+        - pi_time_records
+
+        If no data found within time period then returns without
+        key/values
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        #*** Get rid of superfluous _items key in response:
+        del items['_items']
         #*** Get database and query it:
         pi_time = self.app.data.driver.db['pi_time']
         db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
@@ -397,13 +412,18 @@ class ExternalAPI(BaseClass):
             pi_delta = record['pi_delta']
             self.logger.debug("pi_delta=%s", pi_delta)
             pi_time_list.append(pi_delta)
-        pi_time_max = max(pi_time_list)
-        pi_time_min = min(pi_time_list)
-        pi_time_avg = sum(pi_time_list)/len(pi_time_list)
-        self.logger.debug("pi_time_avg =%s", pi_time_avg)
-        items['pi_time_max '] = pi_time_max
-        items['pi_time_min '] = pi_time_min
-        items['pi_time_avg '] = pi_time_avg
+        if len(pi_time_list):
+            pi_time_max = max(pi_time_list)
+            pi_time_min = min(pi_time_list)
+            pi_time_avg = sum(pi_time_list)/len(pi_time_list)
+        else:
+            return
+        #*** Set values in API response:
+        items['pi_time_max'] = pi_time_max
+        items['pi_time_min'] = pi_time_min
+        items['pi_time_avg'] = pi_time_avg
+        items['pi_time_period'] = PACKET_TIME_PERIOD
+        items['pi_time_records'] = len(pi_time_list)
 
     def identities_ui_response(self, items):
         """

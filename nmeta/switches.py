@@ -189,7 +189,8 @@ class Switches(BaseClass):
         dpid = datapath.id
         self.logger.info("Deleting switch dpid=%s", dpid)
         #*** Get relevant instance of switch class:
-        switch = self.switches[dpid]
+        if not dpid in self.switches:
+            return 0
         #*** Delete from dictionary of switches:
         del self.switches[dpid]
         #*** Delete switch from database collection:

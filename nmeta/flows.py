@@ -233,13 +233,15 @@ class Flow(BaseClass):
         self.logger.debug("Deleting packet_ins MongoDB collection...")
         db_nmeta.packet_ins.drop()
         #*** Create the packet_ins collection, specifying capped option
-        #*** with max size in bytes, so MongoDB handles data retention:
+        #***  with max size in bytes, so MongoDB handles data retention:
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=packet_ins_max_bytes)
-        #*** Index flow_hash key of packet_ins collection to
-        #*** improve look-up performance:
+        #*** Index flow_hash and timestamp of packet_ins collection to
+        #***  improve look-up performance:
         self.packet_ins.create_index([('flow_hash', pymongo.TEXT)],
                                                                 unique=False)
+        self.packet_ins.create_index([('timestamp',
+                                            pymongo.DESCENDING)], unique=False)
 
         #*** classifications collection:
         self.logger.debug("Deleting classifications MongoDB collection...")
@@ -248,10 +250,12 @@ class Flow(BaseClass):
         #*** with max size in bytes, so MongoDB handles data retention:
         self.classifications = db_nmeta.create_collection('classifications',
                                    capped=True, size=classifications_max_bytes)
-        #*** Index flow_hash key of classifications collection to
-        #*** improve look-up performance:
+        #*** Index flow_hash and classification_time of classifications
+        #***  collection to improve look-up performance:
         self.classifications.create_index([('flow_hash', pymongo.TEXT)],
                                                                 unique=False)
+        self.classifications.create_index([('classification_time',
+                                            pymongo.DESCENDING)], unique=False)
 
         #*** flow_rems collection:
         self.logger.debug("Deleting flow_rems MongoDB collection...")

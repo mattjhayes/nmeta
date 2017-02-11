@@ -1,271 +1,128 @@
-(function ($) {
-    //-------- Models:
-    var PacketIn = Backbone.Model.extend({
-        defaults:{
-            packetinImage:"img/packet_in.png",
-            pi_rate: "pi rate default"
-        },
-        parse:function (response) {
-            console.log(response);
-            response.id = response._id;
-            return response;
+var nmeta = {
+
+    views: {},
+
+    models: {},
+
+    loadTemplates: function(views, callback) {
+        // Load template html files from template directory
+        var deferreds = [];
+        $.each(views, function(index, view) {
+            console.log('loadTemplates index=' + index + ' view=' + view);
+            if (nmeta[view]) {
+                deferreds.push($.get('templates/' + view + '.html', function(data) {
+                    nmeta[view].prototype.template = _.template(data);
+                }, 'html'));
+            } else {
+                alert(view + " not found");
+            }
+        });
+        console.log('deferreds=' + deferreds)
+        $.when.apply(null, deferreds).done(callback);
+    }
+
+};
+
+nmeta.Router = Backbone.Router.extend({
+
+    routes: {
+        "":               "home",
+        "who":            "who",
+        "what":           "what",
+        "kit":            "kit",
+        "policy":         "policy",
+        "switch/:dpid":   "switch"
+    },
+
+    // Display nav bar and set up rest of page
+    initialize: function () {
+        nmeta.barsView = new nmeta.BarsView();
+        $('body').html(nmeta.barsView.render().el);
+        // Close the search dropdown on click anywhere in the UI
+        $('body').click(function () {
+            $('.dropdown').removeClass("open");
+        });
+        this.$content = $("#content");
+    },
+
+    // Display 'home' page
+    home: function () {
+        // Since the home view never changes, we instantiate it and render it only once
+        if (!nmeta.homelView) {
+            nmeta.homelView = new nmeta.HomeView();
+            nmeta.homelView.render();
+        } else {
+            console.log('reusing home view');
+            nmeta.homelView.delegateEvents(); // delegate events when the view is recycled
         }
-    });
+        this.$content.html(nmeta.homelView.el);
+        nmeta.barsView.selectMenuItem('home-menu');
+    },
 
-    //-------- Model of multiple PacketIn models:
-    var PacketIns = Backbone.Collection.extend({
-        model:PacketIn,
-        url:'/v1/infrastructure/controllers/pi_rate',
-    });
+    // Display 'who' page about identities on the network:
+    who: function () {
+        // Instantiate Identities Collection:
+        var identities_collection = new nmeta.IdentitiesCollection();
+        var self = this;
+        // Retrieve identities information via REST API:
+        identities_collection.fetch({
+            success: function (data) {
+                console.log('identities_collection data=' + data);
+                self.$content.html(new nmeta.IdentitiesView({model: data}).render().el);
+            }
+        });
+        // Update top menu bar:
+        nmeta.barsView.selectMenuItem('who-menu');
+    },
 
-    //-------- Views:
-    var PacketInView = Backbone.View.extend({
-        tagName:"div",
-        className:"packetinContainer",
-        template:$("#packetinTemplate").html(),
+    // Display 'what' page about flows on the network:
+    what: function () {
+        // Instantiate Flows Collection:
+        var flows_collection = new nmeta.FlowsCollection();
+        var self = this;
+        // Retrieve flow information via REST API:
+        flows_collection.fetch({
+            success: function (data) {
+                console.log('flows_collection data=' + data);
+                self.$content.html(new nmeta.FlowsView({model: data}).render().el);
+            }
+        });
+        // Update top menu bar:
+        nmeta.barsView.selectMenuItem('what-menu');
+    },
 
-        render:function () {
-            var tmpl = _.template(this.template);
+    kit: function (id) {
+        // Instantiate Switches Collection:
+        var switches_collection = new nmeta.SwitchesCollection();
+        var self = this;
+        // Retrieve switches information via REST API:
+        switches_collection.fetch({
+            success: function (data) {
+                console.log('switches data=' + data);
+                self.$content.html(new nmeta.SwitchesView({model: data}).render().el);
+            }
+        });
+        // Update top menu bar:
+        nmeta.barsView.selectMenuItem('kit-menu');
+    },
 
-            this.$el.html(tmpl(this.model.toJSON()));
-            return this;
+    // Display 'policy' page
+    policy: function () {
+        if (!nmeta.policyView) {
+            console.log('creating policy view');
+            nmeta.policyView = new nmeta.PolicyView();
+            nmeta.policyView.render();
         }
-    });
+        this.$content.html(nmeta.policyView.el);
+        nmeta.barsView.selectMenuItem('policy-menu');
+    }
 
-    //-------- View of multiple PacketIns:
-    var PacketInsView = Backbone.View.extend({
-        el:$("#packetins"),
+});
 
-        initialize: function(){
-          this.collection = new PacketIns();
-            this.collection.fetch({
-                error:function () {
-                    console.log(arguments);
-                }
-            });
-          this.render();
-
-          this.collection.on("add", this.renderPacketIn, this);
-        },
-
-        render:function () {
-            var that = this;
-            _.each(this.collection.models, function (item) {
-                that.renderPacketIn(item);
-            });
-        },
-
-        renderPacketIn:function(item){
-            var packetinView = new PacketInView({
-                model: item
-            });
-            this.$el.append(packetinView.render().el);
-        }
-    });
-
-    var packetinsView = new PacketInsView();
-
-    //---------------------------SWITCHES:
-    //-------- Models:
-    var Switch = Backbone.Model.extend({
-        defaults:{
-            ip_address: "not found"
-        },
-    });
-
-    //-------- Model of multiple Switch models:
-    var Switches = Backbone.Collection.extend({
-        model:Switch,
-        url:'/v1/infrastructure/switches',
-        parse:function (response) {
-            console.log(response);
-            response.id = response._id;
-            //--- Parse response data from under _items key:
-            return response._items;
-        }
-    });
-
-    //-------- Views:
-    var SwitchView = Backbone.View.extend({
-        tagName:"tr",
-        className:"switchContainer",
-        template:$("#switchTemplate").html(),
-
-        render:function () {
-            var tmpl = _.template(this.template);
-
-            this.$el.html(tmpl(this.model.toJSON()));
-            return this;
-        }
-    });
-
-    //-------- View of multiple Switches:
-    var SwitchesView = Backbone.View.extend({
-        el:$("#switches"),
-
-        initialize: function(){
-          this.collection = new Switches();
-            this.collection.fetch({
-                error:function () {
-                    console.log(arguments);
-                }
-            });
-          this.render();
-
-          this.collection.on("add", this.renderSwitch, this);
-        },
-
-        render:function () {
-            var that = this;
-            _.each(this.collection.models, function (item) {
-                that.renderSwitch(item);
-            });
-        },
-
-        renderSwitch:function(item){
-            var switchView = new SwitchView({
-                model: item
-            });
-            this.$el.append(switchView.render().el);
-        }
-    });
-
-    var switchesView = new SwitchesView();
-
-    //----------------------------------- Identities:
-    //-------- Models:
-    var Identity = Backbone.Model.extend({
-        defaults:{
-            participantImage:"img/participant.png",
-            host_name: "not found",
-            ip_address: "not found"
-        },
-    });
-
-    //-------- Model of multiple Identity models:
-    var Identities = Backbone.Collection.extend({
-        model:Identity,
-        url:'/v1/identities/ui?filter_dns=1',
-        parse:function (response) {
-            console.log(response);
-            response.id = response._id;
-            //--- Parse response data from under _items key:
-            return response._items;
-        }
-    });
-
-    //-------- Views:
-    var IdentityView = Backbone.View.extend({
-        tagName:"tr",
-        className:"identityContainer",
-        template:$("#identityTemplate").html(),
-
-        render:function () {
-            var tmpl = _.template(this.template);
-
-            this.$el.html(tmpl(this.model.toJSON()));
-            return this;
-        }
-    });
-
-    //-------- View of multiple Identities:
-    var IdentitiesView = Backbone.View.extend({
-        el:$("#identities"),
-
-        initialize: function(){
-          this.collection = new Identities();
-            this.collection.fetch({
-                error:function () {
-                    console.log(arguments);
-                }
-            });
-          this.render();
-
-          this.collection.on("add", this.renderIdentity, this);
-        },
-
-        render:function () {
-            var that = this;
-            _.each(this.collection.models, function (item) {
-                that.renderIdentity(item);
-            });
-        },
-
-        renderIdentity:function(item){
-            var identityView = new IdentityView({
-                model: item
-            });
-            this.$el.append(identityView.render().el);
-        }
-    });
-
-    var identitiesView = new IdentitiesView();
-
-    //-------- Flows:
-    //-------- Models:
-    var Flow = Backbone.Model.extend({
-        defaults:{
-            flowImage:"img/flow.png"
-        },
-    });
-
-    //-------- Model of multiple Flow models:
-    var Flows = Backbone.Collection.extend({
-        model:Flow,
-        url:'/v1/flows/ui',
-        parse:function (response) {
-            console.log(response);
-            response.id = response._id;
-            //--- Parse response data from under _items key:
-            return response._items;
-        }
-    });
-
-    //-------- Views:
-    var FlowView = Backbone.View.extend({
-        tagName:"tr",
-        className:"flowContainer",
-        template:$("#flowTemplate").html(),
-
-        render:function () {
-            var tmpl = _.template(this.template);
-
-            this.$el.html(tmpl(this.model.toJSON()));
-            return this;
-        }
-    });
-
-    //-------- View of multiple Flows:
-    var FlowsView = Backbone.View.extend({
-        el:$("#flows"),
-
-        initialize: function(){
-          this.collection = new Flows();
-            this.collection.fetch({
-                error:function () {
-                    console.log(arguments);
-                }
-            });
-          this.render();
-
-          this.collection.on("add", this.renderFlow, this);
-        },
-
-        render:function () {
-            var that = this;
-            _.each(this.collection.models, function (item) {
-                that.renderFlow(item);
-            });
-        },
-
-        renderFlow:function(item){
-            var flowView = new FlowView({
-                model: item
-            });
-            this.$el.append(flowView.render().el);
-        }
-    });
-
-    var flowsView = new FlowsView();
-
-})(jQuery);
+$(document).on("ready", function () {
+    nmeta.loadTemplates(["HomeView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "PolicyView", "BarsView", "SwitchesView", "SwitchView"],
+        function () {
+            nmeta.router = new nmeta.Router();
+            Backbone.history.start();
+        });
+});

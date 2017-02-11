@@ -1,189 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8"/>
-    <title>nmeta WebUI</title>
-    <!-- load the bootstrap stylesheet -->
-    <link rel="stylesheet" href="css/libraries/bootstrap.css">
+    <meta charset="utf-8">
+    <title>nmeta</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap -->
+    <link href="js/libraries/bootstrap-3.3.7-dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+    <script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+
 </head>
+
 <body>
 
-  <div class="container">
-    <div class="page-header">
-      <h1>nmeta webUI</h1>
-      <p class="lead">
-        Under Construction
-      </p>
+<div class="container">
+    <div class="row-fluid">
+        <div id="content" class="span12>"></div>
     </div>
+</div>
 
-    <div class="row">
-      <div class="col-md-6">
-        <div id="packetins">
-            <kbd>Infrastructure Summary</kbd>
-            <!-- Script inserts a div wrapper -->
-            <script id="packetinTemplate" type="text/template">
-              <img src="<%= packetinImage %>"/>
-              Packet-In Rate: <%= pi_rate %> pps
-            </script>
-            <!-- End of div wrapper script -->
-        </div>
-        <br>
-        Switches:
-        <div>
-            <table class="table" id="switches">
-              <thead>
-                <tr>
-                  <th>DPID</th>
-                  <th>Type</th>
-                  <th>IP Address</th>
-                  <th>Software</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- Script inserts a tr tag per identity entry -->
-                <script id="switchTemplate" type="text/template">
-                  <td class="align-top">
-                    <%= dpid %>
-                  </td>
-                  <td class="align-top">
-                    <%= hw_desc %>
-                  </td>
-                  <td class="align-top">
-                    <%= ip_address %>
-                  </td>
-                  <td class="align-top">
-                    <%= sw_desc %>
-                  </td>
-                </script>
-                <!-- End of tr tagged script -->
-              </tbody>
-            </table>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <!-- Identities Pane -->
-        <kbd>Identities</kbd>
-
-        <table class="table" id="identities">
-          <thead>
-            <tr>
-              <th>&nbsp;</th>
-              <th>Harvest Type</th>
-              <th>Host Name</th>
-              <th>Service Name</th>
-              <th>MAC Address</th>
-              <th>IP Address</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Script inserts a tr tag per identity entry -->
-            <script id="identityTemplate" type="text/template">
-              <td class="align-top">
-                <img src="<%= participantImage %>"/>
-              </td>
-              <td class="align-top">
-                <%= harvest_type %>
-              </td>
-              <td class="align-top">
-                <%= host_name %>
-              </td>
-              <td class="align-top">
-                <%= service_name %>
-              </td>
-              <td class="align-top">
-                <%= mac_address %>
-              </td>
-              <td class="align-top">
-                <%= ip_address %>
-              </td>
-            </script>
-            <!-- End of tr tagged script -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="row">
-      <div class="col-md-12">
-        <!-- Flows Pane -->
-        <kbd>Flows</kbd>
-        <table class="table" id="flows">
-          <thead>
-            <tr>
-              <th>&nbsp;</th>
-              <th>Src</th>
-              <th>Dst</th>
-              <th>Proto</th>
-              <th>TP Src</th>
-              <th>TP Dst</th>
-              <th>Classification</th>
-              <th>Actions</th>
-              <th>Sent</th>
-              <th>Received</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Script inserts a tr tag per flow entry -->
-            <script id="flowTemplate" type="text/template">
-              <td>
-                <img src="<%= flowImage %>"/>
-              </td>
-              <td>
-                <span data-toggle="tooltip" title="<%= src_hover %>">
-                <%= src %>
-                </span>
-              </td>
-              <td>
-                <span data-toggle="tooltip" title="<%= dst_hover %>">
-                <%= dst %>
-                </span>
-              </td>
-              <td>
-                <span data-toggle="tooltip" title="<%= proto_hover %>">
-                  <%= proto %>
-                </span>
-              </td>
-              <td>
-                <%= tp_src %>
-              </td>
-              <td>
-                <%= tp_dst %>
-              </td>
-              <td>
-                <%= classification %>
-              </td>
-              <td>
-                <span data-toggle="tooltip" title="<%= actions_hover %>">
-                <%= actions %>
-                </span>
-              </td>
-              <td>
-                <span data-toggle="tooltip" title="<%= data_sent_hover %>">
-                  <%= data_sent %>
-                </span>
-              </td>
-              <td>
-                <span data-toggle="tooltip" title="<%= data_received_hover %>">
-                  <%= data_received %>
-                </span>
-              </td>
-            </script>
-            <!-- End of tr tagged script -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-<!-- Script to enable Bootstrap Tooltips -->
-<script>
-$(document).ready(function(){
-    $('[data-toggle="tooltip"]').tooltip();
-});
-</script>
-
+<!-- Library Scripts -->
 <script src="js/libraries/jquery-2.2.4.js" type="text/javascript"></script>
 <script src="js/libraries/underscore-1.8.3.js" type="text/javascript"></script>
 <script src="js/libraries/backbone-1.3.3.js" type="text/javascript"></script>
+<script src="js/libraries/bootstrap-3.3.7-dist/js/bootstrap.min.js" type="text/javascript"></script>
+
+<!-- App -->
 <script src="js/app.js"></script>
+
+<!-- Backbone Views -->
+<script src="js/views/bars_view.js"></script>
+<script src="js/views/home_view.js"></script>
+<script src="js/views/identities_view.js"></script>
+<script src="js/views/identity_view.js"></script>
+<script src="js/views/flows_view.js"></script>
+<script src="js/views/flow_view.js"></script>
+<script src="js/views/switch_view.js"></script>
+<script src="js/views/switches_view.js"></script>
+<script src="js/views/policy_view.js"></script>
+
+<!-- Backbone Models -->
+<script src="js/models/identities_model.js"></script>
+<script src="js/models/flows_model.js"></script>
+<script src="js/models/switches_model.js"></script>
+
 </body>
 </html>

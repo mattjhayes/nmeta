@@ -42,7 +42,9 @@ nmeta.Router = Backbone.Router.extend({
         $('body').click(function () {
             $('.dropdown').removeClass("open");
         });
+        // Variables linking to HTML content ids
         this.$content = $("#content");
+        this.$content2 = $("#content2");
     },
 
     // Display 'home' page
@@ -56,6 +58,7 @@ nmeta.Router = Backbone.Router.extend({
             nmeta.homelView.delegateEvents(); // delegate events when the view is recycled
         }
         this.$content.html(nmeta.homelView.el);
+        //this.$content2.html = '';
         nmeta.barsView.selectMenuItem('home-menu');
     },
 
@@ -92,14 +95,26 @@ nmeta.Router = Backbone.Router.extend({
     },
 
     kit: function (id) {
+        // Instantiate Packet-In rate model:
+
+        // Retrieve Controller Summary View via REST API:
+        var controller_summary_model = new nmeta.ControllerSummaryModel();
+        var self = this;
+        controller_summary_model.fetch({
+            success: function (data) {
+                // Render against id='content':
+                self.$content.html(new nmeta.ControllerSummaryView({model: data}).render().el);
+            }
+        });
+
         // Instantiate Switches Collection:
         var switches_collection = new nmeta.SwitchesCollection();
         var self = this;
         // Retrieve switches information via REST API:
         switches_collection.fetch({
             success: function (data) {
-                console.log('switches data=' + data);
-                self.$content.html(new nmeta.SwitchesView({model: data}).render().el);
+                // Render against id='content2':
+                self.$content2.html(new nmeta.SwitchesView({model: data}).render().el);
             }
         });
         // Update top menu bar:
@@ -120,7 +135,7 @@ nmeta.Router = Backbone.Router.extend({
 });
 
 $(document).on("ready", function () {
-    nmeta.loadTemplates(["HomeView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "PolicyView", "BarsView", "SwitchesView", "SwitchView"],
+    nmeta.loadTemplates(["HomeView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
         function () {
             nmeta.router = new nmeta.Router();
             Backbone.history.start();

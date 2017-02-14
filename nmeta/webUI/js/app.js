@@ -58,7 +58,9 @@ nmeta.Router = Backbone.Router.extend({
             nmeta.homelView.delegateEvents(); // delegate events when the view is recycled
         }
         this.$content.html(nmeta.homelView.el);
-        //this.$content2.html = '';
+        // Empty unused content2:
+        this.$content2.empty();
+        // Update top menu bar:
         nmeta.barsView.selectMenuItem('home-menu');
     },
 
@@ -74,6 +76,8 @@ nmeta.Router = Backbone.Router.extend({
                 self.$content.html(new nmeta.IdentitiesView({model: data}).render().el);
             }
         });
+        // Empty unused content2:
+        this.$content2.empty();
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('who-menu');
     },
@@ -90,13 +94,13 @@ nmeta.Router = Backbone.Router.extend({
                 self.$content.html(new nmeta.FlowsView({model: data}).render().el);
             }
         });
+        // Empty unused content2:
+        this.$content2.empty();
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('what-menu');
     },
 
     kit: function (id) {
-        // Instantiate Packet-In rate model:
-
         // Retrieve Controller Summary View via REST API:
         var controller_summary_model = new nmeta.ControllerSummaryModel();
         var self = this;
@@ -129,6 +133,9 @@ nmeta.Router = Backbone.Router.extend({
             nmeta.policyView.render();
         }
         this.$content.html(nmeta.policyView.el);
+        // Empty unused content2:
+        this.$content2.empty();
+        // Update top menu bar:
         nmeta.barsView.selectMenuItem('policy-menu');
     }
 

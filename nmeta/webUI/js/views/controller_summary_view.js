@@ -5,6 +5,14 @@ nmeta.ControllerSummaryView = Backbone.View.extend({
         this.model.on("reset", this.render, this);
     },
 
+    events: {
+        // Refresh button click refreshes collection and renders:
+        'click .refresh_controller_summary': function() {
+            this.model.fetch();
+            this.render()
+        }
+    },
+
     render: function () {
         // Apply ControllerSummaryView.html template:
         this.$el.empty();

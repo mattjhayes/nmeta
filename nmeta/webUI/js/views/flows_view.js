@@ -9,6 +9,13 @@ nmeta.FlowsView = Backbone.View.extend({
         });
     },
 
+    events: {
+        'click .refresh': function() {
+            Backbone.history.loadUrl();
+            return false;
+        }
+    },
+
     render:function () {
         this.$el.empty();
         // Apply FlowsView.html template:

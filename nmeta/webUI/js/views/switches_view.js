@@ -9,6 +9,14 @@ nmeta.SwitchesView = Backbone.View.extend({
         });
     },
 
+    events: {
+        // Refresh button click refreshes collection and renders:
+        'click .refresh_switches': function() {
+            this.model.fetch();
+            this.render()
+        }
+    },
+
     render:function () {
         this.$el.empty();
         // Apply SwitchesView.html template:

@@ -126,9 +126,16 @@ class Identities(BaseClass):
         self.identities = db_nmeta.create_collection('identities', capped=True,
                                             size=identities_max_bytes)
 
-        #*** Index ip_address key to improve look-up performance:
-        self.identities.create_index([('ip_address', pymongo.TEXT)],
-                                                                unique=False)
+        #*** Index to improve look-up performance:
+        self.identities.create_index([('valid_from', pymongo.DESCENDING),
+                                        ('valid_to', pymongo.DESCENDING),
+                                        ('ip_address', pymongo.ASCENDING),
+                                        ('mac_address', pymongo.ASCENDING),
+                                        ('host_name', pymongo.ASCENDING),
+                                        ('harvest_type', pymongo.ASCENDING),
+                                        ('service_name', pymongo.ASCENDING)
+                                        ],
+                                        unique=False)
 
         #*** Delete (drop) previous dhcp_messages collection if it exists:
         self.logger.debug("Deleting previous dhcp_messages MongoDB "
@@ -140,9 +147,12 @@ class Identities(BaseClass):
         self.dhcp_messages = db_nmeta.create_collection('dhcp_messages',
                                      capped=True, size=dhcp_messages_max_bytes)
 
-        #*** Index transaction_id key to improve look-up performance:
-        self.dhcp_messages.create_index([('transaction_id', pymongo.TEXT)],
-                                                                unique=False)
+        #*** Index dhcp_messages to improve look-up performance:
+        self.dhcp_messages.create_index([('ingest_time', pymongo.DESCENDING),
+                                        ('transaction_id', pymongo.ASCENDING),
+                                        ('message_type', pymongo.ASCENDING)
+                                        ],
+                                        unique=False)
 
     class Identity(object):
         """
@@ -353,7 +363,8 @@ class Identities(BaseClass):
             db_data['ingest_time'] = {'$gte': datetime.datetime.now() -
                                                  self.dhcp_messages_time_limit}
             #*** Run db search:
-            result = self.dhcp_messages.find(db_data).sort('$natural', -1).limit(1)
+            result = self.dhcp_messages.find(db_data).sort('ingest_time', -1) \
+                                                                      .limit(1)
             if result.count():
                 result0 = list(result)[0]
                 self.logger.debug("Found DHCPREQUEST for DHCPACK")
@@ -371,7 +382,7 @@ class Identities(BaseClass):
                 self.dhcp_msg.tp_dst = flow_pkt.tp_dst
                 self.dhcp_msg.transaction_id = hex(pkt_dhcp.xid)
                 self.dhcp_msg.ip_assigned = \
-                            socket.inet_ntoa(struct.pack(">L",pkt_dhcp.yiaddr))
+                           socket.inet_ntoa(struct.pack(">L", pkt_dhcp.yiaddr))
                 if dpkt.dhcp.DHCP_OPT_LEASE_SEC in dhcp_opts:
                     self.dhcp_msg.lease_time = struct.unpack('>L', dhcp_opts
                                             [dpkt.dhcp.DHCP_OPT_LEASE_SEC])[0]
@@ -533,7 +544,7 @@ class Identities(BaseClass):
         an Identity class, or empty dictionary if not found
         """
         db_data = {'mac_address': mac_addr}
-        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        result = self.identities.find(db_data).sort('valid_from', -1).limit(1)
         if result.count():
             result0 = list(result)[0]
             self.logger.debug("found result=%s len=%s", result0, len(result0))
@@ -562,7 +573,7 @@ class Identities(BaseClass):
         #*** Filter by documents that are still within 'best before' time:
         db_data['valid_to'] = {'$gte': datetime.datetime.now()}
         #*** Run db search:
-        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        result = self.identities.find(db_data).sort('valid_from', -1).limit(1)
         if result.count():
             result0 = list(result)[0]
             self.logger.debug("found result=%s len=%s", result0, len(result0))
@@ -596,7 +607,7 @@ class Identities(BaseClass):
         #*** Filter by documents that are still within 'best before' time:
         db_data['valid_to'] = {'$gte': datetime.datetime.now()}
         #*** Run db search:
-        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        result = self.identities.find(db_data).sort('valid_from', -1).limit(1)
         if result.count():
             result0 = list(result)[0]
             self.logger.debug("found result=%s len=%s", result0, len(result0))

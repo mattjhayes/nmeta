@@ -33,6 +33,7 @@ import binascii
 
 #*** For timestamps:
 import datetime
+import time
 
 #*** Import dpkt for packet parsing:
 import dpkt
@@ -460,6 +461,57 @@ def test_classification_identity():
     assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
     assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
                                    'set_desc': 'Constrained Bandwidth Traffic'}
+
+def test_indexing_packet_ins():
+    """
+    Test indexing of packet_ins database collection
+
+    Packets are ingested from 3 flows.
+
+    Packets from one of the flows are too old to be significant
+
+    The most recent packet is the one that the flow context is in
+    and it only has one other packet ingested (i.e. packet_count == 2)
+    """
+    #*** Instantiate classes:
+    flow = flow_class.Flow(config)
+    ident = identities.Identities(config)
+    #*** Initial main_policy won't match as looking for tcp-1234:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
+
+    #*** Ingest packets older than flow timeout:
+    flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[0], datetime.datetime.now() - datetime.timedelta \
+                                (seconds=config.get_value("flow_time_limit")+1))
+    flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[1], datetime.datetime.now() - datetime.timedelta \
+                                (seconds=config.get_value("flow_time_limit")+1))
+    #*** Ingest current packets from two different flows:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[1], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[4], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[5], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[6], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[7], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[8], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[9], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[10], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[11], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[2], datetime.datetime.now())
+
+    #*** Retrieve an explain of packet-ins database query:
+    explain = flow.packet_count(test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'IXSCAN'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 2
+    assert explain['executionStats']['totalKeysExamined'] == 2
+    assert explain['executionStats']['totalDocsExamined'] == 2
 
 #================= HELPER FUNCTIONS ===========================================
 

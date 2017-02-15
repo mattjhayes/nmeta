@@ -236,9 +236,9 @@ class Flow(BaseClass):
         #***  with max size in bytes, so MongoDB handles data retention:
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=packet_ins_max_bytes)
-        #*** Index packet_ins to improve look-up performance:
-        self.packet_ins.create_index([('timestamp', pymongo.ASCENDING),
-                                        ('flow_hash', pymongo.DESCENDING)
+
+        self.packet_ins.create_index([('flow_hash', pymongo.DESCENDING),
+                                        ('timestamp', pymongo.ASCENDING)
                                         ],
                                         unique=False)
 
@@ -253,11 +253,9 @@ class Flow(BaseClass):
         #***  collection to improve look-up performance:
 
         #*** Index classifications to improve look-up performance:
-        self.classifications.create_index([('classification_time',
-                                                        pymongo.DESCENDING),
-                                        ('flow_hash', pymongo.DESCENDING)
-                                        ],
-                                        unique=False)
+        self.classifications.create_index([('flow_hash', pymongo.DESCENDING),
+                                ('classification_time', pymongo.DESCENDING)],
+                                unique=False)
 
         #*** flow_rems collection:
         self.logger.debug("Deleting flow_rems MongoDB collection...")
@@ -672,7 +670,7 @@ class Flow(BaseClass):
         #*** Write packet-in metadata to database collection:
         self.packet_ins.insert_one(db_dict)
 
-    def packet_count(self):
+    def packet_count(self, test=0):
         """
         Return the number of packets in the flow (counting packets in
         both directions). This method should deduplicate for where the
@@ -684,7 +682,10 @@ class Flow(BaseClass):
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
-        packet_cursor = self.packet_ins.find(db_data).sort('timestamp', -1)
+        if not test:
+            packet_cursor = self.packet_ins.find(db_data).sort('timestamp', -1)
+        else:
+            return self.packet_ins.find(db_data).sort('timestamp', -1).explain()
         self.logger.debug("packet_cursor.count()=%s", packet_cursor.count())
         return packet_cursor.count()
 

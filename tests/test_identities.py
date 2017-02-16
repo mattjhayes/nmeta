@@ -43,6 +43,8 @@ import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_lldp as pkts_lldp
 import packets_ipv4_dns as pkts_dns
+import packets_ipv4_http as pkts
+import packets_ipv4_http2 as pkts2
 
 #*** Test DPIDs and in ports:
 DPID1 = 1
@@ -189,6 +191,32 @@ def test_harvest_DNS():
     result_identity = identities.findbyservice(pkts_dns.DNS_CNAME[1])
     assert result_identity['service_name'] == pkts_dns.DNS_CNAME[1]
     assert result_identity['ip_address'] == pkts_dns.DNS_IP[1]
+
+def test_indexing():
+    """
+    Test indexing of identities collection
+
+    TBD - UNDER CONSTRUCTION
+
+    """
+    #*** Instantiate flow and identities objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[1], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
+
+    #*** Retrieve an explain of identities findbymac database query:
+    explain = identities.findbymac(pkts2.ETH_SRC[1], test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    #assert explain['executionStats']['executionSuccess'] == True
+    #assert explain['executionStats']['nReturned'] == 2
+    #assert explain['executionStats']['totalKeysExamined'] == 2
+    #assert explain['executionStats']['totalDocsExamined'] == 2
+
 
 #================= HELPER FUNCTIONS ===========================================
 

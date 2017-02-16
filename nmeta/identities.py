@@ -537,14 +537,19 @@ class Identities(BaseClass):
                 #*** Not a type that we handle yet
                 self.logger.debug("Unhandled DNS answer type=%s", answer.type)
 
-    def findbymac(self, mac_addr):
+    def findbymac(self, mac_addr, test=0):
         """
         Passed a MAC address and reverse search identities collection
         returning first match as a dictionary version of
         an Identity class, or empty dictionary if not found
+
+        Setting test=1 returns database query execution statistics
         """
         db_data = {'mac_address': mac_addr}
-        result = self.identities.find(db_data).sort('valid_from', -1).limit(1)
+        if not test:
+            result = self.identities.find(db_data).sort('valid_from', -1).limit(1)
+        else:
+            return self.identities.find(db_data).sort('valid_from', -1).limit(1).explain()
         if result.count():
             result0 = list(result)[0]
             self.logger.debug("found result=%s len=%s", result0, len(result0))

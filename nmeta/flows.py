@@ -373,6 +373,8 @@ class Flow(BaseClass):
             particular flow hash within a time range.
             time range is from current time backwards by number of seconds
             defined in config for classification_time_limit
+
+            Setting test returns database query execution statistics
             """
             #*** Initialise classification variables:
             self.flow_hash = flow_hash
@@ -381,6 +383,7 @@ class Flow(BaseClass):
             self.classification_time = 0
             self.actions = {}
             self.clsfn = clsfn
+            self.time_limit = time_limit
             self.logger = logger
 
             #*** Put into context of current flow by querying
@@ -388,9 +391,9 @@ class Flow(BaseClass):
             db_data = {'flow_hash': self.flow_hash}
             #*** Filter to only recent classifications:
             db_data['classification_time'] = {'$gte': datetime.datetime.now()-
-                                                                    time_limit}
+                                                               self.time_limit}
             #*** Run db search:
-            result = clsfn.find(db_data).sort('classification_time', -1) \
+            result = self.clsfn.find(db_data).sort('classification_time', -1) \
                                                                       .limit(1)
             self.logger.debug("result.count=%s", result.count())
             if result.count():
@@ -405,6 +408,18 @@ class Flow(BaseClass):
                     self.classification_time = result0['classification_time']
                 if 'actions' in result0:
                     self.actions = result0['actions']
+
+        def test_query(self):
+            """
+            Return database query execution statistics
+            """
+            db_data = {'flow_hash': self.flow_hash}
+            #*** Filter to only recent classifications:
+            db_data['classification_time'] = {'$gte': datetime.datetime.now()-
+                                                               self.time_limit}
+            #*** Run db search with explain:
+            return self.clsfn.find(db_data).sort('classification_time', -1) \
+                                                    .limit(1).explain()
 
         def dbdict(self):
             """
@@ -424,6 +439,7 @@ class Flow(BaseClass):
             Record current state of flow classification into MongoDB
             classifications collection.
             """
+            self.classification_time = datetime.datetime.now()
             db_dict = self.dbdict()
             #*** Write classification to database collection:
             self.clsfn.insert_one(db_dict)
@@ -678,6 +694,8 @@ class Flow(BaseClass):
 
         Works by retrieving packets from packet_ins database with
         current packet flow_hash and within flow reuse time limit.
+
+        Setting test=1 returns database query execution statistics
         """
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \

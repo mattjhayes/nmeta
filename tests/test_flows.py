@@ -462,9 +462,9 @@ def test_classification_identity():
     assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
                                    'set_desc': 'Constrained Bandwidth Traffic'}
 
-def test_indexing_packet_ins():
+def test_indexing():
     """
-    Test indexing of packet_ins database collection
+    Test indexing of packet_ins and classification database collections
 
     Packets are ingested from 3 flows.
 
@@ -489,19 +489,31 @@ def test_indexing_packet_ins():
                                 (seconds=config.get_value("flow_time_limit")+1))
     #*** Ingest current packets from two different flows:
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+    flow.classification.commit()
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[1], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+    flow.classification.commit()
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[4], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[5], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[6], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+    flow.classification.commit()
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[7], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[8], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[9], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[10], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[11], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[2], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+    flow.classification.commit()
 
     #*** Retrieve an explain of packet-ins database query:
     explain = flow.packet_count(test=1)
@@ -512,6 +524,15 @@ def test_indexing_packet_ins():
     assert explain['executionStats']['nReturned'] == 2
     assert explain['executionStats']['totalKeysExamined'] == 2
     assert explain['executionStats']['totalDocsExamined'] == 2
+
+    explain2 = flow.classification.test_query()
+    #*** Check an index is used:
+    assert explain2['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain2['executionStats']['executionSuccess'] == True
+    assert explain2['executionStats']['nReturned'] == 1
+    assert explain2['executionStats']['totalKeysExamined'] == 1
+    assert explain2['executionStats']['totalDocsExamined'] == 1
 
 #================= HELPER FUNCTIONS ===========================================
 

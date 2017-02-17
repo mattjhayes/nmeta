@@ -154,7 +154,7 @@ class ExternalAPI(BaseClass):
         Run the External API instance
         """
         #*** Define the Eve pi_rate schema for what data the API returns:
-        i_c_pi_rate_schema = {
+        pi_rate_schema = {
                 'pi_rate': {
                     'type': 'float'
                 }
@@ -257,10 +257,10 @@ class ExternalAPI(BaseClass):
                 }
             }
         #*** Eve Settings for Measurements of Packet In Rates:
-        i_c_pi_rate_settings = {
+        pi_rate_settings = {
             'url': 'infrastructure/controllers/pi_rate',
             'item_title': 'Packet-In Receive Rate',
-            'schema': i_c_pi_rate_schema
+            'schema': pi_rate_schema
         }
         #*** Eve Settings for Measurements of Packet In Rates:
         pi_time_settings = {
@@ -300,7 +300,7 @@ class ExternalAPI(BaseClass):
         }
         #*** Eve Domain for the whole API:
         eve_domain = {
-            'i_c_pi_rate': i_c_pi_rate_settings,
+            'pi_rate': pi_rate_settings,
             'pi_time': pi_time_settings,
             'switches_col': switches_settings,
             'identities': identities_settings,
@@ -337,10 +337,10 @@ class ExternalAPI(BaseClass):
         self.logger.debug("static_folder=%s", static_folder)
 
         #*** Hook for adding pi_rate to returned resource:
-        self.app.on_fetched_resource_i_c_pi_rate += self.i_c_pi_rate_response
+        self.app.on_fetched_resource_pi_rate += self.response_pi_rate
 
         #*** Hook for adding pi_time to returned resource:
-        self.app.on_fetched_resource_pi_time += self.pi_time_response
+        self.app.on_fetched_resource_pi_time += self.response_pi_time
 
         #*** Hook for filtered identities response:
         self.app.on_fetched_resource_identities_ui += \
@@ -366,7 +366,8 @@ class ExternalAPI(BaseClass):
             """
             return 1
 
-    def i_c_pi_rate_response(self, items):
+
+    def response_pi_rate(self, items):
         """
         Update the response with the packet_in rate.
         Hooked from on_fetched_resource_pi_rate
@@ -384,7 +385,7 @@ class ExternalAPI(BaseClass):
         self.logger.debug("pi_rate=%s", pi_rate)
         items['pi_rate'] = pi_rate
 
-    def pi_time_response(self, items):
+    def response_pi_time(self, items):
         """
         Update the response with the packet_time min, avg and max.
         Hooked from on_fetched_resource_pi_time

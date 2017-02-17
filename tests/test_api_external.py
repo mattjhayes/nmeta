@@ -294,6 +294,7 @@ def test_flow_normalise_direction():
     assert normalised_record['tp_src'] == pkts.TP_DST[1]
     assert normalised_record['tp_dst'] == pkts.TP_SRC[1]
 
+
 def test_get_flow_data_xfer():
     """
     Test the get_flow_data_xfer method.

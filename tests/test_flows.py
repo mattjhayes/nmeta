@@ -33,6 +33,7 @@ import binascii
 
 #*** For timestamps:
 import datetime
+import time
 
 #*** Import dpkt for packet parsing:
 import dpkt
@@ -245,12 +246,6 @@ def test_classification_static():
     #*** Ingest Flow 2 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
 
-    #*** Retrieve a classification object for this particular flow:
-    clasfn = flow.Classification(flow.packet.flow_hash,
-                                    flow.classifications,
-                                    flow.classification_time_limit,
-                                    logger)
-
     #*** Base classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 0
@@ -419,12 +414,6 @@ def test_classification_identity():
     #*** Classify the packet:
     tc.check_policy(flow, ident)
 
-    #*** Retrieve a classification object for this particular flow:
-    clasfn = flow.Classification(flow.packet.flow_hash,
-                                    flow.classifications,
-                                    flow.classification_time_limit,
-                                    logger)
-
     #*** Unmatched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 1
@@ -448,18 +437,91 @@ def test_classification_identity():
     #*** Classify the packet:
     tc.check_policy(flow, ident)
 
-    #*** Retrieve a classification object for this particular flow:
-    clasfn = flow.Classification(flow.packet.flow_hash,
-                                    flow.classifications,
-                                    flow.classification_time_limit,
-                                    logger)
-
     #*** Matched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 1
     assert flow.classification.classification_tag == "Constrained Bandwidth Traffic"
     assert flow.classification.actions == {'qos_treatment': 'constrained_bw',
                                    'set_desc': 'Constrained Bandwidth Traffic'}
+
+def test_indexing():
+    """
+    Test indexing of packet_ins and classification database collections
+
+    Packets are ingested from 3 flows.
+
+    Packets from one of the flows are too old to be significant
+
+    The most recent packet is the one that the flow context is in
+    and it only has one other packet ingested (i.e. packet_count == 2)
+    """
+    #*** Instantiate classes:
+    flow = flow_class.Flow(config)
+    ident = identities.Identities(config)
+    #*** Initial main_policy won't match as looking for tcp-1234:
+    tc = tc_policy.TrafficClassificationPolicy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
+
+    #*** Ingest packets older than flow timeout:
+    flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[0], datetime.datetime.now() - datetime.timedelta \
+                                (seconds=config.get_value("flow_time_limit")+1))
+    flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[1], datetime.datetime.now() - datetime.timedelta \
+                                (seconds=config.get_value("flow_time_limit")+1))
+    #*** Ingest current packets from two different flows:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+    flow.classification.commit()
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[1], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+    flow.classification.commit()
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[4], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[5], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[6], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+    flow.classification.commit()
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[7], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[8], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[9], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[10], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[11], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[2], datetime.datetime.now())
+    #*** Classify the packet:
+    tc.check_policy(flow, ident)
+    flow.classification.commit()
+
+    #*** Test packet_ins collection indexing...
+    #*** Should be 16 documents in packet_ins collection:
+    assert flow.packet_ins.count() == 16
+    #*** Get query execution statistics:
+    explain = flow.packet_count(test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'IXSCAN'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 2
+    assert explain['executionStats']['totalKeysExamined'] == 2
+    assert explain['executionStats']['totalDocsExamined'] == 2
+
+    #*** Test classifications collection indexing...
+    #*** Should be 4 documents in classifications collection:
+    assert flow.classifications.count() == 4
+    #*** Get query execution statistics:
+    explain2 = flow.classification.test_query()
+    #*** Check an index is used:
+    assert explain2['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain2['executionStats']['executionSuccess'] == True
+    assert explain2['executionStats']['nReturned'] == 1
+    assert explain2['executionStats']['totalKeysExamined'] == 1
+    assert explain2['executionStats']['totalDocsExamined'] == 1
 
 #================= HELPER FUNCTIONS ===========================================
 

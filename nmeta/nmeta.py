@@ -53,6 +53,7 @@ import of_error_decode
 from baseclass import BaseClass
 
 #*** mongodb Database Import:
+import pymongo
 from pymongo import MongoClient
 
 #*** Number of preceding seconds that events are averaged over:
@@ -92,6 +93,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
         mongo_addr = self.config.get_value("mongo_addr")
         mongo_port = self.config.get_value("mongo_port")
         mongo_dbname = self.config.get_value("mongo_dbname")
+        #*** Max bytes of the capped collection:
+        pi_time_max_bytes = self.config.get_value("pi_time_max_bytes")
         #*** Start mongodb:
         self.logger.info("Connecting to MongoDB database...")
         mongo_client = MongoClient(mongo_addr, mongo_port)
@@ -101,7 +104,12 @@ class NMeta(app_manager.RyuApp, BaseClass):
         self.logger.debug("Deleting previous pi_time MongoDB collection...")
         db_nmeta.pi_time.drop()
         #*** Create the pi_time collection:
-        self.pi_time = db_nmeta.create_collection('pi_time')
+        self.pi_time = db_nmeta.create_collection('pi_time', capped=True,
+                                            size=pi_time_max_bytes)
+        self.pi_time.create_index([('timestamp', pymongo.DESCENDING)],
+                                                                  unique=False)
+        self.pi_time.create_index([('outcome', pymongo.DESCENDING),
+                              ('timestamp', pymongo.DESCENDING)], unique=False)
 
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -176,10 +184,12 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** Sending out same port prohibited by IEEE 802.1D-2004 7.7.1c:
             self.logger.warning("Dropping packet flow_hash=%s as out_port="
                                     "in_port=%s", self.flow.flow_hash, in_port)
+            self.record_packet_time(pi_start_time, 'drop_same_port')
             return
         #*** Don't forward reserved MACs, as per IEEE 802.1D-2004 table 7-10:
         if str(eth.dst)[0:16] == '01:80:c2:00:00:0':
             self.logger.debug("Not forwarding reserved mac=%s", eth.dst)
+            self.record_packet_time(pi_start_time, 'drop_reserved_mac')
             return
 
         #*** Set QoS queue based on any QoS actions:
@@ -201,16 +211,13 @@ class NMeta(app_manager.RyuApp, BaseClass):
                                      "not classified yet", self.flow.flow_hash)
             #*** Send Packet Out:
             switch.packet_out(msg.data, in_port, out_port, out_queue)
+            self.record_packet_time(pi_start_time, 'packet_out')
         else:
             #*** It's a packet that's flooded, so send without specific queue
             #*** and with no queue option set:
             switch.packet_out(msg.data, in_port, out_port, out_queue=0,
                                                                     no_queue=1)
-        #*** Calculate and log packet-in processing time:
-        pi_delta = time.time() - pi_start_time
-        self.logger.debug("pi_delta=%s", pi_delta)
-        self.pi_time.insert({'pi_delta': pi_delta,
-                             'timestamp': datetime.datetime.now()})
+            self.record_packet_time(pi_start_time, 'packet_out_flooded')
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removed_handler(self, event):
@@ -279,6 +286,23 @@ class NMeta(app_manager.RyuApp, BaseClass):
             self.logger.info("port modified %s", port_no)
         else:
             self.logger.info("Illegal port state %s %s", port_no, reason)
+
+    def record_packet_time(self, pi_start_time, outcome):
+        """
+        Calculate the elapsed time for processing this packet-in event
+        and record to the pi_time database collection. Also
+        record the outcome for the packet, one of:
+        - drop_same_port
+        - drop_reserved_mac
+        - packet_out_flooded
+        - packet_out
+        """
+        #*** Calculate and log packet-in processing time:
+        pi_delta = time.time() - pi_start_time
+        self.logger.debug("pi_delta=%s", pi_delta)
+        self.pi_time.insert({'pi_delta': pi_delta,
+                             'outcome': outcome,
+                             'timestamp': datetime.datetime.now()})
 
 #*** Borrowed from rest_router.py code:
 def ipv4_text_to_int(ip_text):

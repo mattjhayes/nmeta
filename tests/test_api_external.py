@@ -80,7 +80,7 @@ api = api_external.ExternalAPI(config)
 
 #======================== api_external.py Unit Tests ==========================
 
-def test_i_c_pi_rate():
+def test_response_pi_rate():
     """
     Test ingesting packets from an IPv4 HTTP flow, and check packet-in rate
     is as expected at various points

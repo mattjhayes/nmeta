@@ -246,12 +246,6 @@ def test_classification_static():
     #*** Ingest Flow 2 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
 
-    #*** Retrieve a classification object for this particular flow:
-    clasfn = flow.Classification(flow.packet.flow_hash,
-                                    flow.classifications,
-                                    flow.classification_time_limit,
-                                    logger)
-
     #*** Base classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 0
@@ -420,12 +414,6 @@ def test_classification_identity():
     #*** Classify the packet:
     tc.check_policy(flow, ident)
 
-    #*** Retrieve a classification object for this particular flow:
-    clasfn = flow.Classification(flow.packet.flow_hash,
-                                    flow.classifications,
-                                    flow.classification_time_limit,
-                                    logger)
-
     #*** Unmatched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
     assert flow.classification.classified == 1
@@ -448,12 +436,6 @@ def test_classification_identity():
 
     #*** Classify the packet:
     tc.check_policy(flow, ident)
-
-    #*** Retrieve a classification object for this particular flow:
-    clasfn = flow.Classification(flow.packet.flow_hash,
-                                    flow.classifications,
-                                    flow.classification_time_limit,
-                                    logger)
 
     #*** Matched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -515,7 +497,10 @@ def test_indexing():
     tc.check_policy(flow, ident)
     flow.classification.commit()
 
-    #*** Retrieve an explain of packet-ins database query:
+    #*** Test packet_ins collection indexing...
+    #*** Should be 16 documents in packet_ins collection:
+    assert flow.packet_ins.count() == 16
+    #*** Get query execution statistics:
     explain = flow.packet_count(test=1)
     #*** Check an index is used:
     assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'IXSCAN'
@@ -525,6 +510,10 @@ def test_indexing():
     assert explain['executionStats']['totalKeysExamined'] == 2
     assert explain['executionStats']['totalDocsExamined'] == 2
 
+    #*** Test classifications collection indexing...
+    #*** Should be 4 documents in classifications collection:
+    assert flow.classifications.count() == 4
+    #*** Get query execution statistics:
     explain2 = flow.classification.test_query()
     #*** Check an index is used:
     assert explain2['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'

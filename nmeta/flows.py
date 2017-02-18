@@ -242,6 +242,9 @@ class Flow(BaseClass):
                                         ],
                                         unique=False)
 
+        self.packet_ins.create_index([('timestamp', pymongo.DESCENDING)],
+                                        unique=False)
+
         #*** classifications collection:
         self.logger.debug("Deleting classifications MongoDB collection...")
         db_nmeta.classifications.drop()

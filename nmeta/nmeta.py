@@ -192,13 +192,18 @@ class NMeta(app_manager.RyuApp, BaseClass):
             self.record_packet_time(pi_start_time, 'drop_reserved_mac')
             return
 
-        #*** Set QoS queue based on any QoS actions:
         actions = self.flow.classification.actions
+        #*** Set QoS queue based on any QoS actions:
         if 'qos_treatment' in actions:
             out_queue = self.tc_policy.qos(actions['qos_treatment'])
             self.logger.debug("QoS output_queue=%s", out_queue)
         else:
             out_queue = 0
+        #*** Drop if action says to:
+        if 'drop' in actions:
+            self.logger.debug("Action drop flow_hash=%s", self.flow.flow_hash)
+            self.record_packet_time(pi_start_time, 'drop_action')
+            return
 
         if out_port != ofproto.OFPP_FLOOD:
             #*** Do some add flow magic, but only if not a flooded packet and

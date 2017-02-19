@@ -88,8 +88,8 @@ class ExternalAPI(BaseClass):
         """
         self.config = config
         #*** Set up Logging with inherited base class method:
-        self.configure_logging(__name__, "external_api_logging_level_s",
-                                       "external_api_logging_level_c")
+        self.configure_logging(__name__, "api_external_logging_level_s",
+                                       "api_external_logging_level_c")
 
         #*** MongoDB Setup:
         #*** Get database parameters from config:
@@ -773,14 +773,19 @@ class ExternalAPI(BaseClass):
                 service = service_result['service_name']
         return service
 
-    def get_pi_rate(self):
+    def get_pi_rate(self, test=0):
         """
         Calculate packet-in rate by querying packet_ins database
         collection.
+
+        Setting test=1 returns database query execution statistics
         """
         db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
                           datetime.timedelta(seconds=PACKET_IN_RATE_INTERVAL)}}
-        packet_count = self.packet_ins.find(db_data).count()
+        if not test:
+            packet_count = self.packet_ins.find(db_data).count()
+        else:
+            return self.packet_ins.find(db_data).explain()
         pi_rate = float(packet_count / PACKET_IN_RATE_INTERVAL)
         self.logger.debug("pi_rate=%s", pi_rate)
         return pi_rate

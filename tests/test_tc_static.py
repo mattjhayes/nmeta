@@ -42,6 +42,7 @@ import tc_policy
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
+import packets_ipv4_dns as pkts_udp
 
 #*** Instantiate Config class:
 config = config.Config()
@@ -141,7 +142,28 @@ def test_check_static():
     tc_static.check_static(condition, flow.packet)
     assert condition.match == False
 
-    # TBD check UDP
+    #*** Ingest UDP:
+    flow.ingest_packet(DPID1, INPORT1, pkts_udp.RAW[0], datetime.datetime.now())
+
+    condition.policy_attr = 'udp_src'
+    condition.policy_value = pkts_udp.TP_SRC[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'udp_src'
+    condition.policy_value = pkts_udp.TP_DST[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
+
+    condition.policy_attr = 'udp_dst'
+    condition.policy_value = pkts_udp.TP_DST[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == True
+
+    condition.policy_attr = 'udp_dst'
+    condition.policy_value = pkts_udp.TP_SRC[0]
+    tc_static.check_static(condition, flow.packet)
+    assert condition.match == False
 
 #*** MAC Address Validity Tests:
 def test_is_valid_macaddress():

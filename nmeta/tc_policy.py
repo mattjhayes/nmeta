@@ -53,6 +53,8 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'ip_dst': 'IPAddressSpace',
                                'tcp_src': 'PortNumber',
                                'tcp_dst': 'PortNumber',
+                               'udp_src': 'PortNumber',
+                               'udp_dst': 'PortNumber',
                                'eth_type': 'EtherType',
                                'identity_lldp_systemname': 'String',
                                'identity_lldp_systemname_re': 'String',
@@ -62,7 +64,8 @@ TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
                                'match_type': 'MatchType',
                                'conditions_list': 'PolicyConditions'}
 TC_CONFIG_ACTIONS = ('qos_treatment',
-                     'set_desc')
+                     'set_desc',
+                     'drop')
 TC_CONFIG_MATCH_TYPES = ('any',
                          'all')
 #*** Keys that must exist under 'identity' in the policy:

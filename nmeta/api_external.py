@@ -88,8 +88,8 @@ class ExternalAPI(BaseClass):
         """
         self.config = config
         #*** Set up Logging with inherited base class method:
-        self.configure_logging(__name__, "external_api_logging_level_s",
-                                       "external_api_logging_level_c")
+        self.configure_logging(__name__, "api_external_logging_level_s",
+                                       "api_external_logging_level_c")
 
         #*** MongoDB Setup:
         #*** Get database parameters from config:

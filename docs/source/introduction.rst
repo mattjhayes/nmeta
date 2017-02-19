@@ -21,8 +21,6 @@ and ability to adapt to new purposes through extensibility.
 Enriched network metadata has a number of uses, including classifying flows
 for QoS, billing, traffic engineering, troubleshooting and security.
 
-.. image:: images/flow_metadata_screenshot3.png
-
 Nmeta is a research platform for traffic classification on Software Defined
 Networking (SDN).  It runs on top of the Ryu SDN controller
 (see: `<http://osrg.github.io/ryu/>`_).

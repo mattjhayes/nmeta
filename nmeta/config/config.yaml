@@ -37,7 +37,7 @@ forwarding_logging_level_s: INFO
 api_logging_level_s: INFO
 flows_logging_level_s: INFO
 identities_logging_level_s: INFO
-external_api_logging_level_s: INFO
+api_external_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
 #*** Set to 1 if want to log to console:
@@ -62,7 +62,7 @@ forwarding_logging_level_c: INFO
 api_logging_level_c: INFO
 flows_logging_level_c: INFO
 identities_logging_level_c: INFO
-external_api_logging_level_c: INFO
+api_external_logging_level_c: INFO
 #
 #========== Flow Tables ==========================
 #*** Maximum idle time for suppression flow entries in seconds.

@@ -71,6 +71,12 @@ suppress_hard_timeout: 0
 #*** Priority for suppression flow entries:
 suppress_priority: 1
 #
+#*** Maximum idle time for drop flow entries in seconds.
+drop_idle_timeout: 3600
+drop_hard_timeout: 0
+#*** Priority for drop flow entries:
+drop_priority: 2
+#
 #========== Mongodb Database ==========================
 mongo_addr: localhost
 mongo_port: 27017

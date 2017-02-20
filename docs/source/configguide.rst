@@ -289,14 +289,14 @@ Supported attributes are:
 
   Values can be:
 
-  - normal
-  - switch
+  - at_controller
+  - at_controller_and_switch
 
   Example:
 
   .. code-block:: text
 
-    drop: normal
+    drop: at_controller_and_switch
 
 :qos_treatment: Specify QoS treatment for flow.
 

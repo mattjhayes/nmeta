@@ -341,6 +341,9 @@ class FlowTables(BaseClass):
         self.suppress_idle_timeout = config.get_value('suppress_idle_timeout')
         self.suppress_hard_timeout = config.get_value('suppress_hard_timeout')
         self.suppress_priority = config.get_value('suppress_priority')
+        self.drop_idle_timeout = config.get_value('drop_idle_timeout')
+        self.drop_hard_timeout = config.get_value('drop_hard_timeout')
+        self.drop_priority = config.get_value('drop_priority')
 
     def suppress_flow(self, msg, in_port, out_port, out_queue):
         """
@@ -426,6 +429,66 @@ class FlowTables(BaseClass):
                                  hard_timeout=hard_timeout)
             return 1
 
+    def drop_flow(self, msg):
+        """
+        Add flow entry to a switch to suppress further packet-in
+        events for a particular flow.
+
+        Prefer to do fine-grained match where possible.
+        """
+        #*** Extract parameters:
+        pkt = packet.Packet(msg.data)
+        pkt_ip4 = pkt.get_protocol(ipv4.ipv4)
+        pkt_ip6 = pkt.get_protocol(ipv6.ipv6)
+        pkt_tcp = pkt.get_protocol(tcp.tcp)
+        pkt_udp = pkt.get_protocol(udp.udp)
+        idle_timeout = self.drop_idle_timeout
+        hard_timeout = self.drop_hard_timeout
+        priority = self.drop_priority
+        self.logger.debug("event=drop_flow")
+        #*** Drop action is the implicit in setting no actions:
+        drop_action = self.datapath.ofproto_parser.OFPActionOutput()
+        #*** Install flow entry based on type of flow:
+        if pkt_tcp:
+            if pkt_ip4:
+                drop_match = self.match_ipv4_tcp(pkt_ip4.src, pkt_ip4.dst,
+                                            pkt_tcp.src_port, pkt_tcp.dst_port)
+            elif pkt_ip6:
+                drop_match = self.match_ipv6_tcp(pkt_ip6.src, pkt_ip6.dst,
+                                            pkt_tcp.src_port, pkt_tcp.dst_port)
+            else:
+                #*** Unknown protocol so warn and exit:
+                self.logger.warning("Unknown IP protocol, not installing flow "
+                                    "drop entry for TCP")
+                return 0
+        elif pkt_udp:
+            if pkt_ip4:
+                drop_match = self.match_ipv4_udp(pkt_ip4.src, pkt_ip4.dst,
+                                            pkt_udp.src_port, pkt_udp.dst_port)
+            elif pkt_ip6:
+                drop_match = self.match_ipv6_udp(pkt_ip6.src, pkt_ip6.dst,
+                                            pkt_udp.src_port, pkt_udp.dst_port)
+            else:
+                #*** Unknown protocol so warn and exit:
+                self.logger.warning("Unknown IP protocol, not installing flow "
+                                    "drop entry for UDP")
+                return 0
+        elif pkt_ip4:
+            #*** Match IPv4 packet
+            drop_match = self.match_ipv4(pkt_ip4.src, pkt_ip4.dst)
+        elif pkt_ip6:
+            #*** Match IPv6 packet
+            drop_match = self.match_ipv6(pkt_ip6.src, pkt_ip6.dst)
+        else:
+            #*** Non-IP packet, ignore:
+            self.logger.warning("Drop not installed as non-IP")
+            return 0
+        #*** Now have match and action. Install to switch:
+        self.logger.debug("Installing drop rule to dpid=%s", self.dpid)
+        self.add_flow(drop_match, drop_action, priority=priority,
+                          idle_timeout=idle_timeout, hard_timeout=hard_timeout)
+        return 1
+
     def add_flow(self, match, actions, priority, idle_timeout, hard_timeout):
         """
         Add a flow entry to a switch
@@ -472,6 +535,19 @@ class FlowTables(BaseClass):
                     tcp_src=tcp_src,
                     tcp_dst=tcp_dst)
 
+    def match_ipv4_udp(self, ipv4_src, ipv4_dst, udp_src, udp_dst):
+        """
+        Match an IPv4 UDP flow on a switch.
+        Passed IPv4 and UDP parameters and return
+        an OpenFlow match object for this flow
+        """
+        return self.parser.OFPMatch(eth_type=0x0800,
+                    ipv4_src=_ipv4_t2i(str(ipv4_src)),
+                    ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
+                    ip_proto=17,
+                    udp_src=udp_src,
+                    udp_dst=udp_dst)
+
     def match_ipv6_tcp(self, ipv6_src, ipv6_dst, tcp_src, tcp_dst):
         """
         Match an IPv6 TCP flow on a switch.
@@ -484,6 +560,19 @@ class FlowTables(BaseClass):
                     ip_proto=6,
                     tcp_src=tcp_src,
                     tcp_dst=tcp_dst)
+
+    def match_ipv6_udp(self, ipv6_src, ipv6_dst, udp_src, udp_dst):
+        """
+        Match an IPv6 UDP flow on a switch.
+        Passed IPv6 and UDP parameters and return
+        an OpenFlow match object for this flow
+        """
+        return self.parser.OFPMatch(eth_type=0x86DD,
+                    ipv6_src=ipv6_src,
+                    ipv6_dst=ipv6_dst,
+                    ip_proto=17,
+                    udp_src=udp_src,
+                    udp_dst=udp_dst)
 
     def match_ipv4(self, ipv4_src, ipv4_dst):
         """

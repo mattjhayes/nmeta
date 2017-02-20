@@ -199,9 +199,11 @@ class NMeta(app_manager.RyuApp, BaseClass):
             self.logger.debug("QoS output_queue=%s", out_queue)
         else:
             out_queue = 0
-        #*** Drop if action says to:
+        #*** Check for drop action:
         if 'drop' in actions:
             self.logger.debug("Action drop flow_hash=%s", self.flow.flow_hash)
+            if actions['drop'] == 'at_controller_and_switch':
+                flowtables.drop_flow(msg)
             self.record_packet_time(pi_start_time, 'drop_action')
             return
 

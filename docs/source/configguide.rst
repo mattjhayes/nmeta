@@ -298,6 +298,14 @@ Supported attributes are:
 
     drop: at_controller_and_switch
 
+  A drop action with 'at_controller_and_switch' value will install a flow entry
+  with no actions (which implicitly drops) onto the switch that sent the
+  matching packet to the controller. Be aware that nmeta will generate a
+  fine-grained match for this drop rule that may not align with what is
+  specified in the policy. It builds the rule based on the classified packet
+  and will do a match on IPs & TCP or UDP destination port for TCP or UDP or
+  IPs for other IP traffic. It will not apply a rule for non-IP traffic.
+
 :qos_treatment: Specify QoS treatment for flow.
 
   Values can be:

@@ -445,9 +445,11 @@ class FlowTables(BaseClass):
         idle_timeout = self.drop_idle_timeout
         hard_timeout = self.drop_hard_timeout
         priority = self.drop_priority
+        ofproto = self.datapath.ofproto
         self.logger.debug("event=drop_flow")
         #*** Drop action is the implicit in setting no actions:
-        drop_action = self.datapath.ofproto_parser.OFPActionOutput()
+        drop_action = self.datapath.ofproto_parser.OFPActionOutput(
+                                               ofproto.OFPIT_CLEAR_ACTIONS, [])
         #*** Install flow entry based on type of flow:
         if pkt_tcp:
             if pkt_ip4:

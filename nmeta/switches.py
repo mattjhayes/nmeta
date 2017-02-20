@@ -435,6 +435,8 @@ class FlowTables(BaseClass):
         events for a particular flow.
 
         Prefer to do fine-grained match where possible.
+
+        TCP or UDP source ports are not matched as ephemeral
         """
         #*** Extract parameters:
         pkt = packet.Packet(msg.data)
@@ -448,17 +450,15 @@ class FlowTables(BaseClass):
         ofproto = self.datapath.ofproto
         self.logger.debug("event=drop_flow")
         #*** Drop action is the implicit in setting no actions:
-        #drop_action = self.datapath.ofproto_parser.OFPActionOutput(
-        #                                       ofproto.OFPIT_CLEAR_ACTIONS, [])
         drop_action = 0
         #*** Install flow entry based on type of flow:
         if pkt_tcp:
             if pkt_ip4:
                 drop_match = self.match_ipv4_tcp(pkt_ip4.src, pkt_ip4.dst,
-                                            pkt_tcp.src_port, pkt_tcp.dst_port)
+                                            0, pkt_tcp.dst_port)
             elif pkt_ip6:
                 drop_match = self.match_ipv6_tcp(pkt_ip6.src, pkt_ip6.dst,
-                                            pkt_tcp.src_port, pkt_tcp.dst_port)
+                                            0, pkt_tcp.dst_port)
             else:
                 #*** Unknown protocol so warn and exit:
                 self.logger.warning("Unknown IP protocol, not installing flow "
@@ -467,10 +467,10 @@ class FlowTables(BaseClass):
         elif pkt_udp:
             if pkt_ip4:
                 drop_match = self.match_ipv4_udp(pkt_ip4.src, pkt_ip4.dst,
-                                            pkt_udp.src_port, pkt_udp.dst_port)
+                                            0, pkt_udp.dst_port)
             elif pkt_ip6:
                 drop_match = self.match_ipv6_udp(pkt_ip6.src, pkt_ip6.dst,
-                                            pkt_udp.src_port, pkt_udp.dst_port)
+                                            0, pkt_udp.dst_port)
             else:
                 #*** Unknown protocol so warn and exit:
                 self.logger.warning("Unknown IP protocol, not installing flow "
@@ -534,12 +534,20 @@ class FlowTables(BaseClass):
         Passed IPv4 and TCP parameters and return
         an OpenFlow match object for this flow
         """
-        return self.parser.OFPMatch(eth_type=0x0800,
+        if tcp_src:
+            return self.parser.OFPMatch(eth_type=0x0800,
                     ipv4_src=_ipv4_t2i(str(ipv4_src)),
                     ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
                     ip_proto=6,
                     tcp_src=tcp_src,
                     tcp_dst=tcp_dst)
+        else:
+            return self.parser.OFPMatch(eth_type=0x0800,
+                    ipv4_src=_ipv4_t2i(str(ipv4_src)),
+                    ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
+                    ip_proto=6,
+                    tcp_dst=tcp_dst)
+
 
     def match_ipv4_udp(self, ipv4_src, ipv4_dst, udp_src, udp_dst):
         """
@@ -547,11 +555,18 @@ class FlowTables(BaseClass):
         Passed IPv4 and UDP parameters and return
         an OpenFlow match object for this flow
         """
-        return self.parser.OFPMatch(eth_type=0x0800,
+        if udp_src:
+            return self.parser.OFPMatch(eth_type=0x0800,
                     ipv4_src=_ipv4_t2i(str(ipv4_src)),
                     ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
                     ip_proto=17,
                     udp_src=udp_src,
+                    udp_dst=udp_dst)
+        else:
+            return self.parser.OFPMatch(eth_type=0x0800,
+                    ipv4_src=_ipv4_t2i(str(ipv4_src)),
+                    ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
+                    ip_proto=17,
                     udp_dst=udp_dst)
 
     def match_ipv6_tcp(self, ipv6_src, ipv6_dst, tcp_src, tcp_dst):
@@ -560,11 +575,18 @@ class FlowTables(BaseClass):
         Passed IPv6 and TCP parameters and return
         an OpenFlow match object for this flow
         """
-        return self.parser.OFPMatch(eth_type=0x86DD,
+        if tcp_src:
+            return self.parser.OFPMatch(eth_type=0x86DD,
                     ipv6_src=ipv6_src,
                     ipv6_dst=ipv6_dst,
                     ip_proto=6,
                     tcp_src=tcp_src,
+                    tcp_dst=tcp_dst)
+        else:
+            return self.parser.OFPMatch(eth_type=0x86DD,
+                    ipv6_src=ipv6_src,
+                    ipv6_dst=ipv6_dst,
+                    ip_proto=6,
                     tcp_dst=tcp_dst)
 
     def match_ipv6_udp(self, ipv6_src, ipv6_dst, udp_src, udp_dst):
@@ -573,11 +595,18 @@ class FlowTables(BaseClass):
         Passed IPv6 and UDP parameters and return
         an OpenFlow match object for this flow
         """
-        return self.parser.OFPMatch(eth_type=0x86DD,
+        if udp_src:
+            return self.parser.OFPMatch(eth_type=0x86DD,
                     ipv6_src=ipv6_src,
                     ipv6_dst=ipv6_dst,
                     ip_proto=17,
                     udp_src=udp_src,
+                    udp_dst=udp_dst)
+        else:
+            return self.parser.OFPMatch(eth_type=0x86DD,
+                    ipv6_src=ipv6_src,
+                    ipv6_dst=ipv6_dst,
+                    ip_proto=17,
                     udp_dst=udp_dst)
 
     def match_ipv4(self, ipv4_src, ipv4_dst):

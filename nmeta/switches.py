@@ -448,8 +448,9 @@ class FlowTables(BaseClass):
         ofproto = self.datapath.ofproto
         self.logger.debug("event=drop_flow")
         #*** Drop action is the implicit in setting no actions:
-        drop_action = self.datapath.ofproto_parser.OFPActionOutput(
-                                               ofproto.OFPIT_CLEAR_ACTIONS, [])
+        #drop_action = self.datapath.ofproto_parser.OFPActionOutput(
+        #                                       ofproto.OFPIT_CLEAR_ACTIONS, [])
+        drop_action = 0
         #*** Install flow entry based on type of flow:
         if pkt_tcp:
             if pkt_ip4:
@@ -497,8 +498,11 @@ class FlowTables(BaseClass):
         """
         ofproto = self.datapath.ofproto
         parser = self.datapath.ofproto_parser
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+        if actions:
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                                                       actions)]
+        else:
+            inst = []
         mod = parser.OFPFlowMod(datapath=self.datapath,
                                 idle_timeout=idle_timeout,
                                 hard_timeout=hard_timeout,

@@ -11,7 +11,11 @@ To use the web UI, start nmeta (alias nm), start the nmeta external API
 
 `<http://localhost:8081/webUI/index.html>`_
 
-Enjoy.
+The architecture of the WebUI and REST interface are shown in
+the diagram below:
 
+.. image:: images/webui_archtecture.png
 
-
+The Web Server, Ryu/nmeta and the MongoDB database all run independently.
+Backbone.js is the JavaScript framework used to power the UI in the browser.
+Bootstrap is the web framework used to style the presentation of the UI.

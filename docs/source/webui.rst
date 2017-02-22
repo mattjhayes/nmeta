@@ -14,7 +14,7 @@ To use the web UI, start nmeta (alias nm), start the nmeta external API
 The architecture of the WebUI and REST interface are shown in
 the diagram below:
 
-.. image:: images/webui_archtecture.png
+.. image:: images/webui_architecture.png
 
 The Web Server, Ryu/nmeta and the MongoDB database all run independently.
 Backbone.js is the JavaScript framework used to power the UI in the browser.

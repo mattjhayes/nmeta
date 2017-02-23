@@ -393,8 +393,7 @@ class FlowTables(BaseClass):
                 return 0
             #*** Actions:
             forward_actions = self.actions(out_port, out_queue)
-            #*** Note, not setting QoS on reverse:
-            reverse_actions = self.actions(in_port, 0)
+            reverse_actions = self.actions(in_port, out_queue)
             #*** Now have matches and actions. Install to switch:
             self.add_flow(forward_match, forward_actions,
                                  priority=priority,

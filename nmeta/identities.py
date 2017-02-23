@@ -126,9 +126,25 @@ class Identities(BaseClass):
         self.identities = db_nmeta.create_collection('identities', capped=True,
                                             size=identities_max_bytes)
 
-        #*** Index ip_address key to improve look-up performance:
-        self.identities.create_index([('ip_address', pymongo.TEXT)],
-                                                                unique=False)
+        #*** Index to improve look-up performance:
+        self.identities.create_index([('valid_from', pymongo.DESCENDING),
+                                        ('valid_to', pymongo.DESCENDING),
+                                        ('ip_address', pymongo.ASCENDING),
+                                        ('harvest_type', pymongo.ASCENDING)
+                                        ],
+                                        unique=False)
+
+        #*** Index to improve MAC address look-up performance:
+        self.identities.create_index([('mac_address', pymongo.ASCENDING),
+                             ('valid_from', pymongo.DESCENDING)], unique=False)
+
+        #*** Index to improve Node (host_name) look-up performance:
+        self.identities.create_index([('host_name', pymongo.ASCENDING),
+                             ('valid_from', pymongo.DESCENDING)], unique=False)
+
+        #*** Index to improve Service look-up performance:
+        self.identities.create_index([('service_name', pymongo.ASCENDING),
+                             ('valid_from', pymongo.DESCENDING)], unique=False)
 
         #*** Delete (drop) previous dhcp_messages collection if it exists:
         self.logger.debug("Deleting previous dhcp_messages MongoDB "
@@ -140,9 +156,12 @@ class Identities(BaseClass):
         self.dhcp_messages = db_nmeta.create_collection('dhcp_messages',
                                      capped=True, size=dhcp_messages_max_bytes)
 
-        #*** Index transaction_id key to improve look-up performance:
-        self.dhcp_messages.create_index([('transaction_id', pymongo.TEXT)],
-                                                                unique=False)
+        #*** Index dhcp_messages to improve look-up performance:
+        self.dhcp_messages.create_index([('ingest_time', pymongo.DESCENDING),
+                                        ('transaction_id', pymongo.ASCENDING),
+                                        ('message_type', pymongo.ASCENDING)
+                                        ],
+                                        unique=False)
 
     class Identity(object):
         """
@@ -353,7 +372,8 @@ class Identities(BaseClass):
             db_data['ingest_time'] = {'$gte': datetime.datetime.now() -
                                                  self.dhcp_messages_time_limit}
             #*** Run db search:
-            result = self.dhcp_messages.find(db_data).sort('$natural', -1).limit(1)
+            result = self.dhcp_messages.find(db_data).sort('ingest_time', -1) \
+                                                                      .limit(1)
             if result.count():
                 result0 = list(result)[0]
                 self.logger.debug("Found DHCPREQUEST for DHCPACK")
@@ -371,7 +391,7 @@ class Identities(BaseClass):
                 self.dhcp_msg.tp_dst = flow_pkt.tp_dst
                 self.dhcp_msg.transaction_id = hex(pkt_dhcp.xid)
                 self.dhcp_msg.ip_assigned = \
-                            socket.inet_ntoa(struct.pack(">L",pkt_dhcp.yiaddr))
+                           socket.inet_ntoa(struct.pack(">L", pkt_dhcp.yiaddr))
                 if dpkt.dhcp.DHCP_OPT_LEASE_SEC in dhcp_opts:
                     self.dhcp_msg.lease_time = struct.unpack('>L', dhcp_opts
                                             [dpkt.dhcp.DHCP_OPT_LEASE_SEC])[0]
@@ -526,14 +546,19 @@ class Identities(BaseClass):
                 #*** Not a type that we handle yet
                 self.logger.debug("Unhandled DNS answer type=%s", answer.type)
 
-    def findbymac(self, mac_addr):
+    def findbymac(self, mac_addr, test=0):
         """
         Passed a MAC address and reverse search identities collection
         returning first match as a dictionary version of
         an Identity class, or empty dictionary if not found
+
+        Setting test=1 returns database query execution statistics
         """
         db_data = {'mac_address': mac_addr}
-        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if not test:
+            result = self.identities.find(db_data).sort('valid_from', -1).limit(1)
+        else:
+            return self.identities.find(db_data).sort('valid_from', -1).limit(1).explain()
         if result.count():
             result0 = list(result)[0]
             self.logger.debug("found result=%s len=%s", result0, len(result0))
@@ -542,7 +567,7 @@ class Identities(BaseClass):
             self.logger.debug("mac_addr=%s not found", mac_addr)
             return {}
 
-    def findbynode(self, host_name, harvest_type='any', regex=False):
+    def findbynode(self, host_name, harvest_type='any', regex=False, test=0):
         """
         Find by node name
         Pass it the name of the node to search for. Additionally,
@@ -550,6 +575,8 @@ class Identities(BaseClass):
           regex=True       Treat service_name as a regular expression
           harvest_type=    Specify what type of harvest (i.e. DHCP)
         Returns a dictionary version of an Identity class, or 0 if not found
+
+        Setting test=1 returns database query execution statistics
         """
         db_data = {'host_name': host_name}
         if harvest_type != 'any':
@@ -562,7 +589,10 @@ class Identities(BaseClass):
         #*** Filter by documents that are still within 'best before' time:
         db_data['valid_to'] = {'$gte': datetime.datetime.now()}
         #*** Run db search:
-        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if not test:
+            result = self.identities.find(db_data).sort('valid_from', -1).limit(1)
+        else:
+            return self.identities.find(db_data).sort('valid_from', -1).limit(1).explain()
         if result.count():
             result0 = list(result)[0]
             self.logger.debug("found result=%s len=%s", result0, len(result0))
@@ -572,7 +602,7 @@ class Identities(BaseClass):
             return 0
 
     def findbyservice(self, service_name, harvest_type='any', regex=False,
-                        ip_address='any'):
+                        ip_address='any', test=0):
         """
         Find by service name
         Pass it the name of the service to search for. Additionally,
@@ -581,6 +611,8 @@ class Identities(BaseClass):
           harvest_type=     Specify what type of harvest (i.e. DNS_A)
           ip_address=       Look for specific IP address
         Returns boolean
+
+        Setting test=1 returns database query execution statistics
         """
         db_data = {'service_name': service_name}
         if harvest_type != 'any':
@@ -596,7 +628,10 @@ class Identities(BaseClass):
         #*** Filter by documents that are still within 'best before' time:
         db_data['valid_to'] = {'$gte': datetime.datetime.now()}
         #*** Run db search:
-        result = self.identities.find(db_data).sort('$natural', -1).limit(1)
+        if not test:
+            result = self.identities.find(db_data).sort('valid_from', -1).limit(1)
+        else:
+            return self.identities.find(db_data).sort('valid_from', -1).limit(1).explain()
         if result.count():
             result0 = list(result)[0]
             self.logger.debug("found result=%s len=%s", result0, len(result0))

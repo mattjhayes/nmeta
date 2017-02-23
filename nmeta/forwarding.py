@@ -54,10 +54,27 @@ class Forwarding(BaseClass):
         eth_dst = eth.dst
         #*** If the dpid doesn't exist in mac_to_port dictionary, create it:
         self.mac_to_port.setdefault(dpid, {})
-        #*** If the source MAC doesn't exist, create it:
-        self.mac_to_port[dpid].setdefault(eth_src, {})
-        #*** Learn the MAC address to avoid FLOOD next time.
-        self.mac_to_port[dpid][eth_src] = in_port
+
+        #*** MAC Learning
+        if eth_src in self.mac_to_port[dpid]:
+            #*** We know the MAC via a port on this switch:
+            if self.mac_to_port[dpid][eth_src] != in_port:
+                #*** We knew it via a different port
+                self.logger.warning("MAC forwarding changed dpid=%s mac=%s "
+                                    "original_port=%s new_port=%s", dpid,
+                                    eth_src, self.mac_to_port[dpid][eth_src],
+                                    in_port)
+                self.mac_to_port[dpid][eth_src] = in_port
+            else:
+                #*** Nothing to do, already learnt it:
+                pass
+        else:
+            #*** We don't know the MAC via a port on this switch:
+            self.logger.info("Learnt MAC dpid=%s mac=%s port=%s", dpid,
+                                    eth_src, in_port)
+            self.mac_to_port[dpid][eth_src] = in_port
+
+        #*** Forwarding:
         #*** Check to see if dst MAC is in learned MAC table:
         if eth_dst in self.mac_to_port[dpid]:
             #*** Found dst MAC so return the output port:

@@ -233,13 +233,17 @@ class Flow(BaseClass):
         self.logger.debug("Deleting packet_ins MongoDB collection...")
         db_nmeta.packet_ins.drop()
         #*** Create the packet_ins collection, specifying capped option
-        #*** with max size in bytes, so MongoDB handles data retention:
+        #***  with max size in bytes, so MongoDB handles data retention:
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=packet_ins_max_bytes)
-        #*** Index flow_hash key of packet_ins collection to
-        #*** improve look-up performance:
-        self.packet_ins.create_index([('flow_hash', pymongo.TEXT)],
-                                                                unique=False)
+
+        self.packet_ins.create_index([('flow_hash', pymongo.DESCENDING),
+                                        ('timestamp', pymongo.ASCENDING)
+                                        ],
+                                        unique=False)
+
+        self.packet_ins.create_index([('timestamp', pymongo.DESCENDING)],
+                                        unique=False)
 
         #*** classifications collection:
         self.logger.debug("Deleting classifications MongoDB collection...")
@@ -248,10 +252,13 @@ class Flow(BaseClass):
         #*** with max size in bytes, so MongoDB handles data retention:
         self.classifications = db_nmeta.create_collection('classifications',
                                    capped=True, size=classifications_max_bytes)
-        #*** Index flow_hash key of classifications collection to
-        #*** improve look-up performance:
-        self.classifications.create_index([('flow_hash', pymongo.TEXT)],
-                                                                unique=False)
+        #*** Index flow_hash and classification_time of classifications
+        #***  collection to improve look-up performance:
+
+        #*** Index classifications to improve look-up performance:
+        self.classifications.create_index([('flow_hash', pymongo.DESCENDING),
+                                ('classification_time', pymongo.DESCENDING)],
+                                unique=False)
 
         #*** flow_rems collection:
         self.logger.debug("Deleting flow_rems MongoDB collection...")
@@ -260,10 +267,7 @@ class Flow(BaseClass):
         #*** with max size in bytes, so MongoDB handles data retention:
         self.flow_rems = db_nmeta.create_collection('flow_rems',
                                    capped=True, size=flow_rems_max_bytes)
-        #*** Index flow_hash key of flow_rems collection to
-        #*** improve look-up performance:
-        self.flow_rems.create_index([('flow_hash', pymongo.TEXT)],
-                                                                unique=False)
+        #*** Note: don't index flow_rems collection as we don't read it
 
     class Packet(object):
         """
@@ -372,6 +376,8 @@ class Flow(BaseClass):
             particular flow hash within a time range.
             time range is from current time backwards by number of seconds
             defined in config for classification_time_limit
+
+            Setting test returns database query execution statistics
             """
             #*** Initialise classification variables:
             self.flow_hash = flow_hash
@@ -380,6 +386,7 @@ class Flow(BaseClass):
             self.classification_time = 0
             self.actions = {}
             self.clsfn = clsfn
+            self.time_limit = time_limit
             self.logger = logger
 
             #*** Put into context of current flow by querying
@@ -387,9 +394,10 @@ class Flow(BaseClass):
             db_data = {'flow_hash': self.flow_hash}
             #*** Filter to only recent classifications:
             db_data['classification_time'] = {'$gte': datetime.datetime.now()-
-                                                                    time_limit}
+                                                               self.time_limit}
             #*** Run db search:
-            result = clsfn.find(db_data).sort('$natural', -1).limit(1)
+            result = self.clsfn.find(db_data).sort('classification_time', -1) \
+                                                                      .limit(1)
             self.logger.debug("result.count=%s", result.count())
             if result.count():
                 #*** We have classification data for this flow:
@@ -403,6 +411,18 @@ class Flow(BaseClass):
                     self.classification_time = result0['classification_time']
                 if 'actions' in result0:
                     self.actions = result0['actions']
+
+        def test_query(self):
+            """
+            Return database query execution statistics
+            """
+            db_data = {'flow_hash': self.flow_hash}
+            #*** Filter to only recent classifications:
+            db_data['classification_time'] = {'$gte': datetime.datetime.now()-
+                                                               self.time_limit}
+            #*** Run db search with explain:
+            return self.clsfn.find(db_data).sort('classification_time', -1) \
+                                                    .limit(1).explain()
 
         def dbdict(self):
             """
@@ -422,6 +442,7 @@ class Flow(BaseClass):
             Record current state of flow classification into MongoDB
             classifications collection.
             """
+            self.classification_time = datetime.datetime.now()
             db_dict = self.dbdict()
             #*** Write classification to database collection:
             self.clsfn.insert_one(db_dict)
@@ -668,7 +689,7 @@ class Flow(BaseClass):
         #*** Write packet-in metadata to database collection:
         self.packet_ins.insert_one(db_dict)
 
-    def packet_count(self):
+    def packet_count(self, test=0):
         """
         Return the number of packets in the flow (counting packets in
         both directions). This method should deduplicate for where the
@@ -676,11 +697,16 @@ class Flow(BaseClass):
 
         Works by retrieving packets from packet_ins database with
         current packet flow_hash and within flow reuse time limit.
+
+        Setting test=1 returns database query execution statistics
         """
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
-        packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
+        if not test:
+            packet_cursor = self.packet_ins.find(db_data).sort('timestamp', -1)
+        else:
+            return self.packet_ins.find(db_data).sort('timestamp', -1).explain()
         self.logger.debug("packet_cursor.count()=%s", packet_cursor.count())
         return packet_cursor.count()
 
@@ -706,7 +732,7 @@ class Flow(BaseClass):
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
-        packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
+        packets = self.packet_ins.find(db_data).sort('timestamp', 1).limit(1)
         if packets.count():
             return list(packets)[0]['ip_src']
         else:
@@ -724,7 +750,7 @@ class Flow(BaseClass):
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
-        packets = self.packet_ins.find(db_data).sort('$natural', 1).limit(1)
+        packets = self.packet_ins.find(db_data).sort('timestamp', 1).limit(1)
         if packets.count():
             return list(packets)[0]['ip_dst']
         else:
@@ -739,7 +765,7 @@ class Flow(BaseClass):
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
-        packet_cursor = self.packet_ins.find(db_data).sort('$natural', -1)
+        packet_cursor = self.packet_ins.find(db_data).sort('timestamp', -1)
         if packet_cursor.count():
             for pkt in packet_cursor:
                 if pkt['length'] > max_packet_size:
@@ -771,7 +797,7 @@ class Flow(BaseClass):
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
-        packet_cursor = self.packet_ins.find(db_data).sort('$natural', 1)
+        packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
         #*** Iterate forward through packets in flow:
         if packet_cursor.count():
             for pkt in packet_cursor:
@@ -825,7 +851,7 @@ class Flow(BaseClass):
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
                                                 self.flow_time_limit}}
-        packet_cursor = self.packet_ins.find(db_data).sort('$natural', 1)
+        packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
         #*** Iterate forward through packets in flow:
         if packet_cursor.count():
             for pkt in packet_cursor:

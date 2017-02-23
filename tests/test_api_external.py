@@ -41,6 +41,7 @@ import packets_lldp as pkts_lldp
 import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_ipv4_dns as pkts_dns
+import packets_ipv4_ARP_2 as pkts_ARP_2
 
 #*** Ryu imports:
 from ryu.base import app_manager  # To suppress cyclic import
@@ -80,7 +81,7 @@ api = api_external.ExternalAPI(config)
 
 #======================== api_external.py Unit Tests ==========================
 
-def test_i_c_pi_rate():
+def test_response_pi_rate():
     """
     Test ingesting packets from an IPv4 HTTP flow, and check packet-in rate
     is as expected at various points
@@ -294,6 +295,7 @@ def test_flow_normalise_direction():
     assert normalised_record['tp_src'] == pkts.TP_DST[1]
     assert normalised_record['tp_dst'] == pkts.TP_SRC[1]
 
+
 def test_get_flow_data_xfer():
     """
     Test the get_flow_data_xfer method.
@@ -453,6 +455,39 @@ def test_get_classification():
     clasfn_result = api.get_classification(flow.classification.flow_hash)
     assert clasfn_result['classified'] ==  1
     assert clasfn_result['classification_tag'] ==  "Constrained Bandwidth Traffic"
+
+def test_indexing_get_pi_rate():
+    """
+    Test indexing of database collections for api queries
+    to ensure that they run efficiently
+    """
+    #*** Instantiate classes:
+    flow = flow_class.Flow(config)
+
+    #*** Ingest packets older than flow timeout:
+    flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[0], datetime.datetime.now() - datetime.timedelta \
+                                (seconds=config.get_value("flow_time_limit")+1))
+    flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[1], datetime.datetime.now() - datetime.timedelta \
+                                (seconds=config.get_value("flow_time_limit")+1))
+
+    #*** Ingest packets:
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[2], datetime.datetime.now())
+
+    #*** Test packet_ins collection indexing...
+    #*** Should be 5 documents in packet_ins collection:
+    assert flow.packet_ins.count() == 5
+    #*** Get query execution statistics:
+    explain = api.get_pi_rate(test=1)
+
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'IXSCAN'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 3
+    assert explain['executionStats']['totalKeysExamined'] == 3
+    assert explain['executionStats']['totalDocsExamined'] == 3
 
 def test_enumerate_eth_type():
     """

@@ -1,0 +1,24 @@
+<div class="row-fluid">
+    <div class="span12">
+        <h3>
+            <span class="label label-success">Controller</span>
+        </h3>
+        <button class="refresh_controller_summary"><span class="glyphicon glyphicon-refresh" style="color:blue" aria-hidden=true></span></button>
+
+        <table class="table table-striped">
+            <tr>
+                <td>Packet-In Rate:</td>
+                <td colspan="3"> <%= pi_rate %> events per second</td>
+            </tr>
+            <tr>
+                <td>Packet Processing Time:</td>
+                <td> min: <%= pi_time_min %> seconds</td>
+                <td> avg: <%= pi_time_avg %> seconds</td>
+                <td> max: <%= pi_time_max %> seconds</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+
+

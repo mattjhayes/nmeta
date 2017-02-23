@@ -88,8 +88,8 @@ class ExternalAPI(BaseClass):
         """
         self.config = config
         #*** Set up Logging with inherited base class method:
-        self.configure_logging(__name__, "external_api_logging_level_s",
-                                       "external_api_logging_level_c")
+        self.configure_logging(__name__, "api_external_logging_level_s",
+                                       "api_external_logging_level_c")
 
         #*** MongoDB Setup:
         #*** Get database parameters from config:
@@ -110,6 +110,7 @@ class ExternalAPI(BaseClass):
         self.identities = db_nmeta.identities
         self.classifications = db_nmeta.classifications
         self.flow_rems = db_nmeta.flow_rems
+        self.db_pi_time = db_nmeta.pi_time
 
     class FlowUI(object):
         """
@@ -154,7 +155,7 @@ class ExternalAPI(BaseClass):
         Run the External API instance
         """
         #*** Define the Eve pi_rate schema for what data the API returns:
-        i_c_pi_rate_schema = {
+        pi_rate_schema = {
                 'pi_rate': {
                     'type': 'float'
                 }
@@ -167,6 +168,32 @@ class ExternalAPI(BaseClass):
                     'type': 'float'
                 },
                 'pi_time_max': {
+                    'type': 'float'
+                },
+                'pi_time_period': {
+                    'type': 'float'
+                },
+                'pi_time_records': {
+                    'type': 'float'
+                }
+            }
+        controller_summary_schema = {
+                'pi_rate': {
+                    'type': 'float'
+                },
+                'pi_time_min': {
+                    'type': 'float'
+                },
+                'pi_time_avg': {
+                    'type': 'float'
+                },
+                'pi_time_max': {
+                    'type': 'float'
+                },
+                'pi_time_period': {
+                    'type': 'float'
+                },
+                'pi_time_records': {
                     'type': 'float'
                 }
             }
@@ -257,16 +284,22 @@ class ExternalAPI(BaseClass):
                 }
             }
         #*** Eve Settings for Measurements of Packet In Rates:
-        i_c_pi_rate_settings = {
+        pi_rate_settings = {
             'url': 'infrastructure/controllers/pi_rate',
             'item_title': 'Packet-In Receive Rate',
-            'schema': i_c_pi_rate_schema
+            'schema': pi_rate_schema
         }
         #*** Eve Settings for Measurements of Packet In Rates:
         pi_time_settings = {
             'url': 'infrastructure/controllers/pi_time',
             'item_title': 'Packet-In Processing Time',
             'schema': pi_time_schema
+        }
+        #*** Controller Summary Statistics:
+        controller_summary_settings = {
+            'url': 'infrastructure/controllers/summary',
+            'item_title': 'Controller Summary',
+            'schema': controller_summary_schema
         }
         #*** Eve Settings for OpenFlow Switches API:
         switches_settings = {
@@ -300,8 +333,9 @@ class ExternalAPI(BaseClass):
         }
         #*** Eve Domain for the whole API:
         eve_domain = {
-            'i_c_pi_rate': i_c_pi_rate_settings,
+            'pi_rate': pi_rate_settings,
             'pi_time': pi_time_settings,
+            'controller_summary': controller_summary_settings,
             'switches_col': switches_settings,
             'identities': identities_settings,
             'identities_ui': identities_ui_settings,
@@ -337,18 +371,22 @@ class ExternalAPI(BaseClass):
         self.logger.debug("static_folder=%s", static_folder)
 
         #*** Hook for adding pi_rate to returned resource:
-        self.app.on_fetched_resource_i_c_pi_rate += self.i_c_pi_rate_response
+        self.app.on_fetched_resource_pi_rate += self.response_pi_rate
 
         #*** Hook for adding pi_time to returned resource:
-        self.app.on_fetched_resource_pi_time += self.pi_time_response
+        self.app.on_fetched_resource_pi_time += self.response_pi_time
+
+        #*** Hook for adding controller_summary to returned resource:
+        self.app.on_fetched_resource_controller_summary += \
+                                               self.response_controller_summary
 
         #*** Hook for filtered identities response:
         self.app.on_fetched_resource_identities_ui += \
-                                               self.identities_ui_response
+                                               self.response_identities_ui
 
         #*** Hook for filtered flows response:
         self.app.on_fetched_resource_flows_ui += \
-                                               self.flows_ui_response
+                                               self.response_flows_ui
 
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
@@ -366,46 +404,80 @@ class ExternalAPI(BaseClass):
             """
             return 1
 
-    def i_c_pi_rate_response(self, items):
+
+    def response_pi_rate(self, items):
         """
         Update the response with the packet_in rate.
-        Hooked from on_fetched_resource_<name>
+        Hooked from on_fetched_resource_pi_rate
+
+        Returns key/values for packet-in processing time in API response:
+        - pi_rate
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
-        #*** Get database and query it:
-        packet_ins = self.app.data.driver.db['packet_ins']
-        db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
-                          datetime.timedelta(seconds=PACKET_IN_RATE_INTERVAL)}}
-        packet_cursor = packet_ins.find(db_data).sort('$natural', -1)
-        pi_rate = float(packet_cursor.count() / PACKET_IN_RATE_INTERVAL)
-        self.logger.debug("pi_rate=%s", pi_rate)
-        items['pi_rate'] = pi_rate
+        items['pi_rate'] = self.get_pi_rate()
 
-    def pi_time_response(self, items):
+    def response_pi_time(self, items):
         """
         Update the response with the packet_time min, avg and max.
-        Hooked from on_fetched_resource_<name>
+        Hooked from on_fetched_resource_pi_time
+
+        Returns key/values for packet-in processing time in API response:
+        - pi_time_max
+        - pi_time_min
+        - pi_time_avg
+        - pi_time_period
+        - pi_time_records
+
+        If no data found within time period then returns without
+        key/values
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
-        #*** Get database and query it:
-        pi_time = self.app.data.driver.db['pi_time']
-        db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
-                          datetime.timedelta(seconds=PACKET_TIME_PERIOD)}}
-        pi_time_cursor = pi_time.find(db_data).sort('$natural', -1)
-        pi_time_list = []
-        for record in pi_time_cursor:
-            pi_delta = record['pi_delta']
-            self.logger.debug("pi_delta=%s", pi_delta)
-            pi_time_list.append(pi_delta)
-        pi_time_max = max(pi_time_list)
-        pi_time_min = min(pi_time_list)
-        pi_time_avg = sum(pi_time_list)/len(pi_time_list)
-        self.logger.debug("pi_time_avg =%s", pi_time_avg)
-        items['pi_time_max '] = pi_time_max
-        items['pi_time_min '] = pi_time_min
-        items['pi_time_avg '] = pi_time_avg
+        #*** Get rid of superfluous _items key in response:
+        if '_items' in items:
+            del items['_items']
+        results = self.get_pi_time()
+        if results:
+            #*** Set values in API response:
+            items['pi_time_max'] = results['pi_time_max']
+            items['pi_time_min'] = results['pi_time_min']
+            items['pi_time_avg'] = results['pi_time_avg']
+            items['pi_time_period'] = results['pi_time_period']
+            items['pi_time_records'] = results['pi_time_records']
 
-    def identities_ui_response(self, items):
+    def response_controller_summary(self, items):
+        """
+        Update the response with the packet_in rate, packet processing
+        time stats
+
+        Hooked from on_fetched_resource_controller_summary
+
+        Rounds seconds results
+        """
+        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        #*** Number of decimal places to round seconds results to:
+        places = 3
+        #*** Get rid of superfluous _items key in response:
+        if '_items' in items:
+            del items['_items']
+        #*** pi_rate:
+        items['pi_rate'] = self.get_pi_rate()
+        #*** pi_time:
+        results = self.get_pi_time()
+        if results:
+            #*** Set values in API response:
+            items['pi_time_max'] = round(results['pi_time_max'], places)
+            items['pi_time_min'] = round(results['pi_time_min'], places)
+            items['pi_time_avg'] = round(results['pi_time_avg'], places)
+            items['pi_time_period'] = results['pi_time_period']
+            items['pi_time_records'] = results['pi_time_records']
+        else:
+            items['pi_time_max'] = 'unknown'
+            items['pi_time_min'] = 'unknown'
+            items['pi_time_avg'] = 'unknown'
+            items['pi_time_period'] = 'unknown'
+            items['pi_time_records'] = 'unknown'
+
+    def response_identities_ui(self, items):
         """
         Populate the response with identities that are filtered:
          - Reverse sort by harvest time
@@ -447,7 +519,7 @@ class ExternalAPI(BaseClass):
                 self.logger.debug("Storing id_hash=%s ", record['id_hash'])
                 known_hashes.append(record['id_hash'])
 
-    def flows_ui_response(self, items):
+    def response_flows_ui(self, items):
         """
         Populate the response with flow entries that are filtered:
          - Reverse sort by initial ingest time
@@ -700,6 +772,48 @@ class ExternalAPI(BaseClass):
                 service_result = list(db_result)[0]
                 service = service_result['service_name']
         return service
+
+    def get_pi_rate(self, test=0):
+        """
+        Calculate packet-in rate by querying packet_ins database
+        collection.
+
+        Setting test=1 returns database query execution statistics
+        """
+        db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
+                          datetime.timedelta(seconds=PACKET_IN_RATE_INTERVAL)}}
+        if not test:
+            packet_count = self.packet_ins.find(db_data).count()
+        else:
+            return self.packet_ins.find(db_data).explain()
+        pi_rate = float(packet_count / PACKET_IN_RATE_INTERVAL)
+        self.logger.debug("pi_rate=%s", pi_rate)
+        return pi_rate
+
+    def get_pi_time(self):
+        """
+        Calculate packet processing time statistics by querying
+        packet_ins database collection.
+        """
+        result = {}
+        db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
+                          datetime.timedelta(seconds=PACKET_TIME_PERIOD)}}
+        pi_time_cursor = self.db_pi_time.find(db_data).sort('timestamp', -1)
+        pi_time_list = []
+        for record in pi_time_cursor:
+            pi_delta = record['pi_delta']
+            self.logger.debug("pi_delta=%s", pi_delta)
+            pi_time_list.append(pi_delta)
+        if len(pi_time_list):
+            result['pi_time_max'] = max(pi_time_list)
+            result['pi_time_min'] = min(pi_time_list)
+            result['pi_time_avg'] = sum(pi_time_list)/len(pi_time_list)
+            result['pi_time_period'] = PACKET_TIME_PERIOD
+            result['pi_time_records'] = len(pi_time_list)
+            return result
+        else:
+            self.logger.warning("no current records found in pi_time")
+            return 0
 
 def enumerate_eth_type(eth_type):
     """

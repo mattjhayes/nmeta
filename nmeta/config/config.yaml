@@ -37,7 +37,7 @@ forwarding_logging_level_s: INFO
 api_logging_level_s: INFO
 flows_logging_level_s: INFO
 identities_logging_level_s: INFO
-external_api_logging_level_s: INFO
+api_external_logging_level_s: INFO
 #
 #========== CONSOLE LOGGING =========================
 #*** Set to 1 if want to log to console:
@@ -62,7 +62,7 @@ forwarding_logging_level_c: INFO
 api_logging_level_c: INFO
 flows_logging_level_c: INFO
 identities_logging_level_c: INFO
-external_api_logging_level_c: INFO
+api_external_logging_level_c: INFO
 #
 #========== Flow Tables ==========================
 #*** Maximum idle time for suppression flow entries in seconds.
@@ -70,6 +70,12 @@ suppress_idle_timeout: 30
 suppress_hard_timeout: 0
 #*** Priority for suppression flow entries:
 suppress_priority: 1
+#
+#*** Maximum idle time for drop flow entries in seconds.
+drop_idle_timeout: 3600
+drop_hard_timeout: 0
+#*** Priority for drop flow entries:
+drop_priority: 2
 #
 #========== Mongodb Database ==========================
 mongo_addr: localhost
@@ -79,6 +85,9 @@ mongo_dbname: nmeta_database
 #*** flows packet_ins capped collection
 packet_ins_max_bytes: 2000000
 flow_time_limit: 30
+#
+#*** pi_time (packet-in processing time) capped collection
+pi_time_max_bytes: 200000
 #
 #*** flow_rems capped collection
 flow_rems_max_bytes: 500000

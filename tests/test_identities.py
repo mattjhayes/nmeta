@@ -43,6 +43,8 @@ import packets_ipv4_ARP as pkts_arp
 import packets_ipv4_DHCP_firsttime as pkts_dhcp
 import packets_lldp as pkts_lldp
 import packets_ipv4_dns as pkts_dns
+import packets_ipv4_http as pkts
+import packets_ipv4_http2 as pkts2
 
 #*** Test DPIDs and in ports:
 DPID1 = 1
@@ -189,6 +191,88 @@ def test_harvest_DNS():
     result_identity = identities.findbyservice(pkts_dns.DNS_CNAME[1])
     assert result_identity['service_name'] == pkts_dns.DNS_CNAME[1]
     assert result_identity['ip_address'] == pkts_dns.DNS_IP[1]
+
+def test_indexing():
+    """
+    Test indexing of identities collection
+
+    Ensure database indexing is working efficiently by harvesting
+    various bits of identity metadata into identities collection
+    then test how well queries perform against it to
+
+    """
+    #*** Instantiate flow and identities objects:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    flow.ingest_packet(DPID1, INPORT2, pkts_lldp.RAW[0], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[0], flow.packet)
+
+    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_lldp.RAW[1], flow.packet)
+
+    flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[1], flow.packet)
+
+    flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[3], flow.packet)
+
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+
+    #*** Test identities collection indexing...
+    #*** Check correct number of documents in packet_ins collection:
+    assert identities.identities.count() == 7
+
+    #*** Get findbymac query execution statistics:
+    #*** Retrieve an explain of identities findbymac database query:
+    explain = identities.findbymac(pkts2.ETH_SRC[1], test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 1
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
+
+    #*** Get findbynode query execution statistics:
+    #*** Retrieve an explain of identities findbynode database query:
+    explain = identities.findbynode('pc1', test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 1
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
+
+    #*** Retrieve an explain of identities findbynode database query with
+    #*** harvest_type option set:
+    explain = identities.findbynode('pc1', harvest_type='DHCP', test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 1
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
+
+    #*** Get findbyservice query execution statistics:
+    #*** Retrieve an explain of identities findbyservice database query:
+    explain = identities.findbyservice(pkts_dns.DNS_NAME[1], test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 1
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
 
 #================= HELPER FUNCTIONS ===========================================
 

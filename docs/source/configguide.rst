@@ -190,6 +190,22 @@ Supported attributes are:
 
     tcp_dst: 80
 
+:udp_src: UDP source port.
+
+  Example:
+
+  .. code-block:: text
+
+    udp_src: 123
+
+:udp_dst: UDP destination port.
+
+  Example:
+
+  .. code-block:: text
+
+    udp_dst: 53
+
 Identity Classifiers
 --------------------
 
@@ -262,16 +278,35 @@ Actions
 -------
 
 Actions are specific to a rule, and define what nmeta should do when the rule is matched.
+Multiple actions can be defined on a rule.
 
 Supported attributes are:
 
-:qos_treatment: Specify QoS treatment for flow.
+:drop: Drop the packet
+
+  No flow modification or packet-out will occur. The packet will however
+  appear in metadata and does add load to the controller.
+
+  Values can be:
+
+  - at_controller
+  - at_controller_and_switch
 
   Example:
 
   .. code-block:: text
 
-    qos_treatment: classifier_return
+    drop: at_controller_and_switch
+
+  A drop action with 'at_controller_and_switch' value will install a flow entry
+  with no actions (which implicitly drops) onto the switch that sent the
+  matching packet to the controller. Be aware that nmeta will generate a
+  fine-grained match for this drop rule that may not align with what is
+  specified in the policy. It builds the rule based on the classified packet
+  and will do a match on IPs & TCP or UDP destination port for TCP or UDP or
+  IPs for other IP traffic. It will not apply a rule for non-IP traffic.
+
+:qos_treatment: Specify QoS treatment for flow.
 
   Values can be:
 
@@ -280,6 +315,12 @@ Supported attributes are:
   - high_priority
   - low_priority
   - classifier_return
+
+  Example:
+
+  .. code-block:: text
+
+    qos_treatment: classifier_return
 
 :set_desc: Set description for the flow. This is a convenience for humans.
 

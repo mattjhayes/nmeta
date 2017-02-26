@@ -36,6 +36,11 @@ nmeta.Router = Backbone.Router.extend({
 
     // Display nav bar and set up rest of page
     initialize: function () {
+
+        // Instantiate Flows Collection:
+        console.log('instantiating flows_collection');
+        this.flows_collection = new nmeta.FlowsCollection();
+
         nmeta.barsView = new nmeta.BarsView();
         $('body').html(nmeta.barsView.render().el);
         // Close the search dropdown on click anywhere in the UI
@@ -45,6 +50,8 @@ nmeta.Router = Backbone.Router.extend({
         // Variables linking to HTML content ids
         this.$content = $("#content");
         this.$content2 = $("#content2");
+
+
     },
 
     // Display 'home' page
@@ -84,18 +91,28 @@ nmeta.Router = Backbone.Router.extend({
 
     // Display 'what' page about flows on the network:
     what: function () {
-        // Instantiate Flows Collection:
-        var flows_collection = new nmeta.FlowsCollection();
-        var self = this;
-        // Retrieve flow information via REST API:
-        flows_collection.fetch({
-            success: function (data) {
-                console.log('flows_collection data=' + data);
-                self.$content.html(new nmeta.FlowsView({model: data}).render().el);
-            }
-        });
-        // Empty unused content2:
+        // Instantiate flows view if not already existing:
+        if (!nmeta.flowsView) {
+            // Instantiate flowsView:
+            console.log('app instantiating flowsView');
+            nmeta.flowsView = new nmeta.FlowsView({model: this.flows_collection,
+                                                   content: this.content});
+        } else {
+            // Rebind events:
+            console.log('app rebinding flowsView events');
+            nmeta.flowsView.delegateEvents()
+        }
+
+        // Fetch flows_collection as reset event (note: invokes render):
+        console.log('app calling flows_collection fetch({reset: true})');
+        this.flows_collection.fetch({reset: true})
+
+        // Publish result into DOM against id="content":
+        this.$content.html(nmeta.flowsView.el);
+
+        // Empty unused id="content2" in DOM:
         this.$content2.empty();
+
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('what-menu');
     },

@@ -41,6 +41,9 @@ nmeta.Router = Backbone.Router.extend({
         console.log('instantiating flows_collection');
         this.flows_collection = new nmeta.FlowsCollection();
 
+        // Instantiate model to hold UI states for Flows View:
+        this.flowsState = new Backbone.Model();
+
         nmeta.barsView = new nmeta.BarsView();
         $('body').html(nmeta.barsView.render().el);
         // Close the search dropdown on click anywhere in the UI
@@ -50,7 +53,6 @@ nmeta.Router = Backbone.Router.extend({
         // Variables linking to HTML content ids
         this.$content = $("#content");
         this.$content2 = $("#content2");
-
 
     },
 
@@ -96,7 +98,7 @@ nmeta.Router = Backbone.Router.extend({
             // Instantiate flowsView:
             console.log('app instantiating flowsView');
             nmeta.flowsView = new nmeta.FlowsView({model: this.flows_collection,
-                                                   content: this.content});
+                                                   flowsState: this.flowsState});
         } else {
             // Rebind events:
             console.log('app rebinding flowsView events');

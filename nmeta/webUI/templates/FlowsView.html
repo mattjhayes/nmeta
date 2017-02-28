@@ -3,16 +3,23 @@
         <p>Flows on the network (not necessarily current):</p>
 
         <!-- Search input for filtering results: -->
-        <form>
-            <label>Search Flow Source:</label>
-            <input type="text" id="searchFlowSrc" />
-
-            <!-- Clear search button: -->
-            <button class="clearFlowsSearch">
-                <span class="glyphicon glyphicon-remove-sign" style="color:blue" aria-hidden=true>
-                </span>
-            </button>
-        </form>
+        <table>
+            <tr>
+                <td>
+                    <form>
+                        <label>Search Flow Source:</label>
+                        <input type="text" id="searchFlowSrc" />
+                    </form>
+                </td>
+                <td>
+                    <!-- Clear search button: -->
+                    <button class="clearFlowsSearch">
+                        <span class="glyphicon glyphicon-remove-sign" style="color:blue" aria-hidden=true>
+                        </span>
+                    </button>
+                </td>
+            </tr>
+        </table>
 
         <!-- Table of flows: -->
         <div>

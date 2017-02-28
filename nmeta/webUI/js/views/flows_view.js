@@ -1,6 +1,13 @@
 nmeta.FlowsView = Backbone.View.extend({
 
-    initialize:function () {
+    initialize:function (options) {
+
+        // Get options passed to us:
+        this.options = options || {};
+
+        // We're passed a model to hold UI states in for random stuff:
+        this.flowsState = this.options.flowsState;
+        this.flowsState.set('searchString', '');
 
         // Bind 'reset' event to run render function on this collection:
         this.model.on("reset", this.render, this);
@@ -28,14 +35,20 @@ nmeta.FlowsView = Backbone.View.extend({
 
     clearFlowsSearch:function () {
         // TBD:
-        console.log('in clearFlowsSearch');
+        console.log('in clearFlowsSearch, clearing ', this.flowsState.get('searchString'));
+        this.flowsState.set('searchString', '');
+        $("#searchFlowSrc").val('');
+        // Retrieve fresh data without searchString:
+        this.model.fetch({reset: true,
+                            data: $.param({ searchString: '' })})
 
     },
 
     refreshFlows:function () {
         // Fetch flows_collection, sending as reset event:
-        console.log('FlowsView refreshFlows calling fetch() as reset');
-        this.model.fetch({reset: true})
+        console.log('FlowsView refreshFlows calling fetch() as reset and search=', this.flowsState.get('searchString'));
+        this.model.fetch({reset: true,
+                            data: $.param({ searchString: this.flowsState.get('searchString')})})
     },
 
     render:function () {
@@ -57,6 +70,9 @@ nmeta.FlowsView = Backbone.View.extend({
             $('#flow', this.el).append(flowView.render().el);
         });
 
+        // Re-add value to user text input:
+        $('#searchFlowSrc').val(this.flowsState.get('searchString'));
+
         return this;
     },
 
@@ -73,19 +89,12 @@ nmeta.FlowsView = Backbone.View.extend({
         var searchTerm = $("#searchFlowSrc").val();
         console.log('FlowsView search function, searchTerm=', searchTerm);
 
-        // Create a filtered version of collection:
-        var filtered = this.model.search(searchTerm);
-        console.log('FlowsView search returned ', JSON.stringify(filtered));
+        // Store search term:
+        this.flowsState.set('searchString', searchTerm);
 
-        // Empty flows table:
-        console.log('FlowsView search function emptying flows from table');
-        $('#flow', this.el).empty();
+        this.model.fetch({reset: true,
+                            data: $.param({ searchString: this.flowsState.get('searchString')})})
 
-        // Render filtered collection back into table:
-        filtered.each(function(item){
-            console.log('FlowsView search function adding flow row');
-            $('#flow', this.el).append(new nmeta.FlowView({model:item}).render().el);
-        });
     }
 
 });

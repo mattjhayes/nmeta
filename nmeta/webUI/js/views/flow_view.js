@@ -3,10 +3,10 @@ nmeta.FlowView = Backbone.View.extend({
     // Render flow view inside table tr tags:
     tagName:"tr",
 
-    initialize:function () {
-        this.model.on("change", this.render, this);
-        this.model.on("destroy", this.close, this);
-    },
+    //initialize:function () {
+    //    this.model.on("change", this.render, this);
+    //    this.model.on("destroy", this.close, this);
+    //},
 
     render:function () {
         // The clone hack here is to support parse.com which doesn't add the id to model.attributes. For all other persistence

@@ -1,11 +1,37 @@
 <div class="row-fluid">
     <div class="span12">
         <p>Flows on the network (not necessarily current):</p>
+
+        <!-- Search input for filtering results: -->
+        <table>
+            <tr>
+                <td>
+                    <form>
+                        <label>Search Flow Source:</label>
+                        <input type="text" id="searchFlowSrc" />
+                    </form>
+                </td>
+                <td>
+                    <!-- Clear search button: -->
+                    <button class="clearFlowsSearch">
+                        <span class="glyphicon glyphicon-remove-sign" style="color:blue" aria-hidden=true>
+                        </span>
+                    </button>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Table of flows: -->
         <div>
             <table class="table table-striped" id="flows">
                 <thead>
                     <tr>
-                        <th width=30><button class="refresh"><span class="glyphicon glyphicon-refresh" style="color:blue" aria-hidden=true></span></button></th>
+                        <th width=30>
+                            <button class="refreshFlows">
+                                <span class="glyphicon glyphicon-refresh" style="color:blue" aria-hidden=true>
+                                </span>
+                            </button>
+                        </th>
                         <th>Src</th>
                         <th>Dst</th>
                         <th>Proto</th>

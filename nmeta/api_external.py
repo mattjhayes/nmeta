@@ -527,12 +527,24 @@ class ExternalAPI(BaseClass):
          - Enrich with TBD
         Hooked from on_fetched_resource_<name>
         """
+
+        #*** Get URL parameters:
+        if 'searchString' in request.args:
+            search_string = request.args['searchString']
+        else:
+            search_string = ''
+        self.logger.debug("search_string=%s", search_string)
+
         known_hashes = []
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
         #*** Get packet_ins database collection and query it:
         flows = self.app.data.driver.db['packet_ins']
         #*** Reverse sort:
-        packet_cursor = flows.find().limit(FLOW_LIMIT).sort('$natural', -1)
+        if search_string:
+            self.logger.debug("custom search... ")
+            packet_cursor = flows.find({'eth_src': search_string}).limit(FLOW_LIMIT).sort('$natural', -1)
+        else:
+            packet_cursor = flows.find().limit(FLOW_LIMIT).sort('$natural', -1)
         #*** Iterate, adding only new id_hashes to the response:
         for record in packet_cursor:
             #*** Only return unique flow records:

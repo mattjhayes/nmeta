@@ -529,20 +529,20 @@ class ExternalAPI(BaseClass):
         """
 
         #*** Get URL parameters:
-        if 'searchString' in request.args:
-            search_string = request.args['searchString']
+        if 'filterString' in request.args:
+            filter_string = request.args['filterString']
         else:
-            search_string = ''
-        self.logger.debug("search_string=%s", search_string)
+            filter_string = ''
+        self.logger.debug("filter_string=%s", filter_string)
 
         known_hashes = []
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
         #*** Get packet_ins database collection and query it:
         flows = self.app.data.driver.db['packet_ins']
         #*** Reverse sort:
-        if search_string:
+        if filter_string:
             self.logger.debug("custom search... ")
-            packet_cursor = flows.find({'eth_src': search_string}).limit(FLOW_LIMIT).sort('$natural', -1)
+            packet_cursor = flows.find({'eth_src': filter_string}).limit(FLOW_LIMIT).sort('$natural', -1)
         else:
             packet_cursor = flows.find().limit(FLOW_LIMIT).sort('$natural', -1)
         #*** Iterate, adding only new id_hashes to the response:

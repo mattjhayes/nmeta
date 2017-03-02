@@ -4,16 +4,31 @@
 
         <!-- Search input for filtering results: -->
         <table>
-            <tr>
+            <tr valign="top">
                 <td>
-                    <form>
-                        <label>Search Flow Source:</label>
-                        <input type="text" id="searchFlowSrc" />
-                    </form>
+                    <label>Filter:</label>
+
+                    <select id="flowsFilterLogicSelector">
+                        <option selected value="includes">Includes</option>
+                        <option value="excludes">Excludes</option>
+                    </select>
+                </td>
+                <td>
+                    <select id="flowsFilterTypeSelector">
+                        <option selected value="any">Any</option>
+                        <option value="src">Src</option>
+                        <option value="dst">Dst</option>
+                        <option value="src_or_dst">Src or Dst</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="flowsFilterText" />
+                    </div>
                 </td>
                 <td>
                     <!-- Clear search button: -->
-                    <button class="clearFlowsSearch">
+                    <button class="clearFlowsFilter">
                         <span class="glyphicon glyphicon-remove-sign" style="color:blue" aria-hidden=true>
                         </span>
                     </button>

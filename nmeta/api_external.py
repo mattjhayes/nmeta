@@ -51,7 +51,15 @@ PACKET_IN_RATE_INTERVAL = 10
 #*** Amount of time (seconds) to go back for to calculate Packet-In rate:
 PACKET_TIME_PERIOD = 10
 
-FLOW_LIMIT = 25
+#*** Used for WebUI:
+FLOW_SEARCH_LIMIT = 600
+FLOW_RESULT_LIMIT = 25
+#*** FlowUI attributes to match against for different filter types
+FLOW_FILTER_ANY = ['src', 'src_hover', 'dst', 'dst_hover', 'proto',
+                            'proto_hover']
+FLOW_FILTER_SRC = ['src', 'src_hover']
+FLOW_FILTER_DST = ['dst', 'dst_hover']
+FLOW_FILTER_SRC_OR_DST = ['src', 'src_hover', 'dst', 'dst_hover']
 
 #*** Number of previous IP identity records to search for a hostname before
 #*** giving up. Used for augmenting flows with identity metadata:
@@ -527,72 +535,148 @@ class ExternalAPI(BaseClass):
          - Enrich with TBD
         Hooked from on_fetched_resource_<name>
         """
+        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
 
         #*** Get URL parameters:
+        if 'flowsFilterLogicSelector' in request.args:
+            flows_filterlogicselector = request.args['flowsFilterLogicSelector']
+        else:
+            flows_filterlogicselector = ''
+        if 'flowsFilterTypeSelector' in request.args:
+            flows_filtertypeselector = request.args['flowsFilterTypeSelector']
+        else:
+            flows_filtertypeselector = ''
         if 'filterString' in request.args:
             filter_string = request.args['filterString']
         else:
             filter_string = ''
-        self.logger.debug("filter_string=%s", filter_string)
+        self.logger.debug("Parameters are flows_filterlogicselector=%s "
+                        "flows_filtertypeselector=%s filter_string=%s",
+                        flows_filterlogicselector, flows_filtertypeselector,
+                        filter_string)
 
-        known_hashes = []
-        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
-        #*** Get packet_ins database collection and query it:
+        #*** Connect to packet_ins database and run general query:
         flows = self.app.data.driver.db['packet_ins']
-        #*** Reverse sort:
-        if filter_string:
-            self.logger.debug("custom search... ")
-            packet_cursor = flows.find({'eth_src': filter_string}).limit(FLOW_LIMIT).sort('$natural', -1)
-        else:
-            packet_cursor = flows.find().limit(FLOW_LIMIT).sort('$natural', -1)
-        #*** Iterate, adding only new id_hashes to the response:
+        packet_cursor = flows.find().limit(FLOW_SEARCH_LIMIT) \
+                                                         .sort('timestamp', -1)
+
+        #*** Iterate through results, ignoring known hashes:
+        known_hashes = []
         for record in packet_cursor:
             #*** Only return unique flow records:
             if not record['flow_hash'] in known_hashes:
                 #*** Normalise the direction of the flow:
                 record = self.flow_normalise_direction(record)
-                #*** Instantiate an instance of FlowUI class:
-                flow = self.FlowUI()
-                if record['eth_type'] == 2048:
-                    #*** It's IPv4, see if we can augment with identity:
-                    flow.src = self.get_id(record['ip_src'])
-                    if flow.src != record['ip_src']:
-                        flow.src_hover = hovertext_ip_addr(record['ip_src'])
-                    flow.dst = self.get_id(record['ip_dst'])
-                    if flow.dst != record['ip_dst']:
-                        flow.dst_hover = hovertext_ip_addr(record['ip_dst'])
-                    flow.proto = enumerate_ip_proto(record['proto'])
-                    if flow.proto != record['proto']:
-                        #*** IP proto enumerated, set hover decimal text:
-                        flow.proto_hover = \
-                                         hovertext_ip_proto(record['proto'])
-                else:
-                    #*** It's not IPv4 (TBD, handle IPv6)
-                    flow.src = record['eth_src']
-                    flow.dst = record['eth_dst']
-                    flow.proto = enumerate_eth_type(record['eth_type'])
-                    if flow.proto != record['eth_type']:
-                        #*** Eth type enumerated, set hover decimal eth_type:
-                        flow.proto_hover = \
-                                         hovertext_eth_type(record['eth_type'])
-                flow.tp_src = record['tp_src']
-                flow.tp_dst = record['tp_dst']
-                #*** Enrich with classification and action(s):
-                classification = self.get_classification(record['flow_hash'])
-                flow.classification = classification['classification_tag']
-                #*** Enrich with data xfer (only applies to flows that
-                #***  have had idle timeout)
-                data_xfer = self.get_flow_data_xfer(record)
-                if data_xfer['tx_found']:
-                    flow.data_sent = data_xfer['tx_bytes']
-                    flow.data_sent_hover = data_xfer['tx_pkts']
-                if data_xfer['rx_found']:
-                    flow.data_received = data_xfer['rx_bytes']
-                    flow.data_received_hover = data_xfer['rx_pkts']
-                #*** Add to items dictionary, which is returned in response:
-                items['_items'].append(flow.response())
+
+                #*** Create identity-augmented FlowUI instance:
+                flow = self.flow_augment_record(record)
+
+                #*** Apply any filters:
+                match = self.flow_match(flow, flows_filterlogicselector,
+                                    flows_filtertypeselector, filter_string)
+
+                if match:
+                    #*** Add to result:
+                    #*** Add to items dictionary, which is returned in response:
+                    items['_items'].append(flow.response())
+
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+                #*** If we've filled the bucket then return result:
+                if len(items['_items']) >= FLOW_RESULT_LIMIT:
+                    return
+
+    def flow_match(self, flow, flows_filterlogicselector,
+                                    flows_filtertypeselector, filter_string):
+        """
+        Passed an instance of FlowUI class, a logic selector,
+        filter type and filter string.
+
+        Return a boolean on whether or not that theres a match.
+        """
+        if flows_filtertypeselector == 'any' or flows_filtertypeselector == '':
+            filter_attributes = FLOW_FILTER_ANY
+        elif flows_filtertypeselector == 'src':
+            filter_attributes = FLOW_FILTER_SRC
+        elif flows_filtertypeselector == 'dst':
+            filter_attributes = FLOW_FILTER_DST
+        elif flows_filtertypeselector == 'src_or_dst':
+            filter_attributes = FLOW_FILTER_SRC_OR_DST
+        else:
+            #*** Unknown value, warn and return:
+            self.logger.warning("unsupported flows_filtertypeselector=%s "
+                                ", exiting...", flows_filtertypeselector)
+            return 0
+        #*** Iterate through attributes checking for match:
+        for attr in filter_attributes:
+            if filter_string in getattr(flow, attr):
+                if flows_filterlogicselector == 'includes' or \
+                                flows_filterlogicselector == '':
+                    return 1
+                elif flows_filterlogicselector == 'excludes':
+                    self.logger.warning("excludes match on attr=%s", attr)
+                    return 0
+                else:
+                    self.logger.error("Unsupported flows_filterlogicselector"
+                                    "=%s", flows_filterlogicselector)
+                    return 0
+
+        if flows_filterlogicselector == 'excludes':
+            #*** Didn't match anything and excludes logic so that's a 1!
+            return 1
+
+
+    def flow_augment_record(self, record):
+        """
+        Passed a record of a single flow from the packet_ins
+        database collection.
+
+        Create FlowUI class instance, add in known data and
+        augment with identity data. Logic is specific to the
+        webUI user experience.
+
+        Return the FlowUI class instance
+        """
+        #*** Instantiate an instance of FlowUI class:
+        flow = self.FlowUI()
+        if record['eth_type'] == 2048:
+            #*** It's IPv4, see if we can augment with identity:
+            flow.src = self.get_id(record['ip_src'])
+            if flow.src != record['ip_src']:
+                flow.src_hover = hovertext_ip_addr(record['ip_src'])
+            flow.dst = self.get_id(record['ip_dst'])
+            if flow.dst != record['ip_dst']:
+                flow.dst_hover = hovertext_ip_addr(record['ip_dst'])
+            flow.proto = enumerate_ip_proto(record['proto'])
+            if flow.proto != record['proto']:
+                #*** IP proto enumerated, set hover decimal text:
+                flow.proto_hover = \
+                                 hovertext_ip_proto(record['proto'])
+        else:
+            #*** It's not IPv4 (TBD, handle IPv6)
+            flow.src = record['eth_src']
+            flow.dst = record['eth_dst']
+            flow.proto = enumerate_eth_type(record['eth_type'])
+            if flow.proto != record['eth_type']:
+                #*** Eth type enumerated, set hover decimal eth_type:
+                flow.proto_hover = \
+                                 hovertext_eth_type(record['eth_type'])
+        flow.tp_src = record['tp_src']
+        flow.tp_dst = record['tp_dst']
+        #*** Enrich with classification and action(s):
+        classification = self.get_classification(record['flow_hash'])
+        flow.classification = classification['classification_tag']
+        #*** Enrich with data xfer (only applies to flows that
+        #***  have had idle timeout)
+        data_xfer = self.get_flow_data_xfer(record)
+        if data_xfer['tx_found']:
+            flow.data_sent = data_xfer['tx_bytes']
+            flow.data_sent_hover = data_xfer['tx_pkts']
+        if data_xfer['rx_found']:
+            flow.data_received = data_xfer['rx_bytes']
+            flow.data_received_hover = data_xfer['rx_pkts']
+        return flow
 
     def get_flow_data_xfer(self, record):
         """

@@ -489,6 +489,41 @@ def test_indexing_get_pi_rate():
     assert explain['executionStats']['totalKeysExamined'] == 3
     assert explain['executionStats']['totalDocsExamined'] == 3
 
+def test_flow_match():
+    """
+    Test flow_match
+
+    TBD UNDER CONSTRUCTION
+
+    """
+    flow = api.FlowUI()
+    flow.src = 'pc1.example.com'
+    flow.dst = 'sv1.example.com'
+    flows_filterlogicselector_includes1 = ''
+    flows_filterlogicselector_includes2 = 'includes'
+    flows_filterlogicselector_excludes = 'excludes'
+    flows_filtertypeselector = ''
+    filter_string1 = 'pc1'
+    filter_string2 = 'sv1'
+
+    assert api.flow_match(flow, flows_filterlogicselector_includes1,
+                                flows_filtertypeselector, filter_string1) == 1
+
+    assert api.flow_match(flow, flows_filterlogicselector_includes2,
+                                flows_filtertypeselector, filter_string1) == 1
+
+    assert api.flow_match(flow, flows_filterlogicselector_excludes,
+                                flows_filtertypeselector, filter_string1) == 0
+
+    assert api.flow_match(flow, flows_filterlogicselector_includes1,
+                                flows_filtertypeselector, filter_string2) == 1
+
+    assert api.flow_match(flow, flows_filterlogicselector_includes1,
+                                flows_filtertypeselector, filter_string2) == 1
+
+    assert api.flow_match(flow, flows_filterlogicselector_excludes,
+                                flows_filtertypeselector, filter_string2) == 0
+
 def test_enumerate_eth_type():
     """
     Test eth_type enumeration

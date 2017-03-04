@@ -133,6 +133,7 @@ class ExternalAPI(BaseClass):
         """
         def __init__(self):
             #*** Initialise flow variables:
+            self.timestamp = ""
             self.src = ""
             self.src_hover = ""
             self.dst = ""
@@ -640,6 +641,7 @@ class ExternalAPI(BaseClass):
         """
         #*** Instantiate an instance of FlowUI class:
         flow = self.FlowUI()
+        flow.timestamp = record['timestamp']
         if record['eth_type'] == 2048:
             #*** It's IPv4, see if we can augment with identity:
             flow.src = self.get_id(record['ip_src'])

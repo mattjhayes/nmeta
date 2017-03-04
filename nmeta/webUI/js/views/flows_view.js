@@ -11,6 +11,14 @@ nmeta.FlowsView = Backbone.View.extend({
         // Bind 'reset' event to run render function on this collection:
         this.model.on("reset", this.render, this);
 
+        // Display a loading indication whenever the Collection is fetching.
+        this.model.on("request", function() {
+            this.$el.html("Loading...");
+        }, this);
+
+        // Automatically re-render whenever the Collection is populated.
+        this.model.on("sync", this.render, this);
+
         // Bind flow 'add' event to create new instance of FlowView
         // and render it against id='flow' (table row):
         this.model.on("add", function (flow) {

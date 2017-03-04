@@ -499,30 +499,31 @@ def test_flow_match():
     flow = api.FlowUI()
     flow.src = 'pc1.example.com'
     flow.dst = 'sv1.example.com'
+    flow.proto = 81
     flows_filterlogicselector_includes1 = ''
     flows_filterlogicselector_includes2 = 'includes'
     flows_filterlogicselector_excludes = 'excludes'
     flows_filtertypeselector = ''
-    filter_string1 = 'pc1'
-    filter_string2 = 'sv1'
+    filter_string_pc1 = 'pc1'
+    filter_string_sv1 = 'sv1'
 
     assert api.flow_match(flow, flows_filterlogicselector_includes1,
-                                flows_filtertypeselector, filter_string1) == 1
+                                flows_filtertypeselector, filter_string_pc1) == 1
 
     assert api.flow_match(flow, flows_filterlogicselector_includes2,
-                                flows_filtertypeselector, filter_string1) == 1
+                                flows_filtertypeselector, filter_string_pc1) == 1
 
     assert api.flow_match(flow, flows_filterlogicselector_excludes,
-                                flows_filtertypeselector, filter_string1) == 0
+                                flows_filtertypeselector, filter_string_pc1) == 0
 
     assert api.flow_match(flow, flows_filterlogicselector_includes1,
-                                flows_filtertypeselector, filter_string2) == 1
+                                flows_filtertypeselector, filter_string_sv1) == 1
 
     assert api.flow_match(flow, flows_filterlogicselector_includes1,
-                                flows_filtertypeselector, filter_string2) == 1
+                                flows_filtertypeselector, filter_string_sv1) == 1
 
     assert api.flow_match(flow, flows_filterlogicselector_excludes,
-                                flows_filtertypeselector, filter_string2) == 0
+                                flows_filtertypeselector, filter_string_sv1) == 0
 
 def test_enumerate_eth_type():
     """

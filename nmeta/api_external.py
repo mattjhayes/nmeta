@@ -610,7 +610,7 @@ class ExternalAPI(BaseClass):
             return 0
         #*** Iterate through attributes checking for match:
         for attr in filter_attributes:
-            if filter_string in getattr(flow, attr):
+            if filter_string in str(getattr(flow, attr)):
                 if flows_filterlogicselector == 'includes' or \
                                 flows_filterlogicselector == '':
                     return 1

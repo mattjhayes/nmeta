@@ -133,6 +133,7 @@ class ExternalAPI(BaseClass):
         """
         def __init__(self):
             #*** Initialise flow variables:
+            self.flow_hash = ""
             self.timestamp = ""
             self.src = ""
             self.src_hover = ""
@@ -163,7 +164,7 @@ class ExternalAPI(BaseClass):
         """
         Run the External API instance
         """
-        #*** Define the Eve pi_rate schema for what data the API returns:
+        #*** Define the Eve schema for what data the API returns:
         pi_rate_schema = {
                 'pi_rate': {
                     'type': 'float'
@@ -235,7 +236,6 @@ class ExternalAPI(BaseClass):
                     'type': 'string'
                 }
             }
-        #*** Define the Eve identity schema for what data the API returns:
         identity_schema = {
                 'dpid': {
                     'type': 'string'
@@ -286,7 +286,56 @@ class ExternalAPI(BaseClass):
                     'type': 'string'
                 }
             }
-        #*** Define the Eve flow UI schema for what data the API returns:
+        flow_schema = {
+                'flow_hash': {
+                    'type': 'string'
+                },
+                'timestamp': {
+                    'type': 'string'
+                },
+                'dpid': {
+                    'type': 'integer'
+                },
+                'in_port': {
+                    'type': 'integer'
+                },
+                'length': {
+                    'type': 'integer'
+                },
+                'eth_src': {
+                    'type': 'string'
+                },
+                'eth_dst': {
+                    'type': 'string'
+                },
+                'eth_type': {
+                    'type': 'integer'
+                },
+                'ip_src': {
+                    'type': 'string'
+                },
+                'ip_dst': {
+                    'type': 'string'
+                },
+                'proto': {
+                    'type': 'string'
+                },
+                'tp_src': {
+                    'type': 'string'
+                },
+                'tp_dst': {
+                    'type': 'string'
+                },
+                'tp_flags': {
+                    'type': 'string'
+                },
+                'tp_seq_src': {
+                    'type': 'string'
+                },
+                'tp_seq_dst': {
+                    'type': 'string'
+                }
+            }
         flow_ui_schema = {
                 'flow_hash': {
                     'type': 'string'
@@ -333,6 +382,15 @@ class ExternalAPI(BaseClass):
             'item_title': 'Identities UI Data',
             'schema': identity_schema
         }
+        #*** Eve Settings for flow Objects
+        flows_settings = {
+            'url': 'flows',
+            'item_title': 'Flow Data',
+            'schema': flow_schema,
+            'datasource': {
+                'source': 'packet_ins'
+            }
+        }
         #*** Eve Settings for flows/ui Objects. Database lookup
         #*** with deduplication and enhancements done by hook function
         flows_ui_settings = {
@@ -348,6 +406,7 @@ class ExternalAPI(BaseClass):
             'switches_col': switches_settings,
             'identities': identities_settings,
             'identities_ui': identities_ui_settings,
+            'flows': flows_settings,
             'flows_ui': flows_ui_settings
         }
 
@@ -642,6 +701,7 @@ class ExternalAPI(BaseClass):
         #*** Instantiate an instance of FlowUI class:
         flow = self.FlowUI()
         flow.timestamp = record['timestamp']
+        flow.flow_hash = record['flow_hash']
         if record['eth_type'] == 2048:
             #*** It's IPv4, see if we can augment with identity:
             flow.src = self.get_id(record['ip_src'])

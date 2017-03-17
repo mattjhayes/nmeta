@@ -31,6 +31,7 @@ nmeta.Router = Backbone.Router.extend({
         "what":           "what",
         "kit":            "kit",
         "policy":         "policy",
+        "flowDetails/:flow_hash":    "flowDetails",
         "switch/:dpid":   "switch"
     },
 
@@ -44,6 +45,12 @@ nmeta.Router = Backbone.Router.extend({
         // Instantiate model to hold UI states for Flows View:
         this.flowsState = new Backbone.Model();
 
+        // Instantiate Flow Details Collection:
+        console.log('instantiating flowDetailsCollection');
+        this.flowDetailsCollection = new nmeta.FlowDetailsCollection();
+
+        // Instantiate Bars View to show top and bottom bars and provide
+        // anchor ids for content from other views:
         nmeta.barsView = new nmeta.BarsView();
         $('body').html(nmeta.barsView.render().el);
         // Close the search dropdown on click anywhere in the UI
@@ -156,12 +163,41 @@ nmeta.Router = Backbone.Router.extend({
         this.$content2.empty();
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('policy-menu');
-    }
+    },
+
+    flowDetails: function (flow_hash) {
+        console.log('in router flowDetails flow_hash=' + flow_hash);
+        // Instantiate flow details view if not already existing:
+        if (!nmeta.flowDetailsView) {
+            // Instantiate flowDetailsView:
+            console.log('app instantiating flowDetailsView');
+            nmeta.flowDetailsView = new nmeta.FlowDetailsView({model: this.flowDetailsCollection});
+        } else {
+            // Rebind events:
+            console.log('app rebinding flowDetailsView events');
+            nmeta.flowDetailsView.delegateEvents()
+        }
+
+        // Fetch flow_details_model as reset event (note: invokes render):
+        console.log('app calling flowDetailsCollection fetch({reset: true})');
+        var where_query = '{\"flow_hash\":\"' + flow_hash + '\"}'
+        console.log('where_query=' + where_query);
+        this.flowDetailsCollection.fetch({reset: true, data: $.param({ where: where_query})})
+
+        // Publish result into DOM against id="content":
+        this.$content.html(nmeta.flowDetailsView.el);
+
+        // Empty unused id="content2" in DOM:
+        this.$content2.empty();
+
+        // Update top menu bar:
+        nmeta.barsView.selectMenuItem('what-menu');
+    },
 
 });
 
 $(document).on("ready", function () {
-    nmeta.loadTemplates(["HomeView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
+    nmeta.loadTemplates(["HomeView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "FlowDetailsView", "FlowDetailView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
         function () {
             nmeta.router = new nmeta.Router();
             Backbone.history.start();

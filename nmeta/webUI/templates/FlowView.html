@@ -1,6 +1,8 @@
 <!-- inserts a table row describing an individual flow -->
     <td>
-      <%= timestamp %>
+      <a href="#flowDetails/<%= flow_hash %>">
+        <%= timestamp %>
+      </a>
     </td>
     <td>
       <span data-toggle="tooltip" title="<%= src_hover %>">

@@ -31,7 +31,7 @@ nmeta.Router = Backbone.Router.extend({
         "what":           "what",
         "kit":            "kit",
         "policy":         "policy",
-        "flowDetails":    "flowDetails",
+        "flowDetails/:flow_hash":    "flowDetails",
         "switch/:dpid":   "switch"
     },
 
@@ -165,7 +165,8 @@ nmeta.Router = Backbone.Router.extend({
         nmeta.barsView.selectMenuItem('policy-menu');
     },
 
-    flowDetails: function () {
+    flowDetails: function (flow_hash) {
+        console.log('in router flowDetails flow_hash=' + flow_hash);
         // Instantiate flow details view if not already existing:
         if (!nmeta.flowDetailsView) {
             // Instantiate flowDetailsView:
@@ -179,7 +180,9 @@ nmeta.Router = Backbone.Router.extend({
 
         // Fetch flow_details_model as reset event (note: invokes render):
         console.log('app calling flowDetailsCollection fetch({reset: true})');
-        this.flowDetailsCollection.fetch({reset: true})
+        var where_query = '{\"flow_hash\":\"' + flow_hash + '\"}'
+        console.log('where_query=' + where_query);
+        this.flowDetailsCollection.fetch({reset: true, data: $.param({ where: where_query})})
 
         // Publish result into DOM against id="content":
         this.$content.html(nmeta.flowDetailsView.el);

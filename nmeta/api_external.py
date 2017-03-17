@@ -287,6 +287,9 @@ class ExternalAPI(BaseClass):
                 }
             }
         flow_schema = {
+                'flow_hash': {
+                    'type': 'string'
+                },
                 'timestamp': {
                     'type': 'string'
                 },

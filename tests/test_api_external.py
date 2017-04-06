@@ -455,6 +455,8 @@ def test_get_classification():
     clasfn_result = api.get_classification(flow.classification.flow_hash)
     assert clasfn_result['classified'] ==  1
     assert clasfn_result['classification_tag'] ==  "Constrained Bandwidth Traffic"
+    assert clasfn_result['actions']['set_desc'] == "Constrained Bandwidth Traffic"
+    assert clasfn_result['actions']['qos_treatment'] == "constrained_bw"
 
 def test_indexing_get_pi_rate():
     """

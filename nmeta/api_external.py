@@ -729,6 +729,12 @@ class ExternalAPI(BaseClass):
         #*** Enrich with classification and action(s):
         classification = self.get_classification(record['flow_hash'])
         flow.classification = classification['classification_tag']
+        #*** Turn actions dictionary into a human-readable string:
+        actions_dict = classification['actions']
+        actions = ''
+        for key in actions_dict:
+            actions += str(key) + "=" + str(actions_dict[key]) + " "
+        flow.actions = actions
         #*** Enrich with data xfer (only applies to flows that
         #***  have had idle timeout)
         data_xfer = self.get_flow_data_xfer(record)
@@ -803,7 +809,7 @@ class ExternalAPI(BaseClass):
                 'classified': 0,
                 'classification_tag': '',
                 'classification_time': 0,
-                'self.actions': {}
+                'actions': {}
             }
 
     def flow_normalise_direction(self, record):

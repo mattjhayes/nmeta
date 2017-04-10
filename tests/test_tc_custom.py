@@ -39,7 +39,7 @@ config = config.Config()
 
 logger = logging.getLogger(__name__)
 
-#======================== tc_identity.py Tests ================================
+#===== tc_custom.py and statistical_qos_bandwidth_1.py Tests ==================
 
 def test_statistical_classifier():
     """
@@ -145,6 +145,6 @@ def test_statistical_classifier():
     tc_cust.check_custom(condition, flow, ident)
     assert condition.match == True
     assert condition.continue_to_inspect == False
-    assert condition.classification_tag == ""
+    assert condition.classification_tag == "Normal flow"
     assert condition.actions == {'qos_treatment': 'default_priority'}
 

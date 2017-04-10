@@ -512,6 +512,7 @@ class TrafficClassificationPolicy(BaseClass):
                 self.identity.check_identity(condition, self.pkt, self.ident)
             elif condition.policy_attr == "custom":
                 self.custom.check_custom(condition, self.flow, self.ident)
+
             #elif condition.policy_attr_type == "conditions_list":
                 # TBD: Do a recursive call on nested conditions
             else:

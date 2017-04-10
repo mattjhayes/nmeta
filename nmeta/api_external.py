@@ -38,6 +38,14 @@ from pymongo import MongoClient
 
 #*** nmeta imports
 import config
+#*** import from api_definitions subdirectory:
+from api_definitions import switches_schema
+from api_definitions import pi_rate_schema
+from api_definitions import pi_time_schema
+from api_definitions import controller_summary_schema
+from api_definitions import identity_schema
+from api_definitions import flow_schema
+from api_definitions import flow_ui_schema
 
 #*** For timestamps:
 import datetime
@@ -163,214 +171,40 @@ class ExternalAPI(BaseClass):
     def run(self):
         """
         Run the External API instance
+
+        Note that API definitions are from previously imported
+        files from api_definitions subdirectory
         """
-        #*** Define the Eve schema for what data the API returns:
-        pi_rate_schema = {
-                'pi_rate': {
-                    'type': 'float'
-                }
-            }
-        pi_time_schema = {
-                'pi_time_min': {
-                    'type': 'float'
-                },
-                'pi_time_avg': {
-                    'type': 'float'
-                },
-                'pi_time_max': {
-                    'type': 'float'
-                },
-                'pi_time_period': {
-                    'type': 'float'
-                },
-                'pi_time_records': {
-                    'type': 'float'
-                }
-            }
-        controller_summary_schema = {
-                'pi_rate': {
-                    'type': 'float'
-                },
-                'pi_time_min': {
-                    'type': 'float'
-                },
-                'pi_time_avg': {
-                    'type': 'float'
-                },
-                'pi_time_max': {
-                    'type': 'float'
-                },
-                'pi_time_period': {
-                    'type': 'float'
-                },
-                'pi_time_records': {
-                    'type': 'float'
-                }
-            }
-        switches_schema = {
-                'dpid': {
-                    'type': 'integer'
-                },
-                'ip_address': {
-                    'type': 'string'
-                },
-                'port': {
-                    'type': 'integer'
-                },
-                'time_connected': {
-                    'type': 'string'
-                },
-                'mfr_desc': {
-                    'type': 'string'
-                },
-                'hw_desc': {
-                    'type': 'string'
-                },
-                'sw_desc': {
-                    'type': 'string'
-                },
-                'serial_num': {
-                    'type': 'string'
-                },
-                'dp_desc': {
-                    'type': 'string'
-                }
-            }
-        identity_schema = {
-                'dpid': {
-                    'type': 'string'
-                },
-                'in_port': {
-                    'type': 'string'
-                },
-                'harvest_time': {
-                    'type': 'string'
-                },
-                'harvest_type': {
-                    'type': 'string'
-                },
-                'mac_address': {
-                    'type': 'string'
-                },
-                'ip_address': {
-                    'type': 'string'
-                },
-                'host_name': {
-                    'type': 'string'
-                },
-                'host_type': {
-                    'type': 'string'
-                },
-                'host_os': {
-                    'type': 'string'
-                },
-                'host_desc': {
-                    'type': 'string'
-                },
-                'service_name': {
-                    'type': 'string'
-                },
-                'service_alias': {
-                    'type': 'string'
-                },
-                'user_id': {
-                    'type': 'string'
-                },
-                'valid_from': {
-                    'type': 'string'
-                },
-                'valid_to': {
-                    'type': 'string'
-                },
-                'id_hash': {
-                    'type': 'string'
-                }
-            }
-        flow_schema = {
-                'flow_hash': {
-                    'type': 'string'
-                },
-                'timestamp': {
-                    'type': 'string'
-                },
-                'dpid': {
-                    'type': 'integer'
-                },
-                'in_port': {
-                    'type': 'integer'
-                },
-                'length': {
-                    'type': 'integer'
-                },
-                'eth_src': {
-                    'type': 'string'
-                },
-                'eth_dst': {
-                    'type': 'string'
-                },
-                'eth_type': {
-                    'type': 'integer'
-                },
-                'ip_src': {
-                    'type': 'string'
-                },
-                'ip_dst': {
-                    'type': 'string'
-                },
-                'proto': {
-                    'type': 'string'
-                },
-                'tp_src': {
-                    'type': 'string'
-                },
-                'tp_dst': {
-                    'type': 'string'
-                },
-                'tp_flags': {
-                    'type': 'string'
-                },
-                'tp_seq_src': {
-                    'type': 'string'
-                },
-                'tp_seq_dst': {
-                    'type': 'string'
-                }
-            }
-        flow_ui_schema = {
-                'flow_hash': {
-                    'type': 'string'
-                }
-            }
         #*** Eve Settings for Measurements of Packet In Rates:
         pi_rate_settings = {
             'url': 'infrastructure/controllers/pi_rate',
             'item_title': 'Packet-In Receive Rate',
-            'schema': pi_rate_schema
+            'schema': pi_rate_schema.pi_rate_schema
         }
         #*** Eve Settings for Measurements of Packet In Rates:
         pi_time_settings = {
             'url': 'infrastructure/controllers/pi_time',
             'item_title': 'Packet-In Processing Time',
-            'schema': pi_time_schema
+            'schema': pi_time_schema.pi_time_schema
         }
         #*** Controller Summary Statistics:
         controller_summary_settings = {
             'url': 'infrastructure/controllers/summary',
             'item_title': 'Controller Summary',
-            'schema': controller_summary_schema
+            'schema': controller_summary_schema.controller_summary_schema
         }
         #*** Eve Settings for OpenFlow Switches API:
         switches_settings = {
             'url': 'infrastructure/switches',
             'item_title': 'OpenFlow Switches',
-            'schema': switches_schema
+            'schema': switches_schema.switches_schema
         }
         #*** Eve Settings for Identities Objects. Note the reverse sort
         #*** by harvest time:
         identities_settings = {
             'url': 'identities',
             'item_title': 'Identity Records',
-            'schema': identity_schema,
+            'schema': identity_schema.identity_schema,
             'datasource': {
                 'default_sort': [('harvest_time', -1)],
             }
@@ -380,13 +214,13 @@ class ExternalAPI(BaseClass):
         identities_ui_settings = {
             'url': 'identities/ui',
             'item_title': 'Identities UI Data',
-            'schema': identity_schema
+            'schema': identity_schema.identity_schema
         }
         #*** Eve Settings for flow Objects
         flows_settings = {
             'url': 'flows',
             'item_title': 'Flow Data',
-            'schema': flow_schema,
+            'schema': flow_schema.flow_schema,
             'datasource': {
                 'source': 'packet_ins'
             }
@@ -396,7 +230,7 @@ class ExternalAPI(BaseClass):
         flows_ui_settings = {
             'url': 'flows/ui',
             'item_title': 'Flows UI Data',
-            'schema': flow_ui_schema
+            'schema': flow_ui_schema.flow_ui_schema
         }
         #*** Eve Domain for the whole API:
         eve_domain = {
@@ -471,7 +305,6 @@ class ExternalAPI(BaseClass):
             Serve static content for WebUI
             """
             return 1
-
 
     def response_pi_rate(self, items):
         """
@@ -1030,4 +863,3 @@ if __name__ == '__main__':
     api = ExternalAPI(config)
     #*** Start the External API:
     api.run()
-

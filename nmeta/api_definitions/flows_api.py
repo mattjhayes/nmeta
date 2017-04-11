@@ -13,7 +13,7 @@
 
 #*** nmeta - Network Metadata - API definition file
 
-flow_schema = {
+flows_schema = {
         'flow_hash': {
             'type': 'string'
         },
@@ -63,3 +63,12 @@ flow_schema = {
             'type': 'string'
         }
     }
+
+flows_settings = {
+    'url': 'flows',
+    'item_title': 'Flow Data',
+    'schema': flows_schema,
+    'datasource': {
+        'source': 'packet_ins'
+    }
+}

@@ -13,57 +13,39 @@
 
 #*** nmeta - Network Metadata - API definition file
 
-identity_schema = {
+switches_schema = {
         'dpid': {
-            'type': 'string'
-        },
-        'in_port': {
-            'type': 'string'
-        },
-        'harvest_time': {
-            'type': 'string'
-        },
-        'harvest_type': {
-            'type': 'string'
-        },
-        'mac_address': {
-            'type': 'string'
+            'type': 'integer'
         },
         'ip_address': {
             'type': 'string'
         },
-        'host_name': {
+        'port': {
+            'type': 'integer'
+        },
+        'time_connected': {
             'type': 'string'
         },
-        'host_type': {
+        'mfr_desc': {
             'type': 'string'
         },
-        'host_os': {
+        'hw_desc': {
             'type': 'string'
         },
-        'host_desc': {
+        'sw_desc': {
             'type': 'string'
         },
-        'service_name': {
+        'serial_num': {
             'type': 'string'
         },
-        'service_alias': {
-            'type': 'string'
-        },
-        'user_id': {
-            'type': 'string'
-        },
-        'valid_from': {
-            'type': 'string'
-        },
-        'valid_to': {
-            'type': 'string'
-        },
-        'id_hash': {
+        'dp_desc': {
             'type': 'string'
         }
     }
 
-
-
+switches_settings = {
+    'url': 'infrastructure/switches',
+    'item_title': 'OpenFlow Switches',
+    'schema': switches_schema
+}
 

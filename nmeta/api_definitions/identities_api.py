@@ -13,33 +13,67 @@
 
 #*** nmeta - Network Metadata - API definition file
 
-switches_schema = {
+identities_schema = {
         'dpid': {
-            'type': 'integer'
+            'type': 'string'
+        },
+        'in_port': {
+            'type': 'string'
+        },
+        'harvest_time': {
+            'type': 'string'
+        },
+        'harvest_type': {
+            'type': 'string'
+        },
+        'mac_address': {
+            'type': 'string'
         },
         'ip_address': {
             'type': 'string'
         },
-        'port': {
-            'type': 'integer'
-        },
-        'time_connected': {
+        'host_name': {
             'type': 'string'
         },
-        'mfr_desc': {
+        'host_type': {
             'type': 'string'
         },
-        'hw_desc': {
+        'host_os': {
             'type': 'string'
         },
-        'sw_desc': {
+        'host_desc': {
             'type': 'string'
         },
-        'serial_num': {
+        'service_name': {
             'type': 'string'
         },
-        'dp_desc': {
+        'service_alias': {
+            'type': 'string'
+        },
+        'user_id': {
+            'type': 'string'
+        },
+        'valid_from': {
+            'type': 'string'
+        },
+        'valid_to': {
+            'type': 'string'
+        },
+        'id_hash': {
             'type': 'string'
         }
     }
+
+#*** Note the reverse sort by harvest time:
+identities_settings = {
+    'url': 'identities',
+    'item_title': 'Identity Records',
+    'schema': identities_schema,
+    'datasource': {
+        'default_sort': [('harvest_time', -1)],
+    }
+}
+
+
+
 

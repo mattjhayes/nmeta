@@ -19,3 +19,8 @@ pi_rate_schema = {
         }
     }
 
+pi_rate_settings = {
+    'url': 'infrastructure/controllers/pi_rate',
+    'item_title': 'Packet-In Receive Rate',
+    'schema': pi_rate_schema
+}

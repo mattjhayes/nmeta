@@ -13,8 +13,16 @@
 
 #*** nmeta - Network Metadata - API definition file
 
-flow_ui_schema = {
+flows_ui_schema = {
         'flow_hash': {
             'type': 'string'
         }
     }
+
+#*** Eve Settings for flows/ui Objects. Database lookup
+#*** with deduplication and enhancements done by hook function
+flows_ui_settings = {
+    'url': 'flows/ui',
+    'item_title': 'Flows UI Data',
+    'schema': flows_ui_schema
+}

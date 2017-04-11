@@ -13,7 +13,10 @@
 
 #*** nmeta - Network Metadata - API definition file
 
-pi_time_schema = {
+controller_summary_schema = {
+        'pi_rate': {
+            'type': 'float'
+        },
         'pi_time_min': {
             'type': 'float'
         },
@@ -30,4 +33,10 @@ pi_time_schema = {
             'type': 'float'
         }
     }
+
+controller_summary_settings = {
+    'url': 'infrastructure/controllers/summary',
+    'item_title': 'Controller Summary',
+    'schema': controller_summary_schema
+}
 

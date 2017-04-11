@@ -39,13 +39,14 @@ from pymongo import MongoClient
 #*** nmeta imports
 import config
 #*** import from api_definitions subdirectory:
-from api_definitions import switches_schema
-from api_definitions import pi_rate_schema
-from api_definitions import pi_time_schema
-from api_definitions import controller_summary_schema
-from api_definitions import identity_schema
-from api_definitions import flow_schema
-from api_definitions import flow_ui_schema
+from api_definitions import switches
+from api_definitions import pi_rate
+from api_definitions import pi_time
+from api_definitions import controller_summary
+from api_definitions import identities_api
+from api_definitions import identities_ui
+from api_definitions import flows_api
+from api_definitions import flows_ui
 
 #*** For timestamps:
 import datetime
@@ -175,73 +176,17 @@ class ExternalAPI(BaseClass):
         Note that API definitions are from previously imported
         files from api_definitions subdirectory
         """
-        #*** Eve Settings for Measurements of Packet In Rates:
-        pi_rate_settings = {
-            'url': 'infrastructure/controllers/pi_rate',
-            'item_title': 'Packet-In Receive Rate',
-            'schema': pi_rate_schema.pi_rate_schema
-        }
-        #*** Eve Settings for Measurements of Packet In Rates:
-        pi_time_settings = {
-            'url': 'infrastructure/controllers/pi_time',
-            'item_title': 'Packet-In Processing Time',
-            'schema': pi_time_schema.pi_time_schema
-        }
-        #*** Controller Summary Statistics:
-        controller_summary_settings = {
-            'url': 'infrastructure/controllers/summary',
-            'item_title': 'Controller Summary',
-            'schema': controller_summary_schema.controller_summary_schema
-        }
-        #*** Eve Settings for OpenFlow Switches API:
-        switches_settings = {
-            'url': 'infrastructure/switches',
-            'item_title': 'OpenFlow Switches',
-            'schema': switches_schema.switches_schema
-        }
-        #*** Eve Settings for Identities Objects. Note the reverse sort
-        #*** by harvest time:
-        identities_settings = {
-            'url': 'identities',
-            'item_title': 'Identity Records',
-            'schema': identity_schema.identity_schema,
-            'datasource': {
-                'default_sort': [('harvest_time', -1)],
-            }
-        }
-        #*** Eve Settings for identities/ui Objects. Database lookup
-        #*** with deduplication and enhancement filter done by hook function
-        identities_ui_settings = {
-            'url': 'identities/ui',
-            'item_title': 'Identities UI Data',
-            'schema': identity_schema.identity_schema
-        }
-        #*** Eve Settings for flow Objects
-        flows_settings = {
-            'url': 'flows',
-            'item_title': 'Flow Data',
-            'schema': flow_schema.flow_schema,
-            'datasource': {
-                'source': 'packet_ins'
-            }
-        }
-        #*** Eve Settings for flows/ui Objects. Database lookup
-        #*** with deduplication and enhancements done by hook function
-        flows_ui_settings = {
-            'url': 'flows/ui',
-            'item_title': 'Flows UI Data',
-            'schema': flow_ui_schema.flow_ui_schema
-        }
+
         #*** Eve Domain for the whole API:
         eve_domain = {
-            'pi_rate': pi_rate_settings,
-            'pi_time': pi_time_settings,
-            'controller_summary': controller_summary_settings,
-            'switches_col': switches_settings,
-            'identities': identities_settings,
-            'identities_ui': identities_ui_settings,
-            'flows': flows_settings,
-            'flows_ui': flows_ui_settings
+            'pi_rate': pi_rate.pi_rate_settings,
+            'pi_time': pi_time.pi_time_settings,
+            'controller_summary': controller_summary.controller_summary_settings,
+            'switches_col': switches.switches_settings,
+            'identities': identities_api.identities_settings,
+            'identities_ui': identities_ui.identities_ui_settings,
+            'flows': flows_api.flows_settings,
+            'flows_ui': flows_ui.flows_ui_settings
         }
 
         #*** Set up a settings dictionary for starting Eve app:datasource

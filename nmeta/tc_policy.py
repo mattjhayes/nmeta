@@ -146,6 +146,7 @@ class TrafficClassificationPolicy(BaseClass):
             self.match = 0
             self.continue_to_inspect = 0
             self.match_type = ""
+            self.classification_tag = ""
             self.actions = {}
             #*** List for conditions objects:
             self.conditions = []
@@ -168,6 +169,7 @@ class TrafficClassificationPolicy(BaseClass):
             self.match = 0
             self.continue_to_inspect = 0
             self.match_type = ""
+            self.classification_tag = ""
             self.actions = {}
             #*** List for condition objects:
             self.condition = []
@@ -419,7 +421,7 @@ class TrafficClassificationPolicy(BaseClass):
                 else:
                     flow.classification.classified = False
                 flow.classification.classification_tag = \
-                                                 tc_rule['actions']['set_desc']
+                                                        rule.classification_tag
                 flow.classification.classification_time = \
                                                         datetime.datetime.now()
                 #*** Accumulate any actions. (will overwrite with rule action)
@@ -451,6 +453,13 @@ class TrafficClassificationPolicy(BaseClass):
             if conditions.match and rule.match_type == "any":
                 rule.match = True
                 rule.actions.update(conditions.actions)
+
+                if rule_stanza['actions']['set_desc'] == 'classifier_return':
+                    #*** Tagged by a custom classifier:
+                    rule.classification_tag = conditions.classification_tag
+                else:
+                    rule.classification_tag = rule_stanza['actions']['set_desc']
+
                 if conditions.continue_to_inspect:
                     rule.continue_to_inspect = 1
                 return rule
@@ -468,6 +477,13 @@ class TrafficClassificationPolicy(BaseClass):
         elif conditions.match and rule.match_type == "all":
             rule.match = True
             rule.actions.update(conditions.actions)
+
+            if rule_stanza['actions']['set_desc'] == 'classifier_return':
+                #*** Tagged by a custom classifier:
+                rule.classification_tag = conditions.classification_tag
+            else:
+                rule.classification_tag = rule_stanza['actions']['set_desc']
+
             if conditions.continue_to_inspect:
                 rule.continue_to_inspect = 1
             return rule
@@ -512,7 +528,8 @@ class TrafficClassificationPolicy(BaseClass):
                 self.identity.check_identity(condition, self.pkt, self.ident)
             elif condition.policy_attr == "custom":
                 self.custom.check_custom(condition, self.flow, self.ident)
-
+                self.logger.debug("custom match condition=%s",
+                                                           condition.to_dict())
             #elif condition.policy_attr_type == "conditions_list":
                 # TBD: Do a recursive call on nested conditions
             else:
@@ -524,7 +541,9 @@ class TrafficClassificationPolicy(BaseClass):
                 conditions.condition.append(condition)
                 #*** Accumulate actions:
                 for condn in conditions.condition:
+                    self.logger.debug("appending actions=%s", condn.actions)
                     conditions.actions.update(condn.actions)
+                    conditions.classification_tag += condn.classification_tag
                     if condn.continue_to_inspect:
                         conditions.continue_to_inspect = 1
                 conditions.match = True

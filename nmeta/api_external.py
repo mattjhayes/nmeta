@@ -47,6 +47,7 @@ from api_definitions import identities_api
 from api_definitions import identities_ui
 from api_definitions import flows_api
 from api_definitions import flows_ui
+from api_definitions import flow_mods_api
 
 #*** For timestamps:
 import datetime
@@ -186,7 +187,8 @@ class ExternalAPI(BaseClass):
             'identities': identities_api.identities_settings,
             'identities_ui': identities_ui.identities_ui_settings,
             'flows': flows_api.flows_settings,
-            'flows_ui': flows_ui.flows_ui_settings
+            'flows_ui': flows_ui.flows_ui_settings,
+            'flow_mods': flow_mods_api.flow_mods_settings
         }
 
         #*** Set up a settings dictionary for starting Eve app:datasource

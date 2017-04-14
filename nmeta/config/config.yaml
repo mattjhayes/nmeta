@@ -92,6 +92,9 @@ pi_time_max_bytes: 200000
 #*** flow_rems capped collection
 flow_rems_max_bytes: 500000
 #
+#*** flow_mods capped collection
+flow_mods_max_bytes: 500000
+#
 #*** identities capped collection
 identities_max_bytes: 2000000
 identity_time_limit: 86400

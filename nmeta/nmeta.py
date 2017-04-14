@@ -212,7 +212,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** has been classified.
             #*** Prefer to do fine-grained match where possible:
             if self.flow.classification.classified:
-                flowtables.suppress_flow(msg, in_port, out_port, out_queue)
+                if self.flow.record_suppression(dpid):
+                    flowtables.suppress_flow(msg, in_port, out_port, out_queue)
             else:
                 self.logger.debug("Flow entry for flow_hash=%s not added as "
                                      "not classified yet", self.flow.flow_hash)

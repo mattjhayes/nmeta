@@ -523,6 +523,25 @@ def test_indexing():
     assert explain2['executionStats']['totalKeysExamined'] == 1
     assert explain2['executionStats']['totalDocsExamined'] == 1
 
+def test_record_suppression():
+    """
+    Test the recording of a flow suppression event
+    """
+    #*** Instantiate Flow class:
+    flow = flow_class.Flow(config)
+
+    #*** Ingest a packet from pc1:
+    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+
+    #*** Record suppressing this flow. Should return 1 as not within
+    #*** standdown period:
+    assert flow.record_suppression(DPID1) == 1
+
+    #*** Record suppressing this flow again. Should return 0 as is within
+    #*** standdown period:
+    assert flow.record_suppression(DPID1) == 0
+
 #================= HELPER FUNCTIONS ===========================================
 
 def pkt_test(flow, pkts, pkt_num, flow_packet_count):

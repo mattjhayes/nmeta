@@ -207,6 +207,9 @@ class ExternalAPI(BaseClass):
         #*** Allowed Eve methods:
         eve_settings['RESOURCE_METHODS'] = ['GET']
         eve_settings['ITEM_METHODS'] = ['GET']
+        #*** Set format of datetime as it appears to API consumers:
+        eve_settings['DATE_FORMAT'] = '%H:%M:%S.%f'
+
 
         #*** TBD - set up username/password into MongoDB
 

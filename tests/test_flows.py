@@ -536,11 +536,15 @@ def test_record_suppression():
 
     #*** Record suppressing this flow. Should return 1 as not within
     #*** standdown period:
-    assert flow.record_suppression(DPID1) == 1
+    assert flow.record_suppression(DPID1, 'forward') == 1
 
     #*** Record suppressing this flow again. Should return 0 as is within
     #*** standdown period:
-    assert flow.record_suppression(DPID1) == 0
+    assert flow.record_suppression(DPID1, 'forward') == 0
+
+    #*** Record suppressing this flow again but as a drop. Should return 1
+    #*** as is a different suppression_type:
+    assert flow.record_suppression(DPID1, 'drop') == 1
 
 #================= HELPER FUNCTIONS ===========================================
 

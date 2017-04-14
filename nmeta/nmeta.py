@@ -203,7 +203,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
         if 'drop' in actions:
             self.logger.debug("Action drop flow_hash=%s", self.flow.flow_hash)
             if actions['drop'] == 'at_controller_and_switch':
-                flowtables.drop_flow(msg)
+                if self.flow.record_suppression(dpid, 'drop'):
+                    flowtables.drop_flow(msg)
             self.record_packet_time(pi_start_time, 'drop_action')
             return
 
@@ -212,7 +213,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** has been classified.
             #*** Prefer to do fine-grained match where possible:
             if self.flow.classification.classified:
-                if self.flow.record_suppression(dpid):
+                if self.flow.record_suppression(dpid, 'forward'):
                     flowtables.suppress_flow(msg, in_port, out_port, out_queue)
             else:
                 self.logger.debug("Flow entry for flow_hash=%s not added as "

@@ -281,7 +281,10 @@ class Flow(BaseClass):
         self.flow_mods = db_nmeta.create_collection('flow_mods',
                                    capped=True, size=flow_mods_max_bytes)
         #*** Index flow_mods to improve look-up performance:
-        self.flow_mods.create_index([('flow_hash', pymongo.DESCENDING)],
+        self.flow_mods.create_index([('flow_hash', pymongo.DESCENDING),
+                                ('timestamp', pymongo.DESCENDING),
+                                ('suppression_type', pymongo.DESCENDING),
+                                ('standdown', pymongo.DESCENDING)],
                                 unique=False)
 
     class Packet(object):
@@ -899,11 +902,15 @@ class Flow(BaseClass):
         else:
             return min_s2c.total_seconds()
 
-    def record_suppression(self, dpid):
+    def record_suppression(self, dpid, suppression_type):
         """
         Record that the flow is being suppressed on a particular
         switch in the flow_mods database collection, so that information
         is available to API consumers, such as the WebUI
+
+        suppression_type is a string that is one of:
+          - 'forward': forwards all packets in this flow
+          - 'drop': drops all packets in this flow
 
         First check flow_mods to see if flow is already suppressed,
         within suppression stand-down time for that switch,
@@ -920,11 +927,13 @@ class Flow(BaseClass):
         db_data = {'flow_hash': self.packet.flow_hash,
                     'timestamp': {'$gte': datetime.datetime.now() - \
                                                 FLOW_SUPPRESSION_STANDDOWN},
+                    'suppression_type': suppression_type,
                     'standdown': 0}
 
         flow_mod_record = {'flow_hash': self.packet.flow_hash,
                             'timestamp': datetime.datetime.now(),
                             'dpid': dpid,
+                            'suppression_type': suppression_type,
                             'standdown': 0}
 
         #*** Check if already suppressed with-in stand-down time period:

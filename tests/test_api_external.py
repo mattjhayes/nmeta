@@ -554,7 +554,7 @@ def test_flow_mods():
 
     #*** Record suppressing this flow. Should return 1 as not within
     #*** standdown period:
-    assert flow.record_suppression(DPID1) == 1
+    assert flow.record_suppression(DPID1, 'forward') == 1
 
     #*** Call the external API:
     api_result = get_api_result(URL_FLOW_MODS)
@@ -564,12 +564,13 @@ def test_flow_mods():
     #*** Check that API has returned expected results:
     assert api_result['_items'][0]['flow_hash'] == flow.packet.flow_hash
     assert api_result['_items'][0]['dpid'] == DPID1
+    assert api_result['_items'][0]['suppression_type'] == 'forward'
     assert api_result['_items'][0]['standdown'] == 0
     assert len(api_result['_items']) == 1
 
     #*** Record suppressing this flow. Should return 0 as is within
     #*** standdown period:
-    assert flow.record_suppression(DPID1) == 0
+    assert flow.record_suppression(DPID1, 'forward') == 0
 
     #*** Call the external API:
     api_result = get_api_result(URL_FLOW_MODS)
@@ -579,6 +580,7 @@ def test_flow_mods():
     #*** Check that API has returned expected results for new record:
     assert api_result['_items'][1]['flow_hash'] == flow.packet.flow_hash
     assert api_result['_items'][1]['dpid'] == DPID1
+    assert api_result['_items'][0]['suppression_type'] == 'forward'
     assert api_result['_items'][1]['standdown'] == 1
     assert len(api_result['_items']) == 2
 

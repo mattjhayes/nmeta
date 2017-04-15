@@ -14,11 +14,12 @@ Software Defined Networking (SDN). `Read More <introduction.html>`_
 Contents:
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    introduction
    howitworks
    install
+   policyguide
    configguide
    webui
    apiguide

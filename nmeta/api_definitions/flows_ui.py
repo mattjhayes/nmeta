@@ -16,6 +16,63 @@
 flows_ui_schema = {
         'flow_hash': {
             'type': 'string'
+        },
+        'actions': {
+            'type': 'string'
+        },
+        'actions_hover': {
+            'type': 'string'
+        },
+        'classification': {
+            'type': 'string'
+        },
+        'classification_hover': {
+            'type': 'string'
+        },
+        'data_received': {
+            'type': 'string'
+        },
+        'data_received_hover': {
+            'type': 'string'
+        },
+        'data_sent': {
+            'type': 'string'
+        },
+        'data_sent_hover': {
+            'type': 'string'
+        },
+        'dst': {
+            'type': 'string'
+        },
+        'dst_hover': {
+            'type': 'string'
+        },
+        'proto': {
+            'type': 'string'
+        },
+        'proto_hover': {
+            'type': 'string'
+        },
+        'src': {
+            'type': 'string'
+        },
+        'src_hover': {
+            'type': 'string'
+        },
+        'timestamp': {
+            'type': 'datetime'
+        },
+        'tp_dst': {
+            'type': 'string'
+        },
+        'tp_dst_hover': {
+            'type': 'string'
+        },
+        'tp_src': {
+            'type': 'string'
+        },
+        'tp_src_hover': {
+            'type': 'string'
         }
     }
 

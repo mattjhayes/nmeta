@@ -39,7 +39,7 @@ from pymongo import MongoClient
 #*** nmeta imports
 import config
 #*** import from api_definitions subdirectory:
-from api_definitions import switches
+from api_definitions import switches_api
 from api_definitions import pi_rate
 from api_definitions import pi_time
 from api_definitions import controller_summary
@@ -183,7 +183,7 @@ class ExternalAPI(BaseClass):
             'pi_rate': pi_rate.pi_rate_settings,
             'pi_time': pi_time.pi_time_settings,
             'controller_summary': controller_summary.controller_summary_settings,
-            'switches_col': switches.switches_settings,
+            'switches_col': switches_api.switches_settings,
             'identities': identities_api.identities_settings,
             'identities_ui': identities_ui.identities_ui_settings,
             'flows': flows_api.flows_settings,

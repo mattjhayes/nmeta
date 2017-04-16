@@ -42,11 +42,13 @@ class Classifier(object):
         more interactive so that appropriate classification metadata
         can be passed to QoS for differential treatment.
         .
-        This method is passed a Flow class object that holds the
-        current context of the flow
+        This method is passed:
+        * A Condition class object
+        * A Flow class object holding the current flow context
+        * An Identities class object
         .
-        It returns a dictionary specifying a key/value of QoS treatment to
-        take (or not if no classification determination made).
+        It updates the Condition class object with actions and
+        classification_tag
         .
         Only works on TCP.
         """
@@ -85,11 +87,13 @@ class Classifier(object):
                 condition.match = 1
                 condition.continue_to_inspect = 0
                 condition.actions['qos_treatment'] = 'constrained_bw'
+                condition.classification_tag = "Bandwidth hog flow"
             else:
                 #*** Doesn't look like bandwidth hog so default priority:
                 condition.match = 1
                 condition.continue_to_inspect = 0
                 condition.actions['qos_treatment'] = 'default_priority'
+                condition.classification_tag = "Normal flow"
             self.logger.debug("Decided on results %s", condition.to_dict())
         else:
             self.logger.debug("Continuing to inspect flow_hash=%s packets=%s",

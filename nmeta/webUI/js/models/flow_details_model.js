@@ -1,13 +1,13 @@
-//-------- Model for an individual flow:
-nmeta.FlowModel = Backbone.Model.extend({
+//-------- Model for an individual event:
+nmeta.FlowDetailModel = Backbone.Model.extend({
     });
 
 //-------- Collection of Flow models:
-nmeta.FlowsCollection = Backbone.Collection.extend({
+nmeta.FlowDetailsCollection = Backbone.Collection.extend({
 
-    model:nmeta.FlowModel,
+    model:nmeta.FlowDetailModel,
 
-    url:'/v1/flows/ui',
+    url:'/v1/flows',
 
     parse:function (response) {
         // Uncomment this for debug of response:

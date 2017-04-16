@@ -71,6 +71,8 @@ URL_TEST_IDENTITIES = 'http://localhost:8081/v1/identities/'
 
 URL_TEST_IDENTITIES_UI = 'http://localhost:8081/v1/identities/ui/'
 
+URL_FLOW_MODS = 'http://localhost:8081/v1/flow_mods/'
+
 #*** Test DPIDs and in ports:
 DPID1 = 1
 INPORT1 = 1
@@ -455,6 +457,8 @@ def test_get_classification():
     clasfn_result = api.get_classification(flow.classification.flow_hash)
     assert clasfn_result['classified'] ==  1
     assert clasfn_result['classification_tag'] ==  "Constrained Bandwidth Traffic"
+    assert clasfn_result['actions']['set_desc'] == "Constrained Bandwidth Traffic"
+    assert clasfn_result['actions']['qos_treatment'] == "constrained_bw"
 
 def test_indexing_get_pi_rate():
     """
@@ -488,6 +492,101 @@ def test_indexing_get_pi_rate():
     assert explain['executionStats']['nReturned'] == 3
     assert explain['executionStats']['totalKeysExamined'] == 3
     assert explain['executionStats']['totalDocsExamined'] == 3
+
+def test_flow_match():
+    """
+    Test flow_match
+
+    TBD UNDER CONSTRUCTION
+
+    """
+    flow = api.FlowUI()
+    flow.src = 'pc1.example.com'
+    flow.dst = 'sv1.example.com'
+    flow.proto = 81
+    flows_filterlogicselector_includes1 = ''
+    flows_filterlogicselector_includes2 = 'includes'
+    flows_filterlogicselector_excludes = 'excludes'
+    flows_filtertypeselector = ''
+    filter_string_pc1 = 'pc1'
+    filter_string_sv1 = 'sv1'
+
+    assert api.flow_match(flow, flows_filterlogicselector_includes1,
+                                flows_filtertypeselector, filter_string_pc1) == 1
+
+    assert api.flow_match(flow, flows_filterlogicselector_includes2,
+                                flows_filtertypeselector, filter_string_pc1) == 1
+
+    assert api.flow_match(flow, flows_filterlogicselector_excludes,
+                                flows_filtertypeselector, filter_string_pc1) == 0
+
+    assert api.flow_match(flow, flows_filterlogicselector_includes1,
+                                flows_filtertypeselector, filter_string_sv1) == 1
+
+    assert api.flow_match(flow, flows_filterlogicselector_includes1,
+                                flows_filtertypeselector, filter_string_sv1) == 1
+
+    assert api.flow_match(flow, flows_filterlogicselector_excludes,
+                                flows_filtertypeselector, filter_string_sv1) == 0
+
+def test_flow_mods():
+    """
+    Test flow_mods API
+    """
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+
+    #*** Sleep to allow api_external to start fully:
+    time.sleep(.5)
+
+    #*** Instantiate a flow object:
+    flow = flow_class.Flow(config)
+    identities = identities_class.Identities(config)
+
+    #*** Record flow mod:
+    #*** Ingest a packet from pc1:
+    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+
+    #*** Record suppressing this flow. Should return 1 as not within
+    #*** standdown period:
+    assert flow.record_suppression(DPID1, 'forward') == 1
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_FLOW_MODS)
+
+    logger.debug("api_result=%s", api_result)
+
+    #*** Check that API has returned expected results:
+    assert api_result['_items'][0]['flow_hash'] == flow.packet.flow_hash
+    assert api_result['_items'][0]['dpid'] == DPID1
+    assert api_result['_items'][0]['suppression_type'] == 'forward'
+    assert api_result['_items'][0]['standdown'] == 0
+    assert len(api_result['_items']) == 1
+
+    #*** Record suppressing this flow. Should return 0 as is within
+    #*** standdown period:
+    assert flow.record_suppression(DPID1, 'forward') == 0
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_FLOW_MODS)
+
+    logger.debug("api_result=%s", api_result)
+
+    #*** Check that API has returned expected results for new record:
+    assert api_result['_items'][1]['flow_hash'] == flow.packet.flow_hash
+    assert api_result['_items'][1]['dpid'] == DPID1
+    assert api_result['_items'][0]['suppression_type'] == 'forward'
+    assert api_result['_items'][1]['standdown'] == 1
+    assert len(api_result['_items']) == 2
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
+
 
 def test_enumerate_eth_type():
     """

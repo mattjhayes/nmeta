@@ -48,6 +48,9 @@ from baseclass import BaseClass
 #*** nmeta imports:
 import nethash
 
+#*** Seconds to wait before resuppressing a flow on a particular switch:
+FLOW_SUPPRESSION_STANDDOWN = datetime.timedelta(seconds=5)
+
 class Flow(BaseClass):
     """
     An object that represents a flow that we are classifying
@@ -216,6 +219,7 @@ class Flow(BaseClass):
         classifications_max_bytes = \
                                   config.get_value("classifications_max_bytes")
         flow_rems_max_bytes = config.get_value("flow_rems_max_bytes")
+        flow_mods_max_bytes = config.get_value("flow_mods_max_bytes")
         #*** How far back in time to go back looking for packets in flow:
         self.flow_time_limit = datetime.timedelta \
                                 (seconds=config.get_value("flow_time_limit"))
@@ -268,6 +272,20 @@ class Flow(BaseClass):
         self.flow_rems = db_nmeta.create_collection('flow_rems',
                                    capped=True, size=flow_rems_max_bytes)
         #*** Note: don't index flow_rems collection as we don't read it
+
+        #*** flow_mods collection:
+        self.logger.debug("Deleting flow_mods MongoDB collection...")
+        db_nmeta.flow_mods.drop()
+        #*** Create the flow_mods collection, specifying capped option
+        #*** with max size in bytes, so MongoDB handles data retention:
+        self.flow_mods = db_nmeta.create_collection('flow_mods',
+                                   capped=True, size=flow_mods_max_bytes)
+        #*** Index flow_mods to improve look-up performance:
+        self.flow_mods.create_index([('flow_hash', pymongo.DESCENDING),
+                                ('timestamp', pymongo.DESCENDING),
+                                ('suppression_type', pymongo.DESCENDING),
+                                ('standdown', pymongo.DESCENDING)],
+                                unique=False)
 
     class Packet(object):
         """
@@ -884,15 +902,55 @@ class Flow(BaseClass):
         else:
             return min_s2c.total_seconds()
 
-    def suppress_flow(self):
+    def record_suppression(self, dpid, suppression_type):
         """
-        Set the suppressed attribute in the flow database
-        object to the current packet count so that future
-        suppressions of the same flow can be backed off
-        to prevent overwhelming the controller
+        Record that the flow is being suppressed on a particular
+        switch in the flow_mods database collection, so that information
+        is available to API consumers, such as the WebUI
+
+        suppression_type is a string that is one of:
+          - 'forward': forwards all packets in this flow
+          - 'drop': drops all packets in this flow
+
+        First check flow_mods to see if flow is already suppressed,
+        within suppression stand-down time for that switch,
+        and if it is record in DB that not resuppressed and return 0
+
+        The stand-down time is to reduce risk of overloading switch
+        with duplicate suppression events
+
+        Otherwise, record in flow_mods and return 1
+
+        Called from nmeta.py
         """
-        #TBD
-        pass
+        #*** Database lookup for whole flow:
+        db_data = {'flow_hash': self.packet.flow_hash,
+                    'timestamp': {'$gte': datetime.datetime.now() - \
+                                                FLOW_SUPPRESSION_STANDDOWN},
+                    'suppression_type': suppression_type,
+                    'standdown': 0}
+
+        flow_mod_record = {'flow_hash': self.packet.flow_hash,
+                            'timestamp': datetime.datetime.now(),
+                            'dpid': dpid,
+                            'suppression_type': suppression_type,
+                            'standdown': 0}
+
+        #*** Check if already suppressed with-in stand-down time period:
+        if self.flow_mods.find_one(db_data):
+            #*** There has been a suppression for this flow_hash within
+            #*** Stand down period so just record stand down and return 0
+            self.logger.debug("flow=%s already recorded as suppressed on "
+                                "dpid=%s", self.packet.flow_hash, dpid)
+            flow_mod_record['standdown'] = 1
+            self.flow_mods.insert_one(flow_mod_record)
+            return 0
+        else:
+            #*** Record and return 1
+            self.logger.debug("Recording suppression of flow=%s on "
+                                "dpid=%s", self.packet.flow_hash, dpid)
+            self.flow_mods.insert_one(flow_mod_record)
+            return 1
 
 #================== PRIVATE FUNCTIONS ==================
 

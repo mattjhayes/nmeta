@@ -38,6 +38,16 @@ from pymongo import MongoClient
 
 #*** nmeta imports
 import config
+#*** import from api_definitions subdirectory:
+from api_definitions import switches_api
+from api_definitions import pi_rate
+from api_definitions import pi_time
+from api_definitions import controller_summary
+from api_definitions import identities_api
+from api_definitions import identities_ui
+from api_definitions import flows_api
+from api_definitions import flows_ui
+from api_definitions import flow_mods_api
 
 #*** For timestamps:
 import datetime
@@ -51,7 +61,15 @@ PACKET_IN_RATE_INTERVAL = 10
 #*** Amount of time (seconds) to go back for to calculate Packet-In rate:
 PACKET_TIME_PERIOD = 10
 
-FLOW_LIMIT = 25
+#*** Used for WebUI:
+FLOW_SEARCH_LIMIT = 600
+FLOW_RESULT_LIMIT = 25
+#*** FlowUI attributes to match against for different filter types
+FLOW_FILTER_ANY = ['src', 'src_hover', 'dst', 'dst_hover', 'proto',
+                            'proto_hover']
+FLOW_FILTER_SRC = ['src', 'src_hover']
+FLOW_FILTER_DST = ['dst', 'dst_hover']
+FLOW_FILTER_SRC_OR_DST = ['src', 'src_hover', 'dst', 'dst_hover']
 
 #*** Number of previous IP identity records to search for a hostname before
 #*** giving up. Used for augmenting flows with identity metadata:
@@ -125,6 +143,8 @@ class ExternalAPI(BaseClass):
         """
         def __init__(self):
             #*** Initialise flow variables:
+            self.flow_hash = ""
+            self.timestamp = ""
             self.src = ""
             self.src_hover = ""
             self.dst = ""
@@ -153,193 +173,22 @@ class ExternalAPI(BaseClass):
     def run(self):
         """
         Run the External API instance
+
+        Note that API definitions are from previously imported
+        files from api_definitions subdirectory
         """
-        #*** Define the Eve pi_rate schema for what data the API returns:
-        pi_rate_schema = {
-                'pi_rate': {
-                    'type': 'float'
-                }
-            }
-        pi_time_schema = {
-                'pi_time_min': {
-                    'type': 'float'
-                },
-                'pi_time_avg': {
-                    'type': 'float'
-                },
-                'pi_time_max': {
-                    'type': 'float'
-                },
-                'pi_time_period': {
-                    'type': 'float'
-                },
-                'pi_time_records': {
-                    'type': 'float'
-                }
-            }
-        controller_summary_schema = {
-                'pi_rate': {
-                    'type': 'float'
-                },
-                'pi_time_min': {
-                    'type': 'float'
-                },
-                'pi_time_avg': {
-                    'type': 'float'
-                },
-                'pi_time_max': {
-                    'type': 'float'
-                },
-                'pi_time_period': {
-                    'type': 'float'
-                },
-                'pi_time_records': {
-                    'type': 'float'
-                }
-            }
-        switches_schema = {
-                'dpid': {
-                    'type': 'integer'
-                },
-                'ip_address': {
-                    'type': 'string'
-                },
-                'port': {
-                    'type': 'integer'
-                },
-                'time_connected': {
-                    'type': 'string'
-                },
-                'mfr_desc': {
-                    'type': 'string'
-                },
-                'hw_desc': {
-                    'type': 'string'
-                },
-                'sw_desc': {
-                    'type': 'string'
-                },
-                'serial_num': {
-                    'type': 'string'
-                },
-                'dp_desc': {
-                    'type': 'string'
-                }
-            }
-        #*** Define the Eve identity schema for what data the API returns:
-        identity_schema = {
-                'dpid': {
-                    'type': 'string'
-                },
-                'in_port': {
-                    'type': 'string'
-                },
-                'harvest_time': {
-                    'type': 'string'
-                },
-                'harvest_type': {
-                    'type': 'string'
-                },
-                'mac_address': {
-                    'type': 'string'
-                },
-                'ip_address': {
-                    'type': 'string'
-                },
-                'host_name': {
-                    'type': 'string'
-                },
-                'host_type': {
-                    'type': 'string'
-                },
-                'host_os': {
-                    'type': 'string'
-                },
-                'host_desc': {
-                    'type': 'string'
-                },
-                'service_name': {
-                    'type': 'string'
-                },
-                'service_alias': {
-                    'type': 'string'
-                },
-                'user_id': {
-                    'type': 'string'
-                },
-                'valid_from': {
-                    'type': 'string'
-                },
-                'valid_to': {
-                    'type': 'string'
-                },
-                'id_hash': {
-                    'type': 'string'
-                }
-            }
-        #*** Define the Eve flow UI schema for what data the API returns:
-        flow_ui_schema = {
-                'flow_hash': {
-                    'type': 'string'
-                }
-            }
-        #*** Eve Settings for Measurements of Packet In Rates:
-        pi_rate_settings = {
-            'url': 'infrastructure/controllers/pi_rate',
-            'item_title': 'Packet-In Receive Rate',
-            'schema': pi_rate_schema
-        }
-        #*** Eve Settings for Measurements of Packet In Rates:
-        pi_time_settings = {
-            'url': 'infrastructure/controllers/pi_time',
-            'item_title': 'Packet-In Processing Time',
-            'schema': pi_time_schema
-        }
-        #*** Controller Summary Statistics:
-        controller_summary_settings = {
-            'url': 'infrastructure/controllers/summary',
-            'item_title': 'Controller Summary',
-            'schema': controller_summary_schema
-        }
-        #*** Eve Settings for OpenFlow Switches API:
-        switches_settings = {
-            'url': 'infrastructure/switches',
-            'item_title': 'OpenFlow Switches',
-            'schema': switches_schema
-        }
-        #*** Eve Settings for Identities Objects. Note the reverse sort
-        #*** by harvest time:
-        identities_settings = {
-            'url': 'identities',
-            'item_title': 'Identity Records',
-            'schema': identity_schema,
-            'datasource': {
-                'default_sort': [('harvest_time', -1)],
-            }
-        }
-        #*** Eve Settings for identities/ui Objects. Database lookup
-        #*** with deduplication and enhancement filter done by hook function
-        identities_ui_settings = {
-            'url': 'identities/ui',
-            'item_title': 'Identities UI Data',
-            'schema': identity_schema
-        }
-        #*** Eve Settings for flows/ui Objects. Database lookup
-        #*** with deduplication and enhancements done by hook function
-        flows_ui_settings = {
-            'url': 'flows/ui',
-            'item_title': 'Flows UI Data',
-            'schema': flow_ui_schema
-        }
+
         #*** Eve Domain for the whole API:
         eve_domain = {
-            'pi_rate': pi_rate_settings,
-            'pi_time': pi_time_settings,
-            'controller_summary': controller_summary_settings,
-            'switches_col': switches_settings,
-            'identities': identities_settings,
-            'identities_ui': identities_ui_settings,
-            'flows_ui': flows_ui_settings
+            'pi_rate': pi_rate.pi_rate_settings,
+            'pi_time': pi_time.pi_time_settings,
+            'controller_summary': controller_summary.controller_summary_settings,
+            'switches_col': switches_api.switches_settings,
+            'identities': identities_api.identities_settings,
+            'identities_ui': identities_ui.identities_ui_settings,
+            'flows': flows_api.flows_settings,
+            'flows_ui': flows_ui.flows_ui_settings,
+            'flow_mods': flow_mods_api.flow_mods_settings
         }
 
         #*** Set up a settings dictionary for starting Eve app:datasource
@@ -358,6 +207,9 @@ class ExternalAPI(BaseClass):
         #*** Allowed Eve methods:
         eve_settings['RESOURCE_METHODS'] = ['GET']
         eve_settings['ITEM_METHODS'] = ['GET']
+        #*** Set format of datetime as it appears to API consumers:
+        eve_settings['DATE_FORMAT'] = '%H:%M:%S.%f'
+
 
         #*** TBD - set up username/password into MongoDB
 
@@ -403,7 +255,6 @@ class ExternalAPI(BaseClass):
             Serve static content for WebUI
             """
             return 1
-
 
     def response_pi_rate(self, items):
         """
@@ -527,60 +378,156 @@ class ExternalAPI(BaseClass):
          - Enrich with TBD
         Hooked from on_fetched_resource_<name>
         """
-        known_hashes = []
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
-        #*** Get packet_ins database collection and query it:
+
+        #*** Get URL parameters:
+        if 'flowsFilterLogicSelector' in request.args:
+            flows_filterlogicselector = request.args['flowsFilterLogicSelector']
+        else:
+            flows_filterlogicselector = ''
+        if 'flowsFilterTypeSelector' in request.args:
+            flows_filtertypeselector = request.args['flowsFilterTypeSelector']
+        else:
+            flows_filtertypeselector = ''
+        if 'filterString' in request.args:
+            filter_string = request.args['filterString']
+        else:
+            filter_string = ''
+        self.logger.debug("Parameters are flows_filterlogicselector=%s "
+                        "flows_filtertypeselector=%s filter_string=%s",
+                        flows_filterlogicselector, flows_filtertypeselector,
+                        filter_string)
+
+        #*** Connect to packet_ins database and run general query:
         flows = self.app.data.driver.db['packet_ins']
-        #*** Reverse sort:
-        packet_cursor = flows.find().limit(FLOW_LIMIT).sort('$natural', -1)
-        #*** Iterate, adding only new id_hashes to the response:
+        packet_cursor = flows.find().limit(FLOW_SEARCH_LIMIT) \
+                                                         .sort('timestamp', -1)
+
+        #*** Iterate through results, ignoring known hashes:
+        known_hashes = []
         for record in packet_cursor:
             #*** Only return unique flow records:
             if not record['flow_hash'] in known_hashes:
                 #*** Normalise the direction of the flow:
                 record = self.flow_normalise_direction(record)
-                #*** Instantiate an instance of FlowUI class:
-                flow = self.FlowUI()
-                if record['eth_type'] == 2048:
-                    #*** It's IPv4, see if we can augment with identity:
-                    flow.src = self.get_id(record['ip_src'])
-                    if flow.src != record['ip_src']:
-                        flow.src_hover = hovertext_ip_addr(record['ip_src'])
-                    flow.dst = self.get_id(record['ip_dst'])
-                    if flow.dst != record['ip_dst']:
-                        flow.dst_hover = hovertext_ip_addr(record['ip_dst'])
-                    flow.proto = enumerate_ip_proto(record['proto'])
-                    if flow.proto != record['proto']:
-                        #*** IP proto enumerated, set hover decimal text:
-                        flow.proto_hover = \
-                                         hovertext_ip_proto(record['proto'])
-                else:
-                    #*** It's not IPv4 (TBD, handle IPv6)
-                    flow.src = record['eth_src']
-                    flow.dst = record['eth_dst']
-                    flow.proto = enumerate_eth_type(record['eth_type'])
-                    if flow.proto != record['eth_type']:
-                        #*** Eth type enumerated, set hover decimal eth_type:
-                        flow.proto_hover = \
-                                         hovertext_eth_type(record['eth_type'])
-                flow.tp_src = record['tp_src']
-                flow.tp_dst = record['tp_dst']
-                #*** Enrich with classification and action(s):
-                classification = self.get_classification(record['flow_hash'])
-                flow.classification = classification['classification_tag']
-                #*** Enrich with data xfer (only applies to flows that
-                #***  have had idle timeout)
-                data_xfer = self.get_flow_data_xfer(record)
-                if data_xfer['tx_found']:
-                    flow.data_sent = data_xfer['tx_bytes']
-                    flow.data_sent_hover = data_xfer['tx_pkts']
-                if data_xfer['rx_found']:
-                    flow.data_received = data_xfer['rx_bytes']
-                    flow.data_received_hover = data_xfer['rx_pkts']
-                #*** Add to items dictionary, which is returned in response:
-                items['_items'].append(flow.response())
+
+                #*** Create identity-augmented FlowUI instance:
+                flow = self.flow_augment_record(record)
+
+                #*** Apply any filters:
+                match = self.flow_match(flow, flows_filterlogicselector,
+                                    flows_filtertypeselector, filter_string)
+
+                if match:
+                    #*** Add to result:
+                    #*** Add to items dictionary, which is returned in response:
+                    items['_items'].append(flow.response())
+
                 #*** Add hash so we don't do it again:
                 known_hashes.append(record['flow_hash'])
+
+                #*** If we've filled the bucket then return result:
+                if len(items['_items']) >= FLOW_RESULT_LIMIT:
+                    return
+
+    def flow_match(self, flow, flows_filterlogicselector,
+                                    flows_filtertypeselector, filter_string):
+        """
+        Passed an instance of FlowUI class, a logic selector,
+        filter type and filter string.
+
+        Return a boolean on whether or not that theres a match.
+        """
+        if flows_filtertypeselector == 'any' or flows_filtertypeselector == '':
+            filter_attributes = FLOW_FILTER_ANY
+        elif flows_filtertypeselector == 'src':
+            filter_attributes = FLOW_FILTER_SRC
+        elif flows_filtertypeselector == 'dst':
+            filter_attributes = FLOW_FILTER_DST
+        elif flows_filtertypeselector == 'src_or_dst':
+            filter_attributes = FLOW_FILTER_SRC_OR_DST
+        else:
+            #*** Unknown value, warn and return:
+            self.logger.warning("unsupported flows_filtertypeselector=%s "
+                                ", exiting...", flows_filtertypeselector)
+            return 0
+        #*** Iterate through attributes checking for match:
+        for attr in filter_attributes:
+            if filter_string in str(getattr(flow, attr)):
+                if flows_filterlogicselector == 'includes' or \
+                                flows_filterlogicselector == '':
+                    return 1
+                elif flows_filterlogicselector == 'excludes':
+                    self.logger.warning("excludes match on attr=%s", attr)
+                    return 0
+                else:
+                    self.logger.error("Unsupported flows_filterlogicselector"
+                                    "=%s", flows_filterlogicselector)
+                    return 0
+
+        if flows_filterlogicselector == 'excludes':
+            #*** Didn't match anything and excludes logic so that's a 1!
+            return 1
+
+
+    def flow_augment_record(self, record):
+        """
+        Passed a record of a single flow from the packet_ins
+        database collection.
+
+        Create FlowUI class instance, add in known data and
+        augment with identity data. Logic is specific to the
+        webUI user experience.
+
+        Return the FlowUI class instance
+        """
+        #*** Instantiate an instance of FlowUI class:
+        flow = self.FlowUI()
+        flow.timestamp = record['timestamp']
+        flow.flow_hash = record['flow_hash']
+        if record['eth_type'] == 2048:
+            #*** It's IPv4, see if we can augment with identity:
+            flow.src = self.get_id(record['ip_src'])
+            if flow.src != record['ip_src']:
+                flow.src_hover = hovertext_ip_addr(record['ip_src'])
+            flow.dst = self.get_id(record['ip_dst'])
+            if flow.dst != record['ip_dst']:
+                flow.dst_hover = hovertext_ip_addr(record['ip_dst'])
+            flow.proto = enumerate_ip_proto(record['proto'])
+            if flow.proto != record['proto']:
+                #*** IP proto enumerated, set hover decimal text:
+                flow.proto_hover = \
+                                 hovertext_ip_proto(record['proto'])
+        else:
+            #*** It's not IPv4 (TBD, handle IPv6)
+            flow.src = record['eth_src']
+            flow.dst = record['eth_dst']
+            flow.proto = enumerate_eth_type(record['eth_type'])
+            if flow.proto != record['eth_type']:
+                #*** Eth type enumerated, set hover decimal eth_type:
+                flow.proto_hover = \
+                                 hovertext_eth_type(record['eth_type'])
+        flow.tp_src = record['tp_src']
+        flow.tp_dst = record['tp_dst']
+        #*** Enrich with classification and action(s):
+        classification = self.get_classification(record['flow_hash'])
+        flow.classification = classification['classification_tag']
+        #*** Turn actions dictionary into a human-readable string:
+        actions_dict = classification['actions']
+        actions = ''
+        for key in actions_dict:
+            actions += str(key) + "=" + str(actions_dict[key]) + " "
+        flow.actions = actions
+        #*** Enrich with data xfer (only applies to flows that
+        #***  have had idle timeout)
+        data_xfer = self.get_flow_data_xfer(record)
+        if data_xfer['tx_found']:
+            flow.data_sent = data_xfer['tx_bytes']
+            flow.data_sent_hover = data_xfer['tx_pkts']
+        if data_xfer['rx_found']:
+            flow.data_received = data_xfer['rx_bytes']
+            flow.data_received_hover = data_xfer['rx_pkts']
+        return flow
 
     def get_flow_data_xfer(self, record):
         """
@@ -645,7 +592,7 @@ class ExternalAPI(BaseClass):
                 'classified': 0,
                 'classification_tag': '',
                 'classification_time': 0,
-                'self.actions': {}
+                'actions': {}
             }
 
     def flow_normalise_direction(self, record):
@@ -866,4 +813,3 @@ if __name__ == '__main__':
     api = ExternalAPI(config)
     #*** Start the External API:
     api.run()
-

@@ -31,11 +31,30 @@ nmeta.Router = Backbone.Router.extend({
         "what":           "what",
         "kit":            "kit",
         "policy":         "policy",
+        "flowDetails/:flow_hash":    "flowDetails",
         "switch/:dpid":   "switch"
     },
 
     // Display nav bar and set up rest of page
     initialize: function () {
+
+        // Instantiate Flows Collection:
+        console.log('instantiating flows_collection');
+        this.flows_collection = new nmeta.FlowsCollection();
+
+        // Instantiate model to hold UI states for Flows View:
+        this.flowsState = new Backbone.Model();
+
+        // Instantiate Flow Details Collection:
+        console.log('instantiating flowDetailsCollection');
+        this.flowDetailsCollection = new nmeta.FlowDetailsCollection();
+
+        // Instantiate Flow Mods Collection:
+        console.log('instantiating flowModsCollection');
+        this.flowModsCollection = new nmeta.FlowModsCollection();
+
+        // Instantiate Bars View to show top and bottom bars and provide
+        // anchor ids for content from other views:
         nmeta.barsView = new nmeta.BarsView();
         $('body').html(nmeta.barsView.render().el);
         // Close the search dropdown on click anywhere in the UI
@@ -45,6 +64,7 @@ nmeta.Router = Backbone.Router.extend({
         // Variables linking to HTML content ids
         this.$content = $("#content");
         this.$content2 = $("#content2");
+
     },
 
     // Display 'home' page
@@ -84,18 +104,28 @@ nmeta.Router = Backbone.Router.extend({
 
     // Display 'what' page about flows on the network:
     what: function () {
-        // Instantiate Flows Collection:
-        var flows_collection = new nmeta.FlowsCollection();
-        var self = this;
-        // Retrieve flow information via REST API:
-        flows_collection.fetch({
-            success: function (data) {
-                console.log('flows_collection data=' + data);
-                self.$content.html(new nmeta.FlowsView({model: data}).render().el);
-            }
-        });
-        // Empty unused content2:
+        // Instantiate flows view if not already existing:
+        if (!nmeta.flowsView) {
+            // Instantiate flowsView:
+            console.log('app instantiating flowsView');
+            nmeta.flowsView = new nmeta.FlowsView({model: this.flows_collection,
+                                                   flowsState: this.flowsState});
+        } else {
+            // Rebind events:
+            console.log('app rebinding flowsView events');
+            nmeta.flowsView.delegateEvents()
+        }
+
+        // Fetch flows_collection as reset event (note: invokes render):
+        console.log('app calling flows_collection fetch({reset: true})');
+        this.flows_collection.fetch({reset: true})
+
+        // Publish result into DOM against id="content":
+        this.$content.html(nmeta.flowsView.el);
+
+        // Empty unused id="content2" in DOM:
         this.$content2.empty();
+
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('what-menu');
     },
@@ -137,12 +167,60 @@ nmeta.Router = Backbone.Router.extend({
         this.$content2.empty();
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('policy-menu');
-    }
+    },
+
+    flowDetails: function (flow_hash) {
+        console.log('in router flowDetails flow_hash=' + flow_hash);
+        // Instantiate flow details view if not already existing:
+        if (!nmeta.flowDetailsView) {
+            // Instantiate flowDetailsView:
+            console.log('app instantiating flowDetailsView');
+            nmeta.flowDetailsView = new nmeta.FlowDetailsView({model: this.flowDetailsCollection});
+        } else {
+            // Rebind events:
+            console.log('app rebinding flowDetailsView events');
+            nmeta.flowDetailsView.delegateEvents()
+        }
+
+        // Fetch flow_details_model as reset event (note: invokes render):
+        console.log('app calling flowDetailsCollection fetch({reset: true})');
+        var where_query = '{\"flow_hash\":\"' + flow_hash + '\"}'
+        console.log('where_query=' + where_query);
+        this.flowDetailsCollection.fetch({reset: true, data: $.param({ where: where_query})})
+
+        // Publish result into DOM against id="content":
+        this.$content.html(nmeta.flowDetailsView.el);
+
+        //---------------------------------------------------------------------
+        // Instantiate flow mods view if not already existing:
+        if (!nmeta.flowModsView) {
+            // Instantiate flowModsView:
+            console.log('app instantiating flowModsView');
+            nmeta.flowModsView = new nmeta.FlowModsView({model: this.flowModsCollection});
+        } else {
+            // Rebind events:
+            console.log('app rebinding flowModsView events');
+            nmeta.flowModsView.delegateEvents()
+        }
+
+        // Fetch flow_mods_model as reset event (note: invokes render):
+        console.log('app calling flowModsCollection fetch({reset: true})');
+        var where_query = '{\"flow_hash\":\"' + flow_hash + '\"}'
+        console.log('where_query=' + where_query);
+        this.flowModsCollection.fetch({reset: true, data: $.param({ where: where_query})})
+
+        // Publish result into DOM against id="content2":
+        this.$content2.html(nmeta.flowModsView.el);
+
+        //---------------------------------------------------------------------
+        // Update top menu bar:
+        nmeta.barsView.selectMenuItem('what-menu');
+    },
 
 });
 
 $(document).on("ready", function () {
-    nmeta.loadTemplates(["HomeView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
+    nmeta.loadTemplates(["HomeView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "FlowDetailsView", "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
         function () {
             nmeta.router = new nmeta.Router();
             Backbone.history.start();

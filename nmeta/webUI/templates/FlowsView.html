@@ -1,11 +1,52 @@
 <div class="row-fluid">
     <div class="span12">
         <p>Flows on the network (not necessarily current):</p>
+
+        <!-- Search input for filtering results: -->
+        <table>
+            <tr valign="top">
+                <td>
+                    <label>Filter:</label>
+
+                    <select id="flowsFilterLogicSelector">
+                        <option selected value="includes">Includes</option>
+                        <option value="excludes">Excludes</option>
+                    </select>
+                </td>
+                <td>
+                    <select id="flowsFilterTypeSelector">
+                        <option selected value="any">Any</option>
+                        <option value="src">Src</option>
+                        <option value="dst">Dst</option>
+                        <option value="src_or_dst">Src or Dst</option>
+                    </select>
+                </td>
+                <td>
+                    <div class="form-group">
+                        <input type="text" class="form-control" id="flowsFilterText" />
+                    </div>
+                </td>
+                <td>
+                    <!-- Clear search button: -->
+                    <button class="clearFlowsFilter">
+                        <span class="glyphicon glyphicon-remove-sign" style="color:blue" aria-hidden=true>
+                        </span>
+                    </button>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Table of flows: -->
         <div>
             <table class="table table-striped" id="flows">
                 <thead>
                     <tr>
-                        <th width=30><button class="refresh"><span class="glyphicon glyphicon-refresh" style="color:blue" aria-hidden=true></span></button></th>
+                        <th>
+                            <button class="refreshFlows">
+                                <span class="glyphicon glyphicon-refresh" style="color:blue" aria-hidden=true>
+                                </span>
+                            </button>
+                        </th>
                         <th>Src</th>
                         <th>Dst</th>
                         <th>Proto</th>

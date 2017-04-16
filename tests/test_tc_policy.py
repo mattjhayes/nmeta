@@ -68,8 +68,8 @@ rule_1 = {
             'match_type': 'all',
             'actions':
                 {
-                'set_qos_tag': 'QoS_treatment=high_priority',
-                'set_desc_tag': 'description="High Priority HTTP Traffic"'
+                'qos_treatment': 'QoS_treatment=high_priority',
+                'set_desc': 'description="High Priority HTTP Traffic"'
             }
         }
 
@@ -90,10 +90,33 @@ rule_2 = {
             'match_type': 'all',
             'actions':
                 {
-                'set_qos_tag': 'QoS_treatment=high_priority',
-                'set_desc_tag': 'description="High Priority Audit Division SSHd Traffic"'
+                'qos_treatment': 'QoS_treatment=high_priority',
+                'set_desc': 'description="High Priority Audit Division SSHd Traffic"'
             }
         }
+
+#*** Same as 2a, but has 'set_desc' action removed:
+rule_2b = {
+            'comment': 'Audit Division SSH traffic',
+            'conditions_list':
+                [
+                    {
+                    'match_type': 'any',
+                    'tcp_src': 22,
+                    'tcp_dst': 22
+                },
+                    {
+                    'match_type': 'any',
+                    'ip_src': '192.168.2.3'
+                }
+            ],
+            'match_type': 'all',
+            'actions':
+                {
+                'qos_treatment': 'QoS_treatment=high_priority',
+            }
+        }
+
 
 logger = logging.getLogger(__name__)
 
@@ -159,8 +182,12 @@ def test_check_rules():
     logger.debug("rule=%s", rule.to_dict())
     assert rule.match == True
 
-    # TBD - more
+    #*** Should not match:
+    rule = tc._check_rule(rule_2b)
+    logger.debug("rule=%s", rule.to_dict())
+    assert rule.match == False
 
+    # TBD - more
 
 def test_check_conditions():
     """

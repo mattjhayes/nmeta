@@ -2,14 +2,15 @@
 API Guide
 #########
 
-This guide is UNDER CONSTRUCTION
-
 *************
 External APIs
 *************
 
-Be aware that APIs that are not native Python Eve API will not support
-filtering etc.
+External APIs expose nmeta performance and state data. They are used by the
+nmeta WebUI and can be used for other applications.
+
+Be aware that non-native Python Eve APIs have limited feature support (i.e.
+may not support filtering)
 
 Controller Summary API
 ======================

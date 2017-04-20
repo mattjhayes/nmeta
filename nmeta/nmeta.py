@@ -41,7 +41,7 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 
 #*** nmeta imports:
-import tc_policy
+import policy
 import config
 import switches
 import forwarding
@@ -80,7 +80,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
                                        "nmeta_logging_level_c")
 
         #*** Instantiate Module Classes:
-        self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
+        self.tc_policy = policy.TrafficClassificationPolicy(self.config)
         self.switches = switches.Switches(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
 

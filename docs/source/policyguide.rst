@@ -325,4 +325,26 @@ queue numbers. Example:
     high_priority: 2
     low_priority: 3
 
+*********
+Port Sets
+*********
 
+Port Sets control what data plane ports policies and
+features are applied on. They are referenced from other parts of the
+policy.
+
+Port Sets are based off a root key *port_sets*.
+
+TBD
+
+*********
+Locations
+*********
+
+Locations are a policy-defined aspect of an identity that are
+based on DPID/port or port set.
+
+Locations are based off a root key *locations*.
+
+Default location is 'external' (but can be overwritten)
+vs External vs User-Defined<TBD>

@@ -68,11 +68,6 @@ TC_CONFIG_ACTIONS = ('qos_treatment',
                      'drop')
 TC_CONFIG_MATCH_TYPES = ('any',
                          'all')
-#*** Keys that must exist under 'identity' in the policy:
-IDENTITY_KEYS = ('arp',
-                 'lldp',
-                 'dns',
-                 'dhcp')
 
 #*** Default policy file location parameters:
 POL_DIR_DEFAULT = "config"
@@ -259,28 +254,6 @@ class TrafficClassificationPolicy(BaseClass):
                                                  action)
                             sys.exit("Exiting nmeta. Please fix error in "
                                      "main_policy.yaml file")
-
-        #*** Validate that policy has a 'identity' key off the root:
-        if not 'identity' in self._main_policy:
-            #*** No 'identity' key off the root, so log and exit:
-            self.logger.critical("Missing identity"
-                                    "key in root of main policy")
-            sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
-        #*** Get the identity keys and validate that they all exist in policy:
-        for _id_key in IDENTITY_KEYS:
-            if not _id_key in self._main_policy['identity'].keys():
-                self.logger.critical("Missing identity "
-                                    "key in main policy: %s", _id_key)
-                sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
-        #*** Conversely, check all identity keys in the policy are valid:
-        for _id_pol_key in self._main_policy['identity'].keys():
-            if not _id_pol_key in IDENTITY_KEYS:
-                self.logger.critical("Invalid identity "
-                                    "key in main policy: %s", _id_pol_key)
-                sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
 
     def _validate_conditions(self, policy_conditions):
         """

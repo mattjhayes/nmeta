@@ -32,7 +32,7 @@ import config
 import flows as flow_class
 import identities as identities_class
 import api_external
-import tc_policy
+import policy
 import tc_identity
 
 #*** nmeta test packet imports:
@@ -438,7 +438,7 @@ def test_get_classification():
     ident = identities_class.Identities(config)
 
     #*** Initial main_policy that matches tcp-80:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_static_3.yaml")

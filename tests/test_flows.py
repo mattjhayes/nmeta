@@ -56,7 +56,7 @@ from ryu.lib import addrconv
 import nmeta
 import config
 import flows as flow_class
-import tc_policy
+import policy
 import identities
 import nethash
 
@@ -238,7 +238,7 @@ def test_classification_static():
     flow = flow_class.Flow(config)
     ident = identities.Identities(config)
     #*** Initial main_policy won't match as looking for tcp-1234:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")
@@ -264,7 +264,7 @@ def test_classification_static():
     assert flow.classification.actions == {}
 
     #*** Initial main_policy that matches tcp-80:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static_3.yaml")
@@ -282,7 +282,7 @@ def test_classification_static():
     #*** Now test that classification remains after ingesting more packets
     #***  on same flow.
     #*** Load main_policy that matches dst tcp-80:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static_4.yaml")
@@ -396,7 +396,7 @@ def test_classification_identity():
     ident = identities.Identities(config)
     #*** Load main_policy that matches identity pc1
     #*** and has action to constrain it's bandwidth:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_identity_2.yaml")
@@ -459,7 +459,7 @@ def test_indexing():
     flow = flow_class.Flow(config)
     ident = identities.Identities(config)
     #*** Initial main_policy won't match as looking for tcp-1234:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")

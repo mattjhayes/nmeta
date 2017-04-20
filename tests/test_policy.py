@@ -1,5 +1,5 @@
 """
-Nmeta tc_policy.py Tests
+Nmeta policy.py Tests
 """
 
 import sys
@@ -9,7 +9,7 @@ sys.path.insert(0, '../nmeta')
 import logging
 
 #*** nmeta imports:
-import tc_policy
+import policy
 import config
 import flows as flow_class
 import identities
@@ -124,9 +124,9 @@ def test_check_policy():
     """
     Test that packet match against policy works correctly
     """
-    #*** Instantiate tc_policy, flows and identities classes, specifying
+    #*** Instantiate tc, flows and identities classes, specifying
     #*** a particular main_policy file to use:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")
@@ -149,7 +149,7 @@ def test_check_policy():
     assert flow.classification.actions == {}
 
     #*** Re-instantiate tc_policy with different policy that should classify:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_static_3.yaml")
@@ -169,7 +169,7 @@ def test_check_policy():
 
 def test_check_rules():
     #*** Instantiate classes:
-    tc = tc_policy.TrafficClassificationPolicy(config)
+    tc = policy.TrafficClassificationPolicy(config)
     flow = flow_class.Flow(config)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
@@ -194,7 +194,7 @@ def test_check_conditions():
     Check TC packet match against a conditions stanza
     """
     #*** Instantiate classes:
-    tc = tc_policy.TrafficClassificationPolicy(config)
+    tc = policy.TrafficClassificationPolicy(config)
     flow = flow_class.Flow(config)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
@@ -239,7 +239,7 @@ def test_custom_classifiers():
     """
     #*** Instantiate tc_policy, specifying
     #*** a particular main_policy file to use that has no custom classifiers:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/regression",
                             pol_filename="main_policy_regression_static.yaml")
@@ -248,7 +248,7 @@ def test_custom_classifiers():
     #*** Instantiate tc_policy, specifying
     #*** a custom statistical main_policy file to use that has a
     #*** custom classifier:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_statistical.yaml")
@@ -260,7 +260,7 @@ def test_qos():
     """
     #*** Instantiate tc_policy, specifying
     #*** a particular main_policy file to use that has no custom classifiers:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    tc = policy.TrafficClassificationPolicy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")

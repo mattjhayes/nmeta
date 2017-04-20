@@ -37,7 +37,7 @@ import nmeta
 import config
 import flows as flow_class
 import identities as identities_class
-import tc_policy
+import policy
 import tc_identity
 
 #*** nmeta test packet imports:
@@ -81,35 +81,35 @@ def test_LLDP_identity():
     assert result_identity['harvest_type'] == 'LLDP'
 
     #*** Test tc_identity (foo should fail)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_lldp_systemname'
     condition.policy_value = 'foo'
     tc_ident.check_identity(condition, flow.packet, identities)
     assert condition.match == False
 
     #*** Test tc_identity (pc1.example.com should match)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_lldp_systemname'
     condition.policy_value = 'pc1.example.com'
     tc_ident.check_identity(condition, flow.packet, identities)
     assert condition.match == True
 
     #*** Test tc_identity regular expression (*.example.com should match)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_lldp_systemname_re'
     condition.policy_value = '^.*\.example\.com'
     tc_ident.check_identity(condition, flow.packet, identities)
     assert condition.match == True
 
     #*** Test tc_identity regular expression (pc1.* should match)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_lldp_systemname_re'
     condition.policy_value = '^pc1\.*'
     tc_ident.check_identity(condition, flow.packet, identities)
     assert condition.match == True
 
     #*** Test tc_identity regular expression (*.example.org should fail)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_lldp_systemname_re'
     condition.policy_value = '^.*\.example\.org'
     tc_ident.check_identity(condition, flow.packet, identities)
@@ -120,7 +120,7 @@ def test_LLDP_identity():
     identities.harvest(pkts_lldp.RAW[1], flow.packet)
 
     #*** Test tc_identity (sw1.example.com shouldn't match as data is stale as past LLDP TTL)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_lldp_systemname'
     condition.policy_value = 'sw1.example.com'
     tc_ident.check_identity(condition, flow.packet, identities)
@@ -131,7 +131,7 @@ def test_LLDP_identity():
     identities.harvest(pkts_lldp.RAW[1], flow.packet)
 
     #*** Test tc_identity (sw1.example.com should match as data is no longer stale)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_lldp_systemname'
     condition.policy_value = 'sw1.example.com'
     tc_ident.check_identity(condition, flow.packet, identities)
@@ -161,14 +161,14 @@ def test_DNS_identity():
     flow.ingest_packet(DPID1, INPORT1, pkts_facebook.RAW[0], datetime.datetime.now())
 
     #*** Test tc_identity (foo should fail)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_service_dns'
     condition.policy_value = 'foo'
     tc_ident.check_identity(condition, flow.packet, identities)
     assert condition.match == False
 
     #*** Test tc_identity (www.facebook.com should pass)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_service_dns'
     condition.policy_value = 'www.facebook.com'
     tc_ident.check_identity(condition, flow.packet, identities)
@@ -186,7 +186,7 @@ def test_DNS_identity():
     #*** Test tc_identity (www.facebook.com, should pass even though there's
     #*** another A record against the CNAME, i.e. should handle one to many)
     #*** Test tc_identity (www.facebook.com should pass)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_service_dns'
     condition.policy_value = 'www.facebook.com'
     tc_ident.check_identity(condition, flow.packet, identities)
@@ -194,14 +194,14 @@ def test_DNS_identity():
 
     #*** Test regular expression match of previous test:
     #*** Test tc_identity (www.facebook.com should pass)
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_service_dns_re'
     condition.policy_value = '^.*\.facebook\.com'
     tc_ident.check_identity(condition, flow.packet, identities)
     assert condition.match == True
 
     #*** Test regular expression that shouldn't match:
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_service_dns_re'
     condition.policy_value = '^.*\.facebook\.org'
     tc_ident.check_identity(condition, flow.packet, identities)
@@ -210,7 +210,7 @@ def test_DNS_identity():
     #*** Ingest TCP SYN+ACK from www.facebook.com (CNAME star-mini.c10r.facebook.com,
     #*** IP 179.60.193.36) to test matching on source IP address:
     flow.ingest_packet(DPID1, INPORT1, pkts_facebook.RAW[1], datetime.datetime.now())
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
     condition.policy_attr = 'identity_service_dns'
     condition.policy_value = 'www.facebook.com'
     tc_ident.check_identity(condition, flow.packet, identities)

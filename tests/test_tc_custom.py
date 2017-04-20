@@ -28,7 +28,7 @@ import nmeta
 import config
 import flows as flow_class
 import identities as identities_class
-import tc_policy
+import policy
 import tc_custom
 
 #*** nmeta test packet imports:
@@ -65,7 +65,7 @@ def test_statistical_classifier():
     tc_cust.instantiate_classifiers(['statistical_qos_bandwidth_1'])
 
     #*** Instantiate match object:
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.TrafficClassificationPolicy.Condition()
 
     #*** Ingest sufficient packets to complete statistical classification (7):
 

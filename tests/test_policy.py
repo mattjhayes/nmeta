@@ -29,7 +29,7 @@ DPID2 = 2
 INPORT1 = 1
 INPORT2 = 2
 
-#*** Test values for policy_conditions:
+#*** Test values for tc policy_conditions:
 conditions_any_opf = {'match_type': 'any',
                              'tcp_src': 6633, 'tcp_dst': 6633}
 conditions_all_opf = {'match_type': 'all',
@@ -117,7 +117,6 @@ rule_2b = {
             }
         }
 
-
 logger = logging.getLogger(__name__)
 
 def test_check_policy():
@@ -126,7 +125,7 @@ def test_check_policy():
     """
     #*** Instantiate tc, flows and identities classes, specifying
     #*** a particular main_policy file to use:
-    tc = policy.TrafficClassificationPolicy(config,
+    tc = policy.Policy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")
@@ -149,7 +148,7 @@ def test_check_policy():
     assert flow.classification.actions == {}
 
     #*** Re-instantiate tc_policy with different policy that should classify:
-    tc = policy.TrafficClassificationPolicy(config,
+    tc = policy.Policy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_static_3.yaml")
@@ -167,9 +166,9 @@ def test_check_policy():
     assert flow.classification.actions == {'set_desc': 'Constrained Bandwidth Traffic',
                                            'qos_treatment': 'constrained_bw'}
 
-def test_check_rules():
+def test_check_tc_rules():
     #*** Instantiate classes:
-    tc = policy.TrafficClassificationPolicy(config)
+    tc = policy.Policy(config)
     flow = flow_class.Flow(config)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
@@ -189,12 +188,12 @@ def test_check_rules():
 
     # TBD - more
 
-def test_check_conditions():
+def test_check_tc_conditions():
     """
     Check TC packet match against a conditions stanza
     """
     #*** Instantiate classes:
-    tc = policy.TrafficClassificationPolicy(config)
+    tc = policy.Policy(config)
     flow = flow_class.Flow(config)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
@@ -239,7 +238,7 @@ def test_custom_classifiers():
     """
     #*** Instantiate tc_policy, specifying
     #*** a particular main_policy file to use that has no custom classifiers:
-    tc = policy.TrafficClassificationPolicy(config,
+    tc = policy.Policy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/regression",
                             pol_filename="main_policy_regression_static.yaml")
@@ -248,7 +247,7 @@ def test_custom_classifiers():
     #*** Instantiate tc_policy, specifying
     #*** a custom statistical main_policy file to use that has a
     #*** custom classifier:
-    tc = policy.TrafficClassificationPolicy(config,
+    tc = policy.Policy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_statistical.yaml")
@@ -260,7 +259,7 @@ def test_qos():
     """
     #*** Instantiate tc_policy, specifying
     #*** a particular main_policy file to use that has no custom classifiers:
-    tc = policy.TrafficClassificationPolicy(config,
+    tc = policy.Policy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")

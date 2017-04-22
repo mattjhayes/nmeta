@@ -80,7 +80,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
                                        "nmeta_logging_level_c")
 
         #*** Instantiate Module Classes:
-        self.tc_policy = policy.TrafficClassificationPolicy(self.config)
+        self.tc_policy = policy.Policy(self.config)
         self.switches = switches.Switches(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
 

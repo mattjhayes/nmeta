@@ -65,7 +65,7 @@ def test_statistical_classifier():
     tc_cust.instantiate_classifiers(['statistical_qos_bandwidth_1'])
 
     #*** Instantiate match object:
-    condition = policy.TrafficClassificationPolicy.Condition()
+    condition = policy.Policy.Condition()
 
     #*** Ingest sufficient packets to complete statistical classification (7):
 

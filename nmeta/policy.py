@@ -74,20 +74,33 @@ POL_DIR_DEFAULT = "config"
 POL_DIR_USER = "config/user"
 POL_FILENAME = "main_policy.yaml"
 
-class TrafficClassificationPolicy(BaseClass):
+class Policy(BaseClass):
     """
     This class is instantiated by nmeta.py and provides methods
     to ingest the policy file main_policy.yaml and check flows
-    against policy to see if actions exist
+    against policy to see if actions exist.
+
+    Directly accessible values to read:
+    main_policy         # main policy YAML object
+
+    TBD
+
     """
+    #*** Top level keys that must exist in the main policy:
+    REQ_KEYS = ('tc_rules',
+                 'qos_treatment',
+                 'port_sets',
+                 'locations')
+    OPT_KEYS = ()
+
     def __init__(self, config, pol_dir_default=POL_DIR_DEFAULT,
                     pol_dir_user=POL_DIR_USER,
                     pol_filename=POL_FILENAME):
         #*** Required for BaseClass:
         self.config = config
         #*** Set up Logging with inherited base class method:
-        self.configure_logging(__name__, "tc_policy_logging_level_s",
-                                       "tc_policy_logging_level_c")
+        self.configure_logging(__name__, "policy_logging_level_s",
+                                       "policy_logging_level_c")
         self.policy_dir_default = pol_dir_default
         self.policy_dir_user = pol_dir_user
         self.policy_filename = pol_filename
@@ -110,7 +123,7 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Ingest the policy file:
         try:
             with open(self.fullpathname, 'r') as filename:
-                self._main_policy = yaml.load(filename)
+                self.main_policy = yaml.load(filename)
         except (IOError, OSError) as exception:
             self.logger.error("Failed to open policy "
                               "file=%s exception=%s",
@@ -122,11 +135,22 @@ class TrafficClassificationPolicy(BaseClass):
         self.static = tc_static.StaticInspect(config)
         self.identity = tc_identity.IdentityInspect(config)
         self.custom = tc_custom.CustomInspect(config)
+
+        #*** Run a test on the ingested traffic classification policy
+        #***  to ensure that it is has the all the right high level keys:
+        validate_keys(self.logger, self.main_policy, self.REQ_KEYS,
+                                                    self.OPT_KEYS, 'top_level')
+
+        #*** Instantiate classes for the second levels of policy:
+        self.locations = self.Locations(self)
+
+        #*** Instantiate any custom classifiers:
+        self.custom.instantiate_classifiers(self.custom_classifiers)
+
+        # LEGACY:
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
-        #*** Instantiate any custom classifiers:
-        self.custom.instantiate_classifiers(self.custom_classifiers)
 
     class Rule(object):
         """
@@ -198,6 +222,58 @@ class TrafficClassificationPolicy(BaseClass):
             """
             return self.__dict__
 
+    class PortSets(object):
+        """
+        An object that represents the port_sets root branch of
+        the main policy
+        """
+        def __init__(self):
+            port_set_list = []
+
+    class PortSet(object):
+        """
+        An object that represents a port set
+        """
+        def __init__(self):
+            name = ""
+            port_set_item_list = []
+
+        class PortSetItem(object):
+            """
+            An object that represents a port set item
+            """
+            def __init__(self):
+                name = ""
+                dpid = ""
+                ports = ""
+                vlan = 0
+
+    class Locations(object):
+        """
+        An object that represents the locations root branch of
+        the main policy
+        """
+        REQ_KEYS = ('locations_list', 'default_match')
+        OPT_KEYS = ()
+        def __init__(self, policy):
+            self.logger = policy.logger
+            self.yaml = policy.main_policy['locations']
+            validate_keys(self.logger, self.yaml, self.REQ_KEYS,
+                                                    self.OPT_KEYS, 'locations')
+            #*** Read in locations:
+            locations_list = []
+            for key in self.yaml['locations_list']:
+                locations_list.append(key)
+            self.logger.info("locations_list=%s", locations_list)
+            default_match = ""
+
+        class Location(object):
+            """
+            An object that represents a location
+            """
+            def __init__(self, policy):
+                name = ""
+                port_set_list = []
 
     def validate_policy(self):
         """
@@ -207,14 +283,14 @@ class TrafficClassificationPolicy(BaseClass):
         """
         self.logger.debug("Validating main policy...")
         #*** Validate that policy has a 'tc_rules' key off the root:
-        if not 'tc_rules' in self._main_policy:
+        if not 'tc_rules' in self.main_policy:
             #*** No 'tc_rules' key off the root, so log and exit:
             self.logger.critical("Missing tc_rules"
                                     "key in root of main policy")
             sys.exit("Exiting nmeta. Please fix error in "
                              "main_policy.yaml file")
         #*** Get the tc ruleset name, only one ruleset supported at this stage:
-        tc_rules_keys = list(self._main_policy['tc_rules'].keys())
+        tc_rules_keys = list(self.main_policy['tc_rules'].keys())
         if not len(tc_rules_keys) == 1:
             #*** Unsupported number of rulesets so log and exit:
             self.logger.critical("Unsupported "
@@ -226,7 +302,7 @@ class TrafficClassificationPolicy(BaseClass):
         self.logger.debug("tc_ruleset_name=%s",
                               tc_ruleset_name)
         #*** Create new variable to reference tc ruleset directly:
-        self.tc_ruleset = self._main_policy['tc_rules'][tc_ruleset_name]
+        self.tc_ruleset = self.main_policy['tc_rules'][tc_ruleset_name]
         for idx, policy_rule in enumerate(self.tc_ruleset):
             tc_rule = self.tc_ruleset[idx]
             self.logger.debug("Validating PolicyRule "
@@ -558,7 +634,7 @@ class TrafficClassificationPolicy(BaseClass):
         QoS queue number to use, otherwise 0. Works by lookup
         on qos_treatment section of main_policy
         """
-        qos_policy = self._main_policy['qos_treatment']
+        qos_policy = self.main_policy['qos_treatment']
         if qos_treatment in qos_policy:
             return qos_policy[qos_treatment]
         elif qos_treatment == 'classifier_return':
@@ -570,3 +646,46 @@ class TrafficClassificationPolicy(BaseClass):
             self.logger.error("qos_treatment=%s not found in main_policy",
                                                                  qos_treatment)
             return 0
+
+#================== Functions:
+def validate_keys(logger, source, req_keys, opt_keys, where):
+    """
+    Validate a set of keys in a source structure against required
+    and optional schema tuples to ensure that there are no missing
+    or extraneous keys
+
+    Parameters:
+     - logger: valid logger reference
+     - source: structure to validate
+     - req_keys: required keys that must exist
+     - opt_keys: optional keys that may exist
+     - where: string for debugging purposes to identity the policy location
+    """
+    if not source:
+        logger.critical("No keys in level=%s of main policy", where)
+        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    #*** validate that all required keys are present:
+    for key in source:
+        if not key in req_keys:
+            if not key in opt_keys:
+                logger.critical("Invalid key=%s in level=%s of main policy",
+                                        key, where)
+                sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    #*** Conversely, check all required keys exist:
+    for key in req_keys:
+        if not key in source:
+            logger.critical("Missing key=%s in level=%s of main policy",
+                                        key, branch)
+            sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    return 1
+
+def validate_value(logger, key, value, schema, branch):
+    """
+    validate that the value complies with the schema
+    """
+    if not value in schema:
+        logger.critical("Invalid value=%s for key=%s in level=%s of "
+                    "main policy", value, key, branch)
+        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+        return 0
+    return 1

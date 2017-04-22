@@ -438,7 +438,7 @@ def test_get_classification():
     ident = identities_class.Identities(config)
 
     #*** Initial main_policy that matches tcp-80:
-    tc = policy.TrafficClassificationPolicy(config,
+    tc = policy.Policy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_static_3.yaml")

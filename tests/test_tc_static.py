@@ -70,7 +70,7 @@ def test_check_static():
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
     #*** Instantiate match object:
-    condition = policy.TrafficClassificationPolicy.Condition()
+    condition = policy.Policy.Condition()
 
     condition.policy_attr = 'eth_src'
     condition.policy_value = pkts.ETH_SRC[0]

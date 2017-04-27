@@ -1,6 +1,7 @@
 """
 Nmeta policy.py Tests
 """
+import pytest
 
 import sys
 #*** Handle tests being in different directory branch to app code:
@@ -269,5 +270,49 @@ def test_qos():
     assert tc.qos('low_priority') == 3
     assert tc.qos('foo') == 0
 
+def test_check_stanza():
+    """
+    Test check_stanza function of PolicyCheck class
+    """
+    #*** Rules that go into schema for evaluating the policy stanza:
+    RULES = [{'key': 'locations_list', 'req': True, 'vtype': 'list'},
+             {'key': 'default_match', 'req': True, 'vtype': 'string'}]
 
+    #*** Instantiate an instance of PolicyCheck class:
+    policy_check = policy.PolicyCheck(logger)
+
+    #*** A good locations stanza of policy:
+    yaml_locations_good = {
+            'default_match': 'external',
+            'locations_list':
+                [
+                {'internal': ['port_set_location_internal']},
+                {'external': ['port_set_location_external']}
+            ]
+        }
+    #*** A bad locations stanza missing 'default_match' key:
+    yaml_locations_bad = {
+            'locations_list':
+                [
+                {'internal': ['port_set_location_internal']},
+                {'external': ['port_set_location_external']}
+            ]
+        }
+    #*** A bad locations stanza where 'locations_list' is not type list:
+    yaml_locations_bad2 = {
+            'default_match': 'external',
+            'locations_list': 'foo'
+        }
+
+    #*** Define schema for this branch of policy (excluding leaves):
+    schema = policy.StanzaSchema(name="locations", rules=RULES)
+
+    #*** Check policy branch is compliant with schema:
+    assert policy_check.check_stanza(yaml_locations_good, schema) == 1
+
+    with pytest.raises(SystemExit) as exit_info:
+        policy_check.check_stanza(yaml_locations_bad, schema)
+
+    with pytest.raises(SystemExit) as exit_info:
+        policy_check.check_stanza(yaml_locations_bad2, schema)
 

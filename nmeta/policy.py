@@ -135,6 +135,8 @@ class Policy(BaseClass):
         self.static = tc_static.StaticInspect(config)
         self.identity = tc_identity.IdentityInspect(config)
         self.custom = tc_custom.CustomInspect(config)
+        self.policy_check = PolicyCheck(self.logger)
+
 
         #*** Run a test on the ingested traffic classification policy
         #***  to ensure that it is has the all the right high level keys:
@@ -253,27 +255,51 @@ class Policy(BaseClass):
         An object that represents the locations root branch of
         the main policy
         """
-        REQ_KEYS = ('locations_list', 'default_match')
-        OPT_KEYS = ()
+        #*** Rules that define keys and value types for this branch of policy:
+        RULES = [{'key': 'locations_list', 'req': True, 'vtype': 'list'},
+                 {'key': 'default_match', 'req': True, 'vtype': 'string'}]
+
         def __init__(self, policy):
+            #*** Extract logger and policy YAML branch:
             self.logger = policy.logger
             self.yaml = policy.main_policy['locations']
-            validate_keys(self.logger, self.yaml, self.REQ_KEYS,
-                                                    self.OPT_KEYS, 'locations')
-            #*** Read in locations:
+
+            # TEMP
+            self.logger.info("locations YAML=%s", self.yaml)
+
+            #*** Define schema for this branch of policy (excluding leaves):
+            schema = StanzaSchema(name="locations", rules=self.RULES)
+
+            #*** Check policy branch is compliant with schema:
+            policy.policy_check.check_stanza(self.yaml, schema)
+
+            #*** Read in locations etc:
             locations_list = []
-            for key in self.yaml['locations_list']:
-                locations_list.append(key)
+            for idx, key in enumerate(self.yaml['locations_list']):
+                locations_list.append(self.Location(policy, idx))
             self.logger.info("locations_list=%s", locations_list)
-            default_match = ""
+            default_match = self.yaml['default_match']
 
         class Location(object):
             """
             An object that represents a location
             """
-            def __init__(self, policy):
-                name = ""
+            def __init__(self, policy, name):
+                #*** Extract logger and policy YAML:
+                self.logger = policy.logger
+                self.yaml = \
+                        policy.main_policy['locations']['locations_list'][name]
+                #*** Read in port sets (must have one or more):
                 port_set_list = []
+                if not self.yaml:
+                    self.logger.critical("Missing port sets for locations."
+                                    "locations_list.%s", name)
+                    sys.exit("Exiting nmeta. Please fix error in "
+                                            "main_policy.yaml")
+                else:
+                    for key in self.yaml:
+                        port_set_list.append(key)
+                        # TBD: check port set exists...
 
     def validate_policy(self):
         """
@@ -646,6 +672,63 @@ class Policy(BaseClass):
             self.logger.error("qos_treatment=%s not found in main_policy",
                                                                  qos_treatment)
             return 0
+
+class PolicyCheck(object):
+    """
+    This class is used to check aspects of policy to ensure
+    that they comply with schema
+
+    TBD: use voluptuous library instead???
+    https://github.com/yadutaf/voluptuous
+
+    """
+    def __init__(self, logger):
+        self.logger = logger
+
+    def check_stanza(self, stanza, schema):
+        """
+        Passed a stanza of policy in YAML and a stanza schema.
+        Carry out validation tasks to ensure the stanza complies
+        with the schema and error and halt if it doesn't
+        """
+        self.logger.debug("In check_stanza")
+        if not stanza:
+            self.logger.critical("No keys in level=%s of main policy",
+                                                                   schema.name)
+            sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+        #*** validate that all keys are valid, and values are of correct type:
+        for key in stanza:
+            found = 0
+            for rule in schema.rules:
+                if rule['key'] == key:
+                    found = 1
+            if not found:
+                self.logger.critical("Invalid key=%s in level=%s of main "
+                                        "policy", key, schema.name)
+                sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+            #*** Check value type is correct:
+            vtype =
+        #*** Conversely, check all required keys exist:
+        for rule in schema.rules:
+            if rule['req']:
+                if not rule['key'] in stanza:
+                    self.logger.critical("Missing key=%s level=%s of main "
+                                            "policy", rule['key'], schema.name)
+                    sys.exit("Exiting. Please fix error in main_policy.yaml")
+        return 1
+
+class StanzaSchema(object):
+    """
+    This class represents a schema for compliance check of
+    a policy stanza
+    """
+    def __init__(self, name="", rules=[]):
+        #*** String used to identify the schema in diagnostic logging:
+        self.name = name
+        #*** rules is a list of dictionaries of per key/value requirements:
+        #{'key': 'locations_list', 'req': True, 'vtype': 'list'}
+        self.rules = rules
+
 
 #================== Functions:
 def validate_keys(logger, source, req_keys, opt_keys, where):

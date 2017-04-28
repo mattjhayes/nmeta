@@ -31,8 +31,8 @@ import tc_static
 import tc_identity
 import tc_custom
 
-#*** Import dpkt for DNS extraction, as not native to Ryu:
-#import dpkt
+#*** Voluptuous to verify inputs against schema:
+from voluptuous import Schema, Optional, Any, MultipleInvalid, Required, Extra
 
 #*** YAML for config and policy file parsing:
 import yaml
@@ -86,12 +86,17 @@ class Policy(BaseClass):
     TBD
 
     """
-    #*** Top level keys that must exist in the main policy:
-    REQ_KEYS = ('tc_rules',
-                 'qos_treatment',
-                 'port_sets',
-                 'locations')
-    OPT_KEYS = ()
+    #*** Voluptuous schema for top level keys in the main policy:
+    TOP_LEVEL_SCHEMA = Schema({
+            'tc_rules':
+                {Extra: object},
+            'qos_treatment':
+                {Extra: object},
+            'port_sets':
+                [{Extra: object}],
+            'locations':
+                {Extra: object}
+            })
 
     def __init__(self, config, pol_dir_default=POL_DIR_DEFAULT,
                     pol_dir_user=POL_DIR_USER,
@@ -135,13 +140,10 @@ class Policy(BaseClass):
         self.static = tc_static.StaticInspect(config)
         self.identity = tc_identity.IdentityInspect(config)
         self.custom = tc_custom.CustomInspect(config)
-        self.policy_check = PolicyCheck(self.logger)
-
 
         #*** Run a test on the ingested traffic classification policy
         #***  to ensure that it is has the all the right high level keys:
-        validate_keys(self.logger, self.main_policy, self.REQ_KEYS,
-                                                    self.OPT_KEYS, 'top_level')
+        validate(self.logger, self.main_policy, self.TOP_LEVEL_SCHEMA, 'top_level')
 
         #*** Instantiate classes for the second levels of policy:
         self.locations = self.Locations(self)
@@ -673,102 +675,22 @@ class Policy(BaseClass):
                                                                  qos_treatment)
             return 0
 
-class PolicyCheck(object):
-    """
-    This class is used to check aspects of policy to ensure
-    that they comply with schema
-
-    TBD: use voluptuous library instead???
-    https://github.com/yadutaf/voluptuous
-
-    """
-    def __init__(self, logger):
-        self.logger = logger
-
-    def check_stanza(self, stanza, schema):
-        """
-        Passed a stanza of policy in YAML and a stanza schema.
-        Carry out validation tasks to ensure the stanza complies
-        with the schema and error and halt if it doesn't
-        """
-        self.logger.debug("In check_stanza")
-        if not stanza:
-            self.logger.critical("No keys in level=%s of main policy",
-                                                                   schema.name)
-            sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-        #*** validate that all keys are valid, and values are of correct type:
-        for key in stanza:
-            found = 0
-            for rule in schema.rules:
-                if rule['key'] == key:
-                    found = 1
-            if not found:
-                self.logger.critical("Invalid key=%s in level=%s of main "
-                                        "policy", key, schema.name)
-                sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-            #*** Check value type is correct:
-            vtype =
-        #*** Conversely, check all required keys exist:
-        for rule in schema.rules:
-            if rule['req']:
-                if not rule['key'] in stanza:
-                    self.logger.critical("Missing key=%s level=%s of main "
-                                            "policy", rule['key'], schema.name)
-                    sys.exit("Exiting. Please fix error in main_policy.yaml")
-        return 1
-
-class StanzaSchema(object):
-    """
-    This class represents a schema for compliance check of
-    a policy stanza
-    """
-    def __init__(self, name="", rules=[]):
-        #*** String used to identify the schema in diagnostic logging:
-        self.name = name
-        #*** rules is a list of dictionaries of per key/value requirements:
-        #{'key': 'locations_list', 'req': True, 'vtype': 'list'}
-        self.rules = rules
-
-
 #================== Functions:
-def validate_keys(logger, source, req_keys, opt_keys, where):
+def validate(logger, data, schema, where):
     """
-    Validate a set of keys in a source structure against required
-    and optional schema tuples to ensure that there are no missing
-    or extraneous keys
+    Validate data structure against schema using Voluptuous module
 
     Parameters:
      - logger: valid logger reference
-     - source: structure to validate
-     - req_keys: required keys that must exist
-     - opt_keys: optional keys that may exist
+     - data: structure to validate
+     - schema: a valid Voluptuous schema
      - where: string for debugging purposes to identity the policy location
     """
-    if not source:
-        logger.critical("No keys in level=%s of main policy", where)
+    try:
+        #*** Check correctness of data against schema with Voluptuous:
+        schema(data)
+    except MultipleInvalid as exc:
+        #*** There was a problem with the data:
+        logger.critical("Voluptuous detected a problem, exception=%s", exc)
         sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-    #*** validate that all required keys are present:
-    for key in source:
-        if not key in req_keys:
-            if not key in opt_keys:
-                logger.critical("Invalid key=%s in level=%s of main policy",
-                                        key, where)
-                sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-    #*** Conversely, check all required keys exist:
-    for key in req_keys:
-        if not key in source:
-            logger.critical("Missing key=%s in level=%s of main policy",
-                                        key, branch)
-            sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-    return 1
 
-def validate_value(logger, key, value, schema, branch):
-    """
-    validate that the value complies with the schema
-    """
-    if not value in schema:
-        logger.critical("Invalid value=%s for key=%s in level=%s of "
-                    "main policy", value, key, branch)
-        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-        return 0
-    return 1

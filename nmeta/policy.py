@@ -88,13 +88,13 @@ class Policy(BaseClass):
     """
     #*** Voluptuous schema for top level keys in the main policy:
     TOP_LEVEL_SCHEMA = Schema({
-            'tc_rules':
+            Required('tc_rules'):
                 {Extra: object},
-            'qos_treatment':
+            Required('qos_treatment'):
                 {Extra: object},
-            'port_sets':
+            Required('port_sets'):
                 [{Extra: object}],
-            'locations':
+            Required('locations'):
                 {Extra: object}
             })
 
@@ -141,9 +141,8 @@ class Policy(BaseClass):
         self.identity = tc_identity.IdentityInspect(config)
         self.custom = tc_custom.CustomInspect(config)
 
-        #*** Run a test on the ingested traffic classification policy
-        #***  to ensure that it is has the all the right high level keys:
-        validate(self.logger, self.main_policy, self.TOP_LEVEL_SCHEMA, 'top_level')
+        #*** Check the correctness of the top level of main policy:
+        validate(self.logger, self.main_policy, self.TOP_LEVEL_SCHEMA, 'top')
 
         #*** Instantiate classes for the second levels of policy:
         self.locations = self.Locations(self)
@@ -257,9 +256,12 @@ class Policy(BaseClass):
         An object that represents the locations root branch of
         the main policy
         """
-        #*** Rules that define keys and value types for this branch of policy:
-        RULES = [{'key': 'locations_list', 'req': True, 'vtype': 'list'},
-                 {'key': 'default_match', 'req': True, 'vtype': 'string'}]
+        #*** Voluptuous schema for locations branch of main policy:
+        LOCATIONS_SCHEMA = Schema({
+                'locations_list':
+                    [{Extra: object}],
+                'default_match': str
+                })
 
         def __init__(self, policy):
             #*** Extract logger and policy YAML branch:
@@ -269,11 +271,9 @@ class Policy(BaseClass):
             # TEMP
             self.logger.info("locations YAML=%s", self.yaml)
 
-            #*** Define schema for this branch of policy (excluding leaves):
-            schema = StanzaSchema(name="locations", rules=self.RULES)
-
-            #*** Check policy branch is compliant with schema:
-            policy.policy_check.check_stanza(self.yaml, schema)
+            #*** Check the correctness of the locations branch of main policy:
+            validate(self.logger, self.yaml, self.LOCATIONS_SCHEMA,
+                                                                   'locations')
 
             #*** Read in locations etc:
             locations_list = []
@@ -693,4 +693,4 @@ def validate(logger, data, schema, where):
         #*** There was a problem with the data:
         logger.critical("Voluptuous detected a problem, exception=%s", exc)
         sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-
+    return 1

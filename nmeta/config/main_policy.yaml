@@ -14,12 +14,12 @@ tc_rules:
               set_desc: "Foo"
 #
 qos_treatment:
-  # Control Quality of Service (QoS) treatment mapping of
-  #  names to output queue numbers:
-  default_priority: 0
-  constrained_bw: 1
-  high_priority: 2
-  low_priority: 3
+    # Control Quality of Service (QoS) treatment mapping of
+    #  names to output queue numbers:
+    default_priority: 0
+    constrained_bw: 1
+    high_priority: 2
+    low_priority: 3
 #
 port_sets:
     # Port Sets control what data plane ports policies and

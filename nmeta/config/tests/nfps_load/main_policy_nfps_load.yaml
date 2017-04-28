@@ -26,6 +26,11 @@ qos_treatment:
 port_sets:
     # Port Sets control what data plane ports policies and
     #  features are applied on:
+    - port_set_location_internal:
+        - VirtualSwitch1:
+            DPID: 8796748549206
+            ports: 1-3,5,66
+            vlan_id: 0
 #
 locations:
     # Locations are logical groupings of ports. Takes first match.

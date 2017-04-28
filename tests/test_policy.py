@@ -270,49 +270,29 @@ def test_qos():
     assert tc.qos('low_priority') == 3
     assert tc.qos('foo') == 0
 
-def test_check_stanza():
+    #with pytest.raises(SystemExit) as exit_info:
+    #    policy_check.check_stanza(yaml_locations_bad2, schema)
+
+
+def test_validate():
     """
-    Test check_stanza function of PolicyCheck class
+    Test the validate function of policy.py module
     """
-    #*** Rules that go into schema for evaluating the policy stanza:
-    RULES = [{'key': 'locations_list', 'req': True, 'vtype': 'list'},
-             {'key': 'default_match', 'req': True, 'vtype': 'string'}]
 
-    #*** Instantiate an instance of PolicyCheck class:
-    policy_check = policy.PolicyCheck(logger)
+    #*** Class instance:
+    policy_class = policy.Policy(config)
 
-    #*** A good locations stanza of policy:
-    yaml_locations_good = {
-            'default_match': 'external',
-            'locations_list':
-                [
-                {'internal': ['port_set_location_internal']},
-                {'external': ['port_set_location_external']}
-            ]
-        }
-    #*** A bad locations stanza missing 'default_match' key:
-    yaml_locations_bad = {
-            'locations_list':
-                [
-                {'internal': ['port_set_location_internal']},
-                {'external': ['port_set_location_external']}
-            ]
-        }
-    #*** A bad locations stanza where 'locations_list' is not type list:
-    yaml_locations_bad2 = {
-            'default_match': 'external',
-            'locations_list': 'foo'
-        }
+    good_policy = policy_class.main_policy
 
-    #*** Define schema for this branch of policy (excluding leaves):
-    schema = policy.StanzaSchema(name="locations", rules=RULES)
+    logger.debug("good_policy=%s", good_policy)
 
-    #*** Check policy branch is compliant with schema:
-    assert policy_check.check_stanza(yaml_locations_good, schema) == 1
+    #*** Check the correctness of the top level of main policy:
+    assert policy.validate(logger, good_policy, policy_class.TOP_LEVEL_SCHEMA, 'top') == 1
 
+    #*** Knock out a required key from top level of main policy:
+    bad_policy = policy_class.main_policy
+    del bad_policy['tc_rules']
+    logger.debug("bad_policy=%s", bad_policy)
     with pytest.raises(SystemExit) as exit_info:
-        policy_check.check_stanza(yaml_locations_bad, schema)
-
-    with pytest.raises(SystemExit) as exit_info:
-        policy_check.check_stanza(yaml_locations_bad2, schema)
+        policy.validate(logger, bad_policy, policy_class.TOP_LEVEL_SCHEMA, 'top')
 

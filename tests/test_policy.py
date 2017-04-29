@@ -6,6 +6,7 @@ import pytest
 #*** Use copy to create copies not linked to originals (with copy.deepcopy):
 import copy
 
+from voluptuous import Invalid, MultipleInvalid
 
 import sys
 #*** Handle tests being in different directory branch to app code:
@@ -348,3 +349,36 @@ def test_validate_locations():
     with pytest.raises(SystemExit) as exit_info:
         policy.validate_locations(logger, main_policy)
 
+def test_validate_ports():
+    """
+    Test the validate_ports function of policy.py module against various
+    good and bad ports specifications
+
+    Example:
+    1-3,5,66
+    """
+
+    ports_good1 = "1-3,5,66"
+    ports_good2 = "99"
+    ports_good3 = "1-3,5,66-99"
+    ports_good4 = "1-3, 5, 66-99"
+    ports_bad1 = "1-3,foo,66"
+    ports_bad2 = "1-b,5,66"
+    ports_bad3 = "1-3,5,66-65"
+
+    assert policy.validate_ports(ports_good1) == ports_good1
+
+    assert policy.validate_ports(ports_good2) == ports_good2
+
+    assert policy.validate_ports(ports_good3) == ports_good3
+
+    assert policy.validate_ports(ports_good4) == ports_good4
+
+    with pytest.raises(Invalid) as exit_info:
+        policy.validate_ports(ports_bad1)
+
+    with pytest.raises(Invalid) as exit_info:
+        policy.validate_ports(ports_bad2)
+
+    with pytest.raises(Invalid) as exit_info:
+        policy.validate_ports(ports_bad3)

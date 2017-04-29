@@ -32,7 +32,8 @@ import tc_identity
 import tc_custom
 
 #*** Voluptuous to verify inputs against schema:
-from voluptuous import Schema, Optional, Any, MultipleInvalid, Required, Extra
+from voluptuous import Schema, Optional, Any, Required, Extra
+from voluptuous import Invalid, MultipleInvalid
 
 #*** YAML for config and policy file parsing:
 import yaml
@@ -254,19 +255,6 @@ class Policy(BaseClass):
             """
             An object that represents a single port set
             """
-            #*** Voluptuous schema for a port set node in main policy:
-            PORT_SET_SCHEMA = Schema({
-                                Required('name'): str,
-                                Required('port_list'):
-                                    [
-                                        {
-                                        'name': str,
-                                        'DPID': int,
-                                        'ports': object, # TBD, fix this... variously interpretted as str or int but needs custom check fxn
-                                        'vlan_id': int
-                                        }
-                                    ]
-                                })
 
             def __init__(self, policy, idx):
                 #*** Extract logger and policy YAML:
@@ -274,9 +262,22 @@ class Policy(BaseClass):
                 self.yaml = \
                         policy.main_policy['port_sets']['port_set_list'][idx]
 
+                #*** Voluptuous schema for a port set node in main policy:
+                PORT_SET_SCHEMA = Schema({
+                                Required('name'): str,
+                                Required('port_list'):
+                                    [
+                                        {
+                                        'name': str,
+                                        'DPID': int,
+                                        'ports': validate_ports,
+                                        'vlan_id': int
+                                        }
+                                    ]
+                                })
+
                 #*** Check the correctness of the location policy:
-                validate(self.logger, self.yaml, self.PORT_SET_SCHEMA,
-                                                                    'port_set')
+                validate(self.logger, self.yaml, PORT_SET_SCHEMA, 'port_set')
 
     class Locations(object):
         """
@@ -747,3 +748,45 @@ def validate_locations(logger, main_policy):
                     locations['default_match'])
         sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
     return 1
+
+def validate_ports(ports):
+    """
+    Custom Voluptuous validator for a list of ports.
+
+    Example good ports specification:
+        1-3,5,66
+
+    Will raise Voluptuous Invalid exception if types or
+    ranges are not correct
+    """
+    msg = 'Ports specification contains non-integer value'
+    msg2 = 'Ports specification contains invalid range'
+    #*** Cast to String:
+    ports = str(ports)
+    #*** Split into components separated by commas:
+    for part in ports.split(','):
+        #*** Handle ranges:
+        if '-' in part:
+            a, b = part.split('-')
+            #*** can they be cast to integer?:
+            validate_type(int, a, msg)
+            validate_type(int, b, msg)
+            #*** In a port range, b must be larger than a:
+            if not int(b) > int(a):
+                raise Invalid(msg2)
+        else:
+            #*** can it be cast to integer?:
+            validate_type(int, part, msg)
+    return ports
+
+def validate_type(type, value, msg):
+    """
+    Used for Voluptuous schema validation.
+    Check a value is correct type, otherwise raise Invalid exception,
+    including elaborated version of msg
+    """
+    try:
+        return type(value)
+    except ValueError:
+        msg = msg + ", value=" + value + ", expected type=" + type.__name__
+        raise Invalid(msg)

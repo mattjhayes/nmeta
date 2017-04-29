@@ -16,22 +16,51 @@ tc_rules:
             qos_treatment: constrained_bw
 #
 qos_treatment:
-  # Control Quality of Service (QoS) treatment mapping of
-  #  names to output queue numbers:
-  default_priority: 0
-  constrained_bw: 1
-  high_priority: 2
-  low_priority: 3
+    # Control Quality of Service (QoS) treatment mapping of
+    #  names to output queue numbers:
+    default_priority: 0
+    constrained_bw: 1
+    high_priority: 2
+    low_priority: 3
 #
 port_sets:
     # Port Sets control what data plane ports policies and
-    #  features are applied on:
-    - port_set_location_internal:
-        - VirtualSwitch1:
-            DPID: 8796748549206
-            ports: 1-3,5,66
-            vlan_id: 0
+    #  features are applied on. Names must be unique.
+    port_set_list:
+        - name: port_set_location_internal
+          port_list:
+              - name: VirtualSwitch1-internal
+                DPID: 8796748549206
+                ports: 1-3,5,66
+                vlan_id: 0
+
+              - name: VirtualSwitch2-internal
+                DPID: 255
+                ports: 3,5
+                vlan_id: 0
+
+        - name: port_set_location_external
+          port_list:
+              - name: VirtualSwitch1-external
+                DPID: 8796748549206
+                ports: 6
+                vlan_id: 0
+
+              - name: VirtualSwitch2-external
+                DPID: 255
+                ports: 1-2,4
+                vlan_id: 0
 #
 locations:
     # Locations are logical groupings of ports. Takes first match.
+    locations_list:
+        - name: internal
+          port_set_list:
+            - port_set: port_set_location_internal
+
+        - name: external
+          port_set_list:
+            - port_set: port_set_location_external
+
+    default_match: external
 

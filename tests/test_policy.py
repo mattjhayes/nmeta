@@ -3,6 +3,10 @@ Nmeta policy.py Tests
 """
 import pytest
 
+#*** Use copy to create copies not linked to originals (with copy.deepcopy):
+import copy
+
+
 import sys
 #*** Handle tests being in different directory branch to app code:
 sys.path.insert(0, '../nmeta')
@@ -270,29 +274,77 @@ def test_qos():
     assert tc.qos('low_priority') == 3
     assert tc.qos('foo') == 0
 
-    #with pytest.raises(SystemExit) as exit_info:
-    #    policy_check.check_stanza(yaml_locations_bad2, schema)
-
-
 def test_validate():
     """
-    Test the validate function of policy.py module
+    Test the validate function of policy.py module against various
+    good and bad policy scenarios to ensure correct results produced
     """
-
-    #*** Class instance:
+    #*** Instantiate Policy class instance:
     policy_class = policy.Policy(config)
 
-    good_policy = policy_class.main_policy
+    #=================== Top level:
 
-    logger.debug("good_policy=%s", good_policy)
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy_class.main_policy)
 
     #*** Check the correctness of the top level of main policy:
-    assert policy.validate(logger, good_policy, policy_class.TOP_LEVEL_SCHEMA, 'top') == 1
+    assert policy.validate(logger, main_policy, policy_class.TOP_LEVEL_SCHEMA, 'top') == 1
 
-    #*** Knock out a required key from top level of main policy:
-    bad_policy = policy_class.main_policy
-    del bad_policy['tc_rules']
-    logger.debug("bad_policy=%s", bad_policy)
+    #*** Knock out a required key from top level of main policy and check that it raises exception:
+    del main_policy['tc_rules']
     with pytest.raises(SystemExit) as exit_info:
-        policy.validate(logger, bad_policy, policy_class.TOP_LEVEL_SCHEMA, 'top')
+        policy.validate(logger, main_policy, policy_class.TOP_LEVEL_SCHEMA, 'top')
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy_class.main_policy)
+
+    #*** Add an invalid key to top level of main policy and check that it raises exception:
+    main_policy['foo'] = 1
+    with pytest.raises(SystemExit) as exit_info:
+        policy.validate(logger, main_policy, policy_class.TOP_LEVEL_SCHEMA, 'top')
+
+    #=================== Locations branch
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy_class.main_policy)
+    locations_policy = main_policy['locations']
+
+    #*** Check the correctness of the locations branch of main policy:
+    assert policy.validate(logger, locations_policy, policy_class.Locations.LOCATIONS_SCHEMA, 'locations') == 1
+
+    #*** Knock out a required key from locations branch of main policy and check that it raises exception:
+    del locations_policy['default_match']
+    with pytest.raises(SystemExit) as exit_info:
+        policy.validate(logger, locations_policy, policy_class.Locations.LOCATIONS_SCHEMA, 'locations')
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy_class.main_policy)
+    locations_policy = main_policy['locations']
+
+    #*** Add an invalid key to locations branch of main policy and check that it raises exception:
+    locations_policy['foo'] = 1
+    with pytest.raises(SystemExit) as exit_info:
+        policy.validate(logger, locations_policy, policy_class.Locations.LOCATIONS_SCHEMA, 'locations')
+
+
+def test_validate_locations():
+    """
+    Test the validate_locations function of policy.py module against various
+    good and bad policy scenarios to ensure correct results produced
+    """
+    #*** Instantiate Policy class instance:
+    policy_class = policy.Policy(config)
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy_class.main_policy)
+
+    #*** Check the correctness of the locations branch of main policy:
+    assert policy.validate_locations(logger, main_policy) == 1
+
+    #*** Knock out a location referenced by default_match and check that it raises exception.
+    #***  Note assumes list item 1 is 'external'
+    del main_policy['locations']['locations_list'][1]
+    logger.debug("main_policy=%s", main_policy)
+    with pytest.raises(SystemExit) as exit_info:
+        policy.validate_locations(logger, main_policy)
 

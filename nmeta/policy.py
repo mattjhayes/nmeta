@@ -93,7 +93,7 @@ class Policy(BaseClass):
             Required('qos_treatment'):
                 {Extra: object},
             Required('port_sets'):
-                [{Extra: object}],
+                {Extra: object},
             Required('locations'):
                 {Extra: object}
             })
@@ -128,7 +128,7 @@ class Policy(BaseClass):
         #*** Ingest the policy file:
         try:
             with open(self.fullpathname, 'r') as filename:
-                self.main_policy = yaml.load(filename)
+                self.main_policy = yaml.safe_load(filename)
         except (IOError, OSError) as exception:
             self.logger.error("Failed to open policy "
                               "file=%s exception=%s",
@@ -145,6 +145,7 @@ class Policy(BaseClass):
         validate(self.logger, self.main_policy, self.TOP_LEVEL_SCHEMA, 'top')
 
         #*** Instantiate classes for the second levels of policy:
+        self.port_sets = self.PortSets(self)
         self.locations = self.Locations(self)
 
         #*** Instantiate any custom classifiers:
@@ -230,26 +231,52 @@ class Policy(BaseClass):
         An object that represents the port_sets root branch of
         the main policy
         """
-        def __init__(self):
-            port_set_list = []
+        #*** Voluptuous schema for port_sets branch of main policy:
+        PORT_SETS_SCHEMA = Schema({
+                                Required('port_set_list'):
+                                    [{Extra: object}]
+                                })
 
-    class PortSet(object):
-        """
-        An object that represents a port set
-        """
-        def __init__(self):
-            name = ""
-            port_set_item_list = []
+        def __init__(self, policy):
+            #*** Extract logger and policy YAML branch:
+            self.logger = policy.logger
+            self.yaml = policy.main_policy['port_sets']
 
-        class PortSetItem(object):
+            #*** Check the correctness of the port_sets branch of main policy:
+            validate(self.logger, self.yaml, self.PORT_SETS_SCHEMA,
+                                                                   'port_sets')
+            #*** Read in port_sets:
+            port_sets_list = []
+            for idx, key in enumerate(self.yaml['port_set_list']):
+                port_sets_list.append(self.PortSet(policy, idx))
+
+        class PortSet(object):
             """
-            An object that represents a port set item
+            An object that represents a single port set
             """
-            def __init__(self):
-                name = ""
-                dpid = ""
-                ports = ""
-                vlan = 0
+            #*** Voluptuous schema for a port set node in main policy:
+            PORT_SET_SCHEMA = Schema({
+                                Required('name'): str,
+                                Required('port_list'):
+                                    [
+                                        {
+                                        'name': str,
+                                        'DPID': int,
+                                        'ports': object, # TBD, fix this... variously interpretted as str or int but needs custom check fxn
+                                        'vlan_id': int
+                                        }
+                                    ]
+                                })
+
+            def __init__(self, policy, idx):
+                #*** Extract logger and policy YAML:
+                self.logger = policy.logger
+                self.yaml = \
+                        policy.main_policy['port_sets']['port_set_list'][idx]
+
+                #*** Check the correctness of the location policy:
+                validate(self.logger, self.yaml, self.PORT_SET_SCHEMA,
+                                                                    'port_set')
 
     class Locations(object):
         """
@@ -258,50 +285,54 @@ class Policy(BaseClass):
         """
         #*** Voluptuous schema for locations branch of main policy:
         LOCATIONS_SCHEMA = Schema({
-                'locations_list':
-                    [{Extra: object}],
-                'default_match': str
-                })
+                                Required('locations_list'):
+                                    [{Extra: object}],
+                                Required('default_match'): str
+                                })
 
         def __init__(self, policy):
             #*** Extract logger and policy YAML branch:
             self.logger = policy.logger
             self.yaml = policy.main_policy['locations']
 
-            # TEMP
-            self.logger.info("locations YAML=%s", self.yaml)
-
             #*** Check the correctness of the locations branch of main policy:
             validate(self.logger, self.yaml, self.LOCATIONS_SCHEMA,
                                                                    'locations')
+
+            #*** Extra validation of locations policy:
+            validate_locations(self.logger, policy.main_policy)
 
             #*** Read in locations etc:
             locations_list = []
             for idx, key in enumerate(self.yaml['locations_list']):
                 locations_list.append(self.Location(policy, idx))
             self.logger.info("locations_list=%s", locations_list)
-            default_match = self.yaml['default_match']
+            #*** Default location to use if no match:
+            self.default_match = self.yaml['default_match']
 
         class Location(object):
             """
-            An object that represents a location
+            An object that represents a single location
             """
-            def __init__(self, policy, name):
+            #*** Voluptuous schema for a location node in main policy:
+            LOCATION_SCHEMA = Schema({
+                                Required('name'): str,
+                                Required('port_set_list'):
+                                    [{'port_set': str}],
+                                })
+
+            def __init__(self, policy, idx):
                 #*** Extract logger and policy YAML:
                 self.logger = policy.logger
                 self.yaml = \
-                        policy.main_policy['locations']['locations_list'][name]
-                #*** Read in port sets (must have one or more):
-                port_set_list = []
-                if not self.yaml:
-                    self.logger.critical("Missing port sets for locations."
-                                    "locations_list.%s", name)
-                    sys.exit("Exiting nmeta. Please fix error in "
-                                            "main_policy.yaml")
-                else:
-                    for key in self.yaml:
-                        port_set_list.append(key)
-                        # TBD: check port set exists...
+                        policy.main_policy['locations']['locations_list'][idx]
+
+                #*** Check the correctness of the location policy:
+                validate(self.logger, self.yaml, self.LOCATION_SCHEMA,
+                                                                   'location')
+
+                #*** TBD: check that port sets exist:
+
 
     def validate_policy(self):
         """
@@ -678,7 +709,8 @@ class Policy(BaseClass):
 #================== Functions:
 def validate(logger, data, schema, where):
     """
-    Validate data structure against schema using Voluptuous module
+    Generic validation of a data structure against schema
+    using Voluptuous data validation library
 
     Parameters:
      - logger: valid logger reference
@@ -691,6 +723,27 @@ def validate(logger, data, schema, where):
         schema(data)
     except MultipleInvalid as exc:
         #*** There was a problem with the data:
-        logger.critical("Voluptuous detected a problem, exception=%s", exc)
+        logger.critical("Voluptuous detected a problem where=%s, exception=%s",
+                                                                    where, exc)
+        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    return 1
+
+def validate_locations(logger, main_policy):
+    """
+    Extra validation (in addition to Voluptuous-based validation) of the
+    locations branch of main policy
+
+    Parameters:
+     - logger: valid logger reference
+     - main_policy: The main policy in YAML
+    """
+    locations = main_policy['locations']
+    #*** The default_match must exist as a key in locations_list dicts:
+    location_list_keys = []
+    for location_list_dict in locations['locations_list']:
+        location_list_keys.append(location_list_dict['name'])
+    if not locations['default_match'] in location_list_keys:
+        logger.critical("default_match=%s does not exist in locations_list",
+                    locations['default_match'])
         sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
     return 1

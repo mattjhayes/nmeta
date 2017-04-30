@@ -232,24 +232,23 @@ class Policy(BaseClass):
         An object that represents the port_sets root branch of
         the main policy
         """
-        #*** Voluptuous schema for port_sets branch of main policy:
-        PORT_SETS_SCHEMA = Schema({
-                                Required('port_set_list'):
-                                    [{Extra: object}]
-                                })
-
         def __init__(self, policy):
             #*** Extract logger and policy YAML branch:
             self.logger = policy.logger
             self.yaml = policy.main_policy['port_sets']
 
+            #*** Voluptuous schema for port_sets branch of main policy:
+            PORT_SETS_SCHEMA = Schema({
+                                Required('port_set_list'):
+                                    [{Extra: object}]
+                                })
+
             #*** Check the correctness of the port_sets branch of main policy:
-            validate(self.logger, self.yaml, self.PORT_SETS_SCHEMA,
-                                                                   'port_sets')
+            validate(self.logger, self.yaml, PORT_SETS_SCHEMA, 'port_sets')
             #*** Read in port_sets:
-            port_sets_list = []
+            self.port_sets_list = []
             for idx, key in enumerate(self.yaml['port_set_list']):
-                port_sets_list.append(self.PortSet(policy, idx))
+                self.port_sets_list.append(self.PortSet(policy, idx))
 
         class PortSet(object):
             """
@@ -278,6 +277,46 @@ class Policy(BaseClass):
 
                 #*** Check the correctness of the location policy:
                 validate(self.logger, self.yaml, PORT_SET_SCHEMA, 'port_set')
+
+                #*** Build searchable lists of ports
+                #***  (ranges turned into multiple single values):
+                port_list = self.yaml['port_list']
+                for ports in port_list:
+                    ports['ports_xform'] = transform_ports(ports['ports'])
+
+            def is_member(self, dpid, port, vlan_id=0):
+                """
+                Check to see supplied dpid/port/vlan_id is member of
+                this port set.
+
+                Returns a Boolean
+                """
+                #*** Validate dpid is an integer (and coerce if required):
+                msg = 'dpid must be integer'
+                dpid = validate_type(int, dpid, msg)
+
+                #*** Validate port is an integer (and coerce if required):
+                msg = 'Port must be integer'
+                port = validate_type(int, port, msg)
+
+                #*** Validate vlan_id is an integer (and coerce if required):
+                msg = 'vlan_id must be integer'
+                vlan_id = validate_type(int, vlan_id, msg)
+
+                #*** Iterate through port list looking for a match:
+                port_list = self.yaml['port_list']
+                for ports in port_list:
+                    self.logger.info("Checking dpid=%s, port=%s, vlan_id=%s against ports=%s", dpid, port, vlan_id, ports)
+                    if not ports['DPID'] == dpid:
+                        self.logger.info("did not match dpid")
+                        continue
+                    if not ports['vlan_id'] == vlan_id:
+                        self.logger.info("did not match vlan_id")
+                        continue
+                    if port in ports['ports_xform']:
+                        return 1
+                self.logger.info("no match, returning 0")
+                return 0
 
     class Locations(object):
         """
@@ -790,3 +829,22 @@ def validate_type(type, value, msg):
     except ValueError:
         msg = msg + ", value=" + value + ", expected type=" + type.__name__
         raise Invalid(msg)
+
+def transform_ports(ports):
+    """
+    Passed a ports specification and return a list of
+    port numbers for easy searching.
+    Example:
+    Ports specification "1-3,5,66" becomes list [1,2,3,5,66]
+    """
+    result = []
+    ports = str(ports)
+    for part in ports.split(','):
+        if '-' in part:
+            a, b = part.split('-')
+            a, b = int(a), int(b)
+            result.extend(range(a, b + 1))
+        else:
+            a = int(part)
+            result.append(a)
+    return result

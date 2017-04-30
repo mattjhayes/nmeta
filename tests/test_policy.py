@@ -275,6 +275,19 @@ def test_qos():
     assert tc.qos('low_priority') == 3
     assert tc.qos('foo') == 0
 
+def test_port_set_is_member():
+    """
+    Test that the PortSet class method is_member works correctly
+    """
+    #*** Instantiate Policy class instance:
+    policy_class = policy.Policy(config)
+
+    assert policy_class.port_sets.port_sets_list[0].is_member(255, 5, 0) == 1
+    assert policy_class.port_sets.port_sets_list[0].is_member(255, 4, 0) == 0
+    assert policy_class.port_sets.port_sets_list[0].is_member(256, 5, 0) == 0
+    assert policy_class.port_sets.port_sets_list[0].is_member(255, 5, 1) == 0
+    assert policy_class.port_sets.port_sets_list[0].is_member(8796748549206, 2, 0) == 1
+
 def test_validate():
     """
     Test the validate function of policy.py module against various
@@ -362,8 +375,11 @@ def test_validate_ports():
     ports_good2 = "99"
     ports_good3 = "1-3,5,66-99"
     ports_good4 = "1-3, 5, 66-99"
+
+    #*** Non-integer values:
     ports_bad1 = "1-3,foo,66"
     ports_bad2 = "1-b,5,66"
+    #*** Invalid range:
     ports_bad3 = "1-3,5,66-65"
 
     assert policy.validate_ports(ports_good1) == ports_good1
@@ -382,3 +398,22 @@ def test_validate_ports():
 
     with pytest.raises(Invalid) as exit_info:
         policy.validate_ports(ports_bad3)
+
+def test_transform_ports():
+    """
+    Test the transform_ports function of policy.py module against various
+    ports specifications
+
+    Example:
+    Ports specification "1-3,5,66" should become list [1,2,3,5,66]
+    """
+
+    ports1 = "1-3,5,66"
+    ports_list1 = [1,2,3,5,66]
+
+    ports2 = "10-15, 19-26"
+    ports_list2 = [10,11,12,13,14,15,19,20,21,22,23,24,25,26]
+
+    assert policy.transform_ports(ports1) == ports_list1
+
+    assert policy.transform_ports(ports2) == ports_list2

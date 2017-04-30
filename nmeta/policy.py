@@ -250,6 +250,17 @@ class Policy(BaseClass):
             for idx, key in enumerate(self.yaml['port_set_list']):
                 self.port_sets_list.append(self.PortSet(policy, idx))
 
+        def get_port_set(self, dpid, port, vlan_id=0):
+            """
+            Check if supplied dpid/port/vlan_id is member of
+            a port set and if so, return the port_set name. If no
+            match return empty string.
+            """
+            for idx in self.port_sets_list:
+                if idx.is_member(dpid, port, vlan_id):
+                    return idx.name
+            return ""
+
         class PortSet(object):
             """
             An object that represents a single port set
@@ -260,7 +271,7 @@ class Policy(BaseClass):
                 self.logger = policy.logger
                 self.yaml = \
                         policy.main_policy['port_sets']['port_set_list'][idx]
-
+                self.name = self.yaml['name']
                 #*** Voluptuous schema for a port set node in main policy:
                 PORT_SET_SCHEMA = Schema({
                                 Required('name'): str,
@@ -350,6 +361,12 @@ class Policy(BaseClass):
             #*** Default location to use if no match:
             self.default_match = self.yaml['default_match']
 
+        def get_location():
+            """
+            TBD
+            """
+            pass
+
         class Location(object):
             """
             An object that represents a single location
@@ -371,8 +388,9 @@ class Policy(BaseClass):
                 validate(self.logger, self.yaml, self.LOCATION_SCHEMA,
                                                                    'location')
 
-                #*** TBD: check that port sets exist:
-
+                #*** Check that port sets exist:
+                validate_port_set_list(self.logger, self.yaml['port_set_list'],
+                                                                        policy)
 
     def validate_policy(self):
         """
@@ -747,11 +765,11 @@ class Policy(BaseClass):
             return 0
 
 #================== Functions:
+
 def validate(logger, data, schema, where):
     """
     Generic validation of a data structure against schema
     using Voluptuous data validation library
-
     Parameters:
      - logger: valid logger reference
      - data: structure to validate
@@ -770,15 +788,14 @@ def validate(logger, data, schema, where):
 
 def validate_locations(logger, main_policy):
     """
-    Extra validation (in addition to Voluptuous-based validation) of the
-    locations branch of main policy
-
+    Extra policy validation (in addition to Voluptuous-based validation)
+    of the locations branch of main policy
     Parameters:
      - logger: valid logger reference
      - main_policy: The main policy in YAML
     """
     locations = main_policy['locations']
-    #*** The default_match must exist as a key in locations_list dicts:
+    #*** Check the default_match value exists as a key in locations_list dicts:
     location_list_keys = []
     for location_list_dict in locations['locations_list']:
         location_list_keys.append(location_list_dict['name'])
@@ -791,10 +808,8 @@ def validate_locations(logger, main_policy):
 def validate_ports(ports):
     """
     Custom Voluptuous validator for a list of ports.
-
     Example good ports specification:
         1-3,5,66
-
     Will raise Voluptuous Invalid exception if types or
     ranges are not correct
     """
@@ -817,6 +832,22 @@ def validate_ports(ports):
             #*** can it be cast to integer?:
             validate_type(int, part, msg)
     return ports
+
+def validate_port_set_list(logger, port_set_list, policy):
+    """
+    Validate that a list of dictionaries [{'port_set': str}]
+    reference valid port_sets. Return Boolean 1 if good otherwise
+    exit with exception
+    """
+    for port_set_dict in port_set_list:
+        found = 0
+        for port_set in policy.port_sets.port_sets_list:
+            if port_set.name == port_set_dict['port_set']:
+                found = 1
+        if not found:
+            logger.critical("Undefined port_set=%s", port_set_dict['port_set'])
+            sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    return 1
 
 def validate_type(type, value, msg):
     """

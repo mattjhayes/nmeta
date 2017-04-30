@@ -275,18 +275,34 @@ def test_qos():
     assert tc.qos('low_priority') == 3
     assert tc.qos('foo') == 0
 
-def test_port_set_is_member():
+def test_portsets_get_port_set():
+    """
+    Test that get_port_set returns correct port_set name
+    """
+    #*** Instantiate Policy class instance:
+    policy_class = policy.Policy(config)
+
+    #*** Positive matches:
+    assert policy_class.port_sets.get_port_set(255, 5, 0) == "port_set_location_internal"
+    assert policy_class.port_sets.get_port_set(8796748549206, 6, 0) == "port_set_location_external"
+
+    #*** Shouldn't match:
+    assert policy_class.port_sets.get_port_set(1234, 5, 0) == ""
+
+def test_portset_is_member():
     """
     Test that the PortSet class method is_member works correctly
     """
     #*** Instantiate Policy class instance:
     policy_class = policy.Policy(config)
 
+    #*** Members:
     assert policy_class.port_sets.port_sets_list[0].is_member(255, 5, 0) == 1
+    assert policy_class.port_sets.port_sets_list[0].is_member(8796748549206, 2, 0) == 1
+    #*** Not members:
     assert policy_class.port_sets.port_sets_list[0].is_member(255, 4, 0) == 0
     assert policy_class.port_sets.port_sets_list[0].is_member(256, 5, 0) == 0
     assert policy_class.port_sets.port_sets_list[0].is_member(255, 5, 1) == 0
-    assert policy_class.port_sets.port_sets_list[0].is_member(8796748549206, 2, 0) == 1
 
 def test_validate():
     """
@@ -361,6 +377,26 @@ def test_validate_locations():
     logger.debug("main_policy=%s", main_policy)
     with pytest.raises(SystemExit) as exit_info:
         policy.validate_locations(logger, main_policy)
+
+def test_validate_port_set_list():
+    """
+    Test the validate_port_set_list function of policy.py module against
+    various good and bad policy scenarios to ensure correct results produced
+    """
+    #*** Instantiate Policy class instance:
+    policy_class = policy.Policy(config)
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy_class.main_policy)
+
+    port_set_list = main_policy['locations']['locations_list'][0]['port_set_list']
+    assert policy.validate_port_set_list(logger, port_set_list, policy_class) == 1
+
+    #*** Add a bad port_set:
+    bad_port_set = {'port_set': 'foobar'}
+    port_set_list.append(bad_port_set)
+    with pytest.raises(SystemExit) as exit_info:
+        policy.validate_port_set_list(logger, port_set_list, policy_class)
 
 def test_validate_ports():
     """

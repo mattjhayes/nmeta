@@ -80,14 +80,14 @@ class NMeta(app_manager.RyuApp, BaseClass):
                                        "nmeta_logging_level_c")
 
         #*** Instantiate Module Classes:
-        self.tc_policy = policy.Policy(self.config)
+        self.policy = policy.Policy(self.config)
         self.switches = switches.Switches(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
 
         #*** Instantiate a flow object for conversation metadata:
         self.flow = flows.Flow(self.config)
         #*** Instantiate an identity object for participant metadata:
-        self.ident = identities.Identities(self.config)
+        self.ident = identities.Identities(self.config, self.policy)
 
         #*** Set up database collection for packet-in processing time:
         mongo_addr = self.config.get_value("mongo_addr")
@@ -172,7 +172,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does update flow.classified.*:
         if not self.flow.classification.classified:
-            self.tc_policy.check_policy(self.flow, self.ident)
+            self.policy.check_policy(self.flow, self.ident)
             self.logger.debug("classification=%s",
                                              self.flow.classification.dbdict())
             #*** Write classification result to classifications collection:
@@ -195,7 +195,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         actions = self.flow.classification.actions
         #*** Set QoS queue based on any QoS actions:
         if 'qos_treatment' in actions:
-            out_queue = self.tc_policy.qos(actions['qos_treatment'])
+            out_queue = self.policy.qos(actions['qos_treatment'])
             self.logger.debug("QoS output_queue=%s", out_queue)
         else:
             out_queue = 0

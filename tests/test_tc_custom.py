@@ -26,9 +26,9 @@ import datetime
 #*** nmeta imports:
 import nmeta
 import config
-import flows as flow_class
-import identities as identities_class
-import policy
+import flows as flows_module
+import identities as identities_module
+import policy as policy_module
 import tc_custom
 
 #*** nmeta test packet imports:
@@ -52,20 +52,21 @@ def test_statistical_classifier():
     INPORT1 = 1
 
     #*** Instantiate class object:
-    flow = flow_class.Flow(config)    #*** Test DPIDs and in ports:
+    flow = flows_module.Flow(config)    #*** Test DPIDs and in ports:
     DPID1 = 1
     INPORT1 = 1
 
     #*** Instantiate class objects:
-    flow = flow_class.Flow(config)
-    ident = identities_class.Identities(config)
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    ident = identities_module.Identities(config, policy)
 
     #*** Instantiate custom classifiers
     tc_cust = tc_custom.CustomInspect(config)
     tc_cust.instantiate_classifiers(['statistical_qos_bandwidth_1'])
 
     #*** Instantiate match object:
-    condition = policy.Policy.Condition()
+    condition = policy_module.Policy.Condition()
 
     #*** Ingest sufficient packets to complete statistical classification (7):
 

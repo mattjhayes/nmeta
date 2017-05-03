@@ -317,7 +317,6 @@ class Policy(BaseClass):
                 #*** Iterate through port list looking for a match:
                 port_list = self.yaml['port_list']
                 for ports in port_list:
-                    self.logger.info("Checking dpid=%s, port=%s, vlan_id=%s against ports=%s", dpid, port, vlan_id, ports)
                     if not ports['DPID'] == dpid:
                         self.logger.info("did not match dpid")
                         continue
@@ -334,17 +333,17 @@ class Policy(BaseClass):
         An object that represents the locations root branch of
         the main policy
         """
-        #*** Voluptuous schema for locations branch of main policy:
-        LOCATIONS_SCHEMA = Schema({
-                                Required('locations_list'):
-                                    [{Extra: object}],
-                                Required('default_match'): str
-                                })
-
         def __init__(self, policy):
             #*** Extract logger and policy YAML branch:
             self.logger = policy.logger
             self.yaml = policy.main_policy['locations']
+
+            #*** Voluptuous schema for locations branch of main policy:
+            self.LOCATIONS_SCHEMA = Schema({
+                                Required('locations_list'):
+                                    [{Extra: object}],
+                                Required('default_match'): str
+                                })
 
             #*** Check the correctness of the locations branch of main policy:
             validate(self.logger, self.yaml, self.LOCATIONS_SCHEMA,
@@ -354,43 +353,67 @@ class Policy(BaseClass):
             validate_locations(self.logger, policy.main_policy)
 
             #*** Read in locations etc:
-            locations_list = []
+            self.locations_list = []
             for idx, key in enumerate(self.yaml['locations_list']):
-                locations_list.append(self.Location(policy, idx))
-            self.logger.info("locations_list=%s", locations_list)
+                self.locations_list.append(self.Location(policy, idx))
+            self.logger.info("self.locations_list=%s", self.locations_list)
             #*** Default location to use if no match:
             self.default_match = self.yaml['default_match']
 
-        def get_location():
+        def get_location(self, dpid, port):
             """
-            TBD
+            Passed a DPID and port and return a logical location
+            name, as per policy configuration.
             """
-            pass
+            result = ""
+            for location in self.locations_list:
+                result = location.check(dpid, port)
+                if result:
+                    return result
+            return self.default_match
 
         class Location(object):
             """
             An object that represents a single location
             """
-            #*** Voluptuous schema for a location node in main policy:
-            LOCATION_SCHEMA = Schema({
+
+            def __init__(self, policy, idx):
+                #*** Extract logger and policy YAML:
+                self.logger = policy.logger
+                self.policy = policy
+                self.yaml = \
+                        policy.main_policy['locations']['locations_list'][idx]
+
+                #*** Voluptuous schema for a location node in main policy:
+                LOCATION_SCHEMA = Schema({
                                 Required('name'): str,
                                 Required('port_set_list'):
                                     [{'port_set': str}],
                                 })
 
-            def __init__(self, policy, idx):
-                #*** Extract logger and policy YAML:
-                self.logger = policy.logger
-                self.yaml = \
-                        policy.main_policy['locations']['locations_list'][idx]
-
                 #*** Check the correctness of the location policy:
-                validate(self.logger, self.yaml, self.LOCATION_SCHEMA,
-                                                                   'location')
+                validate(self.logger, self.yaml, LOCATION_SCHEMA, 'location')
 
                 #*** Check that port sets exist:
                 validate_port_set_list(self.logger, self.yaml['port_set_list'],
                                                                         policy)
+
+                #*** Store data from YAML into this class:
+                self.name = self.yaml['name']
+                self.port_set_list = self.yaml['port_set_list']
+
+            def check(self, dpid, port):
+                """
+                Check a dpid/port to see if it is part of this location
+                and if so return the string name of the location otherwise
+                return empty string
+                """
+                port_set_membership = \
+                                 self.policy.port_sets.get_port_set(dpid, port)
+                for port_set in self.port_set_list:
+                    if port_set['port_set'] == port_set_membership:
+                        return self.name
+                return ""
 
     def validate_policy(self):
         """

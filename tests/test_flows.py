@@ -55,9 +55,9 @@ from ryu.lib import addrconv
 #*** nmeta imports:
 import nmeta
 import config
-import flows as flow_class
-import policy
-import identities
+import flows as flows_module
+import policy as policy_module
+import identities as identities_module
 import nethash
 
 #*** nmeta test packet imports:
@@ -92,7 +92,7 @@ def test_flow_ipv4_http():
     assert eth_src == '08:00:27:2a:d6:dd'
 
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
@@ -133,7 +133,7 @@ def test_flow_ipv4_http2():
     so TCP session nicely torn down with FINs
     """
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Test Flow 2 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
@@ -192,7 +192,7 @@ def test_flow_ipv4_tcp_reset():
     shutdown with a TCP RST
     """
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Test Flow 2 Packet 1 (Client SYN on TCP-81):
     flow.ingest_packet(DPID1, INPORT1, pkts3.RAW[0], datetime.datetime.now())
@@ -209,7 +209,7 @@ def test_flow_LLDP():
     """
 
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Test LLDP ingestion:
     flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0],
@@ -234,14 +234,15 @@ def test_classification_static():
     Create a classification object, record it to DB then check
     that classification can be retrieved
     """
-    #*** Instantiate classes:
-    flow = flow_class.Flow(config)
-    ident = identities.Identities(config)
     #*** Initial main_policy won't match as looking for tcp-1234:
-    tc = policy.Policy(config,
+    policy = policy_module.Policy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")
+
+    #*** Instantiate flow and identities objects:
+    flow = flows_module.Flow(config)
+    ident = identities_module.Identities(config, policy)
 
     #*** Ingest Flow 2 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
@@ -254,7 +255,7 @@ def test_classification_static():
     assert flow.classification.actions == {}
 
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
 
     #*** Unmatched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -264,13 +265,13 @@ def test_classification_static():
     assert flow.classification.actions == {}
 
     #*** Initial main_policy that matches tcp-80:
-    tc = policy.Policy(config,
+    policy = policy_module.Policy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static_3.yaml")
 
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
 
     #*** Matched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -282,7 +283,7 @@ def test_classification_static():
     #*** Now test that classification remains after ingesting more packets
     #***  on same flow.
     #*** Load main_policy that matches dst tcp-80:
-    tc = policy.Policy(config,
+    policy = policy_module.Policy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static_4.yaml")
@@ -290,7 +291,7 @@ def test_classification_static():
     #*** Ingest Flow 1 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
 
     logger.debug("pkt0 flow classification is %s", flow.classification.dbdict())
 
@@ -316,7 +317,7 @@ def test_classification_static():
     #*** classified is set.
     if not flow.classification.classified:
         #*** Classify the packet:
-        tc.check_policy(flow, ident)
+        policy.check_policy(flow, ident)
 
     logger.debug("pkt1b flow classification is %s", flow.classification.dbdict())
 
@@ -338,7 +339,7 @@ def test_record_removal():
     OFP_VERSION = ofproto_v1_3.OFP_VERSION
 
     #*** Instantiate Flow class:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Load JSON representations of flow removed messages:
     with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
@@ -391,15 +392,16 @@ def test_classification_identity():
     Create a classification object, record it to DB then check
     that classification can be retrieved
     """
-    #*** Instantiate classes:
-    flow = flow_class.Flow(config)
-    ident = identities.Identities(config)
     #*** Load main_policy that matches identity pc1
     #*** and has action to constrain it's bandwidth:
-    tc = policy.Policy(config,
-                        pol_dir_default="config/tests/regression",
-                        pol_dir_user="config/tests/foo",
-                        pol_filename="main_policy_regression_identity_2.yaml")
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_identity_2.yaml")
+
+    #*** Instantiate flow and identities objects:
+    flow = flows_module.Flow(config)
+    ident = identities_module.Identities(config, policy)
 
     #*** Ingest and harvest LLDP Packet 2 (lg1) that shouldn't match:
     # 206 08:00:27:21:4f:ea 01:80:c2:00:00:0e LLDP NoS = 08:00:27:21:4f:ea
@@ -412,7 +414,7 @@ def test_classification_identity():
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
 
     #*** Unmatched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -435,7 +437,7 @@ def test_classification_identity():
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
 
     #*** Matched classification state:
     assert flow.classification.flow_hash == flow.packet.flow_hash
@@ -455,14 +457,15 @@ def test_indexing():
     The most recent packet is the one that the flow context is in
     and it only has one other packet ingested (i.e. packet_count == 2)
     """
-    #*** Instantiate classes:
-    flow = flow_class.Flow(config)
-    ident = identities.Identities(config)
     #*** Initial main_policy won't match as looking for tcp-1234:
-    tc = policy.Policy(config,
+    policy = policy_module.Policy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")
+
+    #*** Instantiate flow and identities objects:
+    flow = flows_module.Flow(config)
+    ident = identities_module.Identities(config, policy)
 
     #*** Ingest packets older than flow timeout:
     flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[0], datetime.datetime.now() - datetime.timedelta \
@@ -472,20 +475,20 @@ def test_indexing():
     #*** Ingest current packets from two different flows:
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
     flow.classification.commit()
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[1], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[1], datetime.datetime.now())
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
     flow.classification.commit()
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[4], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[5], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[6], datetime.datetime.now())
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
     flow.classification.commit()
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[7], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[8], datetime.datetime.now())
@@ -494,7 +497,7 @@ def test_indexing():
     flow.ingest_packet(DPID1, INPORT2, pkts2.RAW[11], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[2], datetime.datetime.now())
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
     flow.classification.commit()
 
     #*** Test packet_ins collection indexing...
@@ -528,7 +531,7 @@ def test_record_suppression():
     Test the recording of a flow suppression event
     """
     #*** Instantiate Flow class:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Ingest a packet from pc1:
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]

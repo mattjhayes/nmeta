@@ -35,8 +35,9 @@ import dpkt
 #*** nmeta imports:
 import nmeta
 import config
-import flows as flow_class
-import identities as identities_class
+import flows as flows_module
+import identities as identities_module
+import policy as policy_module
 
 #*** nmeta test packet imports:
 import packets_ipv4_ARP as pkts_arp
@@ -63,9 +64,10 @@ def test_harvest_ARP():
     """
     Test harvesting identity metadata from an IPv4 ARP reply.
     """
-    #*** Instantiate flow and identities objects:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** Server ARP Reply:
     flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[1], datetime.datetime.now())
@@ -81,9 +83,10 @@ def test_harvest_DHCP():
     Note: this test is very basic and does not cover much...
     TBD: cover more scenarios and DHCP message types
     """
-    #*** Instantiate flow and identities objects:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** Client to Server DHCP Request:
     flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
@@ -133,9 +136,10 @@ def test_harvest_LLDP():
     """
     Test harvesting identity metadata from LLDP packets
     """
-    #*** Instantiate flow and identities objects:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** Test no result found by checking before LLDP ingestion:
     result_identity = identities.findbynode(pkts_lldp.LLDP_SYSTEM_NAME[0])
@@ -178,9 +182,10 @@ def test_harvest_DNS():
     """
     Test harvesting identity metadata from DNS packets
     """
-    #*** Instantiate flow and identities objects:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
     flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
@@ -201,9 +206,10 @@ def test_indexing():
     then test how well queries perform against it to
 
     """
-    #*** Instantiate flow and identities objects:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     flow.ingest_packet(DPID1, INPORT2, pkts_lldp.RAW[0], datetime.datetime.now())
     identities.harvest(pkts_lldp.RAW[0], flow.packet)

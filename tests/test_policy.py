@@ -318,12 +318,12 @@ def test_validate():
     main_policy = copy.deepcopy(policy.main_policy)
 
     #*** Check the correctness of the top level of main policy:
-    assert policy_module.validate(logger, main_policy, policy.TOP_LEVEL_SCHEMA, 'top') == 1
+    assert policy_module.validate(logger, main_policy, policy_module.TOP_LEVEL_SCHEMA, 'top') == 1
 
     #*** Knock out a required key from top level of main policy and check that it raises exception:
     del main_policy['tc_rules']
     with pytest.raises(SystemExit) as exit_info:
-        policy_module.validate(logger, main_policy, policy.TOP_LEVEL_SCHEMA, 'top')
+        policy_module.validate(logger, main_policy, policy_module.TOP_LEVEL_SCHEMA, 'top')
 
     #*** Get a copy of the main policy YAML:
     main_policy = copy.deepcopy(policy.main_policy)
@@ -331,7 +331,7 @@ def test_validate():
     #*** Add an invalid key to top level of main policy and check that it raises exception:
     main_policy['foo'] = 1
     with pytest.raises(SystemExit) as exit_info:
-        policy_module.validate(logger, main_policy, policy.TOP_LEVEL_SCHEMA, 'top')
+        policy_module.validate(logger, main_policy, policy_module.TOP_LEVEL_SCHEMA, 'top')
 
     #=================== Locations branch
 
@@ -340,12 +340,12 @@ def test_validate():
     locations_policy = main_policy['locations']
 
     #*** Check the correctness of the locations branch of main policy:
-    assert policy_module.validate(logger, locations_policy, policy.locations.LOCATIONS_SCHEMA, 'locations') == 1
+    assert policy_module.validate(logger, locations_policy, policy_module.LOCATIONS_SCHEMA, 'locations') == 1
 
     #*** Knock out a required key from locations branch of main policy and check that it raises exception:
     del locations_policy['default_match']
     with pytest.raises(SystemExit) as exit_info:
-        policy_module.validate(logger, locations_policy, policy.locations.LOCATIONS_SCHEMA, 'locations')
+        policy_module.validate(logger, locations_policy, policy_module.LOCATIONS_SCHEMA, 'locations')
 
     #*** Get a copy of the main policy YAML:
     main_policy = copy.deepcopy(policy.main_policy)
@@ -354,7 +354,7 @@ def test_validate():
     #*** Add an invalid key to locations branch of main policy and check that it raises exception:
     locations_policy['foo'] = 1
     with pytest.raises(SystemExit) as exit_info:
-        policy_module.validate(logger, locations_policy, policy.locations.LOCATIONS_SCHEMA, 'locations')
+        policy_module.validate(logger, locations_policy, policy_module.LOCATIONS_SCHEMA, 'locations')
 
 
 def test_validate_locations():

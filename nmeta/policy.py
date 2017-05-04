@@ -41,6 +41,168 @@ import yaml
 #*** For logging configuration:
 from baseclass import BaseClass
 
+#================== Functions (need to come first):
+
+def validate(logger, data, schema, where):
+    """
+    Generic validation of a data structure against schema
+    using Voluptuous data validation library
+    Parameters:
+     - logger: valid logger reference
+     - data: structure to validate
+     - schema: a valid Voluptuous schema
+     - where: string for debugging purposes to identity the policy location
+    """
+    try:
+        #*** Check correctness of data against schema with Voluptuous:
+        schema(data)
+    except MultipleInvalid as exc:
+        #*** There was a problem with the data:
+        logger.critical("Voluptuous detected a problem where=%s, exception=%s",
+                                                                    where, exc)
+        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    return 1
+
+def validate_locations(logger, main_policy):
+    """
+    Extra policy validation (in addition to Voluptuous-based validation)
+    of the locations branch of main policy
+    Parameters:
+     - logger: valid logger reference
+     - main_policy: The main policy in YAML
+    """
+    locations = main_policy['locations']
+    #*** Check the default_match value exists as a key in locations_list dicts:
+    location_list_keys = []
+    for location_list_dict in locations['locations_list']:
+        location_list_keys.append(location_list_dict['name'])
+    if not locations['default_match'] in location_list_keys:
+        logger.critical("default_match=%s does not exist in locations_list",
+                    locations['default_match'])
+        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    return 1
+
+def validate_port_set_list(logger, port_set_list, policy):
+    """
+    Validate that a list of dictionaries [{'port_set': str}]
+    reference valid port_sets. Return Boolean 1 if good otherwise
+    exit with exception
+    """
+    for port_set_dict in port_set_list:
+        found = 0
+        for port_set in policy.port_sets.port_sets_list:
+            if port_set.name == port_set_dict['port_set']:
+                found = 1
+        if not found:
+            logger.critical("Undefined port_set=%s", port_set_dict['port_set'])
+            sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    return 1
+
+def validate_type(type, value, msg):
+    """
+    Used for Voluptuous schema validation.
+    Check a value is correct type, otherwise raise Invalid exception,
+    including elaborated version of msg
+    """
+    try:
+        return type(value)
+    except ValueError:
+        msg = msg + ", value=" + value + ", expected type=" + type.__name__
+        raise Invalid(msg)
+
+def transform_ports(ports):
+    """
+    Passed a ports specification and return a list of
+    port numbers for easy searching.
+    Example:
+    Ports specification "1-3,5,66" becomes list [1,2,3,5,66]
+    """
+    result = []
+    ports = str(ports)
+    for part in ports.split(','):
+        if '-' in part:
+            a, b = part.split('-')
+            a, b = int(a), int(b)
+            result.extend(range(a, b + 1))
+        else:
+            a = int(part)
+            result.append(a)
+    return result
+
+def validate_ports(ports):
+    """
+    Custom Voluptuous validator for a list of ports.
+    Example good ports specification:
+        1-3,5,66
+    Will raise Voluptuous Invalid exception if types or
+    ranges are not correct
+    """
+    msg = 'Ports specification contains non-integer value'
+    msg2 = 'Ports specification contains invalid range'
+    #*** Cast to String:
+    ports = str(ports)
+    #*** Split into components separated by commas:
+    for part in ports.split(','):
+        #*** Handle ranges:
+        if '-' in part:
+            a, b = part.split('-')
+            #*** can they be cast to integer?:
+            validate_type(int, a, msg)
+            validate_type(int, b, msg)
+            #*** In a port range, b must be larger than a:
+            if not int(b) > int(a):
+                raise Invalid(msg2)
+        else:
+            #*** can it be cast to integer?:
+            validate_type(int, part, msg)
+    return ports
+
+#================= Voluptuous Schema for Validating Policy
+
+#*** Voluptuous schema for top level keys in the main policy:
+TOP_LEVEL_SCHEMA = Schema({
+                        Required('tc_rules'):
+                            {Extra: object},
+                        Required('qos_treatment'):
+                            {Extra: object},
+                        Required('port_sets'):
+                            {Extra: object},
+                        Required('locations'):
+                            {Extra: object}
+                        })
+#*** Voluptuous schema for port_sets branch of main policy:
+PORT_SETS_SCHEMA = Schema({
+                        Required('port_set_list'):
+                            [{Extra: object}]
+                        })
+#*** Voluptuous schema for a port set node in main policy:
+PORT_SET_SCHEMA = Schema({
+                        Required('name'): str,
+                        Required('port_list'):
+                            [
+                                {
+                                'name': str,
+                                'DPID': int,
+                                'ports': validate_ports,
+                                'vlan_id': int
+                                }
+                            ]
+                        })
+#*** Voluptuous schema for locations branch of main policy:
+LOCATIONS_SCHEMA = Schema({
+                        Required('locations_list'):
+                            [{Extra: object}],
+                        Required('default_match'): str
+                        })
+#*** Voluptuous schema for a location node in main policy:
+LOCATION_SCHEMA = Schema({
+                        Required('name'): str,
+                        Required('port_set_list'):
+                            [{'port_set': str}],
+                        })
+
+#================= Legacy Schema
+
 #*** Describe supported syntax in main_policy.yaml so that it can be tested
 #*** for validity. Here are valid policy rule attributes:
 TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment',
@@ -87,18 +249,6 @@ class Policy(BaseClass):
     TBD
 
     """
-    #*** Voluptuous schema for top level keys in the main policy:
-    TOP_LEVEL_SCHEMA = Schema({
-            Required('tc_rules'):
-                {Extra: object},
-            Required('qos_treatment'):
-                {Extra: object},
-            Required('port_sets'):
-                {Extra: object},
-            Required('locations'):
-                {Extra: object}
-            })
-
     def __init__(self, config, pol_dir_default=POL_DIR_DEFAULT,
                     pol_dir_user=POL_DIR_USER,
                     pol_filename=POL_FILENAME):
@@ -143,7 +293,7 @@ class Policy(BaseClass):
         self.custom = tc_custom.CustomInspect(config)
 
         #*** Check the correctness of the top level of main policy:
-        validate(self.logger, self.main_policy, self.TOP_LEVEL_SCHEMA, 'top')
+        validate(self.logger, self.main_policy, TOP_LEVEL_SCHEMA, 'top')
 
         #*** Instantiate classes for the second levels of policy:
         self.port_sets = self.PortSets(self)
@@ -237,12 +387,6 @@ class Policy(BaseClass):
             self.logger = policy.logger
             self.yaml = policy.main_policy['port_sets']
 
-            #*** Voluptuous schema for port_sets branch of main policy:
-            PORT_SETS_SCHEMA = Schema({
-                                Required('port_set_list'):
-                                    [{Extra: object}]
-                                })
-
             #*** Check the correctness of the port_sets branch of main policy:
             validate(self.logger, self.yaml, PORT_SETS_SCHEMA, 'port_sets')
             #*** Read in port_sets:
@@ -272,19 +416,6 @@ class Policy(BaseClass):
                 self.yaml = \
                         policy.main_policy['port_sets']['port_set_list'][idx]
                 self.name = self.yaml['name']
-                #*** Voluptuous schema for a port set node in main policy:
-                PORT_SET_SCHEMA = Schema({
-                                Required('name'): str,
-                                Required('port_list'):
-                                    [
-                                        {
-                                        'name': str,
-                                        'DPID': int,
-                                        'ports': validate_ports,
-                                        'vlan_id': int
-                                        }
-                                    ]
-                                })
 
                 #*** Check the correctness of the location policy:
                 validate(self.logger, self.yaml, PORT_SET_SCHEMA, 'port_set')
@@ -338,16 +469,8 @@ class Policy(BaseClass):
             self.logger = policy.logger
             self.yaml = policy.main_policy['locations']
 
-            #*** Voluptuous schema for locations branch of main policy:
-            self.LOCATIONS_SCHEMA = Schema({
-                                Required('locations_list'):
-                                    [{Extra: object}],
-                                Required('default_match'): str
-                                })
-
             #*** Check the correctness of the locations branch of main policy:
-            validate(self.logger, self.yaml, self.LOCATIONS_SCHEMA,
-                                                                   'locations')
+            validate(self.logger, self.yaml, LOCATIONS_SCHEMA, 'locations')
 
             #*** Extra validation of locations policy:
             validate_locations(self.logger, policy.main_policy)
@@ -383,13 +506,6 @@ class Policy(BaseClass):
                 self.policy = policy
                 self.yaml = \
                         policy.main_policy['locations']['locations_list'][idx]
-
-                #*** Voluptuous schema for a location node in main policy:
-                LOCATION_SCHEMA = Schema({
-                                Required('name'): str,
-                                Required('port_set_list'):
-                                    [{'port_set': str}],
-                                })
 
                 #*** Check the correctness of the location policy:
                 validate(self.logger, self.yaml, LOCATION_SCHEMA, 'location')
@@ -786,119 +902,3 @@ class Policy(BaseClass):
             self.logger.error("qos_treatment=%s not found in main_policy",
                                                                  qos_treatment)
             return 0
-
-#================== Functions:
-
-def validate(logger, data, schema, where):
-    """
-    Generic validation of a data structure against schema
-    using Voluptuous data validation library
-    Parameters:
-     - logger: valid logger reference
-     - data: structure to validate
-     - schema: a valid Voluptuous schema
-     - where: string for debugging purposes to identity the policy location
-    """
-    try:
-        #*** Check correctness of data against schema with Voluptuous:
-        schema(data)
-    except MultipleInvalid as exc:
-        #*** There was a problem with the data:
-        logger.critical("Voluptuous detected a problem where=%s, exception=%s",
-                                                                    where, exc)
-        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-    return 1
-
-def validate_locations(logger, main_policy):
-    """
-    Extra policy validation (in addition to Voluptuous-based validation)
-    of the locations branch of main policy
-    Parameters:
-     - logger: valid logger reference
-     - main_policy: The main policy in YAML
-    """
-    locations = main_policy['locations']
-    #*** Check the default_match value exists as a key in locations_list dicts:
-    location_list_keys = []
-    for location_list_dict in locations['locations_list']:
-        location_list_keys.append(location_list_dict['name'])
-    if not locations['default_match'] in location_list_keys:
-        logger.critical("default_match=%s does not exist in locations_list",
-                    locations['default_match'])
-        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-    return 1
-
-def validate_ports(ports):
-    """
-    Custom Voluptuous validator for a list of ports.
-    Example good ports specification:
-        1-3,5,66
-    Will raise Voluptuous Invalid exception if types or
-    ranges are not correct
-    """
-    msg = 'Ports specification contains non-integer value'
-    msg2 = 'Ports specification contains invalid range'
-    #*** Cast to String:
-    ports = str(ports)
-    #*** Split into components separated by commas:
-    for part in ports.split(','):
-        #*** Handle ranges:
-        if '-' in part:
-            a, b = part.split('-')
-            #*** can they be cast to integer?:
-            validate_type(int, a, msg)
-            validate_type(int, b, msg)
-            #*** In a port range, b must be larger than a:
-            if not int(b) > int(a):
-                raise Invalid(msg2)
-        else:
-            #*** can it be cast to integer?:
-            validate_type(int, part, msg)
-    return ports
-
-def validate_port_set_list(logger, port_set_list, policy):
-    """
-    Validate that a list of dictionaries [{'port_set': str}]
-    reference valid port_sets. Return Boolean 1 if good otherwise
-    exit with exception
-    """
-    for port_set_dict in port_set_list:
-        found = 0
-        for port_set in policy.port_sets.port_sets_list:
-            if port_set.name == port_set_dict['port_set']:
-                found = 1
-        if not found:
-            logger.critical("Undefined port_set=%s", port_set_dict['port_set'])
-            sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-    return 1
-
-def validate_type(type, value, msg):
-    """
-    Used for Voluptuous schema validation.
-    Check a value is correct type, otherwise raise Invalid exception,
-    including elaborated version of msg
-    """
-    try:
-        return type(value)
-    except ValueError:
-        msg = msg + ", value=" + value + ", expected type=" + type.__name__
-        raise Invalid(msg)
-
-def transform_ports(ports):
-    """
-    Passed a ports specification and return a list of
-    port numbers for easy searching.
-    Example:
-    Ports specification "1-3,5,66" becomes list [1,2,3,5,66]
-    """
-    result = []
-    ports = str(ports)
-    for part in ports.split(','):
-        if '-' in part:
-            a, b = part.split('-')
-            a, b = int(a), int(b)
-            result.extend(range(a, b + 1))
-        else:
-            a = int(part)
-            result.append(a)
-    return result

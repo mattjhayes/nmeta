@@ -469,7 +469,6 @@ class ExternalAPI(BaseClass):
             #*** Didn't match anything and excludes logic so that's a 1!
             return 1
 
-
     def flow_augment_record(self, record):
         """
         Passed a record of a single flow from the packet_ins

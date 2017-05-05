@@ -356,7 +356,6 @@ def test_validate():
     with pytest.raises(SystemExit) as exit_info:
         policy_module.validate(logger, locations_policy, policy_module.LOCATIONS_SCHEMA, 'locations')
 
-
 def test_validate_locations():
     """
     Test the validate_locations function of policy.py module against various
@@ -370,13 +369,6 @@ def test_validate_locations():
 
     #*** Check the correctness of the locations branch of main policy:
     assert policy_module.validate_locations(logger, main_policy) == 1
-
-    #*** Knock out a location referenced by default_match and check that it raises exception.
-    #***  Note assumes list item 1 is 'external'
-    del main_policy['locations']['locations_list'][1]
-    logger.debug("main_policy=%s", main_policy)
-    with pytest.raises(SystemExit) as exit_info:
-        policy_module.validate_locations(logger, main_policy)
 
 def test_validate_port_set_list():
     """
@@ -451,3 +443,40 @@ def test_transform_ports():
     assert policy_module.transform_ports(ports1) == ports_list1
 
     assert policy_module.transform_ports(ports2) == ports_list2
+
+def test_location_check():
+    """
+    Test the check method of the Location class
+    """
+    #*** Instantiate Policy class instance:
+    policy = policy_module.Policy(config)
+
+    #*** Test against 'internal' location:
+    assert policy.locations.locations_list[0].check(8796748549206, 1) == 'internal'
+    assert policy.locations.locations_list[0].check(8796748549206, 6) == ''
+    assert policy.locations.locations_list[0].check(56, 1) == ''
+    assert policy.locations.locations_list[0].check(255, 3) == 'internal'
+
+    #*** Test against 'external' location:
+    assert policy.locations.locations_list[1].check(8796748549206, 6) == 'external'
+    assert policy.locations.locations_list[1].check(8796748549206, 1) == ''
+
+def test_locations_get_location():
+    """
+    Test the get_location method of the Locations class
+    """
+    #*** Instantiate Policy class instance:
+    policy = policy_module.Policy(config)
+
+    #*** Test against 'internal' location:
+    assert policy.locations.get_location(8796748549206, 1) == 'internal'
+    assert policy.locations.get_location(255, 3) == 'internal'
+    assert policy.locations.get_location(8796748549206, 66) == 'internal'
+
+    #*** Test against 'external' location:
+    assert policy.locations.get_location(8796748549206, 6) == 'external'
+    assert policy.locations.get_location(255, 4) == 'external'
+
+    #*** Test against no match to default 'unknown' location:
+    assert policy.locations.get_location(8796748549206, 7) == 'unknown'
+    assert policy.locations.get_location(1234, 5) == 'unknown'

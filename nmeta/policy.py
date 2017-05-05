@@ -76,10 +76,6 @@ def validate_locations(logger, main_policy):
     location_list_keys = []
     for location_list_dict in locations['locations_list']:
         location_list_keys.append(location_list_dict['name'])
-    if not locations['default_match'] in location_list_keys:
-        logger.critical("default_match=%s does not exist in locations_list",
-                    locations['default_match'])
-        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
     return 1
 
 def validate_port_set_list(logger, port_set_list, policy):

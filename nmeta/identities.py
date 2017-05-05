@@ -426,6 +426,8 @@ class Identities(BaseClass):
                 ident.valid_to = flow_pkt.timestamp + \
                                 datetime.timedelta(0, self.dhcp_msg.lease_time)
                 ident.id_hash = self._hash_identity(ident)
+                ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
                 db_dict = ident.dbdict()
                 #*** Write DHCP identity metadata to db collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -488,6 +490,8 @@ class Identities(BaseClass):
             self.logger.debug("Could not find IP for LLDP flow_hash=%s",
                                     flow_pkt.flow_hash)
         ident.id_hash = self._hash_identity(ident)
+        ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
         #*** Write LLDP identity metadata to db collection:
         db_dict = ident.dbdict()
         self.logger.debug("writing db_dict=%s", db_dict)
@@ -526,6 +530,8 @@ class Identities(BaseClass):
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, answer.ttl)
                 ident.id_hash = self._hash_identity(ident)
+                ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
                 db_dict = ident.dbdict()
                 #*** Write DNS identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -543,6 +549,8 @@ class Identities(BaseClass):
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, answer.ttl)
                 ident.id_hash = self._hash_identity(ident)
+                ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
                 db_dict = ident.dbdict()
                 #*** Write DNS identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)

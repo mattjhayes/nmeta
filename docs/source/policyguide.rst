@@ -382,7 +382,7 @@ A default location must be defined.
 
 Example:
 
-    .. code-block:: YAML
+.. code-block:: YAML
 
     locations:
         # Locations are logical groupings of ports. Takes first match.

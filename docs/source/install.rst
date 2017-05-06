@@ -98,6 +98,16 @@ Install coloredlogs to improve readability of terminal logs by colour-coding:
 
   sudo pip install coloredlogs
 
+Install Voluptuous
+==================
+
+Install Voluptuous data validation library for policy and input validation
+against schema:
+
+.. code-block:: text
+
+  sudo pip install voluptuous
+
 ***************
 Install MongoDB
 ***************

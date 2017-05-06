@@ -38,7 +38,7 @@ import config
 import flows as flow_class
 import identities as identities_class
 import tc_static as tc_static_module
-import tc_policy
+import policy
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -70,7 +70,7 @@ def test_check_static():
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
     #*** Instantiate match object:
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    condition = policy.Policy.Condition()
 
     condition.policy_attr = 'eth_src'
     condition.policy_value = pkts.ETH_SRC[0]

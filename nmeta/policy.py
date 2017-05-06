@@ -31,14 +31,173 @@ import tc_static
 import tc_identity
 import tc_custom
 
-#*** Import dpkt for DNS extraction, as not native to Ryu:
-#import dpkt
+#*** Voluptuous to verify inputs against schema:
+from voluptuous import Schema, Optional, Any, Required, Extra
+from voluptuous import Invalid, MultipleInvalid
 
 #*** YAML for config and policy file parsing:
 import yaml
 
 #*** For logging configuration:
 from baseclass import BaseClass
+
+#================== Functions (need to come first):
+
+def validate(logger, data, schema, where):
+    """
+    Generic validation of a data structure against schema
+    using Voluptuous data validation library
+    Parameters:
+     - logger: valid logger reference
+     - data: structure to validate
+     - schema: a valid Voluptuous schema
+     - where: string for debugging purposes to identity the policy location
+    """
+    try:
+        #*** Check correctness of data against schema with Voluptuous:
+        schema(data)
+    except MultipleInvalid as exc:
+        #*** There was a problem with the data:
+        logger.critical("Voluptuous detected a problem where=%s, exception=%s",
+                                                                    where, exc)
+        sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    return 1
+
+def validate_locations(logger, main_policy):
+    """
+    Extra policy validation (in addition to Voluptuous-based validation)
+    of the locations branch of main policy
+    Parameters:
+     - logger: valid logger reference
+     - main_policy: The main policy in YAML
+    """
+    locations = main_policy['locations']
+    #*** Check the default_match value exists as a key in locations_list dicts:
+    location_list_keys = []
+    for location_list_dict in locations['locations_list']:
+        location_list_keys.append(location_list_dict['name'])
+    return 1
+
+def validate_port_set_list(logger, port_set_list, policy):
+    """
+    Validate that a list of dictionaries [{'port_set': str}]
+    reference valid port_sets. Return Boolean 1 if good otherwise
+    exit with exception
+    """
+    for port_set_dict in port_set_list:
+        found = 0
+        for port_set in policy.port_sets.port_sets_list:
+            if port_set.name == port_set_dict['port_set']:
+                found = 1
+        if not found:
+            logger.critical("Undefined port_set=%s", port_set_dict['port_set'])
+            sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
+    return 1
+
+def validate_type(type, value, msg):
+    """
+    Used for Voluptuous schema validation.
+    Check a value is correct type, otherwise raise Invalid exception,
+    including elaborated version of msg
+    """
+    try:
+        return type(value)
+    except ValueError:
+        msg = msg + ", value=" + value + ", expected type=" + type.__name__
+        raise Invalid(msg)
+
+def transform_ports(ports):
+    """
+    Passed a ports specification and return a list of
+    port numbers for easy searching.
+    Example:
+    Ports specification "1-3,5,66" becomes list [1,2,3,5,66]
+    """
+    result = []
+    ports = str(ports)
+    for part in ports.split(','):
+        if '-' in part:
+            a, b = part.split('-')
+            a, b = int(a), int(b)
+            result.extend(range(a, b + 1))
+        else:
+            a = int(part)
+            result.append(a)
+    return result
+
+def validate_ports(ports):
+    """
+    Custom Voluptuous validator for a list of ports.
+    Example good ports specification:
+        1-3,5,66
+    Will raise Voluptuous Invalid exception if types or
+    ranges are not correct
+    """
+    msg = 'Ports specification contains non-integer value'
+    msg2 = 'Ports specification contains invalid range'
+    #*** Cast to String:
+    ports = str(ports)
+    #*** Split into components separated by commas:
+    for part in ports.split(','):
+        #*** Handle ranges:
+        if '-' in part:
+            a, b = part.split('-')
+            #*** can they be cast to integer?:
+            validate_type(int, a, msg)
+            validate_type(int, b, msg)
+            #*** In a port range, b must be larger than a:
+            if not int(b) > int(a):
+                raise Invalid(msg2)
+        else:
+            #*** can it be cast to integer?:
+            validate_type(int, part, msg)
+    return ports
+
+#================= Voluptuous Schema for Validating Policy
+
+#*** Voluptuous schema for top level keys in the main policy:
+TOP_LEVEL_SCHEMA = Schema({
+                        Required('tc_rules'):
+                            {Extra: object},
+                        Required('qos_treatment'):
+                            {Extra: object},
+                        Required('port_sets'):
+                            {Extra: object},
+                        Required('locations'):
+                            {Extra: object}
+                        })
+#*** Voluptuous schema for port_sets branch of main policy:
+PORT_SETS_SCHEMA = Schema({
+                        Required('port_set_list'):
+                            [{Extra: object}]
+                        })
+#*** Voluptuous schema for a port set node in main policy:
+PORT_SET_SCHEMA = Schema({
+                        Required('name'): str,
+                        Required('port_list'):
+                            [
+                                {
+                                'name': str,
+                                'DPID': int,
+                                'ports': validate_ports,
+                                'vlan_id': int
+                                }
+                            ]
+                        })
+#*** Voluptuous schema for locations branch of main policy:
+LOCATIONS_SCHEMA = Schema({
+                        Required('locations_list'):
+                            [{Extra: object}],
+                        Required('default_match'): str
+                        })
+#*** Voluptuous schema for a location node in main policy:
+LOCATION_SCHEMA = Schema({
+                        Required('name'): str,
+                        Required('port_set_list'):
+                            [{'port_set': str}],
+                        })
+
+#================= Legacy Schema
 
 #*** Describe supported syntax in main_policy.yaml so that it can be tested
 #*** for validity. Here are valid policy rule attributes:
@@ -68,22 +227,23 @@ TC_CONFIG_ACTIONS = ('qos_treatment',
                      'drop')
 TC_CONFIG_MATCH_TYPES = ('any',
                          'all')
-#*** Keys that must exist under 'identity' in the policy:
-IDENTITY_KEYS = ('arp',
-                 'lldp',
-                 'dns',
-                 'dhcp')
 
 #*** Default policy file location parameters:
 POL_DIR_DEFAULT = "config"
 POL_DIR_USER = "config/user"
 POL_FILENAME = "main_policy.yaml"
 
-class TrafficClassificationPolicy(BaseClass):
+class Policy(BaseClass):
     """
     This class is instantiated by nmeta.py and provides methods
     to ingest the policy file main_policy.yaml and check flows
-    against policy to see if actions exist
+    against policy to see if actions exist.
+
+    Directly accessible values to read:
+    main_policy         # main policy YAML object
+
+    TBD
+
     """
     def __init__(self, config, pol_dir_default=POL_DIR_DEFAULT,
                     pol_dir_user=POL_DIR_USER,
@@ -91,8 +251,8 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Required for BaseClass:
         self.config = config
         #*** Set up Logging with inherited base class method:
-        self.configure_logging(__name__, "tc_policy_logging_level_s",
-                                       "tc_policy_logging_level_c")
+        self.configure_logging(__name__, "policy_logging_level_s",
+                                       "policy_logging_level_c")
         self.policy_dir_default = pol_dir_default
         self.policy_dir_user = pol_dir_user
         self.policy_filename = pol_filename
@@ -115,7 +275,7 @@ class TrafficClassificationPolicy(BaseClass):
         #*** Ingest the policy file:
         try:
             with open(self.fullpathname, 'r') as filename:
-                self._main_policy = yaml.load(filename)
+                self.main_policy = yaml.safe_load(filename)
         except (IOError, OSError) as exception:
             self.logger.error("Failed to open policy "
                               "file=%s exception=%s",
@@ -127,11 +287,21 @@ class TrafficClassificationPolicy(BaseClass):
         self.static = tc_static.StaticInspect(config)
         self.identity = tc_identity.IdentityInspect(config)
         self.custom = tc_custom.CustomInspect(config)
+
+        #*** Check the correctness of the top level of main policy:
+        validate(self.logger, self.main_policy, TOP_LEVEL_SCHEMA, 'top')
+
+        #*** Instantiate classes for the second levels of policy:
+        self.port_sets = self.PortSets(self)
+        self.locations = self.Locations(self)
+
+        #*** Instantiate any custom classifiers:
+        self.custom.instantiate_classifiers(self.custom_classifiers)
+
+        # LEGACY:
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
-        #*** Instantiate any custom classifiers:
-        self.custom.instantiate_classifiers(self.custom_classifiers)
 
     class Rule(object):
         """
@@ -203,6 +373,159 @@ class TrafficClassificationPolicy(BaseClass):
             """
             return self.__dict__
 
+    class PortSets(object):
+        """
+        An object that represents the port_sets root branch of
+        the main policy
+        """
+        def __init__(self, policy):
+            #*** Extract logger and policy YAML branch:
+            self.logger = policy.logger
+            self.yaml = policy.main_policy['port_sets']
+
+            #*** Check the correctness of the port_sets branch of main policy:
+            validate(self.logger, self.yaml, PORT_SETS_SCHEMA, 'port_sets')
+            #*** Read in port_sets:
+            self.port_sets_list = []
+            for idx, key in enumerate(self.yaml['port_set_list']):
+                self.port_sets_list.append(self.PortSet(policy, idx))
+
+        def get_port_set(self, dpid, port, vlan_id=0):
+            """
+            Check if supplied dpid/port/vlan_id is member of
+            a port set and if so, return the port_set name. If no
+            match return empty string.
+            """
+            for idx in self.port_sets_list:
+                if idx.is_member(dpid, port, vlan_id):
+                    return idx.name
+            return ""
+
+        class PortSet(object):
+            """
+            An object that represents a single port set
+            """
+
+            def __init__(self, policy, idx):
+                #*** Extract logger and policy YAML:
+                self.logger = policy.logger
+                self.yaml = \
+                        policy.main_policy['port_sets']['port_set_list'][idx]
+                self.name = self.yaml['name']
+
+                #*** Check the correctness of the location policy:
+                validate(self.logger, self.yaml, PORT_SET_SCHEMA, 'port_set')
+
+                #*** Build searchable lists of ports
+                #***  (ranges turned into multiple single values):
+                port_list = self.yaml['port_list']
+                for ports in port_list:
+                    ports['ports_xform'] = transform_ports(ports['ports'])
+
+            def is_member(self, dpid, port, vlan_id=0):
+                """
+                Check to see supplied dpid/port/vlan_id is member of
+                this port set.
+
+                Returns a Boolean
+                """
+                #*** Validate dpid is an integer (and coerce if required):
+                msg = 'dpid must be integer'
+                dpid = validate_type(int, dpid, msg)
+
+                #*** Validate port is an integer (and coerce if required):
+                msg = 'Port must be integer'
+                port = validate_type(int, port, msg)
+
+                #*** Validate vlan_id is an integer (and coerce if required):
+                msg = 'vlan_id must be integer'
+                vlan_id = validate_type(int, vlan_id, msg)
+
+                #*** Iterate through port list looking for a match:
+                port_list = self.yaml['port_list']
+                for ports in port_list:
+                    if not ports['DPID'] == dpid:
+                        self.logger.info("did not match dpid")
+                        continue
+                    if not ports['vlan_id'] == vlan_id:
+                        self.logger.info("did not match vlan_id")
+                        continue
+                    if port in ports['ports_xform']:
+                        return 1
+                self.logger.info("no match, returning 0")
+                return 0
+
+    class Locations(object):
+        """
+        An object that represents the locations root branch of
+        the main policy
+        """
+        def __init__(self, policy):
+            #*** Extract logger and policy YAML branch:
+            self.logger = policy.logger
+            self.yaml = policy.main_policy['locations']
+
+            #*** Check the correctness of the locations branch of main policy:
+            validate(self.logger, self.yaml, LOCATIONS_SCHEMA, 'locations')
+
+            #*** Extra validation of locations policy:
+            validate_locations(self.logger, policy.main_policy)
+
+            #*** Read in locations etc:
+            self.locations_list = []
+            for idx, key in enumerate(self.yaml['locations_list']):
+                self.locations_list.append(self.Location(policy, idx))
+            self.logger.info("self.locations_list=%s", self.locations_list)
+            #*** Default location to use if no match:
+            self.default_match = self.yaml['default_match']
+
+        def get_location(self, dpid, port):
+            """
+            Passed a DPID and port and return a logical location
+            name, as per policy configuration.
+            """
+            result = ""
+            for location in self.locations_list:
+                result = location.check(dpid, port)
+                if result:
+                    return result
+            return self.default_match
+
+        class Location(object):
+            """
+            An object that represents a single location
+            """
+
+            def __init__(self, policy, idx):
+                #*** Extract logger and policy YAML:
+                self.logger = policy.logger
+                self.policy = policy
+                self.yaml = \
+                        policy.main_policy['locations']['locations_list'][idx]
+
+                #*** Check the correctness of the location policy:
+                validate(self.logger, self.yaml, LOCATION_SCHEMA, 'location')
+
+                #*** Check that port sets exist:
+                validate_port_set_list(self.logger, self.yaml['port_set_list'],
+                                                                        policy)
+
+                #*** Store data from YAML into this class:
+                self.name = self.yaml['name']
+                self.port_set_list = self.yaml['port_set_list']
+
+            def check(self, dpid, port):
+                """
+                Check a dpid/port to see if it is part of this location
+                and if so return the string name of the location otherwise
+                return empty string
+                """
+                port_set_membership = \
+                                 self.policy.port_sets.get_port_set(dpid, port)
+                for port_set in self.port_set_list:
+                    if port_set['port_set'] == port_set_membership:
+                        return self.name
+                return ""
 
     def validate_policy(self):
         """
@@ -212,14 +535,14 @@ class TrafficClassificationPolicy(BaseClass):
         """
         self.logger.debug("Validating main policy...")
         #*** Validate that policy has a 'tc_rules' key off the root:
-        if not 'tc_rules' in self._main_policy:
+        if not 'tc_rules' in self.main_policy:
             #*** No 'tc_rules' key off the root, so log and exit:
             self.logger.critical("Missing tc_rules"
                                     "key in root of main policy")
             sys.exit("Exiting nmeta. Please fix error in "
                              "main_policy.yaml file")
         #*** Get the tc ruleset name, only one ruleset supported at this stage:
-        tc_rules_keys = list(self._main_policy['tc_rules'].keys())
+        tc_rules_keys = list(self.main_policy['tc_rules'].keys())
         if not len(tc_rules_keys) == 1:
             #*** Unsupported number of rulesets so log and exit:
             self.logger.critical("Unsupported "
@@ -231,7 +554,7 @@ class TrafficClassificationPolicy(BaseClass):
         self.logger.debug("tc_ruleset_name=%s",
                               tc_ruleset_name)
         #*** Create new variable to reference tc ruleset directly:
-        self.tc_ruleset = self._main_policy['tc_rules'][tc_ruleset_name]
+        self.tc_ruleset = self.main_policy['tc_rules'][tc_ruleset_name]
         for idx, policy_rule in enumerate(self.tc_ruleset):
             tc_rule = self.tc_ruleset[idx]
             self.logger.debug("Validating PolicyRule "
@@ -259,28 +582,6 @@ class TrafficClassificationPolicy(BaseClass):
                                                  action)
                             sys.exit("Exiting nmeta. Please fix error in "
                                      "main_policy.yaml file")
-
-        #*** Validate that policy has a 'identity' key off the root:
-        if not 'identity' in self._main_policy:
-            #*** No 'identity' key off the root, so log and exit:
-            self.logger.critical("Missing identity"
-                                    "key in root of main policy")
-            sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
-        #*** Get the identity keys and validate that they all exist in policy:
-        for _id_key in IDENTITY_KEYS:
-            if not _id_key in self._main_policy['identity'].keys():
-                self.logger.critical("Missing identity "
-                                    "key in main policy: %s", _id_key)
-                sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
-        #*** Conversely, check all identity keys in the policy are valid:
-        for _id_pol_key in self._main_policy['identity'].keys():
-            if not _id_pol_key in IDENTITY_KEYS:
-                self.logger.critical("Invalid identity "
-                                    "key in main policy: %s", _id_pol_key)
-                sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
 
     def _validate_conditions(self, policy_conditions):
         """
@@ -585,7 +886,7 @@ class TrafficClassificationPolicy(BaseClass):
         QoS queue number to use, otherwise 0. Works by lookup
         on qos_treatment section of main_policy
         """
-        qos_policy = self._main_policy['qos_treatment']
+        qos_policy = self.main_policy['qos_treatment']
         if qos_treatment in qos_policy:
             return qos_policy[qos_treatment]
         elif qos_treatment == 'classifier_return':

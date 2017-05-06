@@ -86,10 +86,11 @@ class Identities(BaseClass):
     See function docstrings for more information
     """
 
-    def __init__(self, config):
+    def __init__(self, config, policy):
         """
         Initialise an instance of the Identities class
         """
+        self.policy = policy
         #*** Required for BaseClass:
         self.config = config
         #*** Set up Logging with inherited base class method:
@@ -185,6 +186,8 @@ class Identities(BaseClass):
             self.valid_from = ""
             self.valid_to = ""
             self.id_hash = ""
+            self.location_logical = ""
+            self.location_physical = ""
 
         def dbdict(self):
             """
@@ -294,6 +297,8 @@ class Identities(BaseClass):
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, ARP_CACHE_TIME)
                 ident.id_hash = self._hash_identity(ident)
+                ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
                 db_dict = ident.dbdict()
                 #*** Write ARP identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -421,6 +426,8 @@ class Identities(BaseClass):
                 ident.valid_to = flow_pkt.timestamp + \
                                 datetime.timedelta(0, self.dhcp_msg.lease_time)
                 ident.id_hash = self._hash_identity(ident)
+                ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
                 db_dict = ident.dbdict()
                 #*** Write DHCP identity metadata to db collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -483,6 +490,8 @@ class Identities(BaseClass):
             self.logger.debug("Could not find IP for LLDP flow_hash=%s",
                                     flow_pkt.flow_hash)
         ident.id_hash = self._hash_identity(ident)
+        ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
         #*** Write LLDP identity metadata to db collection:
         db_dict = ident.dbdict()
         self.logger.debug("writing db_dict=%s", db_dict)
@@ -521,6 +530,8 @@ class Identities(BaseClass):
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, answer.ttl)
                 ident.id_hash = self._hash_identity(ident)
+                ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
                 db_dict = ident.dbdict()
                 #*** Write DNS identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)
@@ -538,6 +549,8 @@ class Identities(BaseClass):
                 ident.valid_to = flow_pkt.timestamp + \
                                     datetime.timedelta(0, answer.ttl)
                 ident.id_hash = self._hash_identity(ident)
+                ident.location_logical = self.policy.locations.get_location \
+                                                    (ident.dpid, ident.in_port)
                 db_dict = ident.dbdict()
                 #*** Write DNS identity metadata to database collection:
                 self.logger.debug("writing db_dict=%s", db_dict)

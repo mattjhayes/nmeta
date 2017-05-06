@@ -3,29 +3,42 @@ Policy
 ######
 
 The nmeta policy configures how nmeta works with data plane traffic.
-This includes traffic classification rules.
-The default main policy is stored in the YAML file:
+This includes traffic classification rules, what classifiers are used,
+in what order and what actions are taken.
+
+The policy is designed as a tree with many first level branches and only
+a shallow depth.
+
+***************
+Policy Location
+***************
+
+Nmeta ships with a default policy in the YAML file:
 
 .. code-block:: text
 
   ~/nmeta/nmeta/config/main_policy.yaml
 
-It is used to control what classifiers are used, in what order and what
-actions are taken. Do not edit this policy, as it will be overwritten by
-updates, instead create your own user-defined policy, as per below.
+Do not edit the default policy as it will be overwritten by nmeta
+updates.
 
-If a user-defined main policy file is present, it will usurp the default one.
-The user-defined main policy file (if used) is at:
+Create Your Own Policy
+======================
+
+Create your own policy by copying the default file to this location:
 
 .. code-block:: text
 
   ~/nmeta/nmeta/config/user/main_policy.yaml
 
-Note that a user-defined main policy file will not be part of the git
-distribution, as it is excluded in the .gitignore file.
+(note the user directory)
+
+If a main_policy.yaml file is present in the user directory it will completely
+override the default policy. Note that a user-defined main policy file will
+not be part of the git distribution, as it is excluded in the .gitignore file.
 
 *****************************
-Traffic Classification Policy
+Traffic Classification Branch
 *****************************
 
 The traffic classification policy is based off a root key *tc_rules*.
@@ -307,15 +320,15 @@ Supported attributes are:
 
     set_desc: "This is a flow type description"
 
-*************
-QoS Treatment
-*************
+********************
+QoS Treatment Branch
+********************
 
 Quality of Service (QoS) treatment parameters are configured in main policy
 under the qos_treatment root directive. They map qos action values to
 queue numbers. Example:
 
-.. code-block:: text
+.. code-block:: YAML
 
   qos_treatment:
     # Control Quality of Service (QoS) treatment mapping of
@@ -325,4 +338,59 @@ queue numbers. Example:
     high_priority: 2
     low_priority: 3
 
+****************
+Port Sets Branch
+****************
 
+Port Sets are used to abstract a set of switches/ports so that they
+can be referenced elsewhere in the policy. Port Sets are located under the
+root key *port_sets*.
+
+Example:
+
+.. code-block:: YAML
+
+    port_sets:
+        # Port Sets control what data plane ports policies and
+        #  features are applied on. Names must be unique.
+        port_set_list:
+            - name: port_set_location_internal
+                port_list:
+                - name: VirtualSwitch1-internal
+                    DPID: 8796748549206
+                    ports: 1-3,5,66
+                    vlan_id: 0
+                - name: VirtualSwitch2-internal
+                    DPID: 255
+                    ports: 3,5
+                    vlan_id: 0
+
+In this example, the port set *port_set_location_internal* refers to
+specific ports on the switches with DPIDs of 8796748549206 and 255.
+
+****************
+Locations Branch
+****************
+
+Locations are a policy-defined aspect of an identity that are
+based on the source or destination DPID/port, which is looked up
+against a list that links location names to port sets.
+
+Locations are located under the root key *locations*.
+
+A default location must be defined.
+
+Example:
+
+    .. code-block:: YAML
+
+    locations:
+        # Locations are logical groupings of ports. Takes first match.
+        locations_list:
+            - name: internal
+              port_set_list:
+                - port_set: port_set_location_internal
+            - name: external
+              port_set_list:
+                - port_set: port_set_location_external
+        default_match: unknown

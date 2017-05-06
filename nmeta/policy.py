@@ -445,14 +445,14 @@ class Policy(BaseClass):
                 port_list = self.yaml['port_list']
                 for ports in port_list:
                     if not ports['DPID'] == dpid:
-                        self.logger.info("did not match dpid")
+                        self.logger.debug("did not match dpid")
                         continue
                     if not ports['vlan_id'] == vlan_id:
-                        self.logger.info("did not match vlan_id")
+                        self.logger.debug("did not match vlan_id")
                         continue
                     if port in ports['ports_xform']:
                         return 1
-                self.logger.info("no match, returning 0")
+                self.logger.debug("no match, returning 0")
                 return 0
 
     class Locations(object):
@@ -475,7 +475,6 @@ class Policy(BaseClass):
             self.locations_list = []
             for idx, key in enumerate(self.yaml['locations_list']):
                 self.locations_list.append(self.Location(policy, idx))
-            self.logger.info("self.locations_list=%s", self.locations_list)
             #*** Default location to use if no match:
             self.default_match = self.yaml['default_match']
 

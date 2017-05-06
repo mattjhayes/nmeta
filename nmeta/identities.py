@@ -194,24 +194,7 @@ class Identities(BaseClass):
             Return a dictionary object of identity metadata
             parameters for storing in the database
             """
-            dbdictresult = {}
-            dbdictresult['dpid'] = self.dpid
-            dbdictresult['in_port'] = self.in_port
-            dbdictresult['mac_address'] = self.mac_address
-            dbdictresult['ip_address'] = self.ip_address
-            dbdictresult['harvest_type'] = self.harvest_type
-            dbdictresult['harvest_time'] = self.harvest_time
-            dbdictresult['host_name'] = self.host_name
-            dbdictresult['host_type'] = self.host_type
-            dbdictresult['host_os'] = self.host_os
-            dbdictresult['host_desc'] = self.host_desc
-            dbdictresult['service_name'] = self.service_name
-            dbdictresult['service_alias'] = self.service_alias
-            dbdictresult['user_id'] = self.user_id
-            dbdictresult['valid_from'] = self.valid_from
-            dbdictresult['valid_to'] = self.valid_to
-            dbdictresult['id_hash'] = self.id_hash
-            return dbdictresult
+            return self.__dict__
 
     class DHCPMessage(object):
         """

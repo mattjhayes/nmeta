@@ -73,7 +73,7 @@ FLOW_FILTER_SRC_OR_DST = ['src', 'src_hover', 'dst', 'dst_hover']
 
 #*** Number of previous IP identity records to search for a hostname before
 #*** giving up. Used for augmenting flows with identity metadata:
-HOST_LIMIT = 250
+HOST_LIMIT = 2000
 SERVICE_LIMIT = 250
 
 #*** How far back in time to go back looking for packets in flow:

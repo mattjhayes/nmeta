@@ -5,7 +5,7 @@ Code Documentation
    :maxdepth: 4
 
    nmeta
-   tc_policy
+   policy
    tc_static
    tc_identity
    tc_custom

@@ -62,6 +62,9 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
     A single *conditions_list* stanza that contains one or more
     *conditions* stanzas
 
+  Actions
+    A single *actions* stanza that contains one or more actions
+
 Example simple traffic classification policy with a single rule:
 
 .. image:: images/simple_tc_policy.png

@@ -32,7 +32,7 @@ import tc_identity
 import tc_custom
 
 #*** Voluptuous to verify inputs against schema:
-from voluptuous import Schema, Optional, Any, Required, Extra
+from voluptuous import Schema, Optional, Any, Required, Extra, Exclusive
 from voluptuous import Invalid, MultipleInvalid
 
 #*** YAML for config and policy file parsing:
@@ -53,6 +53,7 @@ def validate(logger, data, schema, where):
      - schema: a valid Voluptuous schema
      - where: string for debugging purposes to identity the policy location
     """
+    logger.debug("validating data=%s", data)
     try:
         #*** Check correctness of data against schema with Voluptuous:
         schema(data)
@@ -166,6 +167,19 @@ TOP_LEVEL_SCHEMA = Schema({
                         Required('locations'):
                             {Extra: object}
                         })
+#*** Voluptuous schema for tc_rules branch of main policy:
+TC_RULES_SCHEMA = Schema([{Extra: object}])
+#*** Voluptuous schema for a tc_rule:
+TC_RULE_SCHEMA = Schema({
+                        Optional('comment'):
+                            str,
+                        Required('match_type'):
+                            Required(Exclusive('any', 'all')),
+                        Required('conditions_list'):
+                            [{Extra: object}],
+                        Required('actions'):
+                            {Extra: object}
+                        })
 #*** Voluptuous schema for port_sets branch of main policy:
 PORT_SETS_SCHEMA = Schema({
                         Required('port_set_list'):
@@ -235,12 +249,16 @@ POL_FILENAME = "main_policy.yaml"
 
 class Policy(BaseClass):
     """
-    This class is instantiated by nmeta.py and provides methods
-    to ingest the policy file main_policy.yaml and check flows
-    against policy to see if actions exist.
+    This policy class serves 4 main purposes:
+    - Ingest policy (main_policy.yaml) from file
+    - Validate correctness of policy
+    - Classify packets against policy, passing through to static,
+      identity and custom classifiers, as required
+    - Other methods and functions to check various parameters
+      against policy
 
     Directly accessible values to read:
-    main_policy         # main policy YAML object
+        main_policy         # main policy YAML object
 
     TBD
 
@@ -292,6 +310,7 @@ class Policy(BaseClass):
         validate(self.logger, self.main_policy, TOP_LEVEL_SCHEMA, 'top')
 
         #*** Instantiate classes for the second levels of policy:
+        self.tc_rules = self.TCRules(self)
         self.port_sets = self.PortSets(self)
         self.locations = self.Locations(self)
 
@@ -302,6 +321,40 @@ class Policy(BaseClass):
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
+
+    # UNDER CONSTRUCTION HERE...
+    class TCRules(object):
+        """
+        An object that represents the tc_rules root branch of
+        the main policy
+        """
+        def __init__(self, policy):
+            #*** Extract logger and policy YAML branch:
+            self.logger = policy.logger
+            #*** TBD: fix arbitrary single ruleset...
+            self.yaml = policy.main_policy['tc_rules']['tc_ruleset_1']
+
+            #*** Check the correctness of the tc_rules branch of main policy:
+            validate(self.logger, self.yaml, TC_RULES_SCHEMA, 'tc_rules')
+            #*** Read in rules:
+            self.rules_list = []
+            for idx, key in enumerate(self.yaml):
+                self.rules_list.append(self.TCRule(policy, idx))
+
+        class TCRule(object):
+            """
+            An object that represents a single traffic classification
+            (TC) rule
+            """
+            def __init__(self, policy, idx):
+                #*** Extract logger and policy YAML:
+                self.logger = policy.logger
+                #*** TBD: fix arbitrary single ruleset...
+                self.yaml = \
+                        policy.main_policy['tc_rules']['tc_ruleset_1'][idx]
+
+                #*** Check the correctness of the tc rule:
+                validate(self.logger, self.yaml, TC_RULE_SCHEMA, 'tc_rule')
 
     class Rule(object):
         """

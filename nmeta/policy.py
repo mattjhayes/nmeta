@@ -35,6 +35,11 @@ import tc_custom
 from voluptuous import Schema, Optional, Any, Required, Extra, Exclusive
 from voluptuous import Invalid, MultipleInvalid
 
+#*** Import netaddr for MAC and IP address checking:
+from netaddr import IPAddress
+from netaddr import IPNetwork
+from netaddr import EUI
+
 #*** YAML for config and policy file parsing:
 import yaml
 
@@ -154,6 +159,63 @@ def validate_ports(ports):
             validate_type(int, part, msg)
     return ports
 
+def validate_macaddress(mac_addr):
+    """
+    Custom Voluptuous validator for MAC address compliance.
+    Returns original MAC address if compliant, otherwise
+    raises Voluptuous Invalid exception
+    """
+    msg = 'Invalid MAC address'
+    try:
+        if not EUI(mac_addr):
+            raise Invalid(msg)
+    except:
+        raise Invalid(msg)
+    return mac_addr
+
+def validate_ip_space(ip_addr):
+    """
+    Custom Voluptuous validator for IP address compliance.
+    Can be IPv4 or IPv6 and can be range or have CIDR mask.
+    Returns original IP address if compliant, otherwise
+    raises Voluptuous Invalid exception
+    """
+    msg = 'Invalid IP address'
+    #*** Does it look like a CIDR network?:
+    if "/" in ip_addr:
+        try:
+            if not IPNetwork(ip_addr):
+                raise Invalid(msg)
+        except:
+            raise Invalid(msg)
+        return ip_addr
+    #*** Does it look like an IP range?:
+    elif "-" in ip_addr:
+        ip_range = ip_addr.split("-")
+        if len(ip_range) != 2:
+            raise Invalid(msg)
+        try:
+            if not (IPAddress(ip_range[0]) and IPAddress(ip_range[1])):
+                raise Invalid(msg)
+        except:
+            raise Invalid(msg)
+        #*** Check second value in range greater than first value:
+        if IPAddress(ip_range[0]).value >= IPAddress(ip_range[1]).value:
+            raise Invalid(msg)
+        #*** Check both IP addresses are the same version:
+        if IPAddress(ip_range[0]).version != \
+                                 IPAddress(ip_range[1]).version:
+            raise Invalid(msg)
+        return ip_addr
+    else:
+        #*** Or is it just a plain simple IP address?:
+        try:
+            if not IPAddress(ip_addr):
+                raise Invalid(msg)
+        except:
+            raise Invalid(msg)
+    return ip_addr
+
 #================= Voluptuous Schema for Validating Policy
 
 #*** Voluptuous schema for top level keys in the main policy:
@@ -174,12 +236,40 @@ TC_RULE_SCHEMA = Schema({
                         Optional('comment'):
                             str,
                         Required('match_type'):
-                            Required(Exclusive('any', 'all')),
+                            Required(Any('any', 'all')),
                         Required('conditions_list'):
                             [{Extra: object}],
                         Required('actions'):
                             {Extra: object}
                         })
+#*** Voluptuous schema for a tc condition:
+#'conditions_list': [{'match_type': 'any', 'tcp_src': 123}],
+TC_CONDITION_SCHEMA = Schema({
+                        Required('match_type'):
+                            Required(Any('any', 'all')),
+                        Optional('eth_src'): validate_macaddress,
+                        Optional('eth_dst'): validate_macaddress,
+                        Optional('ip_src'): validate_ip_space,
+                        Optional('ip_dst'): validate_ip_space
+                        })
+
+#TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
+#                               'eth_dst': 'MACAddress',
+#                               'ip_src': 'IPAddressSpace',
+#                               'ip_dst': 'IPAddressSpace',
+#                               'tcp_src': 'PortNumber',
+#                               'tcp_dst': 'PortNumber',
+#                               'udp_src': 'PortNumber',
+#                               'udp_dst': 'PortNumber',
+#                               'eth_type': 'EtherType',
+#                               'identity_lldp_systemname': 'String',
+#                               'identity_lldp_systemname_re': 'String',
+#                               'identity_service_dns': 'String',
+#                               'identity_service_dns_re': 'String',
+#                               'custom': 'String',
+#                               'match_type': 'MatchType',
+#                               'conditions_list': 'PolicyConditions'}
+
 #*** Voluptuous schema for port_sets branch of main policy:
 PORT_SETS_SCHEMA = Schema({
                         Required('port_set_list'):

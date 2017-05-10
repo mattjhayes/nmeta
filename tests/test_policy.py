@@ -333,6 +333,58 @@ def test_validate():
     with pytest.raises(SystemExit) as exit_info:
         policy_module.validate(logger, main_policy, policy_module.TOP_LEVEL_SCHEMA, 'top')
 
+    #=================== TC Rules branch
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    tc_rule_policy = main_policy['tc_rules']['tc_ruleset_1'][0]
+    assert policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule') == 1
+
+    #*** Knock comment out of rule, should still validate as comment is optional:
+    del tc_rule_policy['comment']
+    assert policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule') == 1
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    tc_rule_policy = main_policy['tc_rules']['tc_ruleset_1'][0]
+    assert policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule') == 1
+
+    #*** Knock match_type out of rule, should fail:
+    del tc_rule_policy['match_type']
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule')
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    tc_rule_policy = main_policy['tc_rules']['tc_ruleset_1'][0]
+    assert policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule') == 1
+
+    #*** Change match_type to something that isn't supported, should fail:
+    tc_rule_policy['match_type'] = 'foo'
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule')
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    tc_rule_policy = main_policy['tc_rules']['tc_ruleset_1'][0]
+    assert policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule') == 1
+
+    #*** Knock conditions_list out of rule, should fail:
+    del tc_rule_policy['conditions_list']
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule')
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    tc_rule_policy = main_policy['tc_rules']['tc_ruleset_1'][0]
+    assert policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule') == 1
+
+    #*** Knock actions out of rule, should fail:
+    del tc_rule_policy['actions']
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule')
+
+
     #=================== Locations branch
 
     #*** Get a copy of the main policy YAML:
@@ -425,6 +477,49 @@ def test_validate_ports():
 
     with pytest.raises(Invalid) as exit_info:
         policy_module.validate_ports(ports_bad3)
+
+def test_validate_macaddress():
+    """
+    Test the validate_macaddress function of policy.py module against various
+    good and bad MAC addresses
+    """
+    #*** Valid MAC Addresses:
+    assert policy_module.validate_macaddress('fe80:dead:beef') == 'fe80:dead:beef'
+    assert policy_module.validate_macaddress('fe80deadbeef') == 'fe80deadbeef'
+    assert policy_module.validate_macaddress('fe:80:de:ad:be:ef') == 'fe:80:de:ad:be:ef'
+
+    #*** Invalid MAC Addresses:
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_macaddress('192.168.3.4')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_macaddress('foo 123')
+
+def test_validate_ipaddress():
+    """
+    Test the validate_ipaddress function of policy.py module against various
+    good and bad IP addresses
+    """
+    #*** Valid IP Addresses:
+    assert policy_module.validate_ip_space('192.168.3.4') == '192.168.3.4'
+    assert policy_module.validate_ip_space('192.168.3.0/24') == '192.168.3.0/24'
+    assert policy_module.validate_ip_space('192.168.3.25-192.168.4.58') == '192.168.3.25-192.168.4.58'
+    assert policy_module.validate_ip_space('fe80::dead:beef') == 'fe80::dead:beef'
+    assert policy_module.validate_ip_space('10.1.2.2-10.1.2.3') == '10.1.2.2-10.1.2.3'
+    assert policy_module.validate_ip_space('fe80::dead:beef-fe80::dead:beff') == 'fe80::dead:beef-fe80::dead:beff'
+
+    #*** Invalid IP Addresses:
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ip_space('192.168.322.0/24')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ip_space('foo')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ip_space('192.168.4.25-192.168.3.58')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ip_space('192.168.3.25-43')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ip_space('10.1.2.3-fe80::dead:beef')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ip_space('10.1.2.3-10.1.2.5-10.1.2.8')
 
 def test_transform_ports():
     """

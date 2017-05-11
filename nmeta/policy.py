@@ -32,8 +32,8 @@ import tc_identity
 import tc_custom
 
 #*** Voluptuous to verify inputs against schema:
-from voluptuous import Schema, Optional, Any, Required, Extra, Exclusive
-from voluptuous import Invalid, MultipleInvalid
+from voluptuous import Schema, Optional, Any, All, Required, Extra, Exclusive
+from voluptuous import Invalid, MultipleInvalid, Range
 
 #*** Import netaddr for MAC and IP address checking:
 from netaddr import IPAddress
@@ -216,6 +216,32 @@ def validate_ip_space(ip_addr):
             raise Invalid(msg)
     return ip_addr
 
+def validate_ethertype(ethertype):
+    """
+    Custom Voluptuous validator for ethertype compliance.
+    Can be in hex (starting with 0x) or decimal.
+    Returns ethertype if compliant, otherwise
+    raises Voluptuous Invalid exception
+    """
+    msg = 'Invalid EtherType'
+    if ethertype[:2] == '0x':
+        #*** Looks like hex:
+        try:
+            if not (int(ethertype, 16) > 0 and \
+                               int(ethertype, 16) < 65536):
+                raise Invalid(msg)
+        except:
+            raise Invalid(msg)
+    else:
+        #*** Perhaps it's decimal?
+        try:
+            if not (int(ethertype) > 0 and \
+                                  int(ethertype) < 65536):
+                raise Invalid(msg)
+        except:
+            raise Invalid(msg)
+    return ethertype
+
 #================= Voluptuous Schema for Validating Policy
 
 #*** Voluptuous schema for top level keys in the main policy:
@@ -243,33 +269,24 @@ TC_RULE_SCHEMA = Schema({
                             {Extra: object}
                         })
 #*** Voluptuous schema for a tc condition:
-#'conditions_list': [{'match_type': 'any', 'tcp_src': 123}],
 TC_CONDITION_SCHEMA = Schema({
                         Required('match_type'):
                             Required(Any('any', 'all')),
                         Optional('eth_src'): validate_macaddress,
                         Optional('eth_dst'): validate_macaddress,
                         Optional('ip_src'): validate_ip_space,
-                        Optional('ip_dst'): validate_ip_space
+                        Optional('ip_dst'): validate_ip_space,
+                        Optional('tcp_src'): All(int, Range(min=0, max=65535)),
+                        Optional('tcp_dst'): All(int, Range(min=0, max=65535)),
+                        Optional('udp_src'): All(int, Range(min=0, max=65535)),
+                        Optional('udp_dst'): All(int, Range(min=0, max=65535)),
+                        Optional('eth_type'): validate_ethertype,
+                        Optional('identity_lldp_systemname'): str,
+                        Optional('identity_lldp_systemname_re'): str,
+                        Optional('identity_service_dns'): str,
+                        Optional('identity_service_dns_re'): str,
+                        Optional('custom'): str
                         })
-
-#TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
-#                               'eth_dst': 'MACAddress',
-#                               'ip_src': 'IPAddressSpace',
-#                               'ip_dst': 'IPAddressSpace',
-#                               'tcp_src': 'PortNumber',
-#                               'tcp_dst': 'PortNumber',
-#                               'udp_src': 'PortNumber',
-#                               'udp_dst': 'PortNumber',
-#                               'eth_type': 'EtherType',
-#                               'identity_lldp_systemname': 'String',
-#                               'identity_lldp_systemname_re': 'String',
-#                               'identity_service_dns': 'String',
-#                               'identity_service_dns_re': 'String',
-#                               'custom': 'String',
-#                               'match_type': 'MatchType',
-#                               'conditions_list': 'PolicyConditions'}
-
 #*** Voluptuous schema for port_sets branch of main policy:
 PORT_SETS_SCHEMA = Schema({
                         Required('port_set_list'):
@@ -445,6 +462,25 @@ class Policy(BaseClass):
 
                 #*** Check the correctness of the tc rule:
                 validate(self.logger, self.yaml, TC_RULE_SCHEMA, 'tc_rule')
+                #*** Read in conditions_list:
+                self.conditions_list = []
+                for idx, key in enumerate(self.yaml['conditions_list']):
+                    self.conditions_list.append(self.TCCondition(policy, \
+                                            self.yaml['conditions_list'][idx]))
+
+            class TCCondition(object):
+                """
+                An object that represents a single traffic classification
+                (TC) rule condition from a conditions list
+                """
+                def __init__(self, policy, policy_snippet):
+                    #*** Extract logger and policy YAML:
+                    self.logger = policy.logger
+                    self.yaml = policy_snippet
+
+                    #*** Check the correctness of the tc rule:
+                    validate(self.logger, self.yaml, TC_CONDITION_SCHEMA,
+                                                           'tc_rule_condition')
 
     class Rule(object):
         """

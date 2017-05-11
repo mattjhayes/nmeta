@@ -341,6 +341,9 @@ queue numbers. Example:
     high_priority: 2
     low_priority: 3
 
+The QoS queue numbers are arbitrary and are used to map packets and flows
+to queues that have been configured on the switch (separate to nmeta).
+
 ****************
 Port Sets Branch
 ****************

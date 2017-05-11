@@ -521,6 +521,24 @@ def test_validate_ipaddress():
     with pytest.raises(Invalid) as exit_info:
         policy_module.validate_ip_space('10.1.2.3-10.1.2.5-10.1.2.8')
 
+def test_validate_ethertype():
+    """
+    Test the validate_ethertype function of policy.py module against various
+    good and bad ethertypes
+    """
+    #*** Valid EtherTypes:
+    assert policy_module.validate_ethertype('0x0800') == '0x0800'
+    assert policy_module.validate_ethertype('0x08001') == '0x08001'
+    assert policy_module.validate_ethertype('35020') == '35020'
+
+    #*** Invalid EtherTypes:
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ethertype('foo')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ethertype('0x18001')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_ethertype('350201')
+
 def test_transform_ports():
     """
     Test the transform_ports function of policy.py module against various

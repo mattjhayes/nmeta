@@ -287,6 +287,16 @@ TC_CONDITION_SCHEMA = Schema({
                         Optional('identity_service_dns_re'): str,
                         Optional('custom'): str
                         })
+#*** Voluptuous schema for tc actions:
+TC_ACTIONS_SCHEMA = Schema({
+                        Optional('drop'): Any('at_controller', 'at_controller_and_switch'),
+                        Optional('qos_treatment'): Any('default_priority',
+                                                       'constrained_bw',
+                                                       'high_priority',
+                                                       'low_priority',
+                                                       'classifier_return'),
+                        Optional('set_desc'): str
+                        })
 #*** Voluptuous schema for port_sets branch of main policy:
 PORT_SETS_SCHEMA = Schema({
                         Required('port_set_list'):
@@ -460,8 +470,10 @@ class Policy(BaseClass):
                 self.yaml = \
                         policy.main_policy['tc_rules']['tc_ruleset_1'][idx]
 
-                #*** Check the correctness of the tc rule:
+                #*** Check the correctness of the tc rule, including actions:
                 validate(self.logger, self.yaml, TC_RULE_SCHEMA, 'tc_rule')
+                validate(self.logger, self.yaml['actions'], TC_ACTIONS_SCHEMA,
+                                                             'tc_rule_actions')
                 #*** Read in conditions_list:
                 self.conditions_list = []
                 for idx, key in enumerate(self.yaml['conditions_list']):

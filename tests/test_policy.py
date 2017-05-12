@@ -384,6 +384,30 @@ def test_validate():
     with pytest.raises(SystemExit) as exit_info:
         policy_module.validate(logger, tc_rule_policy, policy_module.TC_RULE_SCHEMA, 'tc_rule')
 
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    tc_rule_actions = main_policy['tc_rules']['tc_ruleset_1'][0]['actions']
+    assert policy_module.validate(logger, tc_rule_actions, policy_module.TC_ACTIONS_SCHEMA, 'tc_rule_actions') == 1
+
+    #*** Add invalid action:
+    tc_rule_actions['foo'] = 'bar'
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate(logger, tc_rule_actions, policy_module.TC_ACTIONS_SCHEMA, 'tc_rule_actions')
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    tc_rule_actions = main_policy['tc_rules']['tc_ruleset_1'][0]['actions']
+    assert policy_module.validate(logger, tc_rule_actions, policy_module.TC_ACTIONS_SCHEMA, 'tc_rule_actions') == 1
+
+    #*** Add a valid action key with valid value:
+    tc_rule_actions['drop'] = 'at_controller_and_switch'
+    assert policy_module.validate(logger, tc_rule_actions, policy_module.TC_ACTIONS_SCHEMA, 'tc_rule_actions') == 1
+
+    #*** Add a valid action key with invalid value:
+    tc_rule_actions['drop'] = 'controller'
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate(logger, tc_rule_actions, policy_module.TC_ACTIONS_SCHEMA, 'tc_rule_actions')
+
 
     #=================== Locations branch
 

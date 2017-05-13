@@ -374,8 +374,9 @@ class Policy(BaseClass):
     - Other methods and functions to check various parameters
       against policy
 
-    Directly accessible values to read:
-        main_policy         # main policy YAML object
+    Directly accessible variables:
+        main_policy                 # main policy YAML object. RO, no verbs.
+        tc_rules.custom_classifiers # dedup list of custom classifier names
 
     TBD
 
@@ -416,8 +417,7 @@ class Policy(BaseClass):
                               "file=%s exception=%s",
                               self.fullpathname, exception)
             sys.exit("Exiting nmeta. Please create policy file")
-        #*** List to be populated with names of any custom classifiers:
-        self.custom_classifiers = []
+
         #*** Instantiate Classes:
         self.static = tc_static.StaticInspect(config)
         self.identity = tc_identity.IdentityInspect(config)
@@ -432,14 +432,13 @@ class Policy(BaseClass):
         self.locations = self.Locations(self)
 
         #*** Instantiate any custom classifiers:
-        self.custom.instantiate_classifiers(self.custom_classifiers)
+        self.custom.instantiate_classifiers(self.tc_rules.custom_classifiers)
 
         # LEGACY:
         #*** Run a test on the ingested traffic classification policy to ensure
         #*** that it is good:
         self.validate_policy()
 
-    # UNDER CONSTRUCTION HERE...
     class TCRules(object):
         """
         An object that represents the tc_rules root branch of
@@ -451,24 +450,27 @@ class Policy(BaseClass):
             #*** TBD: fix arbitrary single ruleset...
             self.yaml = policy.main_policy['tc_rules']['tc_ruleset_1']
 
+            #*** List to be populated with names of any custom classifiers:
+            self.custom_classifiers = []
+
             #*** Check the correctness of the tc_rules branch of main policy:
             validate(self.logger, self.yaml, TC_RULES_SCHEMA, 'tc_rules')
+
             #*** Read in rules:
             self.rules_list = []
             for idx, key in enumerate(self.yaml):
-                self.rules_list.append(self.TCRule(policy, idx))
+                self.rules_list.append(self.TCRule(self, policy, idx))
 
         class TCRule(object):
             """
             An object that represents a single traffic classification
             (TC) rule
             """
-            def __init__(self, policy, idx):
+            def __init__(self, tc_rules, policy, idx):
                 #*** Extract logger and policy YAML:
                 self.logger = policy.logger
                 #*** TBD: fix arbitrary single ruleset...
-                self.yaml = \
-                        policy.main_policy['tc_rules']['tc_ruleset_1'][idx]
+                self.yaml = policy.main_policy['tc_rules']['tc_ruleset_1'][idx]
 
                 #*** Check the correctness of the tc rule, including actions:
                 validate(self.logger, self.yaml, TC_RULE_SCHEMA, 'tc_rule')
@@ -477,15 +479,15 @@ class Policy(BaseClass):
                 #*** Read in conditions_list:
                 self.conditions_list = []
                 for idx, key in enumerate(self.yaml['conditions_list']):
-                    self.conditions_list.append(self.TCCondition(policy, \
-                                            self.yaml['conditions_list'][idx]))
+                    self.conditions_list.append(self.TCCondition(tc_rules,
+                                    policy, self.yaml['conditions_list'][idx]))
 
             class TCCondition(object):
                 """
                 An object that represents a single traffic classification
                 (TC) rule condition from a conditions list
                 """
-                def __init__(self, policy, policy_snippet):
+                def __init__(self, tc_rules, policy, policy_snippet):
                     #*** Extract logger and policy YAML:
                     self.logger = policy.logger
                     self.yaml = policy_snippet
@@ -493,6 +495,12 @@ class Policy(BaseClass):
                     #*** Check the correctness of the tc rule:
                     validate(self.logger, self.yaml, TC_CONDITION_SCHEMA,
                                                            'tc_rule_condition')
+
+                    #*** Accumulate deduplicated custom classifier names:
+                    if 'custom' in self.yaml:
+                        custlist = tc_rules.custom_classifiers
+                        if self.yaml['custom'] not in custlist:
+                            custlist.append(self.yaml['custom'])
 
     class Rule(object):
         """
@@ -797,7 +805,7 @@ class Policy(BaseClass):
             if policy_condition == 'custom':
                 custom_name = policy_conditions[policy_condition]
                 self.logger.debug("custom_classifier=%s", custom_name)
-                if custom_name not in self.custom_classifiers:
+                if custom_name not in self.tc_rules.custom_classifiers:
                     self.custom_classifiers.append(custom_name)
             #*** Check policy condition value is valid:
             if not policy_condition[0:10] == 'conditions':

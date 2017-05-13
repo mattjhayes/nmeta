@@ -248,7 +248,7 @@ def test_custom_classifiers():
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/regression",
                             pol_filename="main_policy_regression_static.yaml")
-    assert policy.custom_classifiers == []
+    assert policy.tc_rules.custom_classifiers == []
 
     #*** Instantiate tc_policy, specifying
     #*** a custom statistical main_policy file to use that has a
@@ -257,7 +257,7 @@ def test_custom_classifiers():
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_statistical.yaml")
-    assert policy.custom_classifiers == ['statistical_qos_bandwidth_1']
+    assert policy.tc_rules.custom_classifiers == ['statistical_qos_bandwidth_1']
 
 def test_qos():
     """

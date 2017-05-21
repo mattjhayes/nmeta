@@ -42,17 +42,17 @@ class CustomInspect(BaseClass):
         #*** Dictionary to hold dynamically loaded custom classifiers:
         self.custom_classifiers = {}
 
-    def check_custom(self, condition, flow, ident):
+    def check_custom(self, classifier_result, flow, ident):
         """
-        Passed condition, flows and identities objects.
+        Passed TCClassifierResult, Flow.Packet and Identities class objects.
         Call the named custom classifier with these values so that it
-        can update the condition match as appropriate.
+        can update the classifier_result match as appropriate.
         """
-        classifier = condition.policy_value
+        classifier = classifier_result.policy_value
         if classifier in self.custom_classifiers:
             custom = self.custom_classifiers[classifier]
             #*** Run the custom classifier:
-            custom.classifier(condition, flow, ident)
+            custom.classifier(classifier_result, flow, ident)
             return 1
         else:
             self.logger.error("Failed to find classifier=%s", classifier)

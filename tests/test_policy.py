@@ -35,26 +35,26 @@ DPID2 = 2
 INPORT1 = 1
 INPORT2 = 2
 
-#*** Test values for tc policy_conditions:
-conditions_any_opf = {'match_type': 'any',
+#*** Test condition instances (sets of classifiers):
+condition_any_opf = {'match_type': 'any',
                              'tcp_src': 6633, 'tcp_dst': 6633}
 conditions_all_opf = {'match_type': 'all',
                              'tcp_src': 6633, 'tcp_dst': 6633}
-conditions_any_http = {'match_type': 'any',
+condition_any_http = {'match_type': 'any',
                              'tcp_src': 80, 'tcp_dst': 80}
-conditions_all_http = {'match_type': 'all',
+condition_all_http = {'match_type': 'all',
                              'tcp_src': 80, 'tcp_dst': 80}
-conditions_all_http2 = {'match_type': 'all',
+condition_all_http2 = {'match_type': 'all',
                              'tcp_src': 43297, 'tcp_dst': 80}
-conditions_any_mac = {'match_type': 'any', 'eth_src': '08:00:27:2a:d6:dd',
+condition_any_mac = {'match_type': 'any', 'eth_src': '08:00:27:2a:d6:dd',
                          'eth_dst': '08:00:27:c8:db:91'}
-conditions_all_mac = {'match_type': 'all', 'eth_src': '08:00:27:2a:d6:dd',
+condition_all_mac = {'match_type': 'all', 'eth_src': '08:00:27:2a:d6:dd',
                          'eth_dst': '08:00:27:c8:db:91'}
-conditions_any_mac2 = {'match_type': 'any', 'eth_src': '00:00:00:01:02:03',
+condition_any_mac2 = {'match_type': 'any', 'eth_src': '00:00:00:01:02:03',
                          'eth_dst': '08:00:27:01:02:03'}
-conditions_any_ip = {'match_type': 'any', 'ip_dst': '192.168.57.12',
+condition_any_ip = {'match_type': 'any', 'ip_dst': '192.168.57.12',
                          'ip_src': '192.168.56.32'}
-conditions_any_ssh = {'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}
+condition_any_ssh = {'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}
 
 rule_1 = {
             'comment': 'HTTP traffic',
@@ -172,71 +172,124 @@ def test_check_policy():
     assert flow.classification.actions == {'set_desc': 'Constrained Bandwidth Traffic',
                                            'qos_treatment': 'constrained_bw'}
 
-def test_check_tc_rules():
+def test_check_tc_rule():
     #*** Instantiate classes:
-    policy = policy_module.Policy(config)
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
     flow = flows_module.Flow(config)
+    ident = identities.Identities(config, policy)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
     #*** Set policy.pkt as work around for not calling parent method that sets it:
     policy.pkt = flow.packet
-    #*** Should match:
-    rule = policy._check_rule(rule_1)
-    logger.debug("rule=%s", rule.to_dict())
-    assert rule.match == True
 
-    #*** Should not match:
-    rule = policy._check_rule(rule_2b)
-    logger.debug("rule=%s", rule.to_dict())
-    assert rule.match == False
+    #*** main_policy_regression_static.yaml shouldn't match HTTP:
+    tc_rules = policy_module.TCRules(policy)
+    tc_rule = policy_module.TCRule(tc_rules, policy, 0)
+    tc_rule_result = tc_rule.check_tc_rule(flow, ident)
+    assert tc_rule_result.match == False
+    assert tc_rule_result.continue_to_inspect == False
+    assert tc_rule_result.classification_tag == ""
+    assert tc_rule_result.actions == {}
+
+
+    #*** main_policy_regression_static_3.yaml should match HTTP:
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static_3.yaml")
+    ident = identities.Identities(config, policy)
+    tc_rules = policy_module.TCRules(policy)
+    tc_rule = policy_module.TCRule(tc_rules, policy, 0)
+    tc_rule_result = tc_rule.check_tc_rule(flow, ident)
+    assert tc_rule_result.match == True
+    assert tc_rule_result.continue_to_inspect == False
+    assert tc_rule_result.classification_tag == "Constrained Bandwidth Traffic"
+    assert tc_rule_result.actions == {'qos_treatment': 'constrained_bw',
+                                   'set_desc': 'Constrained Bandwidth Traffic'}
 
     # TBD - more
 
-def test_check_tc_conditions():
+def test_check_tc_condition():
     """
-    Check TC packet match against a conditions stanza
+    Check TC packet match against a TC condition (set of classifiers and
+    match type)
     """
     #*** Instantiate classes:
     policy = policy_module.Policy(config)
     flow = flows_module.Flow(config)
+    ident = identities.Identities(config, policy)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
-    #*** Set policy.pkt as work around for not calling parent method that sets it:
+    #*** Set policy.pkt as work around for not calling parent method
+    #***  that sets it:
     policy.pkt = flow.packet
+
     #*** HTTP is not OpenFlow so shouldn't match!
-    logger.debug("conditions_any_opf should not match")
-    conditions = policy._check_conditions(conditions_any_opf)
-    assert not conditions.condition[0].match
+    logger.debug("condition_any_opf should not match")
+    tc_rules = policy_module.TCRules(policy)
+    tc_condition = policy_module.TCCondition(tc_rules, policy, condition_any_opf)
+    condition_result = tc_condition.check_tc_condition(flow, ident)
+    assert condition_result.match == False
+    assert condition_result.continue_to_inspect == False
+    assert condition_result.classification_tag == ""
+    assert condition_result.actions == {}
 
     #*** HTTP is HTTP so should match:
-    logger.debug("conditions_any_http should match")
-    conditions = policy._check_conditions(conditions_any_http)
-    assert conditions.condition[0].match
+    logger.debug("condition_any_http should match")
+    tc_condition = policy_module.TCCondition(tc_rules, policy, condition_any_http)
+    condition_result = tc_condition.check_tc_condition(flow, ident)
+    assert condition_result.match == True
+    assert condition_result.continue_to_inspect == False
+    assert condition_result.classification_tag == ""
+    assert condition_result.actions == {}
 
     #*** Source AND Dest aren't both HTTP so should not match:
-    logger.debug("conditions_all_http should not match")
-    conditions = policy._check_conditions(conditions_all_http)
-    assert not conditions.condition[0].match
+    logger.debug("condition_all_http should not match")
+    tc_condition = policy_module.TCCondition(tc_rules, policy, condition_all_http)
+    condition_result = tc_condition.check_tc_condition(flow, ident)
+    assert condition_result.match == False
+    assert condition_result.continue_to_inspect == False
+    assert condition_result.classification_tag == ""
+    assert condition_result.actions == {}
 
     #*** This should match (HTTP src and dst ports correct):
-    logger.debug("conditions_all_http2 should match")
-    conditions = policy._check_conditions(conditions_all_http2)
-    assert conditions.condition[0].match
+    logger.debug("condition_all_http2 should match")
+    tc_condition = policy_module.TCCondition(tc_rules, policy, condition_all_http2)
+    condition_result = tc_condition.check_tc_condition(flow, ident)
+    assert condition_result.match == True
+    assert condition_result.continue_to_inspect == False
+    assert condition_result.classification_tag == ""
+    assert condition_result.actions == {}
 
     #*** MAC should match:
-    conditions = policy._check_conditions(conditions_any_mac)
-    assert conditions.condition[0].match
+    tc_condition = policy_module.TCCondition(tc_rules, policy, condition_any_mac)
+    condition_result = tc_condition.check_tc_condition(flow, ident)
+    assert condition_result.match == True
+    assert condition_result.continue_to_inspect == False
+    assert condition_result.classification_tag == ""
+    assert condition_result.actions == {}
 
-    conditions = policy._check_conditions(conditions_all_mac)
-    assert conditions.condition[0].match
+    tc_condition = policy_module.TCCondition(tc_rules, policy, condition_all_mac)
+    condition_result = tc_condition.check_tc_condition(flow, ident)
+    assert condition_result.match == True
+    assert condition_result.continue_to_inspect == False
+    assert condition_result.classification_tag == ""
+    assert condition_result.actions == {}
 
     #*** Different MAC shouldn't match:
-    conditions = policy._check_conditions(conditions_any_mac2)
-    assert not conditions.condition[0].match
+    tc_condition = policy_module.TCCondition(tc_rules, policy, condition_any_mac2)
+    condition_result = tc_condition.check_tc_condition(flow, ident)
+    assert condition_result.match == False
+    assert condition_result.continue_to_inspect == False
+    assert condition_result.classification_tag == ""
+    assert condition_result.actions == {}
 
 def test_custom_classifiers():
     """
@@ -431,20 +484,6 @@ def test_validate():
     locations_policy['foo'] = 1
     with pytest.raises(SystemExit) as exit_info:
         policy_module.validate(logger, locations_policy, policy_module.LOCATIONS_SCHEMA, 'locations')
-
-def test_validate_locations():
-    """
-    Test the validate_locations function of policy.py module against various
-    good and bad policy scenarios to ensure correct results produced
-    """
-    #*** Instantiate Policy class instance:
-    policy = policy_module.Policy(config)
-
-    #*** Get a copy of the main policy YAML:
-    main_policy = copy.deepcopy(policy.main_policy)
-
-    #*** Check the correctness of the locations branch of main policy:
-    assert policy_module.validate_locations(logger, main_policy) == 1
 
 def test_validate_port_set_list():
     """

@@ -31,8 +31,11 @@ import tc_static
 import tc_identity
 import tc_custom
 
+#*** Use copy to create copies not linked to originals (with copy.deepcopy):
+import copy
+
 #*** Voluptuous to verify inputs against schema:
-from voluptuous import Schema, Optional, Any, All, Required, Extra, Exclusive
+from voluptuous import Schema, Optional, Any, All, Required, Extra
 from voluptuous import Invalid, MultipleInvalid, Range
 
 #*** Import netaddr for MAC and IP address checking:
@@ -67,21 +70,6 @@ def validate(logger, data, schema, where):
         logger.critical("Voluptuous detected a problem where=%s, exception=%s",
                                                                     where, exc)
         sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
-    return 1
-
-def validate_locations(logger, main_policy):
-    """
-    Extra policy validation (in addition to Voluptuous-based validation)
-    of the locations branch of main policy
-    Parameters:
-     - logger: valid logger reference
-     - main_policy: The main policy in YAML
-    """
-    locations = main_policy['locations']
-    #*** Check the default_match value exists as a key in locations_list dicts:
-    location_list_keys = []
-    for location_list_dict in locations['locations_list']:
-        location_list_keys.append(location_list_dict['name'])
     return 1
 
 def validate_port_set_list(logger, port_set_list, policy):
@@ -123,12 +111,12 @@ def transform_ports(ports):
     ports = str(ports)
     for part in ports.split(','):
         if '-' in part:
-            a, b = part.split('-')
-            a, b = int(a), int(b)
-            result.extend(range(a, b + 1))
+            part_a, part_b = part.split('-')
+            part_a, part_b = int(part_a), int(part_b)
+            result.extend(range(part_a, part_b + 1))
         else:
-            a = int(part)
-            result.append(a)
+            part_a = int(part)
+            result.append(part_a)
     return result
 
 def validate_ports(ports):
@@ -147,12 +135,12 @@ def validate_ports(ports):
     for part in ports.split(','):
         #*** Handle ranges:
         if '-' in part:
-            a, b = part.split('-')
+            part_a, part_b = part.split('-')
             #*** can they be cast to integer?:
-            validate_type(int, a, msg)
-            validate_type(int, b, msg)
-            #*** In a port range, b must be larger than a:
-            if not int(b) > int(a):
+            validate_type(int, part_a, msg)
+            validate_type(int, part_b, msg)
+            #*** In a port range, part_b must be larger than part_a:
+            if not int(part_b) > int(part_a):
                 raise Invalid(msg2)
         else:
             #*** can it be cast to integer?:
@@ -289,13 +277,14 @@ TC_CONDITION_SCHEMA = Schema({
                         })
 #*** Voluptuous schema for tc actions:
 TC_ACTIONS_SCHEMA = Schema({
-                        Optional('drop'): Any('at_controller', 'at_controller_and_switch'),
+                        Optional('drop'): Any('at_controller',
+                                              'at_controller_and_switch'),
                         Optional('qos_treatment'): Any('default_priority',
                                                        'constrained_bw',
                                                        'high_priority',
                                                        'low_priority',
                                                        'classifier_return'),
-                        Optional('set_desc'): str
+                        Required('set_desc'): str
                         })
 #*** Voluptuous schema for port_sets branch of main policy:
 PORT_SETS_SCHEMA = Schema({
@@ -328,37 +317,6 @@ LOCATION_SCHEMA = Schema({
                             [{'port_set': str}],
                         })
 
-#================= Legacy Schema
-
-#*** Describe supported syntax in main_policy.yaml so that it can be tested
-#*** for validity. Here are valid policy rule attributes:
-TC_CONFIG_POLICYRULE_ATTRIBUTES = ('comment',
-                                   'match_type',
-                                   'conditions_list',
-                                   'actions')
-#*** Dictionary of valid conditions stanza attributes with type:
-TC_CONFIG_CONDITIONS = {'eth_src': 'MACAddress',
-                               'eth_dst': 'MACAddress',
-                               'ip_src': 'IPAddressSpace',
-                               'ip_dst': 'IPAddressSpace',
-                               'tcp_src': 'PortNumber',
-                               'tcp_dst': 'PortNumber',
-                               'udp_src': 'PortNumber',
-                               'udp_dst': 'PortNumber',
-                               'eth_type': 'EtherType',
-                               'identity_lldp_systemname': 'String',
-                               'identity_lldp_systemname_re': 'String',
-                               'identity_service_dns': 'String',
-                               'identity_service_dns_re': 'String',
-                               'custom': 'String',
-                               'match_type': 'MatchType',
-                               'conditions_list': 'PolicyConditions'}
-TC_CONFIG_ACTIONS = ('qos_treatment',
-                     'set_desc',
-                     'drop')
-TC_CONFIG_MATCH_TYPES = ('any',
-                         'all')
-
 #*** Default policy file location parameters:
 POL_DIR_DEFAULT = "config"
 POL_DIR_USER = "config/user"
@@ -374,11 +332,18 @@ class Policy(BaseClass):
     - Other methods and functions to check various parameters
       against policy
 
-    Directly accessible variables:
-        main_policy                 # main policy YAML object. RO, no verbs.
-        tc_rules.custom_classifiers # dedup list of custom classifier names
+    Note: No nesting of class definitions as not Pythonic
 
-    TBD
+    Main Methods and Variables:
+    - check_policy(flow, ident)   # Check a packet against policy
+    - main_policy                 # main policy YAML object. Read-only,
+                                      no verbs. Use methods instead where
+                                      possible.
+
+    TC Methods and Variables:
+    - tc_rules.rules_list         # List of TC rules
+    - tc_rules.custom_classifiers # dedup list of custom classifier names
+
 
     """
     def __init__(self, config, pol_dir_default=POL_DIR_DEFAULT,
@@ -427,475 +392,12 @@ class Policy(BaseClass):
         validate(self.logger, self.main_policy, TOP_LEVEL_SCHEMA, 'top')
 
         #*** Instantiate classes for the second levels of policy:
-        self.tc_rules = self.TCRules(self)
-        self.port_sets = self.PortSets(self)
-        self.locations = self.Locations(self)
+        self.tc_rules = TCRules(self)
+        self.port_sets = PortSets(self)
+        self.locations = Locations(self)
 
         #*** Instantiate any custom classifiers:
         self.custom.instantiate_classifiers(self.tc_rules.custom_classifiers)
-
-        # LEGACY:
-        #*** Run a test on the ingested traffic classification policy to ensure
-        #*** that it is good:
-        self.validate_policy()
-
-    class TCRules(object):
-        """
-        An object that represents the tc_rules root branch of
-        the main policy
-        """
-        def __init__(self, policy):
-            #*** Extract logger and policy YAML branch:
-            self.logger = policy.logger
-            #*** TBD: fix arbitrary single ruleset...
-            self.yaml = policy.main_policy['tc_rules']['tc_ruleset_1']
-
-            #*** List to be populated with names of any custom classifiers:
-            self.custom_classifiers = []
-
-            #*** Check the correctness of the tc_rules branch of main policy:
-            validate(self.logger, self.yaml, TC_RULES_SCHEMA, 'tc_rules')
-
-            #*** Read in rules:
-            self.rules_list = []
-            for idx, key in enumerate(self.yaml):
-                self.rules_list.append(self.TCRule(self, policy, idx))
-
-        class TCRule(object):
-            """
-            An object that represents a single traffic classification
-            (TC) rule
-            """
-            def __init__(self, tc_rules, policy, idx):
-                #*** Extract logger and policy YAML:
-                self.logger = policy.logger
-                #*** TBD: fix arbitrary single ruleset...
-                self.yaml = policy.main_policy['tc_rules']['tc_ruleset_1'][idx]
-
-                #*** Check the correctness of the tc rule, including actions:
-                validate(self.logger, self.yaml, TC_RULE_SCHEMA, 'tc_rule')
-                validate(self.logger, self.yaml['actions'], TC_ACTIONS_SCHEMA,
-                                                             'tc_rule_actions')
-                #*** Read in conditions_list:
-                self.conditions_list = []
-                for idx, key in enumerate(self.yaml['conditions_list']):
-                    self.conditions_list.append(self.TCCondition(tc_rules,
-                                    policy, self.yaml['conditions_list'][idx]))
-
-            class TCCondition(object):
-                """
-                An object that represents a single traffic classification
-                (TC) rule condition from a conditions list
-                """
-                def __init__(self, tc_rules, policy, policy_snippet):
-                    #*** Extract logger and policy YAML:
-                    self.logger = policy.logger
-                    self.yaml = policy_snippet
-
-                    #*** Check the correctness of the tc rule:
-                    validate(self.logger, self.yaml, TC_CONDITION_SCHEMA,
-                                                           'tc_rule_condition')
-
-                    #*** Accumulate deduplicated custom classifier names:
-                    if 'custom' in self.yaml:
-                        custlist = tc_rules.custom_classifiers
-                        if self.yaml['custom'] not in custlist:
-                            custlist.append(self.yaml['custom'])
-
-    class Rule(object):
-        """
-        An object that represents a traffic classification rule
-        (a set of conditions), including any decision collateral
-        on matches and actions
-        """
-        def __init__(self):
-            """
-            Initialise variables
-            """
-            self.match = 0
-            self.continue_to_inspect = 0
-            self.match_type = ""
-            self.classification_tag = ""
-            self.actions = {}
-            #*** List for conditions objects:
-            self.conditions = []
-
-        def to_dict(self):
-            """
-            Return a dictionary object of the condition object
-            """
-            return self.__dict__
-
-    class Conditions(object):
-        """
-        An object that represents traffic classification conditions,
-        including any decision collateral on matches and actions
-        """
-        def __init__(self):
-            """
-            Initialise variables
-            """
-            self.match = 0
-            self.continue_to_inspect = 0
-            self.match_type = ""
-            self.classification_tag = ""
-            self.actions = {}
-            #*** List for condition objects:
-            self.condition = []
-
-        def to_dict(self):
-            """
-            Return a dictionary object of the condition object
-            """
-            return self.__dict__
-
-    class Condition(object):
-        """
-        An object that represents a traffic classification condition,
-        including any decision collateral on match test
-        """
-        def __init__(self):
-            """
-            Initialise variables
-            """
-            self.match = 0
-            self.continue_to_inspect = 0
-            self.policy_attr = ""
-            self.policy_attr_type = ""
-            self.policy_value = ""
-            self.classification_tag = ""
-            self.actions = {}
-
-        def to_dict(self):
-            """
-            Return a dictionary object of the condition object
-            """
-            return self.__dict__
-
-    class PortSets(object):
-        """
-        An object that represents the port_sets root branch of
-        the main policy
-        """
-        def __init__(self, policy):
-            #*** Extract logger and policy YAML branch:
-            self.logger = policy.logger
-            self.yaml = policy.main_policy['port_sets']
-
-            #*** Check the correctness of the port_sets branch of main policy:
-            validate(self.logger, self.yaml, PORT_SETS_SCHEMA, 'port_sets')
-            #*** Read in port_sets:
-            self.port_sets_list = []
-            for idx, key in enumerate(self.yaml['port_set_list']):
-                self.port_sets_list.append(self.PortSet(policy, idx))
-
-        def get_port_set(self, dpid, port, vlan_id=0):
-            """
-            Check if supplied dpid/port/vlan_id is member of
-            a port set and if so, return the port_set name. If no
-            match return empty string.
-            """
-            for idx in self.port_sets_list:
-                if idx.is_member(dpid, port, vlan_id):
-                    return idx.name
-            return ""
-
-        class PortSet(object):
-            """
-            An object that represents a single port set
-            """
-
-            def __init__(self, policy, idx):
-                #*** Extract logger and policy YAML:
-                self.logger = policy.logger
-                self.yaml = \
-                        policy.main_policy['port_sets']['port_set_list'][idx]
-                self.name = self.yaml['name']
-
-                #*** Check the correctness of the location policy:
-                validate(self.logger, self.yaml, PORT_SET_SCHEMA, 'port_set')
-
-                #*** Build searchable lists of ports
-                #***  (ranges turned into multiple single values):
-                port_list = self.yaml['port_list']
-                for ports in port_list:
-                    ports['ports_xform'] = transform_ports(ports['ports'])
-
-            def is_member(self, dpid, port, vlan_id=0):
-                """
-                Check to see supplied dpid/port/vlan_id is member of
-                this port set.
-
-                Returns a Boolean
-                """
-                #*** Validate dpid is an integer (and coerce if required):
-                msg = 'dpid must be integer'
-                dpid = validate_type(int, dpid, msg)
-
-                #*** Validate port is an integer (and coerce if required):
-                msg = 'Port must be integer'
-                port = validate_type(int, port, msg)
-
-                #*** Validate vlan_id is an integer (and coerce if required):
-                msg = 'vlan_id must be integer'
-                vlan_id = validate_type(int, vlan_id, msg)
-
-                #*** Iterate through port list looking for a match:
-                port_list = self.yaml['port_list']
-                for ports in port_list:
-                    if not ports['DPID'] == dpid:
-                        self.logger.debug("did not match dpid")
-                        continue
-                    if not ports['vlan_id'] == vlan_id:
-                        self.logger.debug("did not match vlan_id")
-                        continue
-                    if port in ports['ports_xform']:
-                        return 1
-                self.logger.debug("no match, returning 0")
-                return 0
-
-    class Locations(object):
-        """
-        An object that represents the locations root branch of
-        the main policy
-        """
-        def __init__(self, policy):
-            #*** Extract logger and policy YAML branch:
-            self.logger = policy.logger
-            self.yaml = policy.main_policy['locations']
-
-            #*** Check the correctness of the locations branch of main policy:
-            validate(self.logger, self.yaml, LOCATIONS_SCHEMA, 'locations')
-
-            #*** Extra validation of locations policy:
-            validate_locations(self.logger, policy.main_policy)
-
-            #*** Read in locations etc:
-            self.locations_list = []
-            for idx, key in enumerate(self.yaml['locations_list']):
-                self.locations_list.append(self.Location(policy, idx))
-            #*** Default location to use if no match:
-            self.default_match = self.yaml['default_match']
-
-        def get_location(self, dpid, port):
-            """
-            Passed a DPID and port and return a logical location
-            name, as per policy configuration.
-            """
-            result = ""
-            for location in self.locations_list:
-                result = location.check(dpid, port)
-                if result:
-                    return result
-            return self.default_match
-
-        class Location(object):
-            """
-            An object that represents a single location
-            """
-
-            def __init__(self, policy, idx):
-                #*** Extract logger and policy YAML:
-                self.logger = policy.logger
-                self.policy = policy
-                self.yaml = \
-                        policy.main_policy['locations']['locations_list'][idx]
-
-                #*** Check the correctness of the location policy:
-                validate(self.logger, self.yaml, LOCATION_SCHEMA, 'location')
-
-                #*** Check that port sets exist:
-                validate_port_set_list(self.logger, self.yaml['port_set_list'],
-                                                                        policy)
-
-                #*** Store data from YAML into this class:
-                self.name = self.yaml['name']
-                self.port_set_list = self.yaml['port_set_list']
-
-            def check(self, dpid, port):
-                """
-                Check a dpid/port to see if it is part of this location
-                and if so return the string name of the location otherwise
-                return empty string
-                """
-                port_set_membership = \
-                                 self.policy.port_sets.get_port_set(dpid, port)
-                for port_set in self.port_set_list:
-                    if port_set['port_set'] == port_set_membership:
-                        return self.name
-                return ""
-
-    def validate_policy(self):
-        """
-        Check main policy to ensure that it is in
-        correct format so that it won't cause unexpected errors during
-        packet checks.
-        """
-        self.logger.debug("Validating main policy...")
-        #*** Validate that policy has a 'tc_rules' key off the root:
-        if not 'tc_rules' in self.main_policy:
-            #*** No 'tc_rules' key off the root, so log and exit:
-            self.logger.critical("Missing tc_rules"
-                                    "key in root of main policy")
-            sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
-        #*** Get the tc ruleset name, only one ruleset supported at this stage:
-        tc_rules_keys = list(self.main_policy['tc_rules'].keys())
-        if not len(tc_rules_keys) == 1:
-            #*** Unsupported number of rulesets so log and exit:
-            self.logger.critical("Unsupported "
-                                    "number of tc rulesets. Should be 1 but "
-                                    "is %s", len(tc_rules_keys))
-            sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
-        tc_ruleset_name = tc_rules_keys[0]
-        self.logger.debug("tc_ruleset_name=%s",
-                              tc_ruleset_name)
-        #*** Create new variable to reference tc ruleset directly:
-        self.tc_ruleset = self.main_policy['tc_rules'][tc_ruleset_name]
-        for idx, policy_rule in enumerate(self.tc_ruleset):
-            tc_rule = self.tc_ruleset[idx]
-            self.logger.debug("Validating PolicyRule "
-                              "number=%s rule=%s", idx, tc_rule)
-            #*** Test for unsupported PolicyRule attributes:
-            for policy_rule_parameter in tc_rule.keys():
-                if not policy_rule_parameter in \
-                        TC_CONFIG_POLICYRULE_ATTRIBUTES:
-                    self.logger.critical("The "
-                                         "following PolicyRule attribute is "
-                                         "invalid: %s ", policy_rule_parameter)
-                    sys.exit("Exiting nmeta. Please fix error in "
-                             "main_policy.yaml file")
-                if policy_rule_parameter == 'conditions_list':
-                    for conditions in tc_rule[policy_rule_parameter]:
-                        #*** Call function to validate the policy condition and
-                        #*** any nested policy conditions that it may contain:
-                        self._validate_conditions(conditions)
-                if policy_rule_parameter == 'actions':
-                    #*** Check actions are valid:
-                    for action in tc_rule[policy_rule_parameter].keys():
-                        if not action in TC_CONFIG_ACTIONS:
-                            self.logger.critical("The following action "
-                                                 "attribute is invalid: %s",
-                                                 action)
-                            sys.exit("Exiting nmeta. Please fix error in "
-                                     "main_policy.yaml file")
-
-    def _validate_conditions(self, policy_conditions):
-        """
-        Check Traffic Classification (TC) conditions stanza to ensure
-        that it is in the correct format so that it won't cause unexpected
-        errors during packet checks. Can recurse for nested policy conditions.
-        """
-        #*** Use this to check if there is a match_type in stanza. Note can't
-        #*** check for more than one occurrence as dictionary will just
-        #*** keep attribute and overwrite value. Also note that recursive
-        #*** instances use same variable due to scoping:
-        self.has_match_type = 0
-        #*** Check conditions are valid:
-        for policy_condition in policy_conditions.keys():
-            #*** Check policy condition attribute is valid:
-            if not (policy_condition in TC_CONFIG_CONDITIONS or
-                     policy_condition[0:10] == 'conditions'):
-                self.logger.critical("The following PolicyCondition attribute"
-                " is invalid: %s", policy_condition)
-                sys.exit("Exiting nmeta. Please fix error in "
-                         "main_policy.yaml file")
-            #*** Accumulate names of any custom classifiers for later loading:
-            if policy_condition == 'custom':
-                custom_name = policy_conditions[policy_condition]
-                self.logger.debug("custom_classifier=%s", custom_name)
-                if custom_name not in self.tc_rules.custom_classifiers:
-                    self.custom_classifiers.append(custom_name)
-            #*** Check policy condition value is valid:
-            if not policy_condition[0:10] == 'conditions':
-                pc_value_type = TC_CONFIG_CONDITIONS[policy_condition]
-            else:
-                pc_value_type = policy_condition
-            pc_value = policy_conditions[policy_condition]
-            if pc_value_type == 'String':
-                #*** Can't think of a way it couldn't be a valid
-                #*** string???
-                pass
-            elif pc_value_type == 'PortNumber':
-                #*** Check is int 0 < x < 65536:
-                if not \
-                     self.static.is_valid_transport_port(pc_value):
-                    self.logger.critical("The following "
-                          "PolicyCondition value is invalid: %s "
-                          "as %s", policy_condition, pc_value)
-                    sys.exit("Exiting nmeta. Please fix error "
-                                        "in main_policy.yaml file")
-            elif pc_value_type == 'MACAddress':
-                #*** Check is valid MAC address:
-                if not self.static.is_valid_macaddress(pc_value):
-                    self.logger.critical("The following "
-                          "PolicyCondition value is invalid: %s "
-                          "as %s", policy_condition, pc_value)
-                    sys.exit("Exiting nmeta. Please fix error "
-                                        "in main_policy.yaml file")
-            elif pc_value_type == 'EtherType':
-                #*** Check is valid EtherType - must be two bytes
-                #*** as Hex (i.e. 0x0800 is IPv4):
-                if not self.static.is_valid_ethertype(pc_value):
-                    self.logger.critical("The following "
-                          "PolicyCondition value is invalid: %s "
-                          "as %s", policy_condition, pc_value)
-                    sys.exit("Exiting nmeta. Please fix error "
-                                        "in main_policy.yaml file")
-            elif pc_value_type == 'IPAddressSpace':
-                #*** Check is valid IP address, IPv4 or IPv6, can
-                #*** include range or CIDR mask:
-                if not self.static.is_valid_ip_space(pc_value):
-                    self.logger.critical("The following "
-                          "PolicyCondition value is invalid: %s "
-                          "as %s", policy_condition, pc_value)
-                    sys.exit("Exiting nmeta. Please fix error "
-                                        "in main_policy.yaml file")
-            elif pc_value_type == 'MatchType':
-                #*** Check is valid match type:
-                if not pc_value in TC_CONFIG_MATCH_TYPES:
-                    self.logger.critical("The following "
-                          "PolicyCondition value is invalid: %s "
-                          "as %s", policy_condition, pc_value)
-                    sys.exit("Exiting nmeta. Please fix error "
-                                        "in main_policy.yaml file")
-                else:
-                    #*** Flag that we've seen a match_type so all is good:
-                    self.has_match_type = 1
-            elif pc_value_type == 'conditions_list':
-                #*** Check value is list:
-                if not isinstance(pc_value, list):
-                    self.logger.critical("A conditions_list clause "
-                          "specified but is invalid: %s "
-                          "as %s", policy_condition, pc_value)
-                    sys.exit("Exiting nmeta. Please fix error "
-                                        "in main_policy.yaml file")
-                #*** Now, iterate through conditions list:
-                self.logger.debug("Iterating on "
-                                    "conditions_list=%s", pc_value)
-                for list_item in pc_value:
-                    keys = list_item.keys()
-                    name = keys[0]
-                    self._validate_conditions(list_item[name])
-            else:
-                #*** Whoops! We have a data type in the policy
-                #*** that we've forgot to code a check for...
-                self.logger.critical("The following "
-                          "PolicyCondition value does not have "
-                          "a check: %s, %s", policy_condition, pc_value)
-                sys.exit("Exiting nmeta. Coding error "
-                                        "in main_policy.yaml file")
-        #*** Check match_type attribute present:
-        if not self.has_match_type == 1:
-            #*** No match_type attribute in stanza:
-            self.logger.critical("Missing match_type attribute"
-                     " in stanza: %s ", policy_conditions)
-            sys.exit("Exiting nmeta. Please fix error "
-                                        "in main_policy.yaml file")
-        else:
-            #*** Reset to zero as otherwise can break parent evaluations:
-            self.has_match_type = 0
 
     def check_policy(self, flow, ident):
         """
@@ -905,178 +407,28 @@ class Policy(BaseClass):
         rules and if it does, update the classifications portion of
         the flows object to reflect details of the classification.
         """
-        self.flow = flow
-        self.pkt = flow.packet
-        self.ident = ident
         #*** Check against TC policy:
-        for tc_rule in self.tc_ruleset:
+        for tc_rule in self.tc_rules.rules_list:
             #*** Check the rule:
-            rule = self._check_rule(tc_rule)
-            if rule.match:
-                self.logger.debug("Matched policy rule=%s", rule.to_dict())
+            tc_rule_result = tc_rule.check_tc_rule(flow, ident)
+            if tc_rule_result.match:
+                self.logger.debug("Matched policy rule=%s", tc_rule.__dict__)
                 #*** Only set 'classified' if continue_to_inspect not set:
-                if not rule.continue_to_inspect:
+                if not tc_rule_result.continue_to_inspect:
                     flow.classification.classified = True
                 else:
                     flow.classification.classified = False
                 flow.classification.classification_tag = \
-                                                        rule.classification_tag
+                                              tc_rule_result.classification_tag
                 flow.classification.classification_time = \
                                                         datetime.datetime.now()
-                #*** Accumulate any actions. (will overwrite with rule action)
-                #*** Firstly, any actions on the rule:
-                flow.classification.actions.update(tc_rule['actions'])
-                #*** Secondly, any actions returned from custom classifiers:
-                flow.classification.actions.update(rule.actions)
+                #*** Accumulate any actions:
+                flow.classification.actions.update(tc_rule_result.actions)
                 return 1
 
         #*** No matches. Mark as classified so we don't process again:
         flow.classification.classified = True
         return 0
-
-    def _check_rule(self, rule_stanza):
-        """
-        Passed a main_policy.yaml tc_rule stanza.
-        Check to see if packet matches conditions as per the
-        rule. Return a rule object
-        """
-        #*** Instantiate a Rule class for results:
-        rule = self.Rule()
-        rule.match_type = rule_stanza['match_type']
-        #*** Iterate through the conditions list:
-        for condition_stanza in rule_stanza['conditions_list']:
-            conditions = self._check_conditions(condition_stanza)
-            self.logger.debug("condition_stanza=%s, conditions=%s",
-                                        condition_stanza, conditions.to_dict())
-            #*** Decide what to do based on match result and match type:
-            if conditions.match and rule.match_type == "any":
-                rule.match = True
-                rule.actions.update(conditions.actions)
-
-                if rule_stanza['actions']['set_desc'] == 'classifier_return':
-                    #*** Tagged by a custom classifier:
-                    rule.classification_tag = conditions.classification_tag
-                else:
-                    rule.classification_tag = rule_stanza['actions']['set_desc']
-
-                if conditions.continue_to_inspect:
-                    rule.continue_to_inspect = 1
-                return rule
-            elif not conditions.match and rule.match_type == "all":
-                rule.match = False
-                return rule
-            else:
-                #*** Not a condition that we take action on so keep going:
-                pass
-        #*** We've finished loop through all conditions and haven't returned.
-        #***  Work out what action to take:
-        if not conditions.match and rule.match_type == "any":
-            rule.match = False
-            return rule
-        elif conditions.match and rule.match_type == "all":
-            rule.match = True
-            rule.actions.update(conditions.actions)
-
-            if rule_stanza['actions']['set_desc'] == 'classifier_return':
-                #*** Tagged by a custom classifier:
-                rule.classification_tag = conditions.classification_tag
-            else:
-                rule.classification_tag = rule_stanza['actions']['set_desc']
-
-            if conditions.continue_to_inspect:
-                rule.continue_to_inspect = 1
-            return rule
-        else:
-            #*** Unexpected result:
-            self.logger.error("Unexpected result at "
-                "end of loop through rule=%s", rule.to_dict())
-            rule.match = False
-            return rule
-
-    def _check_conditions(self, conditions_stanza):
-        """
-        Passed a conditions stanza
-        Check to see if self.packet matches conditions as per the
-        match type.
-        Return a condition object with match information.
-        """
-        self.logger.debug("conditions_stanza=%s", conditions_stanza)
-        #*** Instantiate a conditions class for results:
-        conditions = self.Conditions()
-        conditions.match_type = conditions_stanza['match_type']
-        #*** Loop through conditions_stanza checking match:
-        for policy_attr in conditions_stanza.keys():
-            if policy_attr == "match_type":
-                #*** Nothing to do:
-                continue
-            #*** Instantiate a condition class for result:
-            condition = self.Condition()
-            condition.policy_attr = policy_attr
-            condition.policy_value = conditions_stanza[policy_attr]
-            self.logger.debug("looping checking policy_attr=%s "
-                                  "policy_value=%s", condition.policy_attr,
-                                  condition.policy_value)
-            #*** Policy Attribute Type is for identity classifiers
-            #*** Exclude nested conditions dictionaries from this check:
-            if condition.policy_attr[0:10] == 'conditions':
-                condition.policy_attr_type = "conditions"
-            else:
-                condition.policy_attr_type = policy_attr.split("_")[0]
-            #*** Main if/elif/else check on condition attribute type:
-            if condition.policy_attr_type == "identity":
-                self.identity.check_identity(condition, self.pkt, self.ident)
-            elif condition.policy_attr == "custom":
-                self.custom.check_custom(condition, self.flow, self.ident)
-                self.logger.debug("custom match condition=%s",
-                                                           condition.to_dict())
-            #elif condition.policy_attr_type == "conditions_list":
-                # TBD: Do a recursive call on nested conditions
-            else:
-                #*** default to doing a Static Classification match:
-                self.static.check_static(condition, self.pkt)
-                self.logger.debug("static match=%s", condition.to_dict())
-            #*** Decide what to do based on match result and match type:
-            if condition.match and conditions.match_type == "any":
-                conditions.condition.append(condition)
-                #*** Accumulate actions:
-                for condn in conditions.condition:
-                    self.logger.debug("appending actions=%s", condn.actions)
-                    conditions.actions.update(condn.actions)
-                    conditions.classification_tag += condn.classification_tag
-                    if condn.continue_to_inspect:
-                        conditions.continue_to_inspect = 1
-                conditions.match = True
-                return conditions
-            elif not condition.match and not condition.policy_attr == \
-                            "match_type" and conditions.match_type == "all":
-                conditions.condition.append(condition)
-                conditions.match = False
-                return conditions
-            else:
-                #*** Not a condition that we take action on so keep going:
-                pass
-        #*** We've finished loop through all conditions and haven't returned.
-        #***  Work out what action to take:
-        if not condition.match and conditions.match_type == "any":
-            conditions.condition.append(condition)
-            conditions.match = False
-            return conditions
-        elif condition.match and conditions.match_type == "all":
-            conditions.condition.append(condition)
-            #*** Accumulate actions:
-            for condn in conditions.condition:
-                conditions.actions.update(condn.actions)
-                if condn.continue_to_inspect:
-                    conditions.continue_to_inspect = 1
-            conditions.match = True
-            return conditions
-        else:
-            #*** Unexpected result:
-            self.logger.error("Unexpected result at end of loop through "
-                                        "attributes. condition=%s, ",
-                                        condition.to_dict())
-            conditions.match = False
-            return conditions
 
     def qos(self, qos_treatment):
         """
@@ -1096,3 +448,420 @@ class Policy(BaseClass):
             self.logger.error("qos_treatment=%s not found in main_policy",
                                                                  qos_treatment)
             return 0
+
+class TCRules(object):
+    """
+    An object that represents the tc_rules root branch of
+    the main policy
+    """
+    def __init__(self, policy):
+        #*** Extract logger and policy YAML branch:
+        self.logger = policy.logger
+        #*** TBD: fix arbitrary single ruleset...
+        self.yaml = policy.main_policy['tc_rules']['tc_ruleset_1']
+
+        #*** List to be populated with names of any custom classifiers:
+        self.custom_classifiers = []
+
+        #*** Check the correctness of the tc_rules branch of main policy:
+        validate(self.logger, self.yaml, TC_RULES_SCHEMA, 'tc_rules')
+
+        #*** Read in rules:
+        self.rules_list = []
+        for idx, key in enumerate(self.yaml):
+            self.rules_list.append(TCRule(self, policy, idx))
+
+class TCRule(object):
+    """
+    An object that represents a single traffic classification
+    (TC) rule.
+    """
+    def __init__(self, tc_rules, policy, idx):
+        """
+        Passed a TCRules class instance, a Policy class instance
+        and an index integer for the index of the tc rule in policy
+        """
+        #*** Extract logger and policy YAML:
+        self.logger = policy.logger
+        #*** TBD: fix arbitrary single ruleset...
+        self.yaml = policy.main_policy['tc_rules']['tc_ruleset_1'][idx]
+
+        #*** Check the correctness of the tc rule, including actions:
+        validate(self.logger, self.yaml, TC_RULE_SCHEMA, 'tc_rule')
+        validate(self.logger, self.yaml['actions'], TC_ACTIONS_SCHEMA,
+                                                     'tc_rule_actions')
+        self.match_type = self.yaml['match_type']
+        self.actions = self.yaml['actions']
+        #*** Read in conditions_list:
+        self.conditions_list = []
+        for condition in self.yaml['conditions_list']:
+            self.conditions_list.append(TCCondition(tc_rules,
+                            policy, condition))
+
+    def check_tc_rule(self, flow, ident):
+        """
+        Passed Packet and Identity class objects.
+        Check to see if packet matches conditions as per the
+        TC rule. Return a TCRuleResult object
+        """
+        #*** Instantiate object to hold results for checks:
+        result = TCRuleResult(self.actions)
+        #*** Iterate through the conditions list:
+        for condition in self.conditions_list:
+            condition_result = condition.check_tc_condition(flow, ident)
+            self.logger.debug("condition=%s result=%s", condition.__dict__,
+                                                     condition_result.__dict__)
+            #*** Decide what to do based on match result and type:
+            if condition_result.match and self.match_type == "any":
+                result.match = True
+                result.accumulate(condition_result)
+                result.add_rule_actions()
+                return result
+            elif not result.match and self.match_type == "all":
+                result.match = False
+                return result
+            elif result.match and self.match_type == "all":
+                #*** Just accumulate the results:
+                result.accumulate(condition_result)
+            else:
+                #*** Not a condition we take action on so keep going:
+                pass
+        #*** We've finished loop through all conditions and haven't
+        #***  returned. Work out what action to take:
+        if not condition_result.match and self.match_type == "any":
+            result.match = False
+            return result
+        elif condition_result.match and self.match_type == "all":
+            result.match = True
+            result.accumulate(condition_result)
+            result.add_rule_actions()
+            return result
+        else:
+            #*** Unexpected result:
+            self.logger.error("Unexpected result at "
+                "end of loop through rule=%s", self.yaml)
+            result.match = False
+            return result
+
+class TCRuleResult(object):
+    """
+    An object that represents a traffic classification
+    result, including any decision collateral
+    on matches and actions.
+    Use __dict__ to dump to data to dictionary
+    """
+    def __init__(self, rule_actions):
+        """
+        Initialise the class
+        """
+        self.match = 0
+        self.continue_to_inspect = 0
+        self.classification_tag = ""
+        self.actions = {}
+        #*** Actions defined in policy for this rule:
+        self.rule_actions = rule_actions
+
+    def accumulate(self, condition_result):
+        """
+        Passed a TCConditionResult object and
+        accumulate values into our object
+        """
+        if condition_result.match:
+            self.match = True
+            if condition_result.continue_to_inspect:
+                self.continue_to_inspect = True
+            if self.rule_actions['set_desc'] == 'classifier_return':
+                self.classification_tag = condition_result.classification_tag
+            else:
+                self.classification_tag = self.rule_actions['set_desc']
+            self.actions.update(condition_result.actions)
+
+    def add_rule_actions(self):
+        """
+        Add rule actions from policy to the actions of this class
+        """
+        self.actions.update(self.rule_actions)
+
+
+class TCCondition(object):
+    """
+    An object that represents a single traffic classification
+    (TC) rule condition from a conditions list
+    (contains a match type and one or more classifiers)
+    """
+    def __init__(self, tc_rules, policy, policy_snippet):
+        """
+        Passed a TCRules class instance, a Policy class instance
+        and a snippet of tc policy for a condition
+        """
+        self.policy = policy
+        self.logger = policy.logger
+        self.yaml = policy_snippet
+
+        #*** Check the correctness of the tc rule:
+        validate(self.logger, self.yaml, TC_CONDITION_SCHEMA,
+                                               'tc_rule_condition')
+
+        #*** Accumulate deduplicated custom classifier names:
+        if 'custom' in self.yaml:
+            custlist = tc_rules.custom_classifiers
+            if self.yaml['custom'] not in custlist:
+                custlist.append(self.yaml['custom'])
+
+        self.match_type = self.yaml['match_type']
+        #*** Build a dictionary of classifiers (match conditions):
+        self.classifiers = copy.deepcopy(self.yaml)
+        del self.classifiers['match_type']
+
+    def check_tc_condition(self, flow, ident):
+        """
+        Passed a Flow and Identity class objects. Check to see if
+        flow.packet matches condition (a set of classifiers)
+        as per the match type.
+        Return a TCConditionResult object with match information.
+        """
+        pkt = flow.packet
+        result = TCConditionResult()
+        #*** Iterate through classifiers (example: tcp_src: 123):
+        for policy_attr, policy_value in self.classifiers.iteritems():
+            #*** Instantiate data structure for classifier result:
+            classifier_result = TCClassifierResult(policy_attr, policy_value)
+            self.logger.debug("Iterating classifiers, policy_attr=%s "
+                        "policy_value=%s, policy_attr_type=%s", policy_attr,
+                        policy_value, classifier_result.policy_attr_type)
+            #*** Main check on classifier attribute type:
+            if classifier_result.policy_attr_type == "identity":
+                self.policy.identity.check_identity(classifier_result, pkt,
+                                                                         ident)
+            elif policy_attr == "custom":
+                self.policy.custom.check_custom(classifier_result, flow, ident)
+                self.logger.debug("custom match condition=%s",
+                                                    classifier_result.__dict__)
+            else:
+                #*** default to static classifier:
+                self.policy.static.check_static(classifier_result, pkt)
+                self.logger.debug("static match=%s",
+                                                    classifier_result.__dict__)
+            #*** Decide what to do based on match result and type:
+            if classifier_result.match and self.match_type == "any":
+                result.accumulate(classifier_result)
+                return result
+            elif not classifier_result.match and self.match_type == "all":
+                result.match = False
+                return result
+            else:
+                #*** Not a condition we take action on, keep going:
+                pass
+        #*** Finished loop through all conditions without return.
+        #***  Work out what action to take:
+        if not classifier_result.match and self.match_type == "any":
+            result.match = False
+            return result
+        elif classifier_result.match and self.match_type == "all":
+            result.accumulate(classifier_result)
+            return result
+        else:
+            #*** Unexpected result:
+            self.logger.error("Unexpected result at end of loop"
+                                        "classifier_result=%s",
+                                        classifier_result.__dict__)
+            result.match = False
+            return result
+
+class TCConditionResult(object):
+    """
+    An object that represents a traffic classification condition
+    result. Custom classifiers can return additional parameters
+    beyond a Boolean match, so cater for these too.
+    Use __dict__ to dump to data to dictionary
+    """
+    def __init__(self):
+        """
+        Initialise the class
+        """
+        self.match = False
+        self.continue_to_inspect = False
+        self.classification_tag = ""
+        self.actions = {}
+
+    def accumulate(self, classifier_result):
+        """
+        Passed a TCClassifierResult object and
+        accumulate values into our object
+        """
+        if classifier_result.match:
+            self.match = True
+            if classifier_result.continue_to_inspect:
+                self.continue_to_inspect = True
+            self.actions.update(classifier_result.actions)
+            self.classification_tag += classifier_result.classification_tag
+
+class TCClassifierResult(object):
+    """
+    An object that represents a traffic classification classifier
+    result. Custom classifiers can return additional parameters
+    beyond a Boolean match, so cater for these too.
+    Use __dict__ to dump to data to dictionary
+    """
+    def __init__(self, policy_attr, policy_value):
+        """
+        Initialise the class
+        """
+        self.match = False
+        self.continue_to_inspect = 0
+        self.policy_attr = policy_attr
+        #*** Policy Attribute Type is for identity classifiers
+        self.policy_attr_type = policy_attr.split("_")[0]
+        self.policy_value = policy_value
+        self.classification_tag = ""
+        self.actions = {}
+
+class PortSets(object):
+    """
+    An object that represents the port_sets root branch of
+    the main policy
+    """
+    def __init__(self, policy):
+        #*** Extract logger and policy YAML branch:
+        self.logger = policy.logger
+        self.yaml = policy.main_policy['port_sets']
+
+        #*** Check the correctness of the port_sets branch of main policy:
+        validate(self.logger, self.yaml, PORT_SETS_SCHEMA, 'port_sets')
+        #*** Read in port_sets:
+        self.port_sets_list = []
+        for idx, key in enumerate(self.yaml['port_set_list']):
+            self.port_sets_list.append(PortSet(policy, idx))
+
+    def get_port_set(self, dpid, port, vlan_id=0):
+        """
+        Check if supplied dpid/port/vlan_id is member of
+        a port set and if so, return the port_set name. If no
+        match return empty string.
+        """
+        for idx in self.port_sets_list:
+            if idx.is_member(dpid, port, vlan_id):
+                return idx.name
+        return ""
+
+class PortSet(object):
+    """
+    An object that represents a single port set
+    """
+
+    def __init__(self, policy, idx):
+        #*** Extract logger and policy YAML:
+        self.logger = policy.logger
+        self.yaml = \
+                policy.main_policy['port_sets']['port_set_list'][idx]
+        self.name = self.yaml['name']
+
+        #*** Check the correctness of the location policy:
+        validate(self.logger, self.yaml, PORT_SET_SCHEMA, 'port_set')
+
+        #*** Build searchable lists of ports
+        #***  (ranges turned into multiple single values):
+        port_list = self.yaml['port_list']
+        for ports in port_list:
+            ports['ports_xform'] = transform_ports(ports['ports'])
+
+    def is_member(self, dpid, port, vlan_id=0):
+        """
+        Check to see supplied dpid/port/vlan_id is member of
+        this port set.
+
+        Returns a Boolean
+        """
+        #*** Validate dpid is an integer (and coerce if required):
+        msg = 'dpid must be integer'
+        dpid = validate_type(int, dpid, msg)
+
+        #*** Validate port is an integer (and coerce if required):
+        msg = 'Port must be integer'
+        port = validate_type(int, port, msg)
+
+        #*** Validate vlan_id is an integer (and coerce if required):
+        msg = 'vlan_id must be integer'
+        vlan_id = validate_type(int, vlan_id, msg)
+
+        #*** Iterate through port list looking for a match:
+        port_list = self.yaml['port_list']
+        for ports in port_list:
+            if not ports['DPID'] == dpid:
+                self.logger.debug("did not match dpid")
+                continue
+            if not ports['vlan_id'] == vlan_id:
+                self.logger.debug("did not match vlan_id")
+                continue
+            if port in ports['ports_xform']:
+                return 1
+        self.logger.debug("no match, returning 0")
+        return 0
+
+class Locations(object):
+    """
+    An object that represents the locations root branch of
+    the main policy
+    """
+    def __init__(self, policy):
+        #*** Extract logger and policy YAML branch:
+        self.logger = policy.logger
+        self.yaml = policy.main_policy['locations']
+
+        #*** Check the correctness of the locations branch of main policy:
+        validate(self.logger, self.yaml, LOCATIONS_SCHEMA, 'locations')
+
+        #*** Read in locations etc:
+        self.locations_list = []
+        for idx, key in enumerate(self.yaml['locations_list']):
+            self.locations_list.append(Location(policy, idx))
+        #*** Default location to use if no match:
+        self.default_match = self.yaml['default_match']
+
+    def get_location(self, dpid, port):
+        """
+        Passed a DPID and port and return a logical location
+        name, as per policy configuration.
+        """
+        result = ""
+        for location in self.locations_list:
+            result = location.check(dpid, port)
+            if result:
+                return result
+        return self.default_match
+
+class Location(object):
+    """
+    An object that represents a single location
+    """
+
+    def __init__(self, policy, idx):
+        #*** Extract logger and policy YAML:
+        self.logger = policy.logger
+        self.policy = policy
+        self.yaml = \
+                policy.main_policy['locations']['locations_list'][idx]
+
+        #*** Check the correctness of the location policy:
+        validate(self.logger, self.yaml, LOCATION_SCHEMA, 'location')
+
+        #*** Check that port sets exist:
+        validate_port_set_list(self.logger, self.yaml['port_set_list'],
+                                                                policy)
+
+        #*** Store data from YAML into this class:
+        self.name = self.yaml['name']
+        self.port_set_list = self.yaml['port_set_list']
+
+    def check(self, dpid, port):
+        """
+        Check a dpid/port to see if it is part of this location
+        and if so return the string name of the location otherwise
+        return empty string
+        """
+        port_set_membership = \
+                         self.policy.port_sets.get_port_set(dpid, port)
+        for port_set in self.port_set_list:
+            if port_set['port_set'] == port_set_membership:
+                return self.name
+        return ""

@@ -31,9 +31,8 @@ from baseclass import BaseClass
 
 class StaticInspect(BaseClass):
     """
-    This class is instantiated by tc_policy.py
-    (class: TrafficClassificationPolicy) and provides methods to
-    query static traffic classification matches
+    This class provides methods to check
+    static traffic classification (TC) classifier matches
     """
     def __init__(self, config):
         #*** Required for BaseClass:
@@ -42,37 +41,38 @@ class StaticInspect(BaseClass):
         self.configure_logging(__name__, "tc_static_logging_level_s",
                                        "tc_static_logging_level_c")
 
-    def check_static(self, condition, pkt):
+    def check_static(self, classifier_result, pkt):
         """
-        Passed condition and flows packet objects
-        Update the condition match with boolean of result
+        Passed TCClassifierResult and Flow.Packet class objects
+        Update the classifier_result match with boolean of result
         of match checks
         """
-        policy_attr = condition.policy_attr
-        policy_value = condition.policy_value
+        policy_attr = classifier_result.policy_attr
+        policy_value = classifier_result.policy_value
         if policy_attr == 'eth_src':
-            condition.match = pkt.eth_src == policy_value
+            classifier_result.match = pkt.eth_src == policy_value
         elif policy_attr == 'eth_dst':
-            condition.match = pkt.eth_dst == policy_value
+            classifier_result.match = pkt.eth_dst == policy_value
         elif policy_attr == 'eth_type':
-            condition.match = pkt.eth_type == policy_value
+            classifier_result.match = pkt.eth_type == policy_value
         elif policy_attr == 'ip_src':
-            condition.match = pkt.ip_src == policy_value
+            classifier_result.match = pkt.ip_src == policy_value
         elif policy_attr == 'ip_dst':
-            condition.match = pkt.ip_dst == policy_value
+            classifier_result.match = pkt.ip_dst == policy_value
         elif policy_attr == 'tcp_src':
-            condition.match = pkt.proto == 6 and pkt.tp_src == policy_value
+            classifier_result.match = pkt.proto == 6 and pkt.tp_src == policy_value
         elif policy_attr == 'tcp_dst':
-            condition.match = pkt.proto == 6 and pkt.tp_dst == policy_value
+            classifier_result.match = pkt.proto == 6 and pkt.tp_dst == policy_value
         elif policy_attr == 'udp_src':
-            condition.match = pkt.proto == 17 and pkt.tp_src == policy_value
+            classifier_result.match = pkt.proto == 17 and pkt.tp_src == policy_value
         elif policy_attr == 'udp_dst':
-            condition.match = pkt.proto == 17 and pkt.tp_dst == policy_value
+            classifier_result.match = pkt.proto == 17 and pkt.tp_dst == policy_value
         else:
-            #*** didn't match any policy conditions so return false and
+            #*** didn't match any policy classifiers so return false and
             #***  log an error:
-            self.logger.error("Unsupported policy_attr=%s", policy_attr)
-            condition.match = False
+            self.logger.error("Unsupported static classifier policy_attr=%s",
+                                                                   policy_attr)
+            classifier_result.match = False
 
     def is_valid_macaddress(self, value_to_check):
         """

@@ -38,7 +38,7 @@ import config
 import flows as flow_class
 import identities as identities_class
 import tc_static as tc_static_module
-import policy
+import policy as policy_module
 
 #*** nmeta test packet imports:
 import packets_ipv4_http as pkts
@@ -70,100 +70,100 @@ def test_check_static():
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
     #*** Instantiate match object:
-    condition = policy.Policy.Condition()
+    classifier_result = policy_module.TCClassifierResult("", "")
 
-    condition.policy_attr = 'eth_src'
-    condition.policy_value = pkts.ETH_SRC[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'eth_src'
+    classifier_result.policy_value = pkts.ETH_SRC[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'eth_src'
-    condition.policy_value = pkts.ETH_DST[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'eth_src'
+    classifier_result.policy_value = pkts.ETH_DST[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
-    condition.policy_attr = 'eth_dst'
-    condition.policy_value = pkts.ETH_DST[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'eth_dst'
+    classifier_result.policy_value = pkts.ETH_DST[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'eth_dst'
-    condition.policy_value = pkts.ETH_SRC[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'eth_dst'
+    classifier_result.policy_value = pkts.ETH_SRC[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
-    condition.policy_attr = 'eth_type'
-    condition.policy_value = pkts.ETH_TYPE[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'eth_type'
+    classifier_result.policy_value = pkts.ETH_TYPE[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'eth_type'
-    condition.policy_value = 2054
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'eth_type'
+    classifier_result.policy_value = 2054
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
-    condition.policy_attr = 'ip_src'
-    condition.policy_value = pkts.IP_SRC[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'ip_src'
+    classifier_result.policy_value = pkts.IP_SRC[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'ip_src'
-    condition.policy_value = pkts.IP_DST[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'ip_src'
+    classifier_result.policy_value = pkts.IP_DST[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
-    condition.policy_attr = 'ip_dst'
-    condition.policy_value = pkts.IP_DST[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'ip_dst'
+    classifier_result.policy_value = pkts.IP_DST[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'ip_dst'
-    condition.policy_value = pkts.IP_SRC[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'ip_dst'
+    classifier_result.policy_value = pkts.IP_SRC[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
-    condition.policy_attr = 'tcp_src'
-    condition.policy_value = pkts.TP_SRC[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'tcp_src'
+    classifier_result.policy_value = pkts.TP_SRC[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'tcp_src'
-    condition.policy_value = pkts.TP_DST[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'tcp_src'
+    classifier_result.policy_value = pkts.TP_DST[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
-    condition.policy_attr = 'tcp_dst'
-    condition.policy_value = pkts.TP_DST[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'tcp_dst'
+    classifier_result.policy_value = pkts.TP_DST[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'tcp_dst'
-    condition.policy_value = pkts.TP_SRC[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'tcp_dst'
+    classifier_result.policy_value = pkts.TP_SRC[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
     #*** Ingest UDP:
     flow.ingest_packet(DPID1, INPORT1, pkts_udp.RAW[0], datetime.datetime.now())
 
-    condition.policy_attr = 'udp_src'
-    condition.policy_value = pkts_udp.TP_SRC[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'udp_src'
+    classifier_result.policy_value = pkts_udp.TP_SRC[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'udp_src'
-    condition.policy_value = pkts_udp.TP_DST[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'udp_src'
+    classifier_result.policy_value = pkts_udp.TP_DST[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
-    condition.policy_attr = 'udp_dst'
-    condition.policy_value = pkts_udp.TP_DST[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == True
+    classifier_result.policy_attr = 'udp_dst'
+    classifier_result.policy_value = pkts_udp.TP_DST[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
 
-    condition.policy_attr = 'udp_dst'
-    condition.policy_value = pkts_udp.TP_SRC[0]
-    tc_static.check_static(condition, flow.packet)
-    assert condition.match == False
+    classifier_result.policy_attr = 'udp_dst'
+    classifier_result.policy_value = pkts_udp.TP_SRC[0]
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
 
 #*** MAC Address Validity Tests:
 def test_is_valid_macaddress():

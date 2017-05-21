@@ -62,6 +62,9 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
     A single *conditions_list* stanza that contains one or more
     *conditions* stanzas
 
+  Actions
+    A single *actions* stanza that contains one or more actions
+
 Example simple traffic classification policy with a single rule:
 
 .. image:: images/simple_tc_policy.png
@@ -337,6 +340,9 @@ queue numbers. Example:
     constrained_bw: 1
     high_priority: 2
     low_priority: 3
+
+The QoS queue numbers are arbitrary and are used to map packets and flows
+to queues that have been configured on the switch (separate to nmeta).
 
 ****************
 Port Sets Branch

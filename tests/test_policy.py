@@ -38,7 +38,9 @@ INPORT2 = 2
 #*** Test condition instances (sets of classifiers):
 condition_any_opf = {'match_type': 'any',
                              'tcp_src': 6633, 'tcp_dst': 6633}
-conditions_all_opf = {'match_type': 'all',
+condition_all_opf = {'match_type': 'all',
+                             'tcp_src': 6633, 'tcp_dst': 6633}
+condition_none_opf = {'match_type': 'none',
                              'tcp_src': 6633, 'tcp_dst': 6633}
 condition_any_http = {'match_type': 'any',
                              'tcp_src': 80, 'tcp_dst': 80}
@@ -153,7 +155,7 @@ def test_check_policy():
     assert flow.classification.classification_tag == ""
     assert flow.classification.actions == {}
 
-    #*** Re-instantiate tc_policy with different policy that should classify:
+    #*** Re-instantiate policy with different policy that should classify:
     policy = policy_module.Policy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
@@ -187,7 +189,7 @@ def test_check_tc_rule():
     #*** Set policy.pkt as work around for not calling parent method that sets it:
     policy.pkt = flow.packet
 
-    #*** main_policy_regression_static.yaml shouldn't match HTTP:
+    #*** main_policy_regression_static.yaml shouldn't match HTTP (rule 0):
     tc_rules = policy_module.TCRules(policy)
     tc_rule = policy_module.TCRule(tc_rules, policy, 0)
     tc_rule_result = tc_rule.check_tc_rule(flow, ident)
@@ -197,7 +199,7 @@ def test_check_tc_rule():
     assert tc_rule_result.actions == {}
 
 
-    #*** main_policy_regression_static_3.yaml should match HTTP:
+    #*** main_policy_regression_static_3.yaml should match HTTP (rule 0):
     policy = policy_module.Policy(config,
                             pol_dir_default="config/tests/regression",
                             pol_dir_user="config/tests/foo",
@@ -237,6 +239,16 @@ def test_check_tc_condition():
     tc_condition = policy_module.TCCondition(tc_rules, policy, condition_any_opf)
     condition_result = tc_condition.check_tc_condition(flow, ident)
     assert condition_result.match == False
+    assert condition_result.continue_to_inspect == False
+    assert condition_result.classification_tag == ""
+    assert condition_result.actions == {}
+
+    #*** HTTP is not OpenFlow so should match none rule!
+    logger.debug("condition_any_opf should not match")
+    tc_rules = policy_module.TCRules(policy)
+    tc_condition = policy_module.TCCondition(tc_rules, policy, condition_none_opf)
+    condition_result = tc_condition.check_tc_condition(flow, ident)
+    assert condition_result.match == True
     assert condition_result.continue_to_inspect == False
     assert condition_result.classification_tag == ""
     assert condition_result.actions == {}
@@ -295,7 +307,7 @@ def test_custom_classifiers():
     """
     Check deduplicated list of custom classifiers works
     """
-    #*** Instantiate tc_policy, specifying
+    #*** Instantiate policy, specifying
     #*** a particular main_policy file to use that has no custom classifiers:
     policy = policy_module.Policy(config,
                             pol_dir_default="config/tests/regression",
@@ -303,7 +315,7 @@ def test_custom_classifiers():
                             pol_filename="main_policy_regression_static.yaml")
     assert policy.tc_rules.custom_classifiers == []
 
-    #*** Instantiate tc_policy, specifying
+    #*** Instantiate policy, specifying
     #*** a custom statistical main_policy file to use that has a
     #*** custom classifier:
     policy = policy_module.Policy(config,
@@ -316,7 +328,7 @@ def test_qos():
     """
     Test the assignment of QoS queues based on a qos_treatment action
     """
-    #*** Instantiate tc_policy, specifying
+    #*** Instantiate policy, specifying
     #*** a particular main_policy file to use that has no custom classifiers:
     policy = policy_module.Policy(config,
                             pol_dir_default="config/tests/regression",

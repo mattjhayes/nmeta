@@ -23,8 +23,7 @@ from baseclass import BaseClass
 
 class IdentityInspect(BaseClass):
     """
-    This class is instantiated by tc_policy.py
-    (class: TrafficClassificationPolicy) and provides methods to
+    This class is instantiated by policy.py and provides methods to
     ingest identity updates and query identities
     """
     def __init__(self, config):

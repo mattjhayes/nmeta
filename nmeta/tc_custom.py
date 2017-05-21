@@ -29,8 +29,7 @@ from baseclass import BaseClass
 
 class CustomInspect(BaseClass):
     """
-    This class is instantiated by tc_policy.py
-    (class: TrafficClassificationPolicy) and provides methods to
+    This class is instantiated by policy.py and provides methods to
     run custom traffic classification modules
     """
     def __init__(self, config):

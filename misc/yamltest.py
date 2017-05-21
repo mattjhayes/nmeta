@@ -3,7 +3,7 @@ Test validity of a YAML file and print out resulting dictionary
 
 Pass it a full path to a YAML file on command line, i.e.:
 
-python yamltest.py /home/bob/nmeta/config/examples/tc_policy.yaml.nested-1
+python yamltest.py ~/nmeta/nmeta/config/tests/regression/main_policy_regression_identity.yaml
 """
 
 #*** YAML for config and policy file parsing:

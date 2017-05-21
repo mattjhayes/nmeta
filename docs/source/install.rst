@@ -164,6 +164,7 @@ Start MongoDB (if required) with:
 
   sudo service mongod start
 
+
 *************
 Install nmeta
 *************
@@ -184,6 +185,34 @@ Run nmeta
   cd
   cd ryu
   PYTHONPATH=. ./bin/ryu-manager ../nmeta/nmeta/nmeta.py
+
+******************
+Configure Switches
+******************
+
+Switches will need to be configured to use Ryu/nmeta as their controller.
+The configuration details will differ depending on the type of switch.
+
+Here is an example configuration for Open vSwitch to use a controller at
+IP address 172.16.0.3 on TCP port 6633:
+
+.. code-block:: text
+
+  sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6633
+
+You will need to work out setting that are appropriate for your topology
+and switches.
+
+Configure QoS Queues
+====================
+
+To run Quality of Service (QoS), switches will need to be configured with QoS
+queues.
+
+See the documentation for your switch(es) for how to configure QoS queues.
+
+Be aware that using a queue number that is not configured on the switch may
+result in the switch dropping the packet.
 
 *******
 Aliases
@@ -212,3 +241,4 @@ Paste in the following:
   #
   # Retrieve Packet-In rate via external API:
   alias nma_pi_rate='curl http://localhost:8081/v1/infrastructure/controllers/pi_rate/ | python -m json.tool'
+

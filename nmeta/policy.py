@@ -14,12 +14,11 @@
 #*** nmeta - Network Metadata - Policy Interpretation Class and Methods
 
 """
-This module is part of the nmeta suite running on top of Ryu SDN controller
-to provide network identity and flow (Traffic Classification - TC) metadata.
-It expects a file called "main_policy.yaml" to be in the config subdirectory
-containing properly formed YAML that conforms the the particular specifications
-that this program expects. See constant tuples at start of program for valid
-attributes to use.
+This module is part of the nmeta suite running on top of Ryu SDN controller.
+It provides a policy class as an interface to policy configuration and
+classification of packets against policy.
+
+See Policy class docstring for more information.
 """
 
 import sys
@@ -250,7 +249,7 @@ TC_RULE_SCHEMA = Schema({
                         Optional('comment'):
                             str,
                         Required('match_type'):
-                            Required(Any('any', 'all')),
+                            Required(Any('any', 'all', 'none')),
                         Required('conditions_list'):
                             [{Extra: object}],
                         Required('actions'):
@@ -259,7 +258,7 @@ TC_RULE_SCHEMA = Schema({
 #*** Voluptuous schema for a tc condition:
 TC_CONDITION_SCHEMA = Schema({
                         Required('match_type'):
-                            Required(Any('any', 'all')),
+                            Required(Any('any', 'all', 'none')),
                         Optional('eth_src'): validate_macaddress,
                         Optional('eth_dst'): validate_macaddress,
                         Optional('ip_src'): validate_ip_space,
@@ -326,16 +325,17 @@ class Policy(BaseClass):
     """
     This policy class serves 4 main purposes:
     - Ingest policy (main_policy.yaml) from file
-    - Validate correctness of policy
+    - Validate correctness of policy against schema
     - Classify packets against policy, passing through to static,
       identity and custom classifiers, as required
     - Other methods and functions to check various parameters
       against policy
 
-    Note: No nesting of class definitions as not Pythonic
+    Note: Class definitions are not nested as not considered Pythonic
 
     Main Methods and Variables:
     - check_policy(flow, ident)   # Check a packet against policy
+    - qos(qos_treatment)          # Map qos_treatment string to queue number
     - main_policy                 # main policy YAML object. Read-only,
                                       no verbs. Use methods instead where
                                       possible.
@@ -349,6 +349,7 @@ class Policy(BaseClass):
     def __init__(self, config, pol_dir_default=POL_DIR_DEFAULT,
                     pol_dir_user=POL_DIR_USER,
                     pol_filename=POL_FILENAME):
+        """ Initialise the Policy Class """
         #*** Required for BaseClass:
         self.config = config
         #*** Set up Logging with inherited base class method:
@@ -455,6 +456,7 @@ class TCRules(object):
     the main policy
     """
     def __init__(self, policy):
+        """ Initialise the TCRules Class """
         #*** Extract logger and policy YAML branch:
         self.logger = policy.logger
         #*** TBD: fix arbitrary single ruleset...
@@ -478,6 +480,7 @@ class TCRule(object):
     """
     def __init__(self, tc_rules, policy, idx):
         """
+        Initialise the TCRule Class
         Passed a TCRules class instance, a Policy class instance
         and an index integer for the index of the tc rule in policy
         """
@@ -523,6 +526,9 @@ class TCRule(object):
             elif result.match and self.match_type == "all":
                 #*** Just accumulate the results:
                 result.accumulate(condition_result)
+            elif result.match and self.match_type == "none":
+                result.match = False
+                return result
             else:
                 #*** Not a condition we take action on so keep going:
                 pass
@@ -534,6 +540,10 @@ class TCRule(object):
         elif condition_result.match and self.match_type == "all":
             result.match = True
             result.accumulate(condition_result)
+            result.add_rule_actions()
+            return result
+        elif not condition_result.match and self.match_type == "none":
+            result.match = True
             result.add_rule_actions()
             return result
         else:
@@ -551,9 +561,7 @@ class TCRuleResult(object):
     Use __dict__ to dump to data to dictionary
     """
     def __init__(self, rule_actions):
-        """
-        Initialise the class
-        """
+        """ Initialise the TCRuleResult Class """
         self.match = 0
         self.continue_to_inspect = 0
         self.classification_tag = ""
@@ -582,7 +590,6 @@ class TCRuleResult(object):
         """
         self.actions.update(self.rule_actions)
 
-
 class TCCondition(object):
     """
     An object that represents a single traffic classification
@@ -591,6 +598,7 @@ class TCCondition(object):
     """
     def __init__(self, tc_rules, policy, policy_snippet):
         """
+        Initialise the TCCondition Class
         Passed a TCRules class instance, a Policy class instance
         and a snippet of tc policy for a condition
         """
@@ -649,6 +657,9 @@ class TCCondition(object):
             elif not classifier_result.match and self.match_type == "all":
                 result.match = False
                 return result
+            elif classifier_result.match and self.match_type == "none":
+                result.match = False
+                return result
             else:
                 #*** Not a condition we take action on, keep going:
                 pass
@@ -659,6 +670,9 @@ class TCCondition(object):
             return result
         elif classifier_result.match and self.match_type == "all":
             result.accumulate(classifier_result)
+            return result
+        elif not classifier_result.match and self.match_type == "none":
+            result.match = True
             return result
         else:
             #*** Unexpected result:
@@ -676,9 +690,7 @@ class TCConditionResult(object):
     Use __dict__ to dump to data to dictionary
     """
     def __init__(self):
-        """
-        Initialise the class
-        """
+        """ Initialise the TCConditionResult Class """
         self.match = False
         self.continue_to_inspect = False
         self.classification_tag = ""
@@ -704,9 +716,7 @@ class TCClassifierResult(object):
     Use __dict__ to dump to data to dictionary
     """
     def __init__(self, policy_attr, policy_value):
-        """
-        Initialise the class
-        """
+        """ Initialise the TCClassifierResult Class """
         self.match = False
         self.continue_to_inspect = 0
         self.policy_attr = policy_attr
@@ -722,6 +732,7 @@ class PortSets(object):
     the main policy
     """
     def __init__(self, policy):
+        """ Initialise the PortSets Class """
         #*** Extract logger and policy YAML branch:
         self.logger = policy.logger
         self.yaml = policy.main_policy['port_sets']
@@ -750,6 +761,7 @@ class PortSet(object):
     """
 
     def __init__(self, policy, idx):
+        """ Initialise the PortSet Class """
         #*** Extract logger and policy YAML:
         self.logger = policy.logger
         self.yaml = \
@@ -768,9 +780,7 @@ class PortSet(object):
     def is_member(self, dpid, port, vlan_id=0):
         """
         Check to see supplied dpid/port/vlan_id is member of
-        this port set.
-
-        Returns a Boolean
+        this port set. Returns a Boolean
         """
         #*** Validate dpid is an integer (and coerce if required):
         msg = 'dpid must be integer'
@@ -794,9 +804,9 @@ class PortSet(object):
                 self.logger.debug("did not match vlan_id")
                 continue
             if port in ports['ports_xform']:
-                return 1
-        self.logger.debug("no match, returning 0")
-        return 0
+                return True
+        self.logger.debug("no match, returning False")
+        return False
 
 class Locations(object):
     """
@@ -804,6 +814,7 @@ class Locations(object):
     the main policy
     """
     def __init__(self, policy):
+        """ Initialise the Locations Class """
         #*** Extract logger and policy YAML branch:
         self.logger = policy.logger
         self.yaml = policy.main_policy['locations']
@@ -834,8 +845,8 @@ class Location(object):
     """
     An object that represents a single location
     """
-
     def __init__(self, policy, idx):
+        """ Initialise the Location Class """
         #*** Extract logger and policy YAML:
         self.logger = policy.logger
         self.policy = policy

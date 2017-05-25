@@ -58,16 +58,13 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
   Match Type
     A *match_type* is one of:
 
-      any
-
+      **any**
         Match if any of the conditions in the rule match
 
-      all
-
+      **all**
         Match only if all of the conditions in the rule match
 
-      none
-
+      **none**
         Match only if none of the conditions in the rule match
 
   Conditions List
@@ -84,10 +81,15 @@ Example simple traffic classification policy with a single rule:
 
 A condition contains:
 
-- A match type, which is one of:
-      - any. Match if any of the conditions in the rule match.
-      - all. Match only if all of the conditions in the rule match.
-      - none. Match only if none of the conditions in the rule match.
+- A *match type*, which is one of:
+    **any**
+      Match if any of the classifiers in the condition match
+
+    **all**
+      Match only if all of the classifiers in the condition match
+
+    **none**
+      Match only if none of the classifiers in the condition match.
 
 - One or more *classifiers* (see further below)
 

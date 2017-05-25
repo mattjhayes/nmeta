@@ -57,9 +57,18 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
 
   Match Type
     A *match_type* is one of:
-      - any. Match if any of the conditions in the rule match.
-      - all. Match only if all of the conditions in the rule match.
-      - none. Match only if none of the conditions in the rule match.
+
+      any
+
+        Match if any of the conditions in the rule match
+
+      all
+
+        Match only if all of the conditions in the rule match
+
+      none
+
+        Match only if none of the conditions in the rule match
 
   Conditions List
     A list that contains one or more

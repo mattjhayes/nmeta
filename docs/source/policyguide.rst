@@ -56,7 +56,7 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
     can follow
 
   Match Type
-    A *match type* is one of:
+    A *match_type* is one of:
       - any. Match if any of the conditions in the rule match.
       - all. Match only if all of the conditions in the rule match.
       - none. Match only if none of the conditions in the rule match.
@@ -116,15 +116,18 @@ eth_src
 eth_dst
 -------
 
-Ethernet destination MAC address.
+  Ethernet destination MAC address.
 
-Example:
+  Example:
 
-.. code-block:: text
+  .. code-block:: text
 
-  eth_dst: 08:00:27:4a:2d:42
+    eth_dst: 08:00:27:4a:2d:42
 
-:eth_type: Ethernet type. Can be in hex (starting with 0x) or decimal.
+eth_type
+--------
+
+Ethernet type. Can be in hex (starting with 0x) or decimal.
 
   Examples:
 
@@ -136,7 +139,10 @@ Example:
 
     eth_type: 35020
 
-:ip_src: IP source address. Can be a single address, a network with a mask in
+ip_src
+------
+
+IP source address. Can be a single address, a network with a mask in
   CIDR notation, or an IP range with two addresses separated by a hyphen.
   Both addresses in a range must be the same type, and the second
   address must be higher than the first.
@@ -155,7 +161,10 @@ Example:
 
     ip_src: 192.168.56.12-192.168.56.31
 
-:ip_dst: IP destination address. Can be a single address, a network with a
+ip_dst
+------
+
+IP destination address. Can be a single address, a network with a
   mask in CIDR notation, or an IP range with two addresses separated by a
   hyphen. Both addresses in a range must be the same type, and the second
   address must be higher than the first.
@@ -174,7 +183,10 @@ Example:
 
     ip_dst: 192.168.57.36-192.168.78.31
 
-:tcp_src: TCP source port.
+tcp_src
+-------
+
+TCP source port.
 
   Example:
 
@@ -182,7 +194,10 @@ Example:
 
     tcp_src: 22
 
-:tcp_dst: TCP destination port.
+tcp_dst
+-------
+
+TCP destination port.
 
   Example:
 
@@ -190,7 +205,10 @@ Example:
 
     tcp_dst: 80
 
-:udp_src: UDP source port.
+udp_src
+-------
+
+UDP source port.
 
   Example:
 
@@ -198,7 +216,10 @@ Example:
 
     udp_src: 123
 
-:udp_dst: UDP destination port.
+udp_dst
+-------
+
+UDP destination port.
 
   Example:
 
@@ -226,28 +247,40 @@ policy condition:
 
 Supported attributes are:
 
-:identity_lldp_systemname: Exact match against a system name discovered
+identity_lldp_systemname
+------------------------
+
+Exact match against a system name discovered
   via LLDP. Example:
 
   .. code-block:: text
 
     identity_lldp_systemname: bob.example.com
 
-:identity_lldp_systemname_re: Regular expression match against a system name
+identity_lldp_systemname_re
+---------------------------
+
+Regular expression match against a system name
   discovered via LLDP. Example:
 
   .. code-block:: text
 
     identity_lldp_systemname_re: '.*\.audit\.example\.com'
 
-:identity_service_dns: Exact match of either IP address in a flow against a
+identity_service_dns
+--------------------
+
+Exact match of either IP address in a flow against a
    DNS domain. Example:
 
   .. code-block:: text
 
     identity_service_dns: www.example.com
 
-:identity_service_dns_re: Regular expression match of either IP address in
+identity_service_dns_re
+-----------------------
+
+Regular expression match of either IP address in
   a flow against a DNS domain. Example:
 
   .. code-block:: text
@@ -282,7 +315,10 @@ Multiple actions can be defined on a rule.
 
 Supported attributes are:
 
-:drop: Drop the packet
+drop
+----
+
+Drop the packet
 
   No flow modification or packet-out will occur. The packet will however
   appear in metadata and does add load to the controller.
@@ -306,7 +342,10 @@ Supported attributes are:
   and will do a match on IPs & TCP or UDP destination port for TCP or UDP or
   IPs for other IP traffic. It will not apply a rule for non-IP traffic.
 
-:qos_treatment: Specify QoS treatment for flow.
+qos_treatment
+-------------
+
+Specify QoS treatment for flow.
 
   Values can be:
 
@@ -322,7 +361,10 @@ Supported attributes are:
 
     qos_treatment: classifier_return
 
-:set_desc: Set description for the flow. This is a convenience for humans.
+set_desc
+--------
+
+Set description for the flow. This is a convenience for humans.
 
   Example:
 

@@ -57,13 +57,14 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
 
   Match Type
     A *match type* is one of:
-      *any*
-      *all*
-      *none*
+      - any. Match if any of the conditions in the rule match.
+      - all. Match only if all of the conditions in the rule match.
+      - none. Match only if none of the conditions in the rule match.
 
   Conditions List
-    A single *conditions_list* stanza that contains one or more
-    *conditions* stanzas
+    A list that contains one or more
+    *condition* stanzas that each contain a match type and one or more
+    classifiers.
 
   Actions
     A single *actions* stanza that contains one or more actions
@@ -72,23 +73,16 @@ Example simple traffic classification policy with a single rule:
 
 .. image:: images/simple_tc_policy.png
 
-A *conditions_list* stanza contains:
+A condition contains:
 
-- A match type, consisting of *any* or *all*
-- One or more *conditions* as list items (denoted by dash preceding the
-  first item)
-- One or more *classifiers* (see below)
+- A match type, which is one of:
+      - any. Match if any of the conditions in the rule match.
+      - all. Match only if all of the conditions in the rule match.
+      - none. Match only if none of the conditions in the rule match.
 
-A *conditions* stanza is a list item in a conditions list and contains:
+- One or more *classifiers* (see further below)
 
-- A match type is one of:
-      *any*
-      *all*
-      *none*
-
-- One or more *classifiers* (see below)
-
-A *actions* stanza contains one or more attribute/value pairs
+An *actions* stanza contains one or more attribute/value pairs
 
 Here is a more complex traffic classification policy:
 
@@ -108,7 +102,10 @@ attributes such as port numbers.
 
 Supported attributes are:
 
-:eth_src: Ethernet source MAC address.
+eth_src
+-------
+
+  Ethernet source MAC address.
 
   Example:
 
@@ -116,13 +113,16 @@ Supported attributes are:
 
     eth_src: 08:00:27:4a:2d:41
 
-:eth_dst: Ethernet destination MAC address.
+eth_dst
+-------
 
-  Example:
+Ethernet destination MAC address.
 
-  .. code-block:: text
+Example:
 
-    eth_dst: 08:00:27:4a:2d:42
+.. code-block:: text
+
+  eth_dst: 08:00:27:4a:2d:42
 
 :eth_type: Ethernet type. Can be in hex (starting with 0x) or decimal.
 

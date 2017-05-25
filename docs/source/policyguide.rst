@@ -56,7 +56,10 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
     can follow
 
   Match Type
-    A *match type* is one of *any* or *all*
+    A *match type* is one of:
+      *any*
+      *all*
+      *none*
 
   Conditions List
     A single *conditions_list* stanza that contains one or more
@@ -78,7 +81,11 @@ A *conditions_list* stanza contains:
 
 A *conditions* stanza is a list item in a conditions list and contains:
 
-- A match type, consisting of *any* or *all*
+- A match type is one of:
+      *any*
+      *all*
+      *none*
+
 - One or more *classifiers* (see below)
 
 A *actions* stanza contains one or more attribute/value pairs

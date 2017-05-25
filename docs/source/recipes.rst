@@ -15,7 +15,7 @@ This recipe is for running an OpenFlow switch on a home network.
 It makes the following assumptions:
 
 - The gateway to the Internet is provided by a separate router on switch
-  dpid=TBD port=TBD.
+  dpid=1 port=3.
 
 The recipe does the following:
 
@@ -24,6 +24,8 @@ The recipe does the following:
 - All other DNS traffic is dropped and logged
 - Drops SSDP traffic from the router
 - Drops Bonjour traffic
+- Implicit allow of all other traffic, as well of harvesting of
+  conversation and identity metadata
 
 
 Main Policy:

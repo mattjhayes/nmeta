@@ -303,6 +303,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         record the outcome for the packet, one of:
         - drop_same_port
         - drop_reserved_mac
+        - drop_action
         - packet_out_flooded
         - packet_out
         """

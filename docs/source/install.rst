@@ -190,6 +190,9 @@ Run nmeta
 Configure Switches
 ******************
 
+Configure OpenFlow
+==================
+
 Switches will need to be configured to use Ryu/nmeta as their controller.
 The configuration details will differ depending on the type of switch.
 

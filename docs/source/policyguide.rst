@@ -43,7 +43,10 @@ Traffic Classification Branch
 
 The traffic classification policy is based off a root key *tc_rules*.
 This root contains a *ruleset* name (only one ruleset supported at this
-stage), which in turn contains one or more *rules*.
+stage), which in turn contains one or more *rules*. Rules contain *conditions*
+and these in turn contain classifiers, as per the following diagram:
+
+.. image:: images/policy_hierarchy.png
 
 Rules
 =====
@@ -154,9 +157,9 @@ ip_src
 ------
 
 IP source address. Can be a single address, a network with a mask in
-  CIDR notation, or an IP range with two addresses separated by a hyphen.
-  Both addresses in a range must be the same type, and the second
-  address must be higher than the first.
+CIDR notation, or an IP range with two addresses separated by a hyphen.
+Both addresses in a range must be the same type, and the second
+address must be higher than the first.
 
   Examples:
 
@@ -176,9 +179,9 @@ ip_dst
 ------
 
 IP destination address. Can be a single address, a network with a
-  mask in CIDR notation, or an IP range with two addresses separated by a
-  hyphen. Both addresses in a range must be the same type, and the second
-  address must be higher than the first.
+mask in CIDR notation, or an IP range with two addresses separated by a
+hyphen. Both addresses in a range must be the same type, and the second
+address must be higher than the first.
 
   Examples:
 
@@ -262,7 +265,7 @@ identity_lldp_systemname
 ------------------------
 
 Exact match against a system name discovered
-  via LLDP. Example:
+via LLDP. Example:
 
   .. code-block:: text
 
@@ -272,7 +275,7 @@ identity_lldp_systemname_re
 ---------------------------
 
 Regular expression match against a system name
-  discovered via LLDP. Example:
+discovered via LLDP. Example:
 
   .. code-block:: text
 
@@ -282,7 +285,7 @@ identity_service_dns
 --------------------
 
 Exact match of either IP address in a flow against a
-   DNS domain. Example:
+DNS domain. Example:
 
   .. code-block:: text
 
@@ -292,7 +295,7 @@ identity_service_dns_re
 -----------------------
 
 Regular expression match of either IP address in
-  a flow against a DNS domain. Example:
+a flow against a DNS domain. Example:
 
   .. code-block:: text
 

@@ -30,9 +30,6 @@ import tc_static
 import tc_identity
 import tc_custom
 
-#*** Use copy to create copies not linked to originals (with copy.deepcopy):
-import copy
-
 #*** Voluptuous to verify inputs against schema:
 from voluptuous import Schema, Optional, Any, All, Required, Extra
 from voluptuous import Invalid, MultipleInvalid, Range
@@ -86,6 +83,18 @@ def validate_port_set_list(logger, port_set_list, policy):
             logger.critical("Undefined port_set=%s", port_set_dict['port_set'])
             sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
     return 1
+
+def validate_location(logger, location, policy):
+    """
+    Validator for location compliance (i.e. check that the supplied
+    location string exists as a location defined in policy)
+    Return Boolean True if good, otherwise exit with exception
+    """
+    for policy_location in policy.locations.locations_list:
+        if policy_location.name == location:
+            return True
+    logger.critical("Undefined location=%s", location)
+    sys.exit("Exiting nmeta. Please fix error in main_policy.yaml")
 
 def validate_type(type, value, msg):
     """
@@ -621,6 +630,12 @@ class TCCondition(object):
             #*** Validate classifier:
             validate(self.logger, classifier, TC_CLASSIFIER_SCHEMA,
                                                                'tc_classifier')
+            #*** Extra validation for location_src:
+            policy_attr = next(iter(classifier))
+            policy_value = classifier[policy_attr]
+            if policy_attr == 'location_src':
+                validate_location(self.logger, policy_value, policy)
+
             self.classifiers.append(classifier)
             #*** Accumulate deduplicated custom classifier names:
             if 'custom' in classifier:

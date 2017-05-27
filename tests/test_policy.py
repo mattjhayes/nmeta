@@ -485,6 +485,24 @@ def test_validate_port_set_list():
     with pytest.raises(SystemExit) as exit_info:
         policy_module.validate_port_set_list(logger, port_set_list, policy)
 
+def test_validate_location():
+    """
+    Test validation that a location string appears as a location in policy
+    """
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
+    #*** Good location strings:
+    assert policy_module.validate_location(logger, 'internal', policy) == True
+    assert policy_module.validate_location(logger, 'external', policy) == True
+
+    #*** Invalid location strings:
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate_location(logger, 'foo', policy)
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate_location(logger, '', policy)
+
 def test_validate_ports():
     """
     Test the validate_ports function of policy.py module against various

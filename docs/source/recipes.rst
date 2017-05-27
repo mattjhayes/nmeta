@@ -52,30 +52,38 @@ Here's the YAML:
               match_type: any
               conditions_list:
                   - match_type: all
-                    udp_dst: 53
-                    ip_dst: 208.67.222.123
+                    classifiers_list:
+                        - udp_dst: 53
+                        - ip_dst: 208.67.222.123
                   - match_type: all
-                    udp_src: 53
-                    ip_src: 208.67.222.123
+                    classifiers_list:
+                        - udp_src: 53
+                        - ip_src: 208.67.222.123
                   - match_type: all
-                    udp_dst: 53
-                    ip_dst: 208.67.220.123
+                    classifiers_list:
+                        - udp_dst: 53
+                        - ip_dst: 208.67.220.123
                   - match_type: all
-                    udp_src: 53
-                    ip_src: 208.67.220.123
+                    classifiers_list:
+                        - udp_src: 53
+                        - ip_src: 208.67.220.123
               actions:
                   set_desc: "OpenDNS Name Resolution"
             - comment: Block all other DNS
               match_type: any
               conditions_list:
                   - match_type: any
-                    udp_src: 53
+                    classifiers_list:
+                        - udp_src: 53
                   - match_type: any
-                    udp_dst: 53
+                    classifiers_list:
+                        - udp_dst: 53
                   - match_type: any
-                    tcp_src: 53
+                    classifiers_list:
+                        - tcp_src: 53
                   - match_type: any
-                    tcp_dst: 53
+                    classifiers_list:
+                        - tcp_dst: 53
               actions:
                   set_desc: "Bad DNS"
                   drop: at_controller
@@ -83,8 +91,9 @@ Here's the YAML:
               match_type: any
               conditions_list:
                   - match_type: all
-                    udp_src: 5353
-                    udp_dst: 5353
+                    classifiers_list:
+                        - udp_src: 5353
+                        - udp_dst: 5353
               actions:
                   set_desc: "Drop Bonjour Sleep Proxy"
                   drop: at_controller_and_switch
@@ -92,8 +101,9 @@ Here's the YAML:
               match_type: any
               conditions_list:
                   - match_type: all
-                    ip_src: 192.168.1.1
-                    ip_dst: 239.255.255.250
+                    classifiers_list:
+                        - ip_src: 192.168.1.1
+                        - ip_dst: 239.255.255.250
               actions:
                   set_desc: "Drop SSDP UPnP"
                   drop: at_controller_and_switch

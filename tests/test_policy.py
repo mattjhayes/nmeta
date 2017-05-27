@@ -36,27 +36,34 @@ INPORT1 = 1
 INPORT2 = 2
 
 #*** Test condition instances (sets of classifiers):
-condition_any_opf = {'match_type': 'any',
-                             'tcp_src': 6633, 'tcp_dst': 6633}
-condition_all_opf = {'match_type': 'all',
-                             'tcp_src': 6633, 'tcp_dst': 6633}
-condition_none_opf = {'match_type': 'none',
-                             'tcp_src': 6633, 'tcp_dst': 6633}
-condition_any_http = {'match_type': 'any',
-                             'tcp_src': 80, 'tcp_dst': 80}
-condition_all_http = {'match_type': 'all',
-                             'tcp_src': 80, 'tcp_dst': 80}
-condition_all_http2 = {'match_type': 'all',
-                             'tcp_src': 43297, 'tcp_dst': 80}
-condition_any_mac = {'match_type': 'any', 'eth_src': '08:00:27:2a:d6:dd',
-                         'eth_dst': '08:00:27:c8:db:91'}
-condition_all_mac = {'match_type': 'all', 'eth_src': '08:00:27:2a:d6:dd',
-                         'eth_dst': '08:00:27:c8:db:91'}
-condition_any_mac2 = {'match_type': 'any', 'eth_src': '00:00:00:01:02:03',
-                         'eth_dst': '08:00:27:01:02:03'}
-condition_any_ip = {'match_type': 'any', 'ip_dst': '192.168.57.12',
-                         'ip_src': '192.168.56.32'}
-condition_any_ssh = {'match_type': 'any', 'tcp_src': 22, 'tcp_dst': 22}
+condition_any_opf = {'match_type': 'any', 'classifiers_list':
+                             [{'tcp_src': 6633}, {'tcp_dst': 6633}]}
+condition_all_opf = {'match_type': 'all', 'classifiers_list':
+                             [{'tcp_src': 6633}, {'tcp_dst': 6633}]}
+condition_none_opf = {'match_type': 'none', 'classifiers_list':
+                             [{'tcp_src': 6633}, {'tcp_dst': 6633}]}
+condition_any_http = {'match_type': 'any', 'classifiers_list':
+                             [{'tcp_src': 80}, {'tcp_dst': 80}]}
+condition_all_http = {'match_type': 'all', 'classifiers_list':
+                             [{'tcp_src': 80}, {'tcp_dst': 80}]}
+condition_all_http2 = {'match_type': 'all', 'classifiers_list':
+                             [{'tcp_src': 43297}, {'tcp_dst': 80}]}
+condition_any_mac = {'match_type': 'any', 'classifiers_list':
+                             [{'eth_src': '08:00:27:2a:d6:dd'},
+                              {'eth_dst': '08:00:27:c8:db:91'}]}
+condition_all_mac = {'match_type': 'all', 'classifiers_list':
+                             [{'eth_src': '08:00:27:2a:d6:dd'},
+                              {'eth_dst': '08:00:27:c8:db:91'}]}
+condition_any_mac2 = {'match_type': 'any', 'classifiers_list':
+                             [{'eth_src': '00:00:00:01:02:03'},
+                              {'eth_dst': '08:00:27:01:02:03'}]}
+condition_any_ip = {'match_type': 'any', 'classifiers_list':
+                             [{'ip_dst': '192.168.57.12'},
+                              {'ip_src': '192.168.56.32'}]}
+condition_any_ssh = {'match_type': 'any', 'classifiers_list':
+                             [{'tcp_src': 22}, {'tcp_dst': 22}]}
+
+condition_bad_no_list = {'match_type': 'any'}
 
 rule_1 = {
             'comment': 'HTTP traffic',
@@ -64,13 +71,15 @@ rule_1 = {
                 [
                     {
                     'match_type': 'any',
-                    'tcp_src': 80,
-                    'tcp_dst': 80
+                    'classifiers_list':
+                        [{'tcp_src': 80},
+                         {'tcp_dst': 80}]
                 },
                     {
                     'match_type': 'any',
-                    'ip_src': '10.1.0.1',
-                    'ip_dst': '10.1.0.1'
+                    'classifiers_list':
+                        [{'ip_src': '10.1.0.1'},
+                         {'ip_dst': '10.1.0.1'}]
                 }
             ],
             'match_type': 'all',
@@ -78,50 +87,6 @@ rule_1 = {
                 {
                 'qos_treatment': 'QoS_treatment=high_priority',
                 'set_desc': 'description="High Priority HTTP Traffic"'
-            }
-        }
-
-rule_2 = {
-            'comment': 'Audit Division SSH traffic',
-            'conditions_list':
-                [
-                    {
-                    'match_type': 'any',
-                    'tcp_src': 22,
-                    'tcp_dst': 22
-                },
-                    {
-                    'match_type': 'any',
-                    'ip_src': '192.168.2.3'
-                }
-            ],
-            'match_type': 'all',
-            'actions':
-                {
-                'qos_treatment': 'QoS_treatment=high_priority',
-                'set_desc': 'description="High Priority Audit Division SSHd Traffic"'
-            }
-        }
-
-#*** Same as 2a, but has 'set_desc' action removed:
-rule_2b = {
-            'comment': 'Audit Division SSH traffic',
-            'conditions_list':
-                [
-                    {
-                    'match_type': 'any',
-                    'tcp_src': 22,
-                    'tcp_dst': 22
-                },
-                    {
-                    'match_type': 'any',
-                    'ip_src': '192.168.2.3'
-                }
-            ],
-            'match_type': 'all',
-            'actions':
-                {
-                'qos_treatment': 'QoS_treatment=high_priority',
             }
         }
 
@@ -473,6 +438,9 @@ def test_validate():
     with pytest.raises(SystemExit) as exit_info:
         policy_module.validate(logger, tc_rule_actions, policy_module.TC_ACTIONS_SCHEMA, 'tc_rule_actions')
 
+    #*** Bad classifier:
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate(logger, condition_bad_no_list, policy_module.TC_CONDITION_SCHEMA, 'tc_condition_bad_no_list')
 
     #=================== Locations branch
 

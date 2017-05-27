@@ -9,8 +9,9 @@ tc_rules:
           match_type: any
           conditions_list:
               - match_type: any
-                tcp_src: 80
-                tcp_dst: 80
+                classifiers_list:
+                    - tcp_src: 80
+                    - tcp_dst: 80
           actions:
             set_desc: "Constrained Bandwidth Traffic"
             qos_treatment: constrained_bw

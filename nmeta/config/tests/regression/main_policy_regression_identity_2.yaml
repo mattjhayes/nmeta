@@ -11,7 +11,8 @@ tc_rules:
           match_type: any
           conditions_list:
               - match_type: any
-                identity_lldp_systemname_re: 'pc.*\.example\.com'
+                classifiers_list:
+                    - identity_lldp_systemname_re: 'pc.*\.example\.com'
           actions:
             set_desc: "Constrained Bandwidth Traffic"
             qos_treatment: constrained_bw

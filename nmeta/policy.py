@@ -259,6 +259,11 @@ TC_RULE_SCHEMA = Schema({
 TC_CONDITION_SCHEMA = Schema({
                         Required('match_type'):
                             Required(Any('any', 'all', 'none')),
+                        Required('classifiers_list'):
+                            [{Extra: object}]
+                        })
+#*** Voluptuous schema for a tc classifier:
+TC_CLASSIFIER_SCHEMA = Schema({
                         Optional('eth_src'): validate_macaddress,
                         Optional('eth_dst'): validate_macaddress,
                         Optional('ip_src'): validate_ip_space,
@@ -594,7 +599,7 @@ class TCCondition(object):
     """
     An object that represents a single traffic classification
     (TC) rule condition from a conditions list
-    (contains a match type and one or more classifiers)
+    (contains a match type and a list of one or more classifiers)
     """
     def __init__(self, tc_rules, policy, policy_snippet):
         """
@@ -605,21 +610,24 @@ class TCCondition(object):
         self.policy = policy
         self.logger = policy.logger
         self.yaml = policy_snippet
+        self.classifiers = []
 
-        #*** Check the correctness of the tc rule:
+        #*** Check the correctness of the tc condition:
         validate(self.logger, self.yaml, TC_CONDITION_SCHEMA,
                                                'tc_rule_condition')
 
-        #*** Accumulate deduplicated custom classifier names:
-        if 'custom' in self.yaml:
-            custlist = tc_rules.custom_classifiers
-            if self.yaml['custom'] not in custlist:
-                custlist.append(self.yaml['custom'])
+        for classifier in self.yaml['classifiers_list']:
+            #*** Validate classifier:
+            validate(self.logger, classifier, TC_CLASSIFIER_SCHEMA,
+                                                               'tc_classifier')
+            self.classifiers.append(classifier)
+            #*** Accumulate deduplicated custom classifier names:
+            if 'custom' in classifier:
+                custlist = tc_rules.custom_classifiers
+                if classifier['custom'] not in custlist:
+                    custlist.append(classifier['custom'])
 
         self.match_type = self.yaml['match_type']
-        #*** Build a dictionary of classifiers (match conditions):
-        self.classifiers = copy.deepcopy(self.yaml)
-        del self.classifiers['match_type']
 
     def check_tc_condition(self, flow, ident):
         """
@@ -630,8 +638,11 @@ class TCCondition(object):
         """
         pkt = flow.packet
         result = TCConditionResult()
+        self.logger.debug("self.classifiers=%s", self.classifiers)
         #*** Iterate through classifiers (example: tcp_src: 123):
-        for policy_attr, policy_value in self.classifiers.iteritems():
+        for classifier in self.classifiers:
+            policy_attr = next(iter(classifier))
+            policy_value = classifier[policy_attr]
             #*** Instantiate data structure for classifier result:
             classifier_result = TCClassifierResult(policy_attr, policy_value)
             self.logger.debug("Iterating classifiers, policy_attr=%s "

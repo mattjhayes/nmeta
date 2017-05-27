@@ -9,8 +9,9 @@ tc_rules:
           match_type: any
           conditions_list:
               - match_type: any
-                tcp_src: 5555
-                tcp_dst: 5555
+                classifiers_list:
+                    - tcp_src: 5555
+                    - tcp_dst: 5555
           actions:
             set_desc: "Constrained Bandwidth Traffic"
             qos_treatment: constrained_bw

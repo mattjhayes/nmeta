@@ -9,7 +9,8 @@ tc_rules:
           match_type: any
           conditions_list:
               - match_type: any
-                tcp_src: 123
+                classifiers_list:
+                    - tcp_src: 123
           actions:
               set_desc: "Foo"
 #

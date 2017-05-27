@@ -72,8 +72,8 @@ Rules are an ordered list (denoted by preceding dash). Each rule contains:
 
   Conditions List
     A list that contains one or more
-    *condition* stanzas that each contain a match type and one or more
-    classifiers.
+    *condition* stanzas that each contain a match type and a
+    classifiers_list containing one or more classifiers.
 
   Actions
     A single *actions* stanza that contains one or more actions
@@ -94,7 +94,7 @@ A condition contains:
     **none**
       Match only if none of the classifiers in the condition match.
 
-- One or more *classifiers* (see further below)
+- A classifiers_list containing one or more *classifiers* (see further below)
 
 An *actions* stanza contains one or more attribute/value pairs
 

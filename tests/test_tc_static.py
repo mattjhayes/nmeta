@@ -47,8 +47,14 @@ import packets_ipv4_dns as pkts_udp
 #*** Instantiate Config class:
 config = config.Config()
 
+#*** Instantiate Policy class:
+policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
+
 #*** Instantiate StaticInspect class:
-tc_static = tc_static_module.StaticInspect(config)
+tc_static = tc_static_module.StaticInspect(config, policy)
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +68,13 @@ def test_check_static():
     #*** Test DPIDs and in ports:
     DPID1 = 1
     INPORT1 = 1
+    DPID2 = 8796748549206
+    INPORT2 = 6
+    DPID3 = 255
+    INPORT3 = 3
+
+    #*** Instantiate match object:
+    classifier_result = policy_module.TCClassifierResult("", "")
 
     #*** Instantiate class object:
     flow = flow_class.Flow(config)
@@ -69,8 +82,38 @@ def test_check_static():
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
-    #*** Instantiate match object:
-    classifier_result = policy_module.TCClassifierResult("", "")
+    #*** Should match, even though dpid/port don't, as default match is external:
+    classifier_result.policy_attr = 'location_src'
+    classifier_result.policy_value = 'external'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
+
+    #*** Test Flow 1 Packet 1 (Client TCP SYN) with DPID/port set to external:
+    flow.ingest_packet(DPID2, INPORT2, pkts.RAW[0], datetime.datetime.now())
+
+    #*** Should match as DPID/port belong to location external:
+    classifier_result.policy_attr = 'location_src'
+    classifier_result.policy_value = 'external'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
+
+    #*** Test Flow 1 Packet 1 (Client TCP SYN) with DPID/port set to internal:
+    flow.ingest_packet(DPID3, INPORT3, pkts.RAW[0], datetime.datetime.now())
+
+    #*** Should not match as DPID/port belong to location internal:
+    classifier_result.policy_attr = 'location_src'
+    classifier_result.policy_value = 'external'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
+
+    #*** Should match as DPID/port belong to location internal:
+    classifier_result.policy_attr = 'location_src'
+    classifier_result.policy_value = 'internal'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
+
+    #*** Test Flow 1 Packet 1 (Client TCP SYN):
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
     classifier_result.policy_attr = 'eth_src'
     classifier_result.policy_value = pkts.ETH_SRC[0]

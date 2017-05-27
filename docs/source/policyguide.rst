@@ -116,10 +116,21 @@ attributes such as port numbers.
 
 Supported attributes are:
 
+location_src
+------------
+
+Logical location (as defined by policy) of switch/port
+
+  Example:
+
+  .. code-block:: text
+
+    location_src: external
+
 eth_src
 -------
 
-  Ethernet source MAC address.
+Ethernet source MAC address.
 
   Example:
 
@@ -130,7 +141,7 @@ eth_src
 eth_dst
 -------
 
-  Ethernet destination MAC address.
+Ethernet destination MAC address.
 
   Example:
 

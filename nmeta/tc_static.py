@@ -34,12 +34,13 @@ class StaticInspect(BaseClass):
     This class provides methods to check
     static traffic classification (TC) classifier matches
     """
-    def __init__(self, config):
+    def __init__(self, config, policy):
         #*** Required for BaseClass:
         self.config = config
         #*** Set up Logging with inherited base class method:
         self.configure_logging(__name__, "tc_static_logging_level_s",
                                        "tc_static_logging_level_c")
+        self.policy = policy
 
     def check_static(self, classifier_result, pkt):
         """
@@ -49,7 +50,10 @@ class StaticInspect(BaseClass):
         """
         policy_attr = classifier_result.policy_attr
         policy_value = classifier_result.policy_value
-        if policy_attr == 'eth_src':
+        if policy_attr == 'location_src':
+            classifier_result.match = self.policy.locations.get_location(
+                                        pkt.dpid, pkt.in_port) == policy_value
+        elif policy_attr == 'eth_src':
             classifier_result.match = pkt.eth_src == policy_value
         elif policy_attr == 'eth_dst':
             classifier_result.match = pkt.eth_dst == policy_value

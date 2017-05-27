@@ -264,6 +264,7 @@ TC_CONDITION_SCHEMA = Schema({
                         })
 #*** Voluptuous schema for a tc classifier:
 TC_CLASSIFIER_SCHEMA = Schema({
+                        Optional('location_src'): str,
                         Optional('eth_src'): validate_macaddress,
                         Optional('eth_dst'): validate_macaddress,
                         Optional('ip_src'): validate_ip_space,
@@ -390,7 +391,7 @@ class Policy(BaseClass):
             sys.exit("Exiting nmeta. Please create policy file")
 
         #*** Instantiate Classes:
-        self.static = tc_static.StaticInspect(config)
+        self.static = tc_static.StaticInspect(config, self)
         self.identity = tc_identity.IdentityInspect(config)
         self.custom = tc_custom.CustomInspect(config)
 

@@ -13,3 +13,4 @@ nmeta/config/user/*.yaml
 *.egg-info/
 build/
 dist/
+.cache/

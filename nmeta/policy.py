@@ -42,6 +42,9 @@ from netaddr import EUI
 #*** YAML for config and policy file parsing:
 import yaml
 
+#*** Regular Expressions:
+import re
+
 #*** For logging configuration:
 from baseclass import BaseClass
 
@@ -163,7 +166,22 @@ def validate_macaddress(mac_addr):
     """
     msg = 'Invalid MAC address'
     try:
-        if not EUI(mac_addr):
+        result = EUI(mac_addr)
+        if result.version != 48:
+            raise Invalid(msg)
+    except:
+        raise Invalid(msg)
+    return mac_addr
+
+def validate_macaddress_OLD(mac_addr):
+    """
+    Custom Voluptuous validator for MAC address compliance.
+    Returns original MAC address if compliant, otherwise
+    raises Voluptuous Invalid exception
+    """
+    msg = 'Invalid MAC address'
+    try:
+        if not re.match("[0-9a-f]{2}([-:])[0-9a-f]{2}(\\1[0-9a-f]{2}){4}$", mac_addr.lower()):
             raise Invalid(msg)
     except:
         raise Invalid(msg)

@@ -85,10 +85,10 @@ class StaticInspect(BaseClass):
         Return 1 for is valid IP address and 0 for not valid
         """
         try:
-            if not EUI(value_to_check):
-                self.logger.debug("Check of "
-                        "is_valid_macaddress on %s returned false",
-                        value_to_check)
+            result = EUI(value_to_check)
+            if result.version != 48:
+                self.logger.debug("Check of is_valid_macaddress on %s "
+                        "returned false", value_to_check)
                 return 0
         except:
             self.logger.debug("Check of "

@@ -318,6 +318,8 @@ TC_ACTIONS_SCHEMA = Schema({
                                                        'classifier_return'),
                         Required('set_desc'): str
                         })
+#*** Voluptuous schema for qos_treatment branch of main policy:
+QOS_TREATMENT_SCHEMA = Schema({str: int})
 #*** Voluptuous schema for port_sets branch of main policy:
 PORT_SETS_SCHEMA = Schema({
                         Required('port_set_list'):
@@ -427,6 +429,7 @@ class Policy(BaseClass):
 
         #*** Instantiate classes for the second levels of policy:
         self.tc_rules = TCRules(self)
+        self.qos_treatment = QoSTreatment(self)
         self.port_sets = PortSets(self)
         self.locations = Locations(self)
 
@@ -770,6 +773,20 @@ class TCClassifierResult(object):
         self.policy_value = policy_value
         self.classification_tag = ""
         self.actions = {}
+
+class QoSTreatment(object):
+    """
+    An object that represents the qos_treatment root branch of
+    the main policy
+    """
+    def __init__(self, policy):
+        """ Initialise the QoSTreatment Class """
+        #*** Extract logger and policy YAML branch:
+        self.logger = policy.logger
+        self.yaml = policy.main_policy['qos_treatment']
+
+        #*** Check the correctness of the qos_treatment branch of main policy:
+        validate(self.logger, self.yaml, QOS_TREATMENT_SCHEMA, 'qos_treatment')
 
 class PortSets(object):
     """

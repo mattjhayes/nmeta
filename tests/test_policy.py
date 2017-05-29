@@ -442,6 +442,18 @@ def test_validate():
     with pytest.raises(SystemExit) as exit_info:
         policy_module.validate(logger, condition_bad_no_list, policy_module.TC_CONDITION_SCHEMA, 'tc_condition_bad_no_list')
 
+    #=================== QoS treatment branch
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    qos_treatment = main_policy['qos_treatment']
+    assert policy_module.validate(logger, qos_treatment, policy_module.QOS_TREATMENT_SCHEMA, 'qos_treatment') == 1
+
+    #*** Add a valid key with invalid value:
+    qos_treatment['BadQueue'] = 'foo'
+    with pytest.raises(SystemExit) as exit_info:
+        policy_module.validate(logger, qos_treatment, policy_module.QOS_TREATMENT_SCHEMA, 'qos_treatment')
+
     #=================== Locations branch
 
     #*** Get a copy of the main policy YAML:

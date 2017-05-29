@@ -39,7 +39,7 @@ class StaticInspect(BaseClass):
         self.config = config
         #*** Set up Logging with inherited base class method:
         self.configure_logging(__name__, "tc_static_logging_level_s",
-                                       "tc_static_logging_level_c")
+                                                   "tc_static_logging_level_c")
         self.policy = policy
 
     def check_static(self, classifier_result, pkt):
@@ -54,15 +54,20 @@ class StaticInspect(BaseClass):
             classifier_result.match = self.policy.locations.get_location(
                                         pkt.dpid, pkt.in_port) == policy_value
         elif policy_attr == 'eth_src':
-            classifier_result.match = pkt.eth_src == policy_value
+            classifier_result.match = \
+                            self.is_match_macaddress(pkt.eth_src, policy_value)
         elif policy_attr == 'eth_dst':
-            classifier_result.match = pkt.eth_dst == policy_value
+            classifier_result.match = \
+                            self.is_match_macaddress(pkt.eth_dst, policy_value)
         elif policy_attr == 'eth_type':
-            classifier_result.match = pkt.eth_type == policy_value
+            classifier_result.match = \
+                            self.is_match_ethertype(pkt.eth_type, policy_value)
         elif policy_attr == 'ip_src':
-            classifier_result.match = pkt.ip_src == policy_value
+            classifier_result.match = \
+                               self.is_match_ip_space(pkt.ip_src, policy_value)
         elif policy_attr == 'ip_dst':
-            classifier_result.match = pkt.ip_dst == policy_value
+            classifier_result.match = \
+                               self.is_match_ip_space(pkt.ip_dst, policy_value)
         elif policy_attr == 'tcp_src':
             classifier_result.match = pkt.proto == 6 and pkt.tp_src == policy_value
         elif policy_attr == 'tcp_dst':
@@ -248,7 +253,7 @@ class StaticInspect(BaseClass):
         Values can be hex or decimal and are 2 bytes in length
         """
         #*** Normalise any hex to decimal integers:
-        if value_to_check1[:2] == '0x':
+        if str(value_to_check1)[:2] == '0x':
             #*** Looks like hex:
             try:
                 value_to_check1_dec = int(value_to_check1, 16)
@@ -268,7 +273,7 @@ class StaticInspect(BaseClass):
                         "Failed to convert to integer. Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
-        if value_to_check2[:2] == '0x':
+        if str(value_to_check2)[:2] == '0x':
             #*** Looks like hex:
             try:
                 value_to_check2_dec = int(value_to_check2, 16)

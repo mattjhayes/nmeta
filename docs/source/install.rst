@@ -21,6 +21,7 @@ Install Debian Packages
 ***********************
 
 The following command installs these packages:
+
 - pip (Python package manager)
 - git (version control system)
 - git flow (branching model for Git)
@@ -42,6 +43,7 @@ Ensure pip (Python package manager) is latest version:
   pip install --upgrade pip
 
 The following command installs these Python packages:
+
 - Ryu (OpenFlow Software-Defined Networking (SDN) controller application that handles communications with the switch)
 - dpkt (library is used to parse and build packets)
 - mock (Testing library)

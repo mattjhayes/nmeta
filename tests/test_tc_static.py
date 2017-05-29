@@ -135,6 +135,7 @@ def test_check_static():
     tc_static.check_static(classifier_result, flow.packet)
     assert classifier_result.match == False
 
+    #*** Eth type tests:
     classifier_result.policy_attr = 'eth_type'
     classifier_result.policy_value = pkts.ETH_TYPE[0]
     tc_static.check_static(classifier_result, flow.packet)
@@ -145,6 +146,18 @@ def test_check_static():
     tc_static.check_static(classifier_result, flow.packet)
     assert classifier_result.match == False
 
+    #*** Eth type Hex tests:
+    classifier_result.policy_attr = 'eth_type'
+    classifier_result.policy_value = 0x800
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
+
+    classifier_result.policy_attr = 'eth_type'
+    classifier_result.policy_value = 0x808
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
+
+    #*** Simple IP src tests:
     classifier_result.policy_attr = 'ip_src'
     classifier_result.policy_value = pkts.IP_SRC[0]
     tc_static.check_static(classifier_result, flow.packet)
@@ -155,6 +168,28 @@ def test_check_static():
     tc_static.check_static(classifier_result, flow.packet)
     assert classifier_result.match == False
 
+    #*** Test IP src space matching:
+    classifier_result.policy_attr = 'ip_src'
+    classifier_result.policy_value = '10.1.0.0/24'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
+
+    classifier_result.policy_attr = 'ip_src'
+    classifier_result.policy_value = '10.2.0.0/24'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
+
+    classifier_result.policy_attr = 'ip_src'
+    classifier_result.policy_value = '10.1.0.1-10.1.0.15'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
+
+    classifier_result.policy_attr = 'ip_src'
+    classifier_result.policy_value = '10.1.0.2-10.1.0.15'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
+
+    #*** Simple IP dst tests:
     classifier_result.policy_attr = 'ip_dst'
     classifier_result.policy_value = pkts.IP_DST[0]
     tc_static.check_static(classifier_result, flow.packet)
@@ -164,6 +199,28 @@ def test_check_static():
     classifier_result.policy_value = pkts.IP_SRC[0]
     tc_static.check_static(classifier_result, flow.packet)
     assert classifier_result.match == False
+
+    #*** Test IP dst space matching:
+    classifier_result.policy_attr = 'ip_dst'
+    classifier_result.policy_value = '10.1.0.0/24'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
+
+    classifier_result.policy_attr = 'ip_dst'
+    classifier_result.policy_value = '10.2.0.0/24'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
+
+    classifier_result.policy_attr = 'ip_dst'
+    classifier_result.policy_value = '10.1.0.1-10.1.0.15'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == True
+
+    classifier_result.policy_attr = 'ip_dst'
+    classifier_result.policy_value = '10.1.0.3-10.1.0.15'
+    tc_static.check_static(classifier_result, flow.packet)
+    assert classifier_result.match == False
+
 
     classifier_result.policy_attr = 'tcp_src'
     classifier_result.policy_value = pkts.TP_SRC[0]

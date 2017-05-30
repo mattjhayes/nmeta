@@ -10,6 +10,7 @@ tc_rules:
           conditions_list:
               - match_type: any
                 classifiers_list:
+                    - location_src: internal
                     - tcp_src: 123
           actions:
               set_desc: "Foo"

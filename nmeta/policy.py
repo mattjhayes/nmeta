@@ -428,10 +428,10 @@ class Policy(BaseClass):
         validate(self.logger, self.main_policy, TOP_LEVEL_SCHEMA, 'top')
 
         #*** Instantiate classes for the second levels of policy:
-        self.tc_rules = TCRules(self)
-        self.qos_treatment = QoSTreatment(self)
         self.port_sets = PortSets(self)
         self.locations = Locations(self)
+        self.tc_rules = TCRules(self)
+        self.qos_treatment = QoSTreatment(self)
 
         #*** Instantiate any custom classifiers:
         self.custom.instantiate_classifiers(self.tc_rules.custom_classifiers)

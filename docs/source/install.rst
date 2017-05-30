@@ -30,7 +30,7 @@ The following command installs these packages:
 
 .. code-block:: text
 
-  sudo apt-get install python-pip git git-flow dpkt python-pytest python-yaml
+  sudo apt-get install python-pip git git-flow python-pytest python-yaml
 
 ***********************
 Install Python Packages
@@ -41,6 +41,8 @@ Ensure pip (Python package manager) is latest version:
 .. code-block:: text
 
   pip install --upgrade pip
+
+Nmeta requires Python version 2.7.x, does not run on Python 3.x (yet)
 
 The following command installs these Python packages:
 

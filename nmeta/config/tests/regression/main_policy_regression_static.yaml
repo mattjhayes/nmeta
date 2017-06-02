@@ -64,4 +64,4 @@ locations:
           port_set_list:
             - port_set: port_set_location_external
 
-    default_match: external
+    default_match: unknown

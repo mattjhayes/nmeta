@@ -82,9 +82,9 @@ def test_check_static():
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
-    #*** Should match, even though dpid/port don't, as default match is external:
+    #*** Should match, even though dpid/port don't, as default match is unknown:
     classifier_result.policy_attr = 'location_src'
-    classifier_result.policy_value = 'external'
+    classifier_result.policy_value = 'unknown'
     tc_static.check_static(classifier_result, flow.packet)
     assert classifier_result.match == True
 

@@ -652,7 +652,10 @@ def test_locations_get_location():
     Test the get_location method of the Locations class
     """
     #*** Instantiate Policy class instance:
-    policy = policy_module.Policy(config)
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
 
     #*** Test against 'internal' location:
     assert policy.locations.get_location(8796748549206, 1) == 'internal'

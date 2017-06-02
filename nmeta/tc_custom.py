@@ -21,6 +21,8 @@ to provide network identity and flow (traffic classification) metadata
 
 import sys
 
+import traceback
+
 #*** For importing custom classifiers:
 import importlib
 
@@ -66,7 +68,7 @@ class CustomInspect(BaseClass):
         Passed a deduplicated list of custom classifier names
         (without .py) to load.
 
-        Classifier modules live in the 'classifiers' subdirectory
+        Classifier modules live in the 'custom_classifiers' subdirectory
         """
         self.logger.debug("Loading dynamic classifiers")
 
@@ -79,12 +81,14 @@ class CustomInspect(BaseClass):
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("Failed to dynamically load classifier "
-                                    "module %s from classifiers subdirectory."
-                                    "Please check that module exists and alter"
-                                    " main_policy configuration if required",
-                                    module_name)
+                                "module %s from custom_classifiers "
+                                "subdirectory.Please check that module "
+                                "exists and alter main_policy configuration "
+                                "if required",
+                                module_name)
                 self.logger.error("Exception is %s, %s, %s",
-                                            exc_type, exc_value, exc_traceback)
+                                            exc_type, exc_value, 
+                                            traceback.format_tb(exc_traceback))
                 sys.exit("Exiting, please fix error...")
 
             #*** Dynamically instantiate class 'Classifier':

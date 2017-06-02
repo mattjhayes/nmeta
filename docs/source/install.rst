@@ -113,16 +113,6 @@ Clone nmeta
   cd
   git clone https://github.com/mattjhayes/nmeta.git
 
-Set PYTHONPATH
-==============
-
-This is required for importing custom classifier modules.
-Edit ~/.profile and add this line:
-
-.. code-block:: text  
-
-  export PYTHONPATH="$HOME/nmeta/nmeta"
-
 Test nmeta
 ==========
 

@@ -27,6 +27,7 @@ and carries no warrantee whatsoever. You have been warned.
 import struct
 import time
 import datetime
+import os, sys
 
 #*** Ryu Imports:
 from ryu import utils
@@ -78,6 +79,10 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Set up Logging with inherited base class method:
         self.configure_logging(__name__, "nmeta_logging_level_s",
                                        "nmeta_logging_level_c")
+
+        #*** Update sys.path (PYTHONPATH) for loading custom classifiers:
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+        self.logger.info("sys.path=%s", sys.path)
 
         #*** Instantiate Module Classes:
         self.policy = policy.Policy(self.config)

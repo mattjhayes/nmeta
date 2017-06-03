@@ -57,7 +57,7 @@ class Classifier(object):
         _max_packets = 7
         #*** Thresholds used in calculations:
         _max_packet_size_threshold = 1200
-        _interpacket_ratio_threshold = 0.3
+        _interpacket_ratio_threshold = 0.35
         #*** Packets in flow so far:
         packets = flow.packet_count()
 

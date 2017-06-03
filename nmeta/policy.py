@@ -461,6 +461,8 @@ class Policy(BaseClass):
                                                         datetime.datetime.now()
                 #*** Accumulate any actions:
                 flow.classification.actions.update(tc_rule_result.actions)
+                self.logger.debug("flow.classification.actions=%s",
+                                                   flow.classification.actions)
                 return 1
 
         #*** No matches. Mark as classified so we don't process again:
@@ -553,17 +555,20 @@ class TCRule(object):
             #*** Decide what to do based on match result and type:
             if condition_result.match and self.match_type == "any":
                 result.match = True
-                result.accumulate(condition_result)
                 result.add_rule_actions()
+                result.accumulate(condition_result)
+                self.logger.debug("matched_1, result=%s", result.__dict__)
                 return result
             elif not result.match and self.match_type == "all":
                 result.match = False
+                self.logger.debug("no_match_1, result=%s", result.__dict__)
                 return result
             elif result.match and self.match_type == "all":
                 #*** Just accumulate the results:
                 result.accumulate(condition_result)
             elif result.match and self.match_type == "none":
                 result.match = False
+                self.logger.debug("no_match_2, result=%s", result.__dict__)
                 return result
             else:
                 #*** Not a condition we take action on so keep going:
@@ -572,15 +577,18 @@ class TCRule(object):
         #***  returned. Work out what action to take:
         if not condition_result.match and self.match_type == "any":
             result.match = False
+            self.logger.debug("no_match_3, result=%s", result.__dict__)
             return result
         elif condition_result.match and self.match_type == "all":
             result.match = True
-            result.accumulate(condition_result)
             result.add_rule_actions()
+            result.accumulate(condition_result)
+            self.logger.debug("matched_2, result=%s", result.__dict__)
             return result
         elif not condition_result.match and self.match_type == "none":
             result.match = True
             result.add_rule_actions()
+            self.logger.debug("matched_3, result=%s", result.__dict__)
             return result
         else:
             #*** Unexpected result:

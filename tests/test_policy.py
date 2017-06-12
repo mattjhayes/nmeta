@@ -310,7 +310,10 @@ def test_portsets_get_port_set():
     Test that get_port_set returns correct port_set name
     """
     #*** Instantiate Policy class instance:
-    policy = policy_module.Policy(config)
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/regression",
+                            pol_filename="main_policy_regression_static.yaml")
 
     #*** Positive matches:
     assert policy.port_sets.get_port_set(255, 5, 0) == "port_set_location_internal"
@@ -324,7 +327,10 @@ def test_portset_is_member():
     Test that the PortSet class method is_member works correctly
     """
     #*** Instantiate Policy class instance:
-    policy = policy_module.Policy(config)
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/regression",
+                            pol_filename="main_policy_regression_static.yaml")
 
     #*** Members:
     assert policy.port_sets.port_sets_list[0].is_member(255, 5, 0) == 1
@@ -340,7 +346,10 @@ def test_validate():
     good and bad policy scenarios to ensure correct results produced
     """
     #*** Instantiate Policy class instance:
-    policy = policy_module.Policy(config)
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/regression",
+                            pol_filename="main_policy_regression_static.yaml")
 
     #=================== Top level:
 
@@ -453,6 +462,16 @@ def test_validate():
     qos_treatment['BadQueue'] = 'foo'
     with pytest.raises(SystemExit) as exit_info:
         policy_module.validate(logger, qos_treatment, policy_module.QOS_TREATMENT_SCHEMA, 'qos_treatment')
+
+    #=================== Port Sets branch
+
+    #*** Get a copy of the main policy YAML:
+    main_policy = copy.deepcopy(policy.main_policy)
+    port_sets_policy = main_policy['port_sets']
+
+    #*** Check the correctness of the locations branch of main policy:
+    assert policy_module.validate(logger, port_sets_policy, policy_module.PORT_SETS_SCHEMA, 'port_sets') == 1
+
 
     #=================== Locations branch
 

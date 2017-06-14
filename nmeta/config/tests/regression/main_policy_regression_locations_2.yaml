@@ -2,8 +2,8 @@
 #*** Main Policy for nmeta - Locations Regression Test
 #*** Written in YAML
 #
-# Load Generator (lg1) has it's bandwidth constrained by virtue of
-#  being connected to switch port 4 on DPID 8796748549206
+# pc1 has it's bandwidth constrained by virtue of
+#  being connected to switch port 1 on DPID 8796748549206
 
 tc_rules:
     # Traffic Classification Rulesets and Rules
@@ -34,14 +34,14 @@ port_sets:
           port_list:
               - name: VirtualSwitch1-internal
                 DPID: 8796748549206
-                ports: 1-3,5,66
+                ports: 2-5,66
                 vlan_id: 0
 
         - name: port_set_location_external
           port_list:
               - name: VirtualSwitch1-external
                 DPID: 8796748549206
-                ports: 4
+                ports: 1
                 vlan_id: 0
 #
 locations:

@@ -31,6 +31,10 @@ Nmeta does not scale well. Every new flow has a processing overhead, and this
 workload cannot be scaled horizontally on the controller. The nmeta2 system is
 being developed to address this limitation.
 
+Nmeta has no security, it was written to demonstrate SDN functionality
+and has omitted addressing security requirements. A future rewrite may address
+security, but for now there is no security whatsoever.
+
 Feature Enhancement Wishlist
 ----------------------------
 

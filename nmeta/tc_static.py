@@ -20,6 +20,8 @@ to provide network identity and flow (traffic classification) metadata
 
 import sys
 
+import traceback
+
 #*** Import netaddr for IP address checking:
 from netaddr import IPAddress
 from netaddr import IPNetwork
@@ -349,9 +351,10 @@ class StaticInspect(BaseClass):
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.logger.error("error=E1000021 "
-                        "Exception converting to IPAddress object. "
-                        "Exception %s, %s, %s",
-                            exc_type, exc_value, exc_traceback)
+                            "Exception converting %s to IPAddress object. "
+                            "Exception %s, %s, %s",
+                            ip_addr, exc_type, exc_value,
+                            traceback.format_tb(exc_traceback))
             return 0
         #*** Now we have both in netaddr form, so do the match comparison:
         if ip_addr_object in ip_space_object:

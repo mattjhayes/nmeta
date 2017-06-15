@@ -57,7 +57,7 @@ The following command installs these Python packages:
 
 .. code-block:: text
 
-  pip install ryu dpkt mock requests simplejson eve coloredlogs voluptuous --user
+  pip2.7 install ryu dpkt mock requests simplejson eve coloredlogs voluptuous --user
 
 ***************
 Install MongoDB

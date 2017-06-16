@@ -73,7 +73,7 @@ FLOW_FILTER_SRC_OR_DST = ['src', 'src_hover', 'dst', 'dst_hover']
 
 #*** Number of previous IP identity records to search for a hostname before
 #*** giving up. Used for augmenting flows with identity metadata:
-HOST_LIMIT = 250
+HOST_LIMIT = 2000
 SERVICE_LIMIT = 250
 
 #*** How far back in time to go back looking for packets in flow:
@@ -145,6 +145,7 @@ class ExternalAPI(BaseClass):
             #*** Initialise flow variables:
             self.flow_hash = ""
             self.timestamp = ""
+            self.src_location_logical = ""
             self.src = ""
             self.src_hover = ""
             self.dst = ""
@@ -469,7 +470,6 @@ class ExternalAPI(BaseClass):
             #*** Didn't match anything and excludes logic so that's a 1!
             return 1
 
-
     def flow_augment_record(self, record):
         """
         Passed a record of a single flow from the packet_ins
@@ -485,6 +485,9 @@ class ExternalAPI(BaseClass):
         flow = self.FlowUI()
         flow.timestamp = record['timestamp']
         flow.flow_hash = record['flow_hash']
+        #*** Augment with source logical location:
+        flow.src_location_logical = self.get_location_by_mac(record['eth_src'])
+        #*** Mangle src/dest and their hovers dependent on type:
         if record['eth_type'] == 2048:
             #*** It's IPv4, see if we can augment with identity:
             flow.src = self.get_id(record['ip_src'])
@@ -691,6 +694,22 @@ class ExternalAPI(BaseClass):
             self.logger.debug("record is %s", record)
             if record['host_name'] != "":
                 return str(record['host_name'])
+        return ""
+
+    def get_location_by_mac(self, mac_addr):
+        """
+        Passed a MAC address. Look this up in the identities db collection
+        and return a source logical location if present,
+        otherwise an empty string
+        """
+        db_data = {'mac_address': mac_addr}
+        #*** Run db search:
+        cursor = self.identities.find(db_data).limit(HOST_LIMIT) \
+                                                         .sort('timestamp', -1)
+        for record in cursor:
+            self.logger.debug("record is %s", record)
+            if record['location_logical'] != "":
+                return str(record['location_logical'])
         return ""
 
     def get_service_by_ip(self, ip_addr, alias=1):

@@ -26,9 +26,9 @@ import datetime
 #*** nmeta imports:
 import nmeta
 import config
-import flows as flow_class
-import identities as identities_class
-import tc_policy
+import flows as flows_module
+import identities as identities_module
+import policy as policy_module
 import tc_custom
 
 #*** nmeta test packet imports:
@@ -52,99 +52,100 @@ def test_statistical_classifier():
     INPORT1 = 1
 
     #*** Instantiate class object:
-    flow = flow_class.Flow(config)    #*** Test DPIDs and in ports:
+    flow = flows_module.Flow(config)    #*** Test DPIDs and in ports:
     DPID1 = 1
     INPORT1 = 1
 
     #*** Instantiate class objects:
-    flow = flow_class.Flow(config)
-    ident = identities_class.Identities(config)
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    ident = identities_module.Identities(config, policy)
 
     #*** Instantiate custom classifiers
     tc_cust = tc_custom.CustomInspect(config)
     tc_cust.instantiate_classifiers(['statistical_qos_bandwidth_1'])
 
     #*** Instantiate match object:
-    condition = tc_policy.TrafficClassificationPolicy.Condition()
+    classifier_result = policy_module.TCClassifierResult("", "")
 
     #*** Ingest sufficient packets to complete statistical classification (7):
 
     #*** Ingest packet 10.1.0.1 10.1.0.2 TCP 38435 80 [SYN]
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
 
-    condition.policy_attr = 'custom'
-    condition.policy_value = 'statistical_qos_bandwidth_1'
-    tc_cust.check_custom(condition, flow, ident)
-    assert condition.match == True
-    assert condition.continue_to_inspect == True
-    assert condition.classification_tag == ""
-    assert condition.actions == {}
+    classifier_result.policy_attr = 'custom'
+    classifier_result.policy_value = 'statistical_qos_bandwidth_1'
+    tc_cust.check_custom(classifier_result, flow, ident)
+    assert classifier_result.match == True
+    assert classifier_result.continue_to_inspect == True
+    assert classifier_result.classification_tag == ""
+    assert classifier_result.actions == {}
 
     #*** Ingest packet 10.1.0.2 10.1.0.1 TCP 80 38435 [SYN, ACK]
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[1], datetime.datetime.now())
-
-    condition.policy_attr = 'custom'
-    condition.policy_value = 'statistical_qos_bandwidth_1'
-    tc_cust.check_custom(condition, flow, ident)
-    assert condition.match == True
-    assert condition.continue_to_inspect == True
-    assert condition.classification_tag == ""
-    assert condition.actions == {}
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'custom'
+    classifier_result.policy_value = 'statistical_qos_bandwidth_1'
+    tc_cust.check_custom(classifier_result, flow, ident)
+    assert classifier_result.match == True
+    assert classifier_result.continue_to_inspect == True
+    assert classifier_result.classification_tag == ""
+    assert classifier_result.actions == {}
 
     #*** Ingest packet
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
-
-    condition.policy_attr = 'custom'
-    condition.policy_value = 'statistical_qos_bandwidth_1'
-    tc_cust.check_custom(condition, flow, ident)
-    assert condition.match == True
-    assert condition.continue_to_inspect == True
-    assert condition.classification_tag == ""
-    assert condition.actions == {}
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'custom'
+    classifier_result.policy_value = 'statistical_qos_bandwidth_1'
+    tc_cust.check_custom(classifier_result, flow, ident)
+    assert classifier_result.match == True
+    assert classifier_result.continue_to_inspect == True
+    assert classifier_result.classification_tag == ""
+    assert classifier_result.actions == {}
 
     #*** Ingest packet
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], datetime.datetime.now())
-
-    condition.policy_attr = 'custom'
-    condition.policy_value = 'statistical_qos_bandwidth_1'
-    tc_cust.check_custom(condition, flow, ident)
-    assert condition.match == True
-    assert condition.continue_to_inspect == True
-    assert condition.classification_tag == ""
-    assert condition.actions == {}
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'custom'
+    classifier_result.policy_value = 'statistical_qos_bandwidth_1'
+    tc_cust.check_custom(classifier_result, flow, ident)
+    assert classifier_result.match == True
+    assert classifier_result.continue_to_inspect == True
+    assert classifier_result.classification_tag == ""
+    assert classifier_result.actions == {}
 
     #*** Ingest packet
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[4], datetime.datetime.now())
-
-    condition.policy_attr = 'custom'
-    condition.policy_value = 'statistical_qos_bandwidth_1'
-    tc_cust.check_custom(condition, flow, ident)
-    assert condition.match == True
-    assert condition.continue_to_inspect == True
-    assert condition.classification_tag == ""
-    assert condition.actions == {}
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'custom'
+    classifier_result.policy_value = 'statistical_qos_bandwidth_1'
+    tc_cust.check_custom(classifier_result, flow, ident)
+    assert classifier_result.match == True
+    assert classifier_result.continue_to_inspect == True
+    assert classifier_result.classification_tag == ""
+    assert classifier_result.actions == {}
 
     #*** Ingest packet
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[5], datetime.datetime.now())
-
-    condition.policy_attr = 'custom'
-    condition.policy_value = 'statistical_qos_bandwidth_1'
-    tc_cust.check_custom(condition, flow, ident)
-    assert condition.match == True
-    assert condition.continue_to_inspect == True
-    assert condition.classification_tag == ""
-    assert condition.actions == {}
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'custom'
+    classifier_result.policy_value = 'statistical_qos_bandwidth_1'
+    tc_cust.check_custom(classifier_result, flow, ident)
+    assert classifier_result.match == True
+    assert classifier_result.continue_to_inspect == True
+    assert classifier_result.classification_tag == ""
+    assert classifier_result.actions == {}
 
     #*** Ingest packet
     #*** This should conclude the statistical classification for this flow
     #*** and conclude action is default priority
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[6], datetime.datetime.now())
-
-    condition.policy_attr = 'custom'
-    condition.policy_value = 'statistical_qos_bandwidth_1'
-    tc_cust.check_custom(condition, flow, ident)
-    assert condition.match == True
-    assert condition.continue_to_inspect == False
-    assert condition.classification_tag == "Normal flow"
-    assert condition.actions == {'qos_treatment': 'default_priority'}
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'custom'
+    classifier_result.policy_value = 'statistical_qos_bandwidth_1'
+    tc_cust.check_custom(classifier_result, flow, ident)
+    assert classifier_result.match == True
+    assert classifier_result.continue_to_inspect == False
+    assert classifier_result.classification_tag == "Normal flow"
+    assert classifier_result.actions == {'qos_treatment': 'default_priority'}
 

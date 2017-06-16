@@ -10,3 +10,7 @@ nmeta/custom_classifiers/*.pyc
 nmeta/custom_classifiers/__init__.pyc
 nmeta/webUI/experimental
 nmeta/config/user/*.yaml
+*.egg-info/
+build/
+dist/
+.cache/

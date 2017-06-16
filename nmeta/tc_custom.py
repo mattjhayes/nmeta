@@ -21,6 +21,8 @@ to provide network identity and flow (traffic classification) metadata
 
 import sys
 
+import traceback
+
 #*** For importing custom classifiers:
 import importlib
 
@@ -29,8 +31,7 @@ from baseclass import BaseClass
 
 class CustomInspect(BaseClass):
     """
-    This class is instantiated by tc_policy.py
-    (class: TrafficClassificationPolicy) and provides methods to
+    This class is instantiated by policy.py and provides methods to
     run custom traffic classification modules
     """
     def __init__(self, config):
@@ -42,17 +43,17 @@ class CustomInspect(BaseClass):
         #*** Dictionary to hold dynamically loaded custom classifiers:
         self.custom_classifiers = {}
 
-    def check_custom(self, condition, flow, ident):
+    def check_custom(self, classifier_result, flow, ident):
         """
-        Passed condition, flows and identities objects.
+        Passed TCClassifierResult, Flow.Packet and Identities class objects.
         Call the named custom classifier with these values so that it
-        can update the condition match as appropriate.
+        can update the classifier_result match as appropriate.
         """
-        classifier = condition.policy_value
+        classifier = classifier_result.policy_value
         if classifier in self.custom_classifiers:
             custom = self.custom_classifiers[classifier]
             #*** Run the custom classifier:
-            custom.classifier(condition, flow, ident)
+            custom.classifier(classifier_result, flow, ident)
             return 1
         else:
             self.logger.error("Failed to find classifier=%s", classifier)
@@ -67,7 +68,7 @@ class CustomInspect(BaseClass):
         Passed a deduplicated list of custom classifier names
         (without .py) to load.
 
-        Classifier modules live in the 'classifiers' subdirectory
+        Classifier modules live in the 'custom_classifiers' subdirectory
         """
         self.logger.debug("Loading dynamic classifiers")
 
@@ -80,12 +81,14 @@ class CustomInspect(BaseClass):
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("Failed to dynamically load classifier "
-                                    "module %s from classifiers subdirectory."
-                                    "Please check that module exists and alter"
-                                    " main_policy configuration if required",
-                                    module_name)
+                                "module %s from custom_classifiers "
+                                "subdirectory.Please check that module "
+                                "exists and alter main_policy configuration "
+                                "if required",
+                                module_name)
                 self.logger.error("Exception is %s, %s, %s",
-                                            exc_type, exc_value, exc_traceback)
+                                            exc_type, exc_value, 
+                                            traceback.format_tb(exc_traceback))
                 sys.exit("Exiting, please fix error...")
 
             #*** Dynamically instantiate class 'Classifier':

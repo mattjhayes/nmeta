@@ -27,6 +27,7 @@ and carries no warrantee whatsoever. You have been warned.
 import struct
 import time
 import datetime
+import os, sys
 
 #*** Ryu Imports:
 from ryu import utils
@@ -41,7 +42,7 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 
 #*** nmeta imports:
-import tc_policy
+import policy
 import config
 import switches
 import forwarding
@@ -79,15 +80,19 @@ class NMeta(app_manager.RyuApp, BaseClass):
         self.configure_logging(__name__, "nmeta_logging_level_s",
                                        "nmeta_logging_level_c")
 
+        #*** Update sys.path (PYTHONPATH) for loading custom classifiers:
+        sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+        self.logger.info("sys.path=%s", sys.path)
+
         #*** Instantiate Module Classes:
-        self.tc_policy = tc_policy.TrafficClassificationPolicy(self.config)
+        self.policy = policy.Policy(self.config)
         self.switches = switches.Switches(self.config)
         self.forwarding = forwarding.Forwarding(self.config)
 
         #*** Instantiate a flow object for conversation metadata:
         self.flow = flows.Flow(self.config)
         #*** Instantiate an identity object for participant metadata:
-        self.ident = identities.Identities(self.config)
+        self.ident = identities.Identities(self.config, self.policy)
 
         #*** Set up database collection for packet-in processing time:
         mongo_addr = self.config.get_value("mongo_addr")
@@ -172,7 +177,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does update flow.classified.*:
         if not self.flow.classification.classified:
-            self.tc_policy.check_policy(self.flow, self.ident)
+            self.policy.check_policy(self.flow, self.ident)
             self.logger.debug("classification=%s",
                                              self.flow.classification.dbdict())
             #*** Write classification result to classifications collection:
@@ -195,7 +200,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         actions = self.flow.classification.actions
         #*** Set QoS queue based on any QoS actions:
         if 'qos_treatment' in actions:
-            out_queue = self.tc_policy.qos(actions['qos_treatment'])
+            out_queue = self.policy.qos(actions['qos_treatment'])
             self.logger.debug("QoS output_queue=%s", out_queue)
         else:
             out_queue = 0
@@ -303,6 +308,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
         record the outcome for the packet, one of:
         - drop_same_port
         - drop_reserved_mac
+        - drop_action
         - packet_out_flooded
         - packet_out
         """

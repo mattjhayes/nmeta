@@ -4,3 +4,4 @@ dpkt
 coloredlogs
 pymongo
 eve
+voluptuous

@@ -48,6 +48,17 @@ MongoDB Collection: packet_ins
 
 .. image:: images/data_struct_packet_ins.png
 
+pi_time
+=======
+
+The pi_time database collection stores data on how long nmeta took
+to process individual packet-in events, and what type of outcome nmeta
+decided upon for the packet.
+
+MongoDB Collection: data_struct_pi_time
+
+.. image:: images/data_struct_pi_time.png
+
 Classifications
 ===============
 

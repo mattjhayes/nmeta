@@ -35,7 +35,7 @@ class Classifier(object):
         """
         self.logger = logger
 
-    def classifier(self, condition, flow, ident):
+    def classifier(self, classifier_result, flow, ident):
         """
         A really basic statistical classifier to demonstrate ability
         to differentiate 'bandwidth hog' flows from ones that are
@@ -43,11 +43,11 @@ class Classifier(object):
         can be passed to QoS for differential treatment.
         .
         This method is passed:
-        * A Condition class object
+        * A TCClassifierResult class object
         * A Flow class object holding the current flow context
         * An Identities class object
         .
-        It updates the Condition class object with actions and
+        It updates the TCClassifierResult class object with actions and
         classification_tag
         .
         Only works on TCP.
@@ -57,7 +57,7 @@ class Classifier(object):
         _max_packets = 7
         #*** Thresholds used in calculations:
         _max_packet_size_threshold = 1200
-        _interpacket_ratio_threshold = 0.3
+        _interpacket_ratio_threshold = 0.35
         #*** Packets in flow so far:
         packets = flow.packet_count()
 
@@ -84,19 +84,20 @@ class Classifier(object):
             if (_max_packet_size > _max_packet_size_threshold and
                             _interpacket_ratio < _interpacket_ratio_threshold):
                 #*** This traffic looks like a bandwidth hog so constrain it:
-                condition.match = 1
-                condition.continue_to_inspect = 0
-                condition.actions['qos_treatment'] = 'constrained_bw'
-                condition.classification_tag = "Bandwidth hog flow"
+                classifier_result.match = True
+                classifier_result.continue_to_inspect = False
+                classifier_result.actions['qos_treatment'] = 'constrained_bw'
+                classifier_result.classification_tag = "Bandwidth hog flow"
             else:
                 #*** Doesn't look like bandwidth hog so default priority:
-                condition.match = 1
-                condition.continue_to_inspect = 0
-                condition.actions['qos_treatment'] = 'default_priority'
-                condition.classification_tag = "Normal flow"
-            self.logger.debug("Decided on results %s", condition.to_dict())
+                classifier_result.match = True
+                classifier_result.continue_to_inspect = False
+                classifier_result.actions['qos_treatment'] = 'default_priority'
+                classifier_result.classification_tag = "Normal flow"
+            self.logger.debug("Decided on results %s",
+                                                   classifier_result.__dict__)
         else:
             self.logger.debug("Continuing to inspect flow_hash=%s packets=%s",
                                                        flow.flow_hash, packets)
-            condition.match = 1
-            condition.continue_to_inspect = 1
+            classifier_result.match = True
+            classifier_result.continue_to_inspect = True

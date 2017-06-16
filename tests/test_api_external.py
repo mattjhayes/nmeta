@@ -29,10 +29,10 @@ import datetime
 
 #*** nmeta imports:
 import config
-import flows as flow_class
-import identities as identities_class
+import flows as flows_module
+import identities as identities_module
 import api_external
-import tc_policy
+import policy as policy_module
 import tc_identity
 
 #*** nmeta test packet imports:
@@ -99,7 +99,7 @@ def test_response_pi_rate():
     time.sleep(.5)
 
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Test Flow 1 Packet 1 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
@@ -138,9 +138,10 @@ def test_identities():
     #*** Sleep to allow api_external to start fully:
     time.sleep(.5)
 
-    #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** Ingest LLDP from pc1
     flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
@@ -208,9 +209,10 @@ def test_identities_ui():
     #*** Sleep to allow api_external to start fully:
     time.sleep(.5)
 
-    #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** Ingest LLDP from pc1
     flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
@@ -269,7 +271,7 @@ def test_flow_normalise_direction():
     direction of the first observed packet in the flow
     """
     #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Test Flow 1 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
@@ -308,7 +310,7 @@ def test_get_flow_data_xfer():
     OFP_VERSION = ofproto_v1_3.OFP_VERSION
 
     #*** Instantiate Flow class:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
     flow.ingest_packet(DPID1, INPORT2, pkts.RAW[1], datetime.datetime.now())
 
@@ -354,9 +356,10 @@ def test_get_dns_ip():
     """
     Test looking up a DNS CNAME to get an IP address
     """
-    #*** Instantiate flow and identities objects:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
     flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
@@ -370,9 +373,10 @@ def test_get_host_by_ip():
     """
     Test get_host_by_ip
     """
-    #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** Ingest ARP reply for MAC of pc1 so can ref later:
     flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[3], datetime.datetime.now())
@@ -411,9 +415,11 @@ def test_get_service_by_ip():
     Test ability of get_service_by_ip to resolve
     IPs to service names
     """
-    #*** Instantiate class objects:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
+
     tc_ident = tc_identity.IdentityInspect(config)
     #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
     # A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
@@ -433,12 +439,13 @@ def test_get_classification():
     for the flow_hash (if found), otherwise
     a dictionary of an empty classification object.
     """
-    #*** Instantiate classes:
-    flow = flow_class.Flow(config)
-    ident = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    ident = identities_module.Identities(config, policy)
 
     #*** Initial main_policy that matches tcp-80:
-    tc = tc_policy.TrafficClassificationPolicy(config,
+    policy = policy_module.Policy(config,
                         pol_dir_default="config/tests/regression",
                         pol_dir_user="config/tests/foo",
                         pol_filename="main_policy_regression_static_3.yaml")
@@ -446,7 +453,7 @@ def test_get_classification():
     #*** Ingest Flow 1 Packet 0 (Client TCP SYN):
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
     #*** Classify the packet:
-    tc.check_policy(flow, ident)
+    policy.check_policy(flow, ident)
 
     logger.debug("pkt0 flow classification is %s", flow.classification.dbdict())
 
@@ -466,7 +473,7 @@ def test_indexing_get_pi_rate():
     to ensure that they run efficiently
     """
     #*** Instantiate classes:
-    flow = flow_class.Flow(config)
+    flow = flows_module.Flow(config)
 
     #*** Ingest packets older than flow timeout:
     flow.ingest_packet(DPID1, INPORT1, pkts_ARP_2.RAW[0], datetime.datetime.now() - datetime.timedelta \
@@ -543,9 +550,10 @@ def test_flow_mods():
     #*** Sleep to allow api_external to start fully:
     time.sleep(.5)
 
-    #*** Instantiate a flow object:
-    flow = flow_class.Flow(config)
-    identities = identities_class.Identities(config)
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
 
     #*** Record flow mod:
     #*** Ingest a packet from pc1:

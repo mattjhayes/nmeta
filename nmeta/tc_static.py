@@ -20,6 +20,8 @@ to provide network identity and flow (traffic classification) metadata
 
 import sys
 
+import traceback
+
 #*** Import netaddr for IP address checking:
 from netaddr import IPAddress
 from netaddr import IPNetwork
@@ -31,48 +33,57 @@ from baseclass import BaseClass
 
 class StaticInspect(BaseClass):
     """
-    This class is instantiated by tc_policy.py
-    (class: TrafficClassificationPolicy) and provides methods to
-    query static traffic classification matches
+    This class provides methods to check
+    static traffic classification (TC) classifier matches
     """
-    def __init__(self, config):
+    def __init__(self, config, policy):
         #*** Required for BaseClass:
         self.config = config
         #*** Set up Logging with inherited base class method:
         self.configure_logging(__name__, "tc_static_logging_level_s",
-                                       "tc_static_logging_level_c")
+                                                   "tc_static_logging_level_c")
+        self.policy = policy
 
-    def check_static(self, condition, pkt):
+    def check_static(self, classifier_result, pkt):
         """
-        Passed condition and flows packet objects
-        Update the condition match with boolean of result
+        Passed TCClassifierResult and Flow.Packet class objects
+        Update the classifier_result match with boolean of result
         of match checks
         """
-        policy_attr = condition.policy_attr
-        policy_value = condition.policy_value
-        if policy_attr == 'eth_src':
-            condition.match = pkt.eth_src == policy_value
+        policy_attr = classifier_result.policy_attr
+        policy_value = classifier_result.policy_value
+        if policy_attr == 'location_src':
+            classifier_result.match = self.policy.locations.get_location(
+                                        pkt.dpid, pkt.in_port) == policy_value
+        elif policy_attr == 'eth_src':
+            classifier_result.match = \
+                            self.is_match_macaddress(pkt.eth_src, policy_value)
         elif policy_attr == 'eth_dst':
-            condition.match = pkt.eth_dst == policy_value
+            classifier_result.match = \
+                            self.is_match_macaddress(pkt.eth_dst, policy_value)
         elif policy_attr == 'eth_type':
-            condition.match = pkt.eth_type == policy_value
+            classifier_result.match = \
+                            self.is_match_ethertype(pkt.eth_type, policy_value)
         elif policy_attr == 'ip_src':
-            condition.match = pkt.ip_src == policy_value
+            classifier_result.match = \
+                               self.is_match_ip_space(pkt.ip_src, policy_value)
         elif policy_attr == 'ip_dst':
-            condition.match = pkt.ip_dst == policy_value
+            classifier_result.match = \
+                               self.is_match_ip_space(pkt.ip_dst, policy_value)
         elif policy_attr == 'tcp_src':
-            condition.match = pkt.proto == 6 and pkt.tp_src == policy_value
+            classifier_result.match = pkt.proto == 6 and pkt.tp_src == policy_value
         elif policy_attr == 'tcp_dst':
-            condition.match = pkt.proto == 6 and pkt.tp_dst == policy_value
+            classifier_result.match = pkt.proto == 6 and pkt.tp_dst == policy_value
         elif policy_attr == 'udp_src':
-            condition.match = pkt.proto == 17 and pkt.tp_src == policy_value
+            classifier_result.match = pkt.proto == 17 and pkt.tp_src == policy_value
         elif policy_attr == 'udp_dst':
-            condition.match = pkt.proto == 17 and pkt.tp_dst == policy_value
+            classifier_result.match = pkt.proto == 17 and pkt.tp_dst == policy_value
         else:
-            #*** didn't match any policy conditions so return false and
+            #*** didn't match any policy classifiers so return false and
             #***  log an error:
-            self.logger.error("Unsupported policy_attr=%s", policy_attr)
-            condition.match = False
+            self.logger.error("Unsupported static classifier policy_attr=%s",
+                                                                   policy_attr)
+            classifier_result.match = False
 
     def is_valid_macaddress(self, value_to_check):
         """
@@ -81,10 +92,10 @@ class StaticInspect(BaseClass):
         Return 1 for is valid IP address and 0 for not valid
         """
         try:
-            if not EUI(value_to_check):
-                self.logger.debug("Check of "
-                        "is_valid_macaddress on %s returned false",
-                        value_to_check)
+            result = EUI(value_to_check)
+            if result.version != 48:
+                self.logger.debug("Check of is_valid_macaddress on %s "
+                        "returned false", value_to_check)
                 return 0
         except:
             self.logger.debug("Check of "
@@ -244,7 +255,7 @@ class StaticInspect(BaseClass):
         Values can be hex or decimal and are 2 bytes in length
         """
         #*** Normalise any hex to decimal integers:
-        if value_to_check1[:2] == '0x':
+        if str(value_to_check1)[:2] == '0x':
             #*** Looks like hex:
             try:
                 value_to_check1_dec = int(value_to_check1, 16)
@@ -264,7 +275,7 @@ class StaticInspect(BaseClass):
                         "Failed to convert to integer. Exception %s, %s, %s",
                             exc_type, exc_value, exc_traceback)
                 return 0
-        if value_to_check2[:2] == '0x':
+        if str(value_to_check2)[:2] == '0x':
             #*** Looks like hex:
             try:
                 value_to_check2_dec = int(value_to_check2, 16)
@@ -295,6 +306,9 @@ class StaticInspect(BaseClass):
         if the IP address belongs to the IP address space.
         If it does return 1 otherwise return 0
         """
+        if not ip_addr:
+            #*** Non-IP so return 0
+            return 0
         #*** Does ip_space look like a CIDR network?:
         if "/" in ip_space:
             try:
@@ -302,9 +316,10 @@ class StaticInspect(BaseClass):
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("error=E1000015 "
-                        "Exception converting to IPNetwork object. "
-                        "Exception %s, %s, %s",
-                            exc_type, exc_value, exc_traceback)
+                        "Exception converting ip_space=%s to IPNetwork object."
+                        " Exception %s, %s, %s",
+                            ip_space, exc_type, exc_value,
+                            traceback.format_tb(exc_traceback))
                 return 0
         #*** Does it look like an IP range?:
         elif "-" in ip_space:
@@ -319,9 +334,10 @@ class StaticInspect(BaseClass):
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("error=E1000017 "
-                        "Exception on conversion of %s to iter_iprange "
-                        "Exception %s, %s, %s",
-                        ip_range, exc_type, exc_value, exc_traceback)
+                        "Exception on conversion of ip_range=%s to "
+                        "iter_iprange. Exception %s, %s, %s",
+                        ip_range, exc_type, exc_value,
+                        traceback.format_tb(exc_traceback))
                 return 0
         else:
             #*** Or is it just a plain simple IP address?:
@@ -330,9 +346,10 @@ class StaticInspect(BaseClass):
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("error=E1000019 "
-                        "Exception converting to IPAddress object. "
-                        "Exception %s, %s, %s",
-                            exc_type, exc_value, exc_traceback)
+                        "Exception converting ip_space=%s to iter_iprange"
+                        " object. Exception %s, %s, %s",
+                            ip_space, exc_type, exc_value,
+                            traceback.format_tb(exc_traceback))
                 return 0
         #*** Convert the IP address to a netaddr IPAddress object:
         try:
@@ -340,9 +357,10 @@ class StaticInspect(BaseClass):
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.logger.error("error=E1000021 "
-                        "Exception converting to IPAddress object. "
-                        "Exception %s, %s, %s",
-                            exc_type, exc_value, exc_traceback)
+                            "Exception converting ip_addr=%s to IPAddress "
+                            "object. Exception %s, %s, %s",
+                            ip_addr, exc_type, exc_value,
+                            traceback.format_tb(exc_traceback))
             return 0
         #*** Now we have both in netaddr form, so do the match comparison:
         if ip_addr_object in ip_space_object:

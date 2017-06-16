@@ -20,6 +20,7 @@ Contents:
    howitworks
    install
    policyguide
+   recipes
    configguide
    webui
    apiguide

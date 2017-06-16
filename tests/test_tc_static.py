@@ -337,6 +337,14 @@ def test_is_match_ip_space():
                                             '192.168.56.10-192.168.56.42') == 1
     assert tc_static.is_match_ip_space('192.168.56.12', \
                                             '192.168.57.10-192.168.57.42') == 0
+    
+    #*** Non-IP packet has first field empty:
+    assert tc_static.is_match_ip_space('', '192.168.57.10-192.168.57.42') == 0
+
+    #*** Check response to unexpected conditions:
+    assert tc_static.is_match_ip_space('foo', \
+                                            '192.168.57.10-192.168.57.42') == 0
+    
 
 #================= HELPER FUNCTIONS ===========================================
 

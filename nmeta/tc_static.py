@@ -306,6 +306,9 @@ class StaticInspect(BaseClass):
         if the IP address belongs to the IP address space.
         If it does return 1 otherwise return 0
         """
+        if not ip_addr:
+            #*** Non-IP so return 0
+            return 0
         #*** Does ip_space look like a CIDR network?:
         if "/" in ip_space:
             try:
@@ -313,9 +316,10 @@ class StaticInspect(BaseClass):
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("error=E1000015 "
-                        "Exception converting to IPNetwork object. "
-                        "Exception %s, %s, %s",
-                            exc_type, exc_value, exc_traceback)
+                        "Exception converting ip_space=%s to IPNetwork object."
+                        " Exception %s, %s, %s",
+                            ip_space, exc_type, exc_value,
+                            traceback.format_tb(exc_traceback))
                 return 0
         #*** Does it look like an IP range?:
         elif "-" in ip_space:
@@ -330,9 +334,10 @@ class StaticInspect(BaseClass):
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("error=E1000017 "
-                        "Exception on conversion of %s to iter_iprange "
-                        "Exception %s, %s, %s",
-                        ip_range, exc_type, exc_value, exc_traceback)
+                        "Exception on conversion of ip_range=%s to "
+                        "iter_iprange. Exception %s, %s, %s",
+                        ip_range, exc_type, exc_value,
+                        traceback.format_tb(exc_traceback))
                 return 0
         else:
             #*** Or is it just a plain simple IP address?:
@@ -341,9 +346,10 @@ class StaticInspect(BaseClass):
             except:
                 exc_type, exc_value, exc_traceback = sys.exc_info()
                 self.logger.error("error=E1000019 "
-                        "Exception converting to IPAddress object. "
-                        "Exception %s, %s, %s",
-                            exc_type, exc_value, exc_traceback)
+                        "Exception converting ip_space=%s to iter_iprange"
+                        " object. Exception %s, %s, %s",
+                            ip_space, exc_type, exc_value,
+                            traceback.format_tb(exc_traceback))
                 return 0
         #*** Convert the IP address to a netaddr IPAddress object:
         try:
@@ -351,8 +357,8 @@ class StaticInspect(BaseClass):
         except:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             self.logger.error("error=E1000021 "
-                            "Exception converting %s to IPAddress object. "
-                            "Exception %s, %s, %s",
+                            "Exception converting ip_addr=%s to IPAddress "
+                            "object. Exception %s, %s, %s",
                             ip_addr, exc_type, exc_value,
                             traceback.format_tb(exc_traceback))
             return 0

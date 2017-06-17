@@ -623,6 +623,10 @@ def test_validate_ethertype():
     assert policy_module.validate_ethertype('0x08001') == '0x08001'
     assert policy_module.validate_ethertype('35020') == '35020'
 
+    assert policy_module.validate_ethertype(0x0800) == 0x0800
+    assert policy_module.validate_ethertype(0x08001) == 0x08001
+    assert policy_module.validate_ethertype(35020) == 35020
+
     #*** Invalid EtherTypes:
     with pytest.raises(Invalid) as exit_info:
         policy_module.validate_ethertype('foo')

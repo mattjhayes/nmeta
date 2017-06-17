@@ -238,7 +238,7 @@ def validate_ethertype(ethertype):
     raises Voluptuous Invalid exception
     """
     msg = 'Invalid EtherType'
-    if ethertype[:2] == '0x':
+    if str(ethertype)[:2] == '0x':
         #*** Looks like hex:
         try:
             if not (int(ethertype, 16) > 0 and \

@@ -66,9 +66,9 @@ def test_check_static():
     """
 
     #*** Test DPIDs and in ports:
-    DPID1 = 1
+    DPID1 = 123456
     INPORT1 = 1
-    DPID2 = 8796748549206
+    DPID2 = 1
     INPORT2 = 6
     DPID3 = 255
     INPORT3 = 3

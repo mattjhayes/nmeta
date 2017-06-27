@@ -3,7 +3,7 @@
 #*** Written in YAML
 #
 # Load Generator (lg1) has it's bandwidth constrained by virtue of
-#  being connected to switch port 4 on DPID 8796748549206
+#  being connected to switch port 4 on DPID 1
 
 tc_rules:
     # Traffic Classification Rulesets and Rules
@@ -33,14 +33,14 @@ port_sets:
         - name: port_set_location_internal
           port_list:
               - name: VirtualSwitch1-internal
-                DPID: 8796748549206
+                DPID: 1
                 ports: 1-3,5,66
                 vlan_id: 0
 
         - name: port_set_location_external
           port_list:
               - name: VirtualSwitch1-external
-                DPID: 8796748549206
+                DPID: 1
                 ports: 4
                 vlan_id: 0
 #

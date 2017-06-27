@@ -32,7 +32,7 @@ port_sets:
         - name: port_set_location_internal
           port_list:
               - name: VirtualSwitch1-internal
-                DPID: 8796748549206
+                DPID: 1
                 ports: 1-3,5,66
                 vlan_id: 0
 
@@ -44,7 +44,7 @@ port_sets:
         - name: port_set_location_external
           port_list:
               - name: VirtualSwitch1-external
-                DPID: 8796748549206
+                DPID: 1
                 ports: 6
                 vlan_id: 0
 

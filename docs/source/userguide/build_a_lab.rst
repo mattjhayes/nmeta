@@ -45,7 +45,17 @@ that's three different pieces of software that start with the word 'Open'...)
 
 Be warned that reflashing a router is likely to void it's warrantee, and may
 result in the router becoming 'bricked', whereby it is unrecoverable. Continue
-at your own risk...
+**at your own risk**...
+
+Convert Router to OpenWRT
+-------------------------
+
+Start by converting the TP-Link TL-WR1043ND to running OpenWRT as per the
+instructions from the OpenWRT website at:
+
+`<https://wiki.openwrt.org/toh/tp-link/tl-wr1043nd>`_
+
+When router is successfully running OpenWRT, proceed to the next step:
 
 Compile OpenWRT with Open vSwitch Image
 ---------------------------------------
@@ -118,6 +128,46 @@ When finished brings up another menu. Navigate to
 
 .. image:: images/OpenWRT_build_5.png
 
+Run Make
+^^^^^^^^
+
+This may take a couple of hours...
+
+.. code-block:: text
+
+  make
+
+Copy Image
+^^^^^^^^^^
+Navigate to the directory where the output files are:
+
+.. code-block:: text
+
+  cd bin/ar71xx
+
+There should be multiple files in the directory, including this file:
+
+.. code-block:: text
+
+  openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-factory.bin
+  openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-sysupgrade.bin
+
+Use SCP to copy the appropriate file to the router:
+
+.. code-block:: text
+
+  scp ./openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-sysupgrade.bin USERNAME@192.168.1.1:tmp/
+
+Upgrade
+^^^^^^^
+
+Note: consider backing up config etc first...
+
+On the TPLink:
+
+.. code-block:: text
+
+  sysupgrade -v /tmp/openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-sysupgrade.bin
 
 TBD
 

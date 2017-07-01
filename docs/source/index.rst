@@ -22,6 +22,7 @@ Contents:
    policyguide
    recipes
    configguide
+   userguide/build_a_lab
    webui
    apiguide
    loggingguide

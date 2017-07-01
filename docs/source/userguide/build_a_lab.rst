@@ -41,13 +41,17 @@ UNDER CONSTRUCTION
 
 This lab is based on a TP-Link TL-WR1043ND Hardware Version 2.1 home router
 that is re-flashed to run OpenWRT with Open vSwitch running OpenFlow (yes,
-that's three different pieces of software that have the word 'Open' in them...)
+that's three different pieces of software that start with the word 'Open'...)
+
+Be warned that reflashing a router is likely to void it's warrantee, and may
+result in the router becoming 'bricked', whereby it is unrecoverable. Continue
+at your own risk...
 
 Compile OpenWRT with Open vSwitch Image
 ---------------------------------------
 
-Start with an Ubuntu 16.04.2 server or desktop (can be virtual) with at least
-30GB of disk space.
+Start by compiling the router firmware on an Ubuntu 16.04.2 server or desktop
+(can be virtual) with at least 30GB of disk space:
 
 Clone OpenWRT
 ^^^^^^^^^^^^^
@@ -84,7 +88,36 @@ Make MenuConfig
 
   make menuconfig
 
-Change Target Profile:
+Change Target Profile to suit hardware (select *TP-LINK TL-WR1043N/ND* for
+TP-Link TL-WR1043ND Hardware Version 2.1):
+
+.. image:: images/OpenWRT_build_1.png
+
+Then select Kernel Modules -> Network Support -> kmod-tun:
+
+.. image:: images/OpenWRT_build_2.png
+
+Exit out back to main screen, then select *Network ->  Open vSwitch* and
+select:
+
+.. image:: images/OpenWRT_build_3.png
+
+Save on exit:
+
+.. image:: images/OpenWRT_build_4.png
+
+This one takes a while:
+
+.. code-block:: text
+
+  make kernel_menuconfig
+
+When finished brings up another menu. Navigate to 
+*Networking support -> Networking options* and select
+*Hierarchical Token Bucket (HTB)*:
+
+.. image:: images/OpenWRT_build_5.png
+
 
 TBD
 

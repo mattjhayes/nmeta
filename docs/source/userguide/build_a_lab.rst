@@ -47,6 +47,10 @@ Be warned that reflashing a router is likely to void it's warrantee, and may
 result in the router becoming 'bricked', whereby it is unrecoverable. Continue
 **at your own risk**...
 
+Caveat: Can't run any authentication on Wi-Fi, see:
+`<https://forum.openwrt.org/viewtopic.php?id=59129>`_
+TBD: work out how to patch this...
+
 Convert Router to OpenWRT
 -------------------------
 
@@ -169,6 +173,14 @@ On the TPLink:
 
   sysupgrade -v /tmp/openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-sysupgrade.bin
 
+Configure OpenWRT
+^^^^^^^^^^^^^^^^^
+
+TBD
+
+Configure Open vSwitch
+^^^^^^^^^^^^^^^^^^^^^^
+
 TBD
 
 
@@ -178,4 +190,4 @@ Links
 Instructions were based on these tutorials:
 
 `Building and Configuring Open vSwitch on OpenWrt for Cloud Networking byPravin R. <http://www.zymr.com/building-and-configuring-open-vswitch-on-openwrt-for-cloud-networking/>`_
- 
+`Turning TP-LINK WR1043NDv2.1 router into OpenFlow-enabled switch by Lucas Burson <http://blog.ljdelight.com/turning-tp-link-wr1043ndv2-1-router-into-openflow-enabled-switch/>`_

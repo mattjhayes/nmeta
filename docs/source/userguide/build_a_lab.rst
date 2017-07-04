@@ -47,9 +47,8 @@ Be warned that reflashing a router is likely to void it's warrantee, and may
 result in the router becoming 'bricked', whereby it is unrecoverable. Continue
 **at your own risk**...
 
-Caveat: Can't run any authentication on Wi-Fi, see:
-`<https://forum.openwrt.org/viewtopic.php?id=59129>`_
-TBD: work out how to patch this...
+These instructions haven't been tested end-to-end. Please raise an issue if
+there are changes required.
 
 Convert Router to OpenWRT
 -------------------------
@@ -61,16 +60,32 @@ instructions from the OpenWRT website at:
 
 When router is successfully running OpenWRT, proceed to the next step:
 
+Configure the Router
+--------------------
+
+Apply a basic configuration to the router to allow remote access.
+
+Connect a device with SSH capability to a LAN port on the TP-Link, set a static IP
+address of 192.168.1.2 mask 255.255.255.0 (or use DHCP) and SSH to 192.168.1.1.
+
+Set root password to something secure, and not used elsewhere.
+
 Compile OpenWRT with Open vSwitch Image
 ---------------------------------------
 
-Start by compiling the router firmware on an Ubuntu 16.04.2 server or desktop
-(can be virtual) with at least 30GB of disk space:
+Note: If you don't want to compile your own image then consider using 
+an image from `<https://github.com/mattjhayes/TP-Link-TL-1043ND-OpenvSwitch>`_
+
+Compilation Host
+^^^^^^^^^^^^^^^^
+
+To compile the router firmware, use an Ubuntu 16.04.2 server or desktop
+(can be virtual) with at least 30GB of disk space.
 
 Clone OpenWRT
 ^^^^^^^^^^^^^
 
-Cloned OpenWRT (note: GitHub, not direct from OpenWRT site):
+On the compilation host, clone OpenWRT (note: GitHub, not direct from OpenWRT site):
 
 .. code-block:: text
 
@@ -136,6 +151,90 @@ Run Make
 ^^^^^^^^
 
 This may take a couple of hours...
+
+.. code-block:: text
+
+  make
+
+Patch for Wi-Fi Authentication
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Standard OpenWRT build with Open vSwitch cannot run authentication on Wi-Fi,
+see: `<https://forum.openwrt.org/viewtopic.php?id=59129>`_
+
+We apply a patch to fix this:
+
+.. code-block:: text
+
+  cd ~/openwrt/package/network/services/hostapd/
+  vi 710-hostapd-Initial-OVS-support.patch
+
+Paste in contents of patch (starting from the ---) from `<https://github.com/helmut-jacob/hostapd/commit/c89daaeca4ee90c8bc158e37acb1b679c823d7ab.patch>`_
+Save and exit.
+
+Patch with Quilt. Install quilt:
+
+.. code-block:: text
+
+  sudo apt install quilt
+
+In home dir, need to run this once:
+
+.. code-block:: text
+
+  cat > ~/.quiltrc <<EOF
+  QUILT_DIFF_ARGS="--no-timestamps --no-index -p ab --color=auto"
+  QUILT_REFRESH_ARGS="--no-timestamps --no-index -p ab"
+  QUILT_SERIES_ARGS="--color=auto"
+  QUILT_PATCH_OPTS="--unified"
+  QUILT_DIFF_OPTS="-p"
+  EDITOR="nano"
+  EOF
+
+Run this from ~/openwrt/
+
+.. code-block:: text
+
+  make package/network/services/hostapd/{clean,prepare} V=s QUILT=1
+
+cd to created directory:
+
+.. code-block:: text
+
+  cd ~/openwrt/build_dir/target-mips_34kc_musl-1.1.16/hostapd-wpad-mini/hostapd-2016-06-15/
+
+Apply existing patches:
+
+.. code-block:: text
+
+  quilt push -a
+
+Now at patch 710-hostapd-Initial-OVS-support.patch. Run this:
+
+.. code-block:: text
+
+  quilt edit src/main.c
+
+Run this:
+
+.. code-block:: text
+
+  quilt refresh
+
+Change dir to the build root and run 
+
+.. code-block:: text
+
+  cd ../../../../
+  make package/network/services/hostapd/update V=s
+
+Then run:
+
+.. code-block:: text
+
+  make package/network/services/hostapd/{clean,compile} package/index V=s
+
+Then run:
 
 .. code-block:: text
 

@@ -2,7 +2,10 @@
 Build a Lab
 ###########
 
-There are many different options for building a nmeta lab network. The
+To run nmeta, you're going to need an OpenFlow network to provide the data
+plane connectivity.
+
+There are many different options for building a lab network. The
 choice is likely to come down to what resources you have and the use cases
 you want to test.
 
@@ -12,23 +15,9 @@ but aren't useful for testing devices in the real world.
 Physical labs are harder to construct and require hardware, but can be
 used to connect real-world devices.
 
-UNDER CONSTRUCTION
-
-************
-Virtual Labs
-************
-
-VirtualBox
-==========
-
-TBD
-
-Mininet
-=======
-
-Get in touch if you want to contribute instructions on building a lab with
-Mininet.
-
+OpenFlow SDN disaggregates the data and control planes;
+this means the lab environments can be used with different
+OpenFlow controllers and apps, should you wish.
 
 *************
 Physical Labs
@@ -277,6 +266,20 @@ Configure OpenWRT
 
 TBD
 
+To assist with patching of Wi-Fi auth, edit the file:
+
+.. code-block:: text
+
+  /var/run/hostapd-phy0.conf
+
+(TBD: run tests to confirm this is required)
+
+Add this line:
+
+.. code-block:: text
+
+  bridge=br0
+
 Configure Open vSwitch
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -290,3 +293,19 @@ Instructions were based on these tutorials:
 
 `Building and Configuring Open vSwitch on OpenWrt for Cloud Networking byPravin R. <http://www.zymr.com/building-and-configuring-open-vswitch-on-openwrt-for-cloud-networking/>`_
 `Turning TP-LINK WR1043NDv2.1 router into OpenFlow-enabled switch by Lucas Burson <http://blog.ljdelight.com/turning-tp-link-wr1043ndv2-1-router-into-openflow-enabled-switch/>`_
+
+
+************
+Virtual Labs
+************
+
+VirtualBox
+==========
+
+TBD
+
+Mininet
+=======
+
+Get in touch if you want to contribute instructions on building a lab with
+Mininet.

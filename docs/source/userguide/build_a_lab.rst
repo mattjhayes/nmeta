@@ -69,7 +69,7 @@ Compile OpenWRT with Open vSwitch Image
 
 Note: If you don't want to compile your own image then consider using 
 an image from `<https://github.com/mattjhayes/TP-Link-TL-1043ND-OpenvSwitch>`_
-and jump ahead to `<http://nmeta.readthedocs.io/en/develop/userguide/build_a_lab.html#Upgrade>`_
+and jump ahead to `<http://nmeta.readthedocs.io/en/develop/userguide/build_a_lab.html#upgrade>`_
 
 Compilation Host
 ^^^^^^^^^^^^^^^^

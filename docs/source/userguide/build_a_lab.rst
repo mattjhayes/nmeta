@@ -476,6 +476,34 @@ Edit file */etc/profile* and add these lines:
   alias offlows='ovs-ofctl dump-flows br0'
   alias ofports='ovs-ofctl dump-ports br0'
 
+Log out and back in again to enable new aliases.
+
+Checks
+------
+
+Using our aliases, here are checks to run:
+
+.. code-block:: text
+
+  # ovshow
+  <snip>
+    Bridge "br0"
+        Controller "tcp:192.168.2.40:6633"
+            is_connected: true
+        Port "br0"
+            Interface "br0"
+                type: internal
+        Port "wlan0"
+            Interface "wlan0"
+        Port "eth1.3"
+            Interface "eth1.3"
+        Port "eth1.4"
+            Interface "eth1.4"
+        Port "eth1.5"
+            Interface "eth1.5"
+
+Note the *is_connected: true*. This means OpenFlow has been established
+to the controller.
 
 Links
 -----

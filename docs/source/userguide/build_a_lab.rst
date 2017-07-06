@@ -262,7 +262,7 @@ On the TPLink:
   sysupgrade -v /tmp/openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-sysupgrade.bin
 
 Configure OpenWRT
-^^^^^^^^^^^^^^^^^
+-----------------
 
 TBD
 
@@ -280,8 +280,32 @@ Add this line:
 
   bridge=br0
 
+Dropbear
+^^^^^^^^
+
+Configure Dropbear (SSH server) to listen on the WAN interface, in addition
+to the LAN interface. This gives an additional way to access 
+the device to administer it, lowering the risk of bricking it.
+Note: not a great idea doing this if Internet-facing, remember to revert if
+you ever convert device back to an Internet router.
+
+Backup dropbear config:
+
+.. code-block:: text
+
+  cp /etc/config/dropbear /etc/config/dropbear.original
+
+Add these lines to /etc/config/dropbear:
+
+.. code-block:: text
+
+  config dropbear
+          option PasswordAuth 'on'
+          option Port '22'
+          option Interface 'wan'
+
 Configure Open vSwitch
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 
 TBD
 

@@ -64,6 +64,7 @@ Compile OpenWRT with Open vSwitch Image
 
 Note: If you don't want to compile your own image then consider using 
 an image from `<https://github.com/mattjhayes/TP-Link-TL-1043ND-OpenvSwitch>`_
+and jump ahead to `<http://nmeta.readthedocs.io/en/develop/userguide/build_a_lab.html#Upgrade>`_
 
 Compilation Host
 ^^^^^^^^^^^^^^^^
@@ -251,11 +252,12 @@ Use SCP to copy the appropriate file to the router:
   scp ./openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-sysupgrade.bin USERNAME@192.168.1.1:tmp/
 
 Upgrade
-^^^^^^^
+-------
 
 Note: consider backing up config etc first...
 
-On the TPLink:
+Once image file is confirmed as being in the /tmp directory on the TPLink,
+and you're happy you've backed up your configurations, run the sysupgrade:
 
 .. code-block:: text
 
@@ -264,21 +266,9 @@ On the TPLink:
 Configure OpenWRT
 -----------------
 
-TBD
-
-To assist with patching of Wi-Fi auth, edit the file:
-
-.. code-block:: text
-
-  /var/run/hostapd-phy0.conf
-
-(TBD: run tests to confirm this is required)
-
-Add this line:
-
-.. code-block:: text
-
-  bridge=br0
+OpenWRT needs to be configured to work with Open vSwitch. The configuration
+has been tested, but needs to be changed to meet your requirements. Full files
+are shown.
 
 Dropbear
 ^^^^^^^^
@@ -286,8 +276,10 @@ Dropbear
 Configure Dropbear (SSH server) to listen on the WAN interface, in addition
 to the LAN interface. This gives an additional way to access 
 the device to administer it, lowering the risk of bricking it.
-Note: not a great idea doing this if Internet-facing, remember to revert if
-you ever convert device back to an Internet router.
+
+Note: not a great idea doing this if Internet-facing for security reasons,
+so remember to remove WAN config if you ever convert device back to an
+Internet router.
 
 Backup dropbear config:
 
@@ -295,20 +287,166 @@ Backup dropbear config:
 
   cp /etc/config/dropbear /etc/config/dropbear.original
 
-Add these lines to /etc/config/dropbear:
+Add these lines to /etc/config/dropbear for WAN, full file is:
 
 .. code-block:: text
 
   config dropbear
           option PasswordAuth 'on'
           option Port '22'
+          option Interface 'lan'
+
+  config dropbear
+          option PasswordAuth 'on'
+          option Port '22'
           option Interface 'wan'
+
+Firewall
+^^^^^^^^
+
+Firewall (/etc/config/firewall) should be default permissive policy:
+
+.. code-block:: text
+
+  config defaults
+          option syn_flood        1
+          option input            ACCEPT
+          option output           ACCEPT
+          option forward          ACCEPT
+
+Network
+^^^^^^^
+
+Backup network config:
+
+.. code-block:: text
+
+  cp /etc/config/network /etc/config/network.original
+
+Network configuration (/etc/config/firewall) should be updated to:
+
+.. code-block:: text
+
+  config interface 'loopback'
+          option ifname 'lo'
+          option proto 'static'
+          option ipaddr '127.0.0.1'
+          option netmask '255.0.0.0'
+
+  config interface 'lan'
+          option ifname 'eth1'
+          option force_link '1'
+          option type 'bridge'
+          option proto 'static'
+          option ipaddr '192.168.3.29'
+          option netmask '255.255.255.0'
+
+  config interface 'wan'
+          option ifname 'eth0'
+          option proto 'static'
+          option ipaddr '192.168.2.29'
+          option netmask '255.255.255.0'
+          option defaultroute '1'
+          option gateway '192.168.2.40'
+          option dns '8.8.8.8'
+
+  config switch
+          option name 'switch0'
+          option reset '1'
+          option enable_vlan '1'
+
+  config switch_vlan
+          option device 'switch0'
+          option vlan '1'
+          option ports '0 4'
+
+  config switch_vlan
+          option device 'switch0'
+          option vlan '2'
+          option ports '5 6'
+
+  config switch_vlan
+          option device 'switch0'
+          option vlan '3'
+          option ports '0t 1'
+
+  config switch_vlan
+          option device 'switch0'
+          option vlan '4'
+          option ports '0t 2'
+
+  config switch_vlan
+          option device 'switch0'
+          option vlan '5'
+          option ports '0t 3'
+
+  config interface
+          option ifname 'eth1.3'
+          option proto 'static'
+          option ipv6 '0'
+
+  config interface
+          option ifname 'eth1.4'
+          option proto 'static'
+          option ipv6 '0'
+
+  config interface
+          option ifname 'eth1.5'
+          option proto 'static'
+          option ipv6 '0'
+
+  config interface 'wan6'
+          option proto 'dhcpv6'
+          option ifname '@wan'
+          option reqprefix 'no'
+
+  config interface
+          option ifname 'br0'
+          option proto 'static'
+
+  config interface
+          option ifname 'wlan0'
+          option proto 'static'
+
+Wireless
+^^^^^^^^
+
+Backup wireless config:
+
+.. code-block:: text
+
+  cp /etc/config/wireless /etc/config/wireless.original
+
+Take note of the items in CAPITALS that need you to fill in appropriate values
+
+.. code-block:: text
+
+  config wifi-device 'radio0'
+          option type 'mac80211'
+          option channel '11'
+          option hwmode '11g'
+          option path 'platform/qca955x_wmac'
+          option htmode 'HT20'
+          option log_level '1'
+
+  config wifi-iface
+          option device 'radio0'
+          option network 'wlan0'
+          option mode 'ap'
+          option ssid 'YOUR_SSID_HERE'
+          option encryption 'psk2'
+          option key 'YOUR_KEY_HERE'
+
 
 Configure Open vSwitch
 ----------------------
 
 TBD
 
+Configure Aliases
+-----------------
+
+TBD
 
 Links
 -----

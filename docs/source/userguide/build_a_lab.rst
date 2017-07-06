@@ -323,7 +323,7 @@ Backup network config:
 
   cp /etc/config/network /etc/config/network.original
 
-Network configuration (/etc/config/firewall) should be updated to:
+This is the new complete */etc/config/network* file:
 
 .. code-block:: text
 
@@ -417,7 +417,8 @@ Backup wireless config:
 
   cp /etc/config/wireless /etc/config/wireless.original
 
-Take note of the items in CAPITALS that need you to fill in appropriate values
+Take note of the items in CAPITALS that need you to fill in appropriate values.
+This is the new complete */etc/config/wireless* file:
 
 .. code-block:: text
 
@@ -437,16 +438,44 @@ Take note of the items in CAPITALS that need you to fill in appropriate values
           option encryption 'psk2'
           option key 'YOUR_KEY_HERE'
 
-
 Configure Open vSwitch
 ----------------------
 
-TBD
+Now it's time to configure Open vSwitch by setting up bridge *br0*, adding
+ports to it, then setting it to talk OpenFlow to the Controller:
+
+.. code-block:: text
+
+  ovs-vsctl add-br br0
+  ovs-vsctl add-port br0 eth1.3
+  ovs-vsctl add-port br0 eth1.4
+  ovs-vsctl add-port br0 eth1.5
+  ovs-vsctl add-port br0 wlan0
+  ovs-vsctl set-controller br0 tcp:192.168.2.40:6633
 
 Configure Aliases
 -----------------
 
-TBD
+Aliases are useful for frequently run commands. Here are some suggested
+aliases.
+
+Edit file */etc/profile* and add these lines:
+
+.. code-block:: text
+
+  # OpenWRT Network Commands:
+  alias nwr='/etc/init.d/network restart'
+
+  # Open vSwitch Commands:
+  alias ovshow='ovs-vsctl show'
+  alias ovmacs='ovs-appctl fdb/show br0'
+  alias ovrestart='/etc/init.d/openvswitch restart'
+
+  # Open vSwitch OpenFlow Commands:
+  alias ofshow='ovs-ofctl show br0'
+  alias offlows='ovs-ofctl dump-flows br0'
+  alias ofports='ovs-ofctl dump-ports br0'
+
 
 Links
 -----

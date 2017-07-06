@@ -26,8 +26,6 @@ Physical Labs
 OpenWRT with Open vSwitch
 =========================
 
-UNDER CONSTRUCTION
-
 This lab is based on a TP-Link TL-WR1043ND Hardware Version 2.1 home router
 that is re-flashed to run OpenWRT with Open vSwitch running OpenFlow (yes,
 that's three different pieces of software that start with the word 'Open'...)
@@ -35,6 +33,13 @@ that's three different pieces of software that start with the word 'Open'...)
 Be warned that reflashing a router is likely to void it's warrantee, and may
 result in the router becoming 'bricked', whereby it is unrecoverable. Continue
 **at your own risk**...
+
+You'll also need a physical Linux PC with two NICs that has been built
+with nmeta as per the install instructions.
+
+The configuration of the lab is shown below:
+
+.. image:: images/Physical-Open-vSwitch-Lab-L3.png
 
 These instructions haven't been tested end-to-end. Please raise an issue if
 there are changes required.
@@ -242,7 +247,6 @@ There should be multiple files in the directory, including this file:
 
 .. code-block:: text
 
-  openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-factory.bin
   openwrt-ar71xx-generic-tl-wr1043nd-v2-squashfs-sysupgrade.bin
 
 Use SCP to copy the appropriate file to the router:
@@ -267,8 +271,12 @@ Configure OpenWRT
 -----------------
 
 OpenWRT needs to be configured to work with Open vSwitch. The configuration
-has been tested, but needs to be changed to meet your requirements. Full files
-are shown.
+has been tested, but needs to be changed to meet your requirements.
+
+The following diagram shows how OpenWRT with Open vSwitch is configured
+on the TP-Link hardware:
+
+.. image:: images/TPLink_Internals.png
 
 Dropbear
 ^^^^^^^^
@@ -477,6 +485,12 @@ Edit file */etc/profile* and add these lines:
   alias ofports='ovs-ofctl dump-ports br0'
 
 Log out and back in again to enable new aliases.
+
+Cabling
+-------
+
+Wire the environment together as per earlier diagram, and ensure the
+Linux PC has it's network interfaces configured correctly.
 
 Checks
 ------

@@ -529,6 +529,8 @@ def test_indexing():
 def test_record_suppression():
     """
     Test the recording of a flow suppression event
+    
+    if it is recorded in DB that already suppressed it should return 0
     """
     #*** Instantiate Flow class:
     flow = flows_module.Flow(config)
@@ -544,6 +546,10 @@ def test_record_suppression():
     #*** Record suppressing this flow again. Should return 0 as is within
     #*** standdown period:
     assert flow.record_suppression(DPID1, 'forward') == 0
+
+    #*** Record suppressing this flow again, but for a different DPID. Should
+    #*** return 1 as not suppressed for that DPID yet:
+    assert flow.record_suppression(DPID2, 'forward') == 1
 
     #*** Record suppressing this flow again but as a drop. Should return 1
     #*** as is a different suppression_type:

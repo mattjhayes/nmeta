@@ -36,6 +36,10 @@ port_sets:
                 DPID: 1
                 ports: 2-5,66
                 vlan_id: 0
+              - name: VirtualSwitch2-internal
+                DPID: 2
+                ports: 1-48
+                vlan_id: 0
 
         - name: port_set_location_external
           port_list:

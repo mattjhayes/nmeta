@@ -282,6 +282,7 @@ class Flow(BaseClass):
                                    capped=True, size=flow_mods_max_bytes)
         #*** Index flow_mods to improve look-up performance:
         self.flow_mods.create_index([('flow_hash', pymongo.DESCENDING),
+                                ('dpid', pymongo.DESCENDING),
                                 ('timestamp', pymongo.DESCENDING),
                                 ('suppression_type', pymongo.DESCENDING),
                                 ('standdown', pymongo.DESCENDING)],
@@ -914,7 +915,7 @@ class Flow(BaseClass):
 
         First check flow_mods to see if flow is already suppressed,
         within suppression stand-down time for that switch,
-        and if it is record in DB that not resuppressed and return 0
+        and if it is recorded in DB that not resuppressed and return 0
 
         The stand-down time is to reduce risk of overloading switch
         with duplicate suppression events
@@ -925,6 +926,7 @@ class Flow(BaseClass):
         """
         #*** Database lookup for whole flow:
         db_data = {'flow_hash': self.packet.flow_hash,
+                    'dpid': dpid,
                     'timestamp': {'$gte': datetime.datetime.now() - \
                                                 FLOW_SUPPRESSION_STANDDOWN},
                     'suppression_type': suppression_type,

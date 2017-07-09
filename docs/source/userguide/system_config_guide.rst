@@ -1,10 +1,6 @@
-###############
-Configure Nmeta
-###############
-
-********************
-System Configuration
-********************
+#############
+System Config
+#############
 
 A YAML file holds the system configuration. It's location is:
 

@@ -19,9 +19,9 @@ Contents:
    introduction
    howitworks
    install
-   policyguide
+   userguide/policy_guide
    recipes
-   configguide
+   userguide/system_config_guide
    userguide/build_a_lab
    webui
    apiguide

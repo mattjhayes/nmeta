@@ -292,6 +292,26 @@ discovered via LLDP. Example:
 
     identity_lldp_systemname_re: '.*\.audit\.example\.com'
 
+identity_dhcp_systemname
+------------------------
+
+Exact match against a host name discovered
+via DHCP (option 12). Example:
+
+  .. code-block:: text
+
+    identity_dhcp_hostname: bob
+
+identity_dhcp_hostname_re
+---------------------------
+
+Regular expression match against a host name
+discovered via DHCP (option 12). Example:
+
+  .. code-block:: text
+
+    identity_dhcp_hostname_re: 'bob.*'
+
 identity_service_dns
 --------------------
 

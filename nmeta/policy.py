@@ -303,6 +303,8 @@ TC_CLASSIFIER_SCHEMA = Schema({
                         Optional('eth_type'): validate_ethertype,
                         Optional('identity_lldp_systemname'): str,
                         Optional('identity_lldp_systemname_re'): str,
+                        Optional('identity_dhcp_hostname'): str,
+                        Optional('identity_dhcp_hostname_re'): str,
                         Optional('identity_service_dns'): str,
                         Optional('identity_service_dns_re'): str,
                         Optional('custom'): str

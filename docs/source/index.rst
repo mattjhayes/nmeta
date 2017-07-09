@@ -20,7 +20,7 @@ Contents:
    howitworks
    install
    userguide/policy_guide
-   recipes
+   userguide/recipes
    userguide/system_config_guide
    userguide/build_a_lab
    webui
@@ -29,7 +29,6 @@ Contents:
    datastructures
    codestructure
    modules
-
 
 
 Indices and tables

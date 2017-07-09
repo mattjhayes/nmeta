@@ -127,6 +127,19 @@ Logical location (as defined by policy) of switch/port
 
     location_src: external
 
+time_of_day
+-----------
+
+Time of day range (matches if flow start time is in this time range)
+
+  Example:
+
+  .. code-block:: text
+
+    time_of_day: 21:00-07:00
+
+Note that range can extend through midnight and times are in 24 hour format
+
 eth_src
 -------
 

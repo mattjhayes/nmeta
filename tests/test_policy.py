@@ -570,6 +570,21 @@ def test_validate_ports():
     with pytest.raises(Invalid) as exit_info:
         policy_module.validate_ports(ports_bad3)
 
+def test_validate_time_of_day():
+    """
+    Test the validate_time_of_day function of policy.py module against various
+    good and bad time ranges
+    """
+    #*** Valid time ranges:
+    assert policy_module.validate_time_of_day('05:00-14:00') == '05:00-14:00'
+    assert policy_module.validate_time_of_day('21:00-06:00') == '21:00-06:00'
+
+    #*** Invalid time ranges:
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_time_of_day('abc-efg')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_time_of_day('01:00-24:03')
+
 def test_validate_macaddress():
     """
     Test the validate_macaddress function of policy.py module against various

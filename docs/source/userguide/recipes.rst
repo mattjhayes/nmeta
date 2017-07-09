@@ -6,27 +6,25 @@ These recipes are to provide ideas on how nmeta can be used through examples.
 
 This page is under construction...
 
-*******************
-Home Network Recipe
-*******************
+***********************
+Parental Control Recipe
+***********************
 
-This recipe is for running an OpenFlow switch on a home network.
+This recipe is for using nmeta to provide parental control on a home network.
+It is just an example of some capabilities, the exact configuration needs to
+be tailored to your specific requirements. Note that parental controls on
+network should be part of a wider strategy, including controls on the devices
+used by children, and education on internet safety.
 
-It makes the following assumptions:
+This recipe does the following:
 
-- The gateway to the Internet is provided by a separate router on switch
-  dpid=1 port=3.
-
-The recipe does the following:
-
-- DNS lookups are allowed against OpenDNS servers 208.67.222.123
-  and 208.67.220.123
+- DNS lookups are allowed against OpenDNS FamilyShield servers 208.67.222.123
+  and 208.67.220.123 (they are claimed to block adult content)
 - All other DNS traffic is dropped and logged
 - Drops SSDP traffic from the router
 - Drops Bonjour traffic
 - Implicit allow of all other traffic, as well of harvesting of
   conversation and identity metadata
-
 
 Main Policy:
 ============
@@ -150,3 +148,8 @@ Here's the YAML:
         default_match: unknown
 
 
+*******************************
+Quality of Service (QoS) Recipe
+*******************************
+
+TBD

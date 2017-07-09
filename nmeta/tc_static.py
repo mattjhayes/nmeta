@@ -19,6 +19,7 @@ to provide network identity and flow (traffic classification) metadata
 """
 
 import sys
+import datetime
 
 import traceback
 
@@ -55,6 +56,9 @@ class StaticInspect(BaseClass):
         if policy_attr == 'location_src':
             classifier_result.match = self.policy.locations.get_location(
                                         pkt.dpid, pkt.in_port) == policy_value
+        elif policy_attr == 'time_of_day':
+            classifier_result.match = \
+                            self.is_match_time_of_day(policy_value)
         elif policy_attr == 'eth_src':
             classifier_result.match = \
                             self.is_match_macaddress(pkt.eth_src, policy_value)
@@ -227,6 +231,25 @@ class StaticInspect(BaseClass):
                 value_to_check)
             return 0
         return 1
+
+    def is_match_time_of_day(self, time_of_day_range, time_now=datetime.datetime.now().time()):
+        """
+        Passed a time of day range (format HH:MM-HH:MM) and check to
+        see if the current time is in that range.
+        Return True if time is in range, otherwise False
+        """
+        #*** Turn range into two datetime format objects:
+        time_of_day_range = str(time_of_day_range)
+        (time_of_day1, time_of_day2) = time_of_day_range.split('-')
+        (time_of_day1h, time_of_day1m) = time_of_day1.split(':')
+        time_of_day1 = datetime.time(int(time_of_day1h), int(time_of_day1m))
+        (time_of_day2h, time_of_day2m) = time_of_day2.split(':')
+        time_of_day2 = datetime.time(int(time_of_day2h), int(time_of_day2m))
+        #*** Check current time against range:
+        if time_of_day1 <= time_of_day2:
+            return time_of_day1 <= time_now <= time_of_day2
+        else:
+            return time_of_day1 <= time_now or time_now <= time_of_day2
 
     def is_match_macaddress(self, value_to_check1, value_to_check2):
         """

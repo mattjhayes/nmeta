@@ -4,10 +4,9 @@ Recipes
 
 These recipes are to provide ideas on how nmeta can be used through examples.
 
-Note that policies have an implicit allow at the end of the policy. Also,
+Note that policies have an **implicit allow** at the end of the policy. Also,
 actions implicitly allow if there is no drop action.
 
-This page is under construction...
 
 ***********************
 Parental Control Recipe
@@ -20,14 +19,16 @@ network should be part of a wider strategy, including controls on the devices
 used by children, and education on internet safety.
 
 In this fictional example, there are two children, conveniently named Alice
-and Bob. Alice has a Chromebook, which does not register a hostname via DHCP
+and Bob. Alice has a Chromebook, which does not register a hostname via DHCP,
 but does have a consistent Wi-Fi MAC address (01:23:45:67:89:ab). Bob has
 an iPhone with a DHCP host name of *Bobs-iPhone*.
 
 In this recipe we enforce the following parental controls on Alice and Bob:
 
 - All devices on the home network can only do DNS lookups against OpenDNS
-  FamilyShield servers (that attempt to block adult content)
+  FamilyShield servers (that attempt to block adult content), apart from 
+  Chromecast which doesn't honour the DNS allocations in DHCP and insists on
+  talking to Google's DNS servers
 - Alice's Chromebook is blocked from accessing YouTube
 - Alice's Chromebook and Bob's iPhone are only allowed to access the Internet
   between 7am and 9pm

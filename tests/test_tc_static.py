@@ -66,9 +66,9 @@ def test_check_static():
     """
 
     #*** Test DPIDs and in ports:
-    DPID1 = 1
+    DPID1 = 123456
     INPORT1 = 1
-    DPID2 = 8796748549206
+    DPID2 = 1
     INPORT2 = 6
     DPID3 = 255
     INPORT3 = 3
@@ -304,6 +304,32 @@ def test_is_valid_transport_port_abc123():
     assert tc_static.is_valid_transport_port('1') == 1
     assert tc_static.is_valid_transport_port('65535') == 1
     assert tc_static.is_valid_transport_port('65536') == 0
+
+#*** Time of Day Match Tests:
+def test_is_match_time_of_day():
+    time_now1 = datetime.time(00, 00)
+    time_now2 = datetime.time(04, 20)
+    time_now3 = datetime.time(06, 59)
+    time_now4 = datetime.time(18, 14)
+    time_now5 = datetime.time(23, 30)
+
+    assert tc_static.is_match_time_of_day('05:00-14:00', time_now=time_now1) == 0
+    assert tc_static.is_match_time_of_day('05:00-14:00', time_now=time_now2) == 0
+    assert tc_static.is_match_time_of_day('05:00-14:00', time_now=time_now3) == 1
+    assert tc_static.is_match_time_of_day('05:00-14:00', time_now=time_now4) == 0
+    assert tc_static.is_match_time_of_day('05:00-14:00', time_now=time_now5) == 0
+
+    assert tc_static.is_match_time_of_day('21:00-07:00', time_now=time_now1) == 1
+    assert tc_static.is_match_time_of_day('21:00-07:00', time_now=time_now2) == 1
+    assert tc_static.is_match_time_of_day('21:00-07:00', time_now=time_now3) == 1
+    assert tc_static.is_match_time_of_day('21:00-07:00', time_now=time_now4) == 0
+    assert tc_static.is_match_time_of_day('21:00-07:00', time_now=time_now5) == 1
+
+    assert tc_static.is_match_time_of_day('18:00-18:59', time_now=time_now1) == 0
+    assert tc_static.is_match_time_of_day('18:00-18:59', time_now=time_now2) == 0
+    assert tc_static.is_match_time_of_day('18:00-18:59', time_now=time_now3) == 0
+    assert tc_static.is_match_time_of_day('18:00-18:59', time_now=time_now4) == 1
+    assert tc_static.is_match_time_of_day('18:00-18:59', time_now=time_now5) == 0
 
 #*** MAC Address Match Tests:
 def test_is_match_macaddress():

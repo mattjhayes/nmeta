@@ -19,16 +19,16 @@ Contents:
    introduction
    howitworks
    install
-   policyguide
-   recipes
-   configguide
+   userguide/policy_guide
+   userguide/recipes
+   userguide/system_config_guide
+   userguide/build_a_lab
    webui
    apiguide
    loggingguide
    datastructures
    codestructure
    modules
-
 
 
 Indices and tables

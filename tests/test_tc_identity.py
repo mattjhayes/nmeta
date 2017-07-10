@@ -47,6 +47,8 @@ import packets_lldp as pkts_lldp
 import packets_ipv4_dns as pkts_dns
 import packets_ipv4_dns_4 as pkts_dns4
 import packets_ipv4_tcp_facebook as pkts_facebook
+import packets_ipv4_http as pkts_http_pc1
+import packets_ipv4_http_lg1 as pkts_http_lg1
 
 #*** Instantiate Config class:
 config = config.Config()
@@ -56,6 +58,7 @@ logger = logging.getLogger(__name__)
 #*** Test DPIDs and in ports:
 DPID1 = 1
 INPORT1 = 1
+INPORT2 = 2
 
 #======================== tc_identity.py Tests ================================
 
@@ -137,6 +140,82 @@ def test_LLDP_identity():
     classifier_result.policy_value = 'sw1.example.com'
     tc_ident.check_identity(classifier_result, flow.packet, identities)
     assert classifier_result.match == True
+
+def test_DHCP_identity():
+    """
+    Test harvesting identity metadata from DHCP packets and then
+    using this to validate an identities against the learnt DHCP hostname
+    """
+    #*** Instantiate class objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
+    tc_ident = tc_identity.IdentityInspect(config)
+
+    #*** Ingest packet from pc1:
+    flow.ingest_packet(DPID1, INPORT1, pkts_http_pc1.RAW[0], datetime.datetime.now())
+
+    #*** Test tc_identity (pc1 should fail as haven't harvested DHCP yet)
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'identity_dhcp_hostname'
+    classifier_result.policy_value = 'pc1'
+    tc_ident.check_identity(classifier_result, flow.packet, identities)
+    assert classifier_result.match == False
+
+    #*** Harvesting DHCP host name for pc1 against IP 10.1.0.1
+    #*** Client to Server DHCP Request (DHCP Option 12 host name is pc1):
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+    #*** Server to Client DHCP ACK:
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+
+    #*** Ingest packet from pc1:
+    flow.ingest_packet(DPID1, INPORT1, pkts_http_pc1.RAW[0], datetime.datetime.now())
+
+    #*** Test tc_identity (pc1 should pass)
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'identity_dhcp_hostname'
+    classifier_result.policy_value = 'pc1'
+    tc_ident.check_identity(classifier_result, flow.packet, identities)
+    assert classifier_result.match == True
+
+    #*** Ingest packet *to* pc1:
+    flow.ingest_packet(DPID1, INPORT2, pkts_http_pc1.RAW[1], datetime.datetime.now())
+
+    #*** Test tc_identity (pc1 should pass)
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'identity_dhcp_hostname'
+    classifier_result.policy_value = 'pc1'
+    tc_ident.check_identity(classifier_result, flow.packet, identities)
+    assert classifier_result.match == True
+
+    #*** Ingest packet from lg1:
+    flow.ingest_packet(DPID1, INPORT1, pkts_http_lg1.RAW[0], datetime.datetime.now())
+
+    #*** Test tc_identity (pc1 should fail, as packet is from lg1)
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'identity_dhcp_hostname'
+    classifier_result.policy_value = 'pc1'
+    tc_ident.check_identity(classifier_result, flow.packet, identities)
+    assert classifier_result.match == False
+
+    #*** Ingest packet from pc1:
+    flow.ingest_packet(DPID1, INPORT1, pkts_http_pc1.RAW[0], datetime.datetime.now())
+
+    #*** Test tc_identity (Regex pc.* should pass)
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'identity_dhcp_hostname_re'
+    classifier_result.policy_value = 'pc.*'
+    tc_ident.check_identity(classifier_result, flow.packet, identities)
+    assert classifier_result.match == True
+
+    #*** Test tc_identity (Regex ac.* should fail)
+    classifier_result = policy_module.TCClassifierResult("", "")
+    classifier_result.policy_attr = 'identity_dhcp_hostname_re'
+    classifier_result.policy_value = 'ac.*'
+    tc_ident.check_identity(classifier_result, flow.packet, identities)
+    assert classifier_result.match == False
 
 def test_DNS_identity():
     """

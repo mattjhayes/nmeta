@@ -49,6 +49,12 @@ class IdentityInspect(BaseClass):
         elif classifier_result.policy_attr == "identity_lldp_systemname_re":
             result = self.check_lldp(classifier_result.policy_value, pkt,
                                                           ident, is_regex=True)
+        elif classifier_result.policy_attr == "identity_dhcp_hostname":
+            result = self.check_dhcp(classifier_result.policy_value, pkt,
+                                                                         ident)
+        elif classifier_result.policy_attr == "identity_dhcp_hostname_re":
+            result = self.check_dhcp(classifier_result.policy_value, pkt,
+                                                          ident, is_regex=True)
         elif classifier_result.policy_attr == "identity_service_dns":
             result = self.check_dns(classifier_result.policy_value, pkt, ident)
         elif classifier_result.policy_attr == "identity_service_dns_re":
@@ -68,11 +74,34 @@ class IdentityInspect(BaseClass):
         is treated as regex).
         Return True or False based on whether or not the packet has
         a source or destination IP address that matches the IP address
-        registered to the given hostname (if one even exists).
+        registered to the given hostname via LLDP harvest (if one even exists).
         Uses methods of the Identities class to work this out.
         Returns boolean
         """
         result = ident.findbynode(host_name, harvest_type='LLDP',
+                                                                regex=is_regex)
+        if result:
+            #*** Does the source or destination IP of the packet match?
+            if pkt.ip_src == result['ip_address'] or \
+                                            pkt.ip_dst == result['ip_address']:
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def check_dhcp(self, host_name, pkt, ident, is_regex=False):
+        """
+        Passed a hostname, flows packet object, an instance of
+        the identities class and a regex boolean (if true, hostname
+        is treated as regex).
+        Return True or False based on whether or not the packet has
+        a source or destination IP address that matches the IP address
+        registered to the given hostname via DHCP harvest (if one even exists).
+        Uses methods of the Identities class to work this out.
+        Returns boolean
+        """
+        result = ident.findbynode(host_name, harvest_type='DHCP',
                                                                 regex=is_regex)
         if result:
             #*** Does the source or destination IP of the packet match?

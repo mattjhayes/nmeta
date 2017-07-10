@@ -317,7 +317,7 @@ def test_portsets_get_port_set():
 
     #*** Positive matches:
     assert policy.port_sets.get_port_set(255, 5, 0) == "port_set_location_internal"
-    assert policy.port_sets.get_port_set(8796748549206, 6, 0) == "port_set_location_external"
+    assert policy.port_sets.get_port_set(1, 6, 0) == "port_set_location_external"
 
     #*** Shouldn't match:
     assert policy.port_sets.get_port_set(1234, 5, 0) == ""
@@ -334,7 +334,7 @@ def test_portset_is_member():
 
     #*** Members:
     assert policy.port_sets.port_sets_list[0].is_member(255, 5, 0) == 1
-    assert policy.port_sets.port_sets_list[0].is_member(8796748549206, 2, 0) == 1
+    assert policy.port_sets.port_sets_list[0].is_member(1, 2, 0) == 1
     #*** Not members:
     assert policy.port_sets.port_sets_list[0].is_member(255, 4, 0) == 0
     assert policy.port_sets.port_sets_list[0].is_member(256, 5, 0) == 0
@@ -570,6 +570,21 @@ def test_validate_ports():
     with pytest.raises(Invalid) as exit_info:
         policy_module.validate_ports(ports_bad3)
 
+def test_validate_time_of_day():
+    """
+    Test the validate_time_of_day function of policy.py module against various
+    good and bad time ranges
+    """
+    #*** Valid time ranges:
+    assert policy_module.validate_time_of_day('05:00-14:00') == '05:00-14:00'
+    assert policy_module.validate_time_of_day('21:00-06:00') == '21:00-06:00'
+
+    #*** Invalid time ranges:
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_time_of_day('abc-efg')
+    with pytest.raises(Invalid) as exit_info:
+        policy_module.validate_time_of_day('01:00-24:03')
+
 def test_validate_macaddress():
     """
     Test the validate_macaddress function of policy.py module against various
@@ -623,6 +638,10 @@ def test_validate_ethertype():
     assert policy_module.validate_ethertype('0x08001') == '0x08001'
     assert policy_module.validate_ethertype('35020') == '35020'
 
+    assert policy_module.validate_ethertype(0x0800) == 0x0800
+    assert policy_module.validate_ethertype(0x08001) == 0x08001
+    assert policy_module.validate_ethertype(35020) == 35020
+
     #*** Invalid EtherTypes:
     with pytest.raises(Invalid) as exit_info:
         policy_module.validate_ethertype('foo')
@@ -652,19 +671,26 @@ def test_transform_ports():
 def test_location_check():
     """
     Test the check method of the Location class
+
+    Check a dpid/port to see if it is part of this location
+    and if so return the string name of the location otherwise
+    return empty string
     """
     #*** Instantiate Policy class instance:
-    policy = policy_module.Policy(config)
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
 
     #*** Test against 'internal' location:
-    assert policy.locations.locations_list[0].check(8796748549206, 1) == 'internal'
-    assert policy.locations.locations_list[0].check(8796748549206, 6) == ''
+    assert policy.locations.locations_list[0].check(1, 1) == 'internal'
+    assert policy.locations.locations_list[0].check(1, 6) == ''
     assert policy.locations.locations_list[0].check(56, 1) == ''
     assert policy.locations.locations_list[0].check(255, 3) == 'internal'
 
     #*** Test against 'external' location:
-    assert policy.locations.locations_list[1].check(8796748549206, 6) == 'external'
-    assert policy.locations.locations_list[1].check(8796748549206, 1) == ''
+    assert policy.locations.locations_list[1].check(1, 6) == 'external'
+    assert policy.locations.locations_list[1].check(1, 1) == ''
 
 def test_locations_get_location():
     """
@@ -677,14 +703,14 @@ def test_locations_get_location():
                             pol_filename="main_policy_regression_static.yaml")
 
     #*** Test against 'internal' location:
-    assert policy.locations.get_location(8796748549206, 1) == 'internal'
+    assert policy.locations.get_location(1, 1) == 'internal'
     assert policy.locations.get_location(255, 3) == 'internal'
-    assert policy.locations.get_location(8796748549206, 66) == 'internal'
+    assert policy.locations.get_location(1, 66) == 'internal'
 
     #*** Test against 'external' location:
-    assert policy.locations.get_location(8796748549206, 6) == 'external'
+    assert policy.locations.get_location(1, 6) == 'external'
     assert policy.locations.get_location(255, 4) == 'external'
 
     #*** Test against no match to default 'unknown' location:
-    assert policy.locations.get_location(8796748549206, 7) == 'unknown'
+    assert policy.locations.get_location(1, 7) == 'unknown'
     assert policy.locations.get_location(1234, 5) == 'unknown'

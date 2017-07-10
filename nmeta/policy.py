@@ -158,6 +158,26 @@ def validate_ports(ports):
             validate_type(int, part, msg)
     return ports
 
+def validate_time_of_day(time_of_day):
+    """
+    Custom Voluptuous validator for time of day compliance.
+    Returns original time of day if compliant, otherwise
+    raises Voluptuous Invalid exception
+    """
+    msg1 = 'Invalid time of day start'
+    msg2 = 'Invalid time of day finish'
+    timeformat = "%H:%M"
+    (time_of_day1, time_of_day2) = time_of_day.split('-')
+    try:
+        validtime = datetime.datetime.strptime(time_of_day1, timeformat)
+    except:
+        raise Invalid(msg1)
+    try:
+        validtime = datetime.datetime.strptime(time_of_day2, timeformat)
+    except:
+        raise Invalid(msg2)
+    return time_of_day
+
 def validate_macaddress(mac_addr):
     """
     Custom Voluptuous validator for MAC address compliance.
@@ -238,7 +258,7 @@ def validate_ethertype(ethertype):
     raises Voluptuous Invalid exception
     """
     msg = 'Invalid EtherType'
-    if ethertype[:2] == '0x':
+    if str(ethertype)[:2] == '0x':
         #*** Looks like hex:
         try:
             if not (int(ethertype, 16) > 0 and \
@@ -292,6 +312,7 @@ TC_CONDITION_SCHEMA = Schema({
 #*** Voluptuous schema for a tc classifier:
 TC_CLASSIFIER_SCHEMA = Schema({
                         Optional('location_src'): str,
+                        Optional('time_of_day'): validate_time_of_day,
                         Optional('eth_src'): validate_macaddress,
                         Optional('eth_dst'): validate_macaddress,
                         Optional('ip_src'): validate_ip_space,
@@ -303,6 +324,8 @@ TC_CLASSIFIER_SCHEMA = Schema({
                         Optional('eth_type'): validate_ethertype,
                         Optional('identity_lldp_systemname'): str,
                         Optional('identity_lldp_systemname_re'): str,
+                        Optional('identity_dhcp_hostname'): str,
+                        Optional('identity_dhcp_hostname_re'): str,
                         Optional('identity_service_dns'): str,
                         Optional('identity_service_dns_re'): str,
                         Optional('custom'): str

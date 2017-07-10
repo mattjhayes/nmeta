@@ -127,6 +127,19 @@ Logical location (as defined by policy) of switch/port
 
     location_src: external
 
+time_of_day
+-----------
+
+Time of day range (matches if flow start time is in this time range)
+
+  Example:
+
+  .. code-block:: text
+
+    time_of_day: 21:00-07:00
+
+Note that range can extend through midnight and times are in 24 hour format
+
 eth_src
 -------
 
@@ -291,6 +304,26 @@ discovered via LLDP. Example:
   .. code-block:: text
 
     identity_lldp_systemname_re: '.*\.audit\.example\.com'
+
+identity_dhcp_hostname
+----------------------
+
+Exact match against a host name discovered
+via DHCP (option 12). Example:
+
+  .. code-block:: text
+
+    identity_dhcp_hostname: bob
+
+identity_dhcp_hostname_re
+---------------------------
+
+Regular expression match against a host name
+discovered via DHCP (option 12). Example:
+
+  .. code-block:: text
+
+    identity_dhcp_hostname_re: 'bob.*'
 
 identity_service_dns
 --------------------

@@ -154,7 +154,9 @@ class NMeta(app_manager.RyuApp, BaseClass):
         Finally, we send the packet out the switch port(s) via a
         Packet-Out message, with appropriate QoS queue set.
         """
+        #*** Set up performance telemetry capture:
         pi_start_time = time.time()
+        telemetry = Telemetry(pi_start_time, event, self.logger, self.pi_time)
         #*** Extract parameters:
         msg = event.msg
         datapath = msg.datapath
@@ -189,12 +191,12 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** Sending out same port prohibited by IEEE 802.1D-2004 7.7.1c:
             self.logger.warning("Dropping packet flow_hash=%s as out_port="
                                     "in_port=%s", self.flow.flow_hash, in_port)
-            self.record_packet_time(pi_start_time, 'drop_same_port')
+            telemetry.record_outcome('drop_same_port')
             return
         #*** Don't forward reserved MACs, as per IEEE 802.1D-2004 table 7-10:
         if str(eth.dst)[0:16] == '01:80:c2:00:00:0':
             self.logger.debug("Not forwarding reserved mac=%s", eth.dst)
-            self.record_packet_time(pi_start_time, 'drop_reserved_mac')
+            telemetry.record_outcome('drop_reserved_mac')
             return
 
         actions = self.flow.classification.actions
@@ -210,7 +212,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
             if actions['drop'] == 'at_controller_and_switch':
                 if self.flow.record_suppression(dpid, 'drop'):
                     flowtables.drop_flow(msg)
-            self.record_packet_time(pi_start_time, 'drop_action')
+            telemetry.record_outcome('drop_action')
             return
 
         if out_port != ofproto.OFPP_FLOOD:
@@ -225,13 +227,13 @@ class NMeta(app_manager.RyuApp, BaseClass):
                                      "not classified yet", self.flow.flow_hash)
             #*** Send Packet Out:
             switch.packet_out(msg.data, in_port, out_port, out_queue)
-            self.record_packet_time(pi_start_time, 'packet_out')
+            telemetry.record_outcome('packet_out')
         else:
             #*** It's a packet that's flooded, so send without specific queue
             #*** and with no queue option set:
             switch.packet_out(msg.data, in_port, out_port, out_queue=0,
                                                                     no_queue=1)
-            self.record_packet_time(pi_start_time, 'packet_out_flooded')
+            telemetry.record_outcome('packet_out_flooded')
 
     @set_ev_cls(ofp_event.EventOFPFlowRemoved, MAIN_DISPATCHER)
     def flow_removed_handler(self, event):
@@ -301,7 +303,18 @@ class NMeta(app_manager.RyuApp, BaseClass):
         else:
             self.logger.info("Illegal port state %s %s", port_no, reason)
 
-    def record_packet_time(self, pi_start_time, outcome):
+class Telemetry(object):
+    """
+    Telemetry data for a single Packet-In (PI) event
+    """
+    def __init__(self, pi_start_time, event, logger, pi_time_col):
+        """ Initialise the PITime Class """
+        self.pi_start_time = pi_start_time
+        self.event = event
+        self.logger = logger
+        self.pi_time_col = pi_time_col
+
+    def record_outcome(self, outcome):
         """
         Calculate the elapsed time for processing this packet-in event
         and record to the pi_time database collection. Also
@@ -311,11 +324,18 @@ class NMeta(app_manager.RyuApp, BaseClass):
         - drop_action
         - packet_out_flooded
         - packet_out
+        Additionally, record time taken queueing event in Ryu (if available).
         """
-        #*** Calculate and log packet-in processing time:
-        pi_delta = time.time() - pi_start_time
-        self.logger.debug("pi_delta=%s", pi_delta)
-        self.pi_time.insert({'pi_delta': pi_delta,
+        #*** Retrieve Ryu controller timestamp, if it exists:
+        if 'timestamp' in vars(self.event):
+            ryu_delta = self.pi_start_time - self.event.timestamp
+        else:
+            ryu_delta = 0
+        #*** Calculate and log packet-in processing time: 
+        pi_delta = time.time() - self.pi_start_time
+        #*** Write results to database collection:
+        self.pi_time_col.insert({'ryu_delta': ryu_delta,
+                             'pi_delta': pi_delta,
                              'outcome': outcome,
                              'timestamp': datetime.datetime.now()})
 

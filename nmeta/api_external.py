@@ -327,12 +327,22 @@ class ExternalAPI(BaseClass):
         results = self.get_pi_time()
         if results:
             #*** Set values in API response:
+            items['ryu_time_max'] = round(results['ryu_time_max'], places)
+            items['ryu_time_min'] = round(results['ryu_time_min'], places)
+            items['ryu_time_avg'] = round(results['ryu_time_avg'], places)
+            items['ryu_time_period'] = results['ryu_time_period']
+            items['ryu_time_records'] = results['ryu_time_records']
             items['pi_time_max'] = round(results['pi_time_max'], places)
             items['pi_time_min'] = round(results['pi_time_min'], places)
             items['pi_time_avg'] = round(results['pi_time_avg'], places)
             items['pi_time_period'] = results['pi_time_period']
             items['pi_time_records'] = results['pi_time_records']
         else:
+            items['ryu_time_max'] = 'unknown'
+            items['ryu_time_min'] = 'unknown'
+            items['ryu_time_avg'] = 'unknown'
+            items['ryu_time_period'] = 'unknown'
+            items['ryu_time_records'] = 'unknown'
             items['pi_time_max'] = 'unknown'
             items['pi_time_min'] = 'unknown'
             items['pi_time_avg'] = 'unknown'

@@ -155,8 +155,8 @@ class NMeta(app_manager.RyuApp, BaseClass):
         Packet-Out message, with appropriate QoS queue set.
         """
         #*** Set up performance telemetry capture:
-        pi_start_time = time.time()
-        telemetry = Telemetry(pi_start_time, event, self.logger, self.pi_time)
+        start_time = time.time()
+        telemetry = PITelemetry(start_time, event, self.logger, self.pi_time)
         #*** Extract parameters:
         msg = event.msg
         datapath = msg.datapath
@@ -303,12 +303,12 @@ class NMeta(app_manager.RyuApp, BaseClass):
         else:
             self.logger.info("Illegal port state %s %s", port_no, reason)
 
-class Telemetry(object):
+class PITelemetry(object):
     """
     Telemetry data for a single Packet-In (PI) event
     """
     def __init__(self, pi_start_time, event, logger, pi_time_col):
-        """ Initialise the PITime Class """
+        """ Initialise the PITelemetry Class """
         self.pi_start_time = pi_start_time
         self.event = event
         self.logger = logger

@@ -194,7 +194,7 @@ class ExternalAPI(BaseClass):
 
         #*** Set up a settings dictionary for starting Eve app:datasource
         eve_settings = {}
-        eve_settings['HATEOAS'] = True
+        eve_settings['HATEOAS'] = self.config.get_value('external_api_hateoas')
         eve_settings['MONGO_HOST'] =  \
                 self.config.get_value('mongo_addr')
         eve_settings['MONGO_PORT'] =  \
@@ -290,6 +290,11 @@ class ExternalAPI(BaseClass):
         results = self.get_pi_time()
         if results:
             #*** Set values in API response:
+            items['ryu_time_max'] = results['ryu_time_max']
+            items['ryu_time_min'] = results['ryu_time_min']
+            items['ryu_time_avg'] = results['ryu_time_avg']
+            items['ryu_time_period'] = results['ryu_time_period']
+            items['ryu_time_records'] = results['ryu_time_records']
             items['pi_time_max'] = results['pi_time_max']
             items['pi_time_min'] = results['pi_time_min']
             items['pi_time_avg'] = results['pi_time_avg']
@@ -759,18 +764,31 @@ class ExternalAPI(BaseClass):
     def get_pi_time(self):
         """
         Calculate packet processing time statistics by querying
-        packet_ins database collection.
+        the pi_time database collection.
         """
         result = {}
         db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
                           datetime.timedelta(seconds=PACKET_TIME_PERIOD)}}
         pi_time_cursor = self.db_pi_time.find(db_data).sort('timestamp', -1)
+        ryu_time_list = []
         pi_time_list = []
+        #*** Accumulate database records into lists:
         for record in pi_time_cursor:
+            #*** Elapsed time in Ryu:
+            ryu_delta = record['ryu_delta']
+            self.logger.debug("ryu_delta=%s", ryu_delta)
+            ryu_time_list.append(ryu_delta)
+            #*** Elapsed time in nmeta:
             pi_delta = record['pi_delta']
             self.logger.debug("pi_delta=%s", pi_delta)
             pi_time_list.append(pi_delta)
-        if len(pi_time_list):
+        #*** Calculate min/avg/max values from lists:
+        if len(pi_time_list) and len(ryu_time_list):
+            result['ryu_time_max'] = max(ryu_time_list)
+            result['ryu_time_min'] = min(ryu_time_list)
+            result['ryu_time_avg'] = sum(ryu_time_list)/len(ryu_time_list)
+            result['ryu_time_period'] = PACKET_TIME_PERIOD
+            result['ryu_time_records'] = len(ryu_time_list)
             result['pi_time_max'] = max(pi_time_list)
             result['pi_time_min'] = min(pi_time_list)
             result['pi_time_avg'] = sum(pi_time_list)/len(pi_time_list)

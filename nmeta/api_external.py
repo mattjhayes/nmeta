@@ -274,6 +274,11 @@ class ExternalAPI(BaseClass):
         Hooked from on_fetched_resource_pi_time
 
         Returns key/values for packet-in processing time in API response:
+        - ryu_time_max
+        - ryu_time_min
+        - ryu_time_avg
+        - ryu_time_period
+        - ryu_time_records
         - pi_time_max
         - pi_time_min
         - pi_time_avg

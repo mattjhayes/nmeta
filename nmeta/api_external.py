@@ -783,12 +783,20 @@ class ExternalAPI(BaseClass):
             self.logger.debug("pi_delta=%s", pi_delta)
             pi_time_list.append(pi_delta)
         #*** Calculate min/avg/max values from lists:
-        if len(pi_time_list) and len(ryu_time_list):
+        if len(ryu_time_list):
             result['ryu_time_max'] = max(ryu_time_list)
             result['ryu_time_min'] = min(ryu_time_list)
             result['ryu_time_avg'] = sum(ryu_time_list)/len(ryu_time_list)
             result['ryu_time_period'] = PACKET_TIME_PERIOD
             result['ryu_time_records'] = len(ryu_time_list)
+        else:
+            #*** Handle Ryu not supporting event timestamp by returning 0's:
+            result['ryu_time_max'] = 0
+            result['ryu_time_min'] = 0
+            result['ryu_time_avg'] = 0
+            result['ryu_time_period'] = PACKET_TIME_PERIOD
+            result['ryu_time_records'] = 0
+        if len(pi_time_list):
             result['pi_time_max'] = max(pi_time_list)
             result['pi_time_min'] = min(pi_time_list)
             result['pi_time_avg'] = sum(pi_time_list)/len(pi_time_list)

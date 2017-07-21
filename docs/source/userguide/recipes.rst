@@ -279,9 +279,12 @@ This recipe uses QoS to constrain bandwidth of YouTube video traffic, purely
 as an example of how to do QoS.
 
 Traffic is identified with a classification list, then marked with a
-QoS treatment action.
+QoS treatment action (constrained_bw).
 
-QoS classes need to be separately configured on switches.
+The *qos_treatment* section maps *constrained_bw* to QoS queue number 1.
+
+QoS queues need to be separately configured on switches. Failure to have a
+queue defined on the switch (other than 0) may result in traffic being dropped.
 
 Main Policy:
 ============

@@ -16,18 +16,14 @@ Contents:
 .. toctree::
    :maxdepth: 3
 
-   introduction
-   howitworks
-   install
-   userguide/policy_guide
+   userguide/introduction
+   userguide/install
+   userguide/configure
    userguide/recipes
-   userguide/system_config_guide
    userguide/build_a_lab
-   webui
-   apiguide
-   loggingguide
-   datastructures
-   codestructure
+   userguide/webui
+   userguide/extend_nmeta
+   userguide/develop
    modules
 
 

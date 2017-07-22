@@ -1,6 +1,6 @@
-######
-Policy
-######
+#########
+Configure
+#########
 
 The nmeta policy configures how nmeta works with data plane traffic.
 This includes traffic classification rules, what classifiers are used,
@@ -9,9 +9,9 @@ in what order and what actions are taken.
 The policy is designed as a tree with many first level branches and only
 a shallow depth.
 
-***************
-Policy Location
-***************
+***********
+Main Policy
+***********
 
 Nmeta ships with a default policy in the YAML file:
 
@@ -507,3 +507,34 @@ Example:
               port_set_list:
                 - port_set: port_set_location_external
         default_match: unknown
+
+*************
+System Config
+*************
+
+A YAML file holds the system configuration. You wouldn't normally need to
+change this file from the defaults. It allows you to change values like
+timers, database sizing and logging levels.
+
+It's location is:
+
+.. code-block:: text
+
+  ~/nmeta/nmeta/config/config.yaml
+
+These default configuration parameters can be overwritten by creating a file:
+
+.. code-block:: text
+
+  ~/nmeta/nmeta/config/user/config.yaml
+
+Add the parameters to the file that you want to override. For example, to
+override the default console logging level for the tc_policy module, add
+the following line to the user config file:
+
+.. code-block:: text
+
+  tc_policy_logging_level_c: INFO
+
+Note that the user-defined config file will not be part of the git
+distribution, as it is excluded in the .gitignore file.

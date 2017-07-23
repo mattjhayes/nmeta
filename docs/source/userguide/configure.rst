@@ -37,9 +37,9 @@ If a main_policy.yaml file is present in the user directory it will completely
 override the default policy. Note that a user-defined main policy file will
 not be part of the git distribution, as it is excluded in the .gitignore file.
 
-*****************************
-Traffic Classification Branch
-*****************************
+
+TC Branch - Rules
+=================
 
 The traffic classification policy is based off a root key *tc_rules*.
 This root contains a *ruleset* name (only one ruleset supported at this
@@ -47,9 +47,6 @@ stage), which in turn contains one or more *rules*. Rules contain *conditions*
 and these in turn contain classifiers, as per the following diagram:
 
 .. image:: images/policy_hierarchy.png
-
-Rules
-=====
 
 Rules are an ordered list (denoted by preceding dash). Each rule contains:
 
@@ -108,8 +105,8 @@ Conditions invoke classifiers. There are three types of classifier supported:
 - Identity
 - Custom (Payload / Statistical / Multi-classifier)
 
-Static Classifiers
-==================
+TC Branch - Static Classifiers
+==============================
 
 Static classifiers match on attributes in packet headers, or on environmental
 attributes such as port numbers.
@@ -265,8 +262,8 @@ UDP destination port.
 
     udp_dst: 53
 
-Identity Classifiers
-====================
+TC Branch - Identity Classifiers
+================================
 
 All identity classifiers are prefixed with:
 
@@ -345,8 +342,8 @@ a flow against a DNS domain. Example:
 
     identity_service_dns_re: '.*\.example\.com'
 
-Custom Classifiers
-==================
+TC Branch - Custom Classifiers
+==============================
 
 Nmeta supports the creation of custom classifiers.
 
@@ -365,8 +362,8 @@ For example, the following condition loads a custom classifier file :code:`~/nme
 
   custom: statistical_qos_bandwidth_1
 
-Actions
-=======
+TC Branch - Actions
+===================
 
 Actions are specific to a rule, and define what nmeta should do when the rule is matched.
 Multiple actions can be defined on a rule.
@@ -430,9 +427,9 @@ Set description for the flow. This is a convenience for humans.
 
     set_desc: "This is a flow type description"
 
-********************
+
 QoS Treatment Branch
-********************
+====================
 
 Quality of Service (QoS) treatment parameters are configured in main policy
 under the qos_treatment root directive. They map qos action values to
@@ -451,9 +448,9 @@ queue numbers. Example:
 The QoS queue numbers are arbitrary and are used to map packets and flows
 to queues that have been configured on the switch (separate to nmeta).
 
-****************
+
 Port Sets Branch
-****************
+================
 
 Port Sets are used to abstract a set of switches/ports so that they
 can be referenced elsewhere in the policy. Port Sets are located under the
@@ -481,9 +478,9 @@ Example:
 In this example, the port set *port_set_location_internal* refers to
 specific ports on the switches with DPIDs of 8796748549206 and 255.
 
-****************
+
 Locations Branch
-****************
+================
 
 Locations are a policy-defined aspect of an identity that are
 based on the source or destination DPID/port, which is looked up

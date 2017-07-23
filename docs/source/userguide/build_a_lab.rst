@@ -532,13 +532,169 @@ Instructions were based on these tutorials:
 Virtual Labs
 ************
 
-VirtualBox
-==========
+VirtualBox with Vagrant
+=======================
 
-TBD
+UNDER CONSTRUCTION
 
-Mininet
-=======
+In this lab we use Vagrant (see: `<https://www.vagrantup.com/>`_ ) to 
+automate the start up and build of multiple VirtualBox
+(see: `<https://www.virtualbox.org/>`_ ) Ubuntu guests.
 
-Get in touch if you want to contribute instructions on building a lab with
-Mininet.
+These instructions assume you're running Windows, but should be easily
+adapted to other operating systems as most of the work happens within the
+virtual environment.
+
+Install Vagrant
+---------------
+
+Download and install Vagrant from `<https://www.vagrantup.com/>`_
+
+Install box
+-----------
+
+We will use the bento (see `<https://app.vagrantup.com/bento>`_ box of Ubuntu
+16.04 in this lab. Download this box on your host machine with:
+
+.. code-block:: text
+
+  vagrant box add bento/ubuntu-16.04
+
+Create Project Directory
+------------------------
+
+Create a new directory somewhere on your host machine, open a command prompt
+and cd into the directory
+
+Initialise Vagrant in this directory by running:
+
+.. code-block:: text
+
+  vagrant init
+
+Replace Vagrantfile
+
+A file called *Vagrantfile* will have been created in the directory by the
+init. Replace the contents of that file with this:
+
+.. code-block:: text
+
+  TBD
+
+TBD - UNDER CONSTRUCTION
+
+Mininet with Vagrant
+====================
+
+UNDER CONSTRUCTION
+
+In this lab we use Vagrant (see: `<https://www.vagrantup.com/>`_ ) to 
+automate the start up and build of a single VirtualBox
+(see: `<https://www.virtualbox.org/>`_ ) Ubuntu guest that runs the 
+Mininet emulator.
+
+These instructions assume you're running Windows, but should be easily
+adapted to other operating systems as most of the work happens within the
+virtual environment.
+
+Install Vagrant
+---------------
+
+Download and install Vagrant from `<https://www.vagrantup.com/>`_
+
+Install box
+-----------
+
+We will use the bento (see `<https://app.vagrantup.com/bento>`_ box of Ubuntu
+16.04 in this lab. Download this box on your host machine with:
+
+.. code-block:: text
+
+  vagrant box add bento/ubuntu-16.04
+
+Create Project Directory
+------------------------
+
+Create a new directory somewhere on your host machine, open a command prompt
+and cd into the directory
+
+Initialise Vagrant in this directory by running:
+
+.. code-block:: text
+
+  vagrant init
+
+Replace Vagrantfile
+
+A file called *Vagrantfile* will have been created in the directory by the
+init. Replace the contents of that file with this:
+
+.. code-block:: text
+
+    # -*- mode: ruby -*-
+    # vi: set ft=ruby:
+
+    # Vagrant script for a single guest that runs Mininet SDN lab with Ryu/nmeta
+
+    $script = <<SCRIPT
+
+    #*** Install Mininet:
+    sudo apt-get -y install mininet
+
+    # First set of packages:
+    apt-get update
+    apt-get install -y python-pip git git-flow python-pytest python-yaml
+
+    # pip packages::
+    pip install --upgrade pip
+    pip2.7 install ryu dpkt mock requests simplejson eve coloredlogs voluptuous --user
+
+    # MongoDB:
+    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
+    echo "deb [ arch=amd64,arm64 ] http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
+    apt-get update
+    apt-get install -y mongodb-org
+    systemctl enable mongod.service
+    service mongod start
+
+    #*** Test Mininet:
+    sudo mn --test pingall
+
+    SCRIPT
+
+    ## Vagrant config
+    VAGRANTFILE_API_VERSION = "2"
+
+    Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+
+      #*** mnlab:
+      config.vm.define "mnlab" do |mnlab|
+        #*** Define box and hostname:
+        mnlab.vm.box = "bento/ubuntu-16.04"
+        mnlab.vm.hostname = "mnlab"
+
+        #*** Virtualbox-specific settings:
+        mnlab.vm.provider :virtualbox do |vb|
+          #*** Set number of CPUs:
+          vb.cpus = "2"
+          #*** Set RAM:
+          vb.customize ["modifyvm", :id, "--memory", "1024"]
+          #*** Run non-headless:
+          vb.gui = true
+        end
+        #*** Run provision script:
+        mnlab.vm.provision "shell", inline: $script
+      end
+    end
+
+Start the Guest
+---------------
+
+Start the guest by running this on the host machine command prompt:
+
+.. code-block:: text
+
+  vagrant up
+
+
+TBD - UNDER CONSTRUCTION

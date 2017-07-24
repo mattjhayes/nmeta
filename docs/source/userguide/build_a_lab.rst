@@ -565,6 +565,8 @@ We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
 
   vagrant box add bento/ubuntu-16.04
 
+Choose *virtualbox* option from menu
+
 Create Project Directory
 ------------------------
 
@@ -623,6 +625,8 @@ We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
 
   vagrant box add bento/ubuntu-16.04
 
+Choose *virtualbox* option from menu
+
 Create Project Directory
 ------------------------
 
@@ -648,33 +652,53 @@ init. Replace the contents of that file with this:
 
     # Vagrant script for a single guest that runs Mininet SDN lab with Ryu/nmeta
 
+    #*** Provisioning Script that runs in the guest box:
     $script = <<SCRIPT
-    #*** Install Mininet:
-    sudo apt-get -y install mininet
+        #*** Install Mininet:
+        sudo apt-get -y install mininet
 
-    # First set of packages:
-    sudo apt-get update
-    sudo apt-get install -y python-pip git git-flow python-pytest python-yaml
+        # First set of packages:
+        sudo apt-get update
+        sudo apt-get install -y python-pip git git-flow python-pytest python-yaml
 
-    # pip packages::
-    pip install --upgrade pip
-    pip2.7 install ryu dpkt mock requests simplejson eve coloredlogs voluptuous --user
+        # pip packages::
+        pip install --upgrade pip
+        pip2.7 install ryu dpkt mock requests simplejson eve coloredlogs voluptuous --user
 
-    # MongoDB:
-    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
-    echo "deb [ arch=amd64,arm64 ] http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
-    sudo apt-get update
-    sudo apt-get install -y mongodb-org
-    systemctl enable mongod.service
-    sudo service mongod start
+        # MongoDB:
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
+        echo "deb [ arch=amd64,arm64 ] http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
+        sudo apt-get update
+        sudo apt-get install -y mongodb-org
+        systemctl enable mongod.service
+        sudo service mongod start
 
-    #*** Test Mininet:
-    sudo mn --test pingall
+        #*** Test Mininet:
+        sudo mn --test pingall
 
-    #*** Clone nmeta
-    cd ~/
-    git clone https://github.com/mattjhayes/nmeta.git
+        #*** Clone nmeta
+        cd ~/
+        git clone https://github.com/mattjhayes/nmeta.git
+        
+        #*** Set up aliases
+        echo '
+            # Test nmeta:
+            alias nmt="cd ~/nmeta/tests/; py.test"
+            #
+            # Run nmeta:
+            alias nm="ryu-manager ~/nmeta/nmeta/nmeta.py"
+            #
+            # Run nmeta external API:
+            alias nma="~/nmeta/nmeta/api_external.py"
+            #
+            # Run Mininet:
+            alias mnt="sudo mn --controller remote"
+            #
+            # Retrieve Packet-In rate via external API:
+            alias nma_pi_rate="curl http://localhost:8081/v1/infrastructure/controllers/pi_rate/ | python -m json.tool"' >> ~/.bash_aliases
 
+        #*** Read in aliases for current session:
+        source ~/.bash_aliases
     SCRIPT
 
     ## Vagrant config
@@ -684,8 +708,11 @@ init. Replace the contents of that file with this:
 
       #*** mnlab:
       config.vm.define "mnlab" do |mnlab|
-        #*** Define box and hostname:
+        #*** Select box (uncomment either bento server or boxcutter desktop):
+        #mnlab.vm.box = "boxcutter/ubuntu1604-desktop"
         mnlab.vm.box = "bento/ubuntu-16.04"
+        
+        #*** Set hostname:
         mnlab.vm.hostname = "mnlab"
 
         #*** Virtualbox-specific settings:
@@ -697,7 +724,7 @@ init. Replace the contents of that file with this:
           #*** Run non-headless:
           vb.gui = true
         end
-        #*** Run provision script:
+        #*** Run provision script as unprivileged user 'vagrant':
         mnlab.vm.provision "shell", inline: $script, privileged: false
       end
     end
@@ -712,6 +739,26 @@ Start the guest by running this on the host machine command prompt:
 
   vagrant up
 
-When the guest is up, connect to it with SSH 
+When the guest is up, connect to it with SSH on localhost:2222
+
+username/password are both *vagrant*
+
+run nmeta (from alias):
+
+.. code-block:: text
+
+  nm
+
+Start a second SSH session and run the nmeta api:
+
+.. code-block:: text
+
+  nma
+
+In a third SSH session run Mininet:
+
+.. code-block:: text
+
+  mnt
 
 TBD - UNDER CONSTRUCTION

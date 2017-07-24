@@ -537,23 +537,28 @@ VirtualBox with Vagrant
 
 UNDER CONSTRUCTION
 
-In this lab we use Vagrant (see: `<https://www.vagrantup.com/>`_ ) to 
-automate the start up and build of multiple VirtualBox
-(see: `<https://www.virtualbox.org/>`_ ) Ubuntu guests.
+In this lab we use `Vagrant <https://www.vagrantup.com/>`_ to 
+automate the start up and build of multiple `VirtualBox <https://www.virtualbox.org/>`_ 
+Ubuntu guests.
 
 These instructions assume you're running Windows, but should be easily
 adapted to other operating systems as most of the work happens within the
 virtual environment.
+
+Install VirtualBox
+------------------
+
+Download and install VirtualBox from `<https://www.virtualbox.org/wiki/Downloads>`_
 
 Install Vagrant
 ---------------
 
 Download and install Vagrant from `<https://www.vagrantup.com/>`_
 
-Install box
------------
+Download a box
+--------------
 
-We will use the bento (see `<https://app.vagrantup.com/bento>`_ box of Ubuntu
+We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
 16.04 in this lab. Download this box on your host machine with:
 
 .. code-block:: text
@@ -573,6 +578,7 @@ Initialise Vagrant in this directory by running:
   vagrant init
 
 Replace Vagrantfile
+-------------------
 
 A file called *Vagrantfile* will have been created in the directory by the
 init. Replace the contents of that file with this:
@@ -588,24 +594,29 @@ Mininet with Vagrant
 
 UNDER CONSTRUCTION
 
-In this lab we use Vagrant (see: `<https://www.vagrantup.com/>`_ ) to 
-automate the start up and build of a single VirtualBox
-(see: `<https://www.virtualbox.org/>`_ ) Ubuntu guest that runs the 
-Mininet emulator.
+
+In this lab we use `Vagrant <https://www.vagrantup.com/>`_ to 
+automate the start up and build of multiple `VirtualBox <https://www.virtualbox.org/>`_ 
+Ubuntu guests.
 
 These instructions assume you're running Windows, but should be easily
 adapted to other operating systems as most of the work happens within the
 virtual environment.
+
+Install VirtualBox
+------------------
+
+Download and install VirtualBox from `<https://www.virtualbox.org/wiki/Downloads>`_
 
 Install Vagrant
 ---------------
 
 Download and install Vagrant from `<https://www.vagrantup.com/>`_
 
-Install box
------------
+Download a box
+--------------
 
-We will use the bento (see `<https://app.vagrantup.com/bento>`_ box of Ubuntu
+We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
 16.04 in this lab. Download this box on your host machine with:
 
 .. code-block:: text
@@ -625,6 +636,7 @@ Initialise Vagrant in this directory by running:
   vagrant init
 
 Replace Vagrantfile
+-------------------
 
 A file called *Vagrantfile* will have been created in the directory by the
 init. Replace the contents of that file with this:
@@ -637,28 +649,31 @@ init. Replace the contents of that file with this:
     # Vagrant script for a single guest that runs Mininet SDN lab with Ryu/nmeta
 
     $script = <<SCRIPT
-
     #*** Install Mininet:
     sudo apt-get -y install mininet
 
     # First set of packages:
-    apt-get update
-    apt-get install -y python-pip git git-flow python-pytest python-yaml
+    sudo apt-get update
+    sudo apt-get install -y python-pip git git-flow python-pytest python-yaml
 
     # pip packages::
     pip install --upgrade pip
     pip2.7 install ryu dpkt mock requests simplejson eve coloredlogs voluptuous --user
 
     # MongoDB:
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
     echo "deb [ arch=amd64,arm64 ] http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
-    apt-get update
-    apt-get install -y mongodb-org
+    sudo apt-get update
+    sudo apt-get install -y mongodb-org
     systemctl enable mongod.service
-    service mongod start
+    sudo service mongod start
 
     #*** Test Mininet:
     sudo mn --test pingall
+
+    #*** Clone nmeta
+    cd ~/
+    git clone https://github.com/mattjhayes/nmeta.git
 
     SCRIPT
 
@@ -683,9 +698,10 @@ init. Replace the contents of that file with this:
           vb.gui = true
         end
         #*** Run provision script:
-        mnlab.vm.provision "shell", inline: $script
+        mnlab.vm.provision "shell", inline: $script, privileged: false
       end
     end
+
 
 Start the Guest
 ---------------
@@ -696,5 +712,6 @@ Start the guest by running this on the host machine command prompt:
 
   vagrant up
 
+When the guest is up, connect to it with SSH 
 
 TBD - UNDER CONSTRUCTION

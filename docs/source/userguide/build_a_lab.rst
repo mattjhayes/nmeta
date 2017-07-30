@@ -533,310 +533,6 @@ Instructions were based on these tutorials:
 Virtual Labs
 ************
 
-VirtualBox with Vagrant
-=======================
-
-UNDER CONSTRUCTION
-
-In this lab we use `Vagrant <https://www.vagrantup.com/>`_ to 
-automate the start up and build of multiple `VirtualBox <https://www.virtualbox.org/>`_ 
-Ubuntu guests.
-
-These instructions assume you're running Windows, but should be easily
-adapted to other operating systems as most of the work happens within the
-virtual environment.
-
-Install VirtualBox
-------------------
-
-Download and install VirtualBox from `<https://www.virtualbox.org/wiki/Downloads>`_
-
-Install Vagrant
----------------
-
-Download and install Vagrant from `<https://www.vagrantup.com/>`_
-
-Download a box
---------------
-
-We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
-16.04 in this lab. Download this box on your host machine with:
-
-.. code-block:: text
-
-  vagrant box add bento/ubuntu-16.04
-
-Choose *virtualbox* option from menu
-
-Create Project Directory
-------------------------
-
-Create a new directory somewhere on your host machine, open a command prompt
-and cd into the directory
-
-Initialise Vagrant in this directory by running:
-
-.. code-block:: text
-
-  vagrant init
-
-Replace Vagrantfile
--------------------
-
-A file called *Vagrantfile* will have been created in the directory by the
-init. Replace the contents of that file with this (UNDER CONSTRUCTION):
-
-.. code-block:: text
-
-    # -*- mode: ruby -*-
-    # vi: set ft=ruby:
-
-    # Vagrant script for a multi-guest VirtualBox SDN lab with Ryu/nmeta
-
-    #*** Provisioning Scripts that run in the guests:
-
-    #*** Provision client guests:
-    $client_script = <<SCRIPT
-        #*** TBD
-    SCRIPT
-
-    #*** Provision server guests:
-    $server_script = <<SCRIPT
-        #*** TBD
-    SCRIPT
-
-    #*** Provision switch guests:
-    $switch_script = <<SCRIPT
-        #*** Install Open vSwitch:
-        sudo apt-get -y install openvswitch-switch
-
-        #*** Configure Open vSwitch:
-        sudo ovs-vsctl add-br br0
-        sudo ovs-vsctl add-port br0 enp0s8
-        sudo ovs-vsctl add-port br0 enp0s9
-        sudo ovs-vsctl add-port br0 enp0s17
-        sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000001
-        sudo ovs-vsctl set bridge br0 protocols=OpenFlow13
-        sudo ovs-vsctl set-controller br0 tcp:172.16.0.3:6533
-
-        #*** Set up aliases
-        echo 'alias ovshow="sudo ovs-vsctl show"
-            alias ovf="sudo ovs-ofctl dump-flows br0 -O OpenFlow13"
-            alias ovsw="sudo ovs-ofctl show br0 -O OpenFlow13"
-            alias ovport="sudo ovs-vsctl list port"
-            alias ovqos="sudo ovs-vsctl list qos"
-            alias ovqueue="sudo ovs-vsctl list queue"
-            #
-            # Non-OF MAC table to switch ports:
-            alias mactable="sudo ovs-appctl fdb/show br0"' >> ~/.bash_aliases
-
-        #*** Read in aliases for current session:
-        source ~/.bash_aliases
-
-        #*** Install LLDP:
-        sudo apt-get -y install lldpd
-    SCRIPT
-
-    #*** Provision sw1 specific guest configuration:
-    $sw1_script = <<SCRIPT
-        #*** Set Open vSwitch DPID to 1:
-        sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000001
-    SCRIPT
-
-    #*** Provision sw2 specific guest configuration:
-    $sw2_script = <<SCRIPT
-        #*** Set Open vSwitch DPID to 2:
-        sudo ovs-vsctl set bridge br0 other-config:datapath-id=0000000000000002
-    SCRIPT
-
-    #*** Controller ct1 Provisioning:
-    $ct1_script = <<SCRIPT
-        # First set of packages:
-        sudo apt-get update
-        sudo apt-get install -y python-pip git git-flow python-pytest python-yaml
-
-        # pip packages::
-        pip install --upgrade pip
-        pip2.7 install ryu dpkt mock requests simplejson eve coloredlogs voluptuous --user
-
-        # MongoDB:
-        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
-        echo "deb [ arch=amd64,arm64 ] http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
-        sudo apt-get update
-        sudo apt-get install -y mongodb-org
-        systemctl enable mongod.service
-        sudo service mongod start
-
-        #*** Clone nmeta
-        cd ~/
-        git clone https://github.com/mattjhayes/nmeta.git
-        
-        #*** Set up aliases
-        echo '
-            # Test nmeta:
-            alias nmt="cd ~/nmeta/tests/; py.test"
-            #
-            # Run nmeta:
-            alias nm="ryu-manager ~/nmeta/nmeta/nmeta.py"
-            #
-            # Run nmeta external API:
-            alias nma="~/nmeta/nmeta/api_external.py"
-            #
-            # Retrieve Packet-In rate via external API:
-            alias nma_pi_rate="curl http://localhost:8081/v1/infrastructure/controllers/pi_rate/ | python -m json.tool"' >> ~/.bash_aliases
-
-        #*** Read in aliases for current session:
-        source ~/.bash_aliases
-    SCRIPT
-
-
-    #*** Vagrant Configuration for Guest Parameters:
-
-    ## Vagrant config
-    VAGRANTFILE_API_VERSION = "2"
-
-    Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-
-      #*** Switch 1 (sw1):
-      config.vm.define "sw1" do |sw1|
-        #*** Define box and hostname:
-        sw1.vm.box = "bento/ubuntu-16.04"
-        sw1.vm.hostname = "sw1"
-
-        #*** Initial network interface configuration:
-        sw1.vm.network "private_network", auto_config: false, virtualbox__intnet: "Switch1-Client1"
-        sw1.vm.network "private_network", auto_config: false, virtualbox__intnet: "Switch1-Switch2"
-        sw1.vm.network "private_network", auto_config: false, virtualbox__intnet: "Foo"
-        sw1.vm.network "private_network", ip: "172.16.0.5", netmask: "255.255.252.0", virtualbox__intnet: "TestControl"
-        sw1.vm.network "private_network", auto_config: false, virtualbox__intnet: "Switch1-LoadGen1"
-
-        #*** Virtualbox-specific settings:
-        sw1.vm.provider :virtualbox do |vb|
-          #*** Set number of CPUs:
-          vb.cpus = "1"
-          #*** Set RAM:
-          vb.customize ["modifyvm", :id, "--memory", "512"]
-          #*** Run non-headless:
-          vb.gui = true
-          #*** Enable promiscuous mode on the switch interfaces:
-          vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
-          vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
-          vb.customize ["modifyvm", :id, "--nicpromisc6", "allow-all"]
-        end
-        #*** Run provision scripts:
-        sw1.vm.provision "shell", inline: $switch_script, privileged: false
-        sw1.vm.provision "shell", inline: $sw1_script, privileged: false
-      end
-
-      #*** Switch 2 (sw2):
-      config.vm.define "sw2" do |sw2|
-        #*** Define box and hostname:
-        sw2.vm.box = "bento/ubuntu-16.04"
-        sw2.vm.hostname = "sw2"
-
-        #*** Initial network interface configuration:
-        sw2.vm.network "private_network", auto_config: false, virtualbox__intnet: "Switch2-Server1"
-        sw2.vm.network "private_network", auto_config: false, virtualbox__intnet: "Switch1-Switch2"
-        sw2.vm.network "private_network", auto_config: false, virtualbox__intnet: "Foo"
-        sw2.vm.network "private_network", ip: "172.16.0.9", netmask: "255.255.252.0", virtualbox__intnet: "TestControl"
-        sw2.vm.network "private_network", auto_config: false, virtualbox__intnet: "Switch2-LoadReflector1"
-
-        #*** Virtualbox-specific settings:
-        sw2.vm.provider :virtualbox do |vb|
-          #*** Set number of CPUs:
-          vb.cpus = "1"
-          #*** Set RAM:
-          vb.customize ["modifyvm", :id, "--memory", "512"]
-          #*** Run non-headless:
-          vb.gui = true
-          #*** Enable promiscuous mode on the switch interfaces:
-          vb.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
-          vb.customize ["modifyvm", :id, "--nicpromisc3", "allow-all"]
-          vb.customize ["modifyvm", :id, "--nicpromisc6", "allow-all"]
-        end
-        #*** Run provision scripts:
-        sw2.vm.provision "shell", inline: $switch_script, privileged: false
-        sw2.vm.provision "shell", inline: $sw2_script, privileged: false
-      end
-
-      #*** Client (pc1):
-      config.vm.define "pc1" do |pc1|
-        #*** Define box and hostname:
-        pc1.vm.box = "bento/ubuntu-16.04"
-        pc1.vm.hostname = "pc1"
-
-        #*** Initial network interface configuration:
-        pc1.vm.network "private_network", ip: "10.1.0.1", netmask: "255.255.252.0", virtualbox__intnet: "Switch1-Client1"
-        pc1.vm.network "private_network", ip: "172.16.0.1", netmask: "255.255.252.0", virtualbox__intnet: "TestControl"
-
-        #*** Virtualbox-specific settings:
-        pc1.vm.provider :virtualbox do |vb|
-          #*** Set number of CPUs:
-          vb.cpus = "1"
-          #*** Set RAM:
-          vb.customize ["modifyvm", :id, "--memory", "512"]
-          #*** Run non-headless:
-          vb.gui = true
-        end
-        #*** Run provision script:
-        pc1.vm.provision "shell", inline: $client_script, privileged: false
-      end
-
-      #*** Server (sv1):
-      config.vm.define "sv1" do |sv1|
-        #*** Define box and hostname:
-        sv1.vm.box = "bento/ubuntu-16.04"
-        sv1.vm.hostname = "sv1"
-
-        #*** Initial network interface configuration:
-        sv1.vm.network "private_network", ip: "10.1.0.2", netmask: "255.255.252.0", virtualbox__intnet: "Switch2-Server1"
-        sv1.vm.network "private_network", ip: "172.16.0.2", netmask: "255.255.252.0", virtualbox__intnet: "TestControl"
-
-        #*** Virtualbox-specific settings:
-        sv1.vm.provider :virtualbox do |vb|
-          #*** Set number of CPUs:
-          vb.cpus = "1"
-          #*** Set RAM:
-          vb.customize ["modifyvm", :id, "--memory", "512"]
-          #*** Run non-headless:
-          vb.gui = true
-        end
-        #*** Run provision script:
-        sv1.vm.provision "shell", inline: $server_script, privileged: false
-      end
-
-      #*** Controller (ct1):
-      config.vm.define "ct1" do |ct1|
-        #*** Select box (uncomment either bento server or boxcutter desktop):
-        #ct1.vm.box = "boxcutter/ubuntu1604-desktop"
-        ct1.vm.box = "bento/ubuntu-16.04"
-        
-        #*** Set hostname:
-        ct1.vm.hostname = "ct1"
-
-        #*** Initial network interface configuration:
-        ct1.vm.network "private_network", ip: "172.16.0.3", netmask: "255.255.252.0", virtualbox__intnet: "TestControl"
-
-        #*** Virtualbox-specific settings:
-        ct1.vm.provider :virtualbox do |vb|
-          #*** Set number of CPUs:
-          vb.cpus = "2"
-          #*** Set RAM:
-          vb.customize ["modifyvm", :id, "--memory", "1024"]
-          #*** Run non-headless:
-          vb.gui = true
-        end
-        #*** Run provision script as unprivileged user 'vagrant':
-        ct1.vm.provision "shell", inline: $ct1_script, privileged: false
-      end
-
-    end
-
-
-TBD - UNDER CONSTRUCTION
-
--------------------------------------------------------------------------------
-
 Mininet with Vagrant
 ====================
 
@@ -873,111 +569,21 @@ We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
 
 Choose *virtualbox* option from menu
 
-Create Project Directory
-------------------------
+Clone Vagrant Repo
+---------------------
 
-Create a new directory somewhere on your host machine, open a command prompt
-and cd into the directory
-
-Initialise Vagrant in this directory by running:
-
-.. code-block:: text
-
-  vagrant init
-
-Replace Vagrantfile
--------------------
-
-A file called *Vagrantfile* will have been created in the directory by the
-init. Replace the contents of that file with this:
-
-.. code-block:: text
-
-    # -*- mode: ruby -*-
-    # vi: set ft=ruby:
-
-    # Vagrant script for a single guest that runs Mininet SDN lab with Ryu/nmeta
-
-    #*** Provisioning Script that runs in the guest box:
-    $script = <<SCRIPT
-        #*** Install Mininet:
-        sudo apt-get -y install mininet
-
-        # First set of packages:
-        sudo apt-get update
-        sudo apt-get install -y python-pip git git-flow python-pytest python-yaml
-
-        # pip packages::
-        pip install --upgrade pip
-        pip2.7 install ryu dpkt mock requests simplejson eve coloredlogs voluptuous --user
-
-        # MongoDB:
-        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 0C49F3730359A14518585931BC711F9BA15703C6
-        echo "deb [ arch=amd64,arm64 ] http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.4 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.4.list
-        sudo apt-get update
-        sudo apt-get install -y mongodb-org
-        systemctl enable mongod.service
-        sudo service mongod start
-
-        #*** Test Mininet:
-        sudo mn --test pingall
-
-        #*** Clone nmeta
-        cd ~/
-        git clone https://github.com/mattjhayes/nmeta.git
-        
-        #*** Set up aliases
-        echo '
-            # Test nmeta:
-            alias nmt="cd ~/nmeta/tests/; py.test"
-            #
-            # Run nmeta:
-            alias nm="ryu-manager ~/nmeta/nmeta/nmeta.py"
-            #
-            # Run nmeta external API:
-            alias nma="~/nmeta/nmeta/api_external.py"
-            #
-            # Run Mininet:
-            alias mnt="sudo mn --controller remote"
-            #
-            # Retrieve Packet-In rate via external API:
-            alias nma_pi_rate="curl http://localhost:8081/v1/infrastructure/controllers/pi_rate/ | python -m json.tool"' >> ~/.bash_aliases
-
-        #*** Read in aliases for current session:
-        source ~/.bash_aliases
-    SCRIPT
-
-    ## Vagrant config
-    VAGRANTFILE_API_VERSION = "2"
-
-    Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-
-      #*** mnlab:
-      config.vm.define "mnlab" do |mnlab|
-        #*** Select box (uncomment either bento server or boxcutter desktop):
-        #mnlab.vm.box = "boxcutter/ubuntu1604-desktop"
-        mnlab.vm.box = "bento/ubuntu-16.04"
-        
-        #*** Set hostname:
-        mnlab.vm.hostname = "mnlab"
-
-        #*** Virtualbox-specific settings:
-        mnlab.vm.provider :virtualbox do |vb|
-          #*** Set number of CPUs:
-          vb.cpus = "2"
-          #*** Set RAM:
-          vb.customize ["modifyvm", :id, "--memory", "1024"]
-          #*** Run non-headless:
-          vb.gui = true
-        end
-        #*** Run provision script as unprivileged user 'vagrant':
-        mnlab.vm.provision "shell", inline: $script, privileged: false
-      end
-    end
-
+Clone the Vagrant repo from `https://github.com/mattjhayes/Vagrant`_ onto
+your host machine.
 
 Start the Guest
 ---------------
+
+In a command prompt, from base of cloned repo, navigate to
+the *SDN_Labs\Mininet_Ryu_nmeta* directory:
+
+.. code-block:: text
+
+  cd SDN_Labs\Mininet_Ryu_nmeta
 
 Start the guest by running this on the host machine command prompt:
 
@@ -1008,3 +614,84 @@ In a third SSH session run Mininet:
   mnt
 
 TBD - UNDER CONSTRUCTION
+
+-------------------------------------------------------------------------------
+
+VirtualBox with Vagrant
+=======================
+
+UNDER CONSTRUCTION
+
+In this lab we use `Vagrant <https://www.vagrantup.com/>`_ to 
+automate the start up and build of multiple `VirtualBox <https://www.virtualbox.org/>`_ 
+Ubuntu guests.
+
+These instructions assume you're running Windows, but should be easily
+adapted to other operating systems as most of the work happens within the
+virtual environment.
+
+Install VirtualBox
+------------------
+
+Download and install VirtualBox from `<https://www.virtualbox.org/wiki/Downloads>`_
+
+Install Vagrant
+---------------
+
+Download and install Vagrant from `<https://www.vagrantup.com/>`_
+
+Download a box
+--------------
+
+We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
+16.04 in this lab. Download this box on your host machine with:
+
+.. code-block:: text
+
+  vagrant box add bento/ubuntu-16.04
+
+Choose *virtualbox* option from menu
+
+Clone Vagrant Repo
+---------------------
+
+Clone the Vagrant repo from `https://github.com/mattjhayes/Vagrant`_ onto
+your host machine.
+
+Start the Guest
+---------------
+
+In a command prompt, from base of cloned repo, navigate to
+the *SDN_Labs\Ryu_nmeta_SystemTestLab* directory:
+
+.. code-block:: text
+
+  cd SDN_Labs\Ryu_nmeta_SystemTestLab
+
+Start the guest by running this on the host machine command prompt:
+
+.. code-block:: text
+
+  vagrant up
+
+When the guests are up, connect to the controller with SSH on localhost:2203
+(first guests is port 2222 then ports 2200 and upwards for other guests)
+
+username/password are both *vagrant*
+
+run nmeta (from alias):
+
+.. code-block:: text
+
+  nm
+
+Start a second SSH session and run the nmeta api:
+
+.. code-block:: text
+
+  nma
+
+TBD - UNDER CONSTRUCTION
+
+
+

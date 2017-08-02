@@ -572,7 +572,7 @@ Choose *virtualbox* option from menu
 Clone Vagrant Repo
 ---------------------
 
-Clone the Vagrant repo from `https://github.com/mattjhayes/Vagrant`_ onto
+Clone the Vagrant repo from `<https://github.com/mattjhayes/Vagrant>`_ onto
 your host machine.
 
 Start the Guest
@@ -655,7 +655,7 @@ Choose *virtualbox* option from menu
 Clone Vagrant Repo
 ---------------------
 
-Clone the Vagrant repo from `https://github.com/mattjhayes/Vagrant`_ onto
+Clone the Vagrant repo from `<https://github.com/mattjhayes/Vagrant>`_ onto
 your host machine.
 
 Start the Guest

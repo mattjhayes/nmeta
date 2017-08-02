@@ -781,7 +781,12 @@ class ExternalAPI(BaseClass):
         Calculate packet processing time statistics by querying
         the pi_time database collection.
         """
-        result = {}
+        #*** Set default result values for certain keys:
+        result = dict.fromkeys(['ryu_time_max', 'ryu_time_min', 'ryu_time_avg',
+                    'ryu_time_records', 'pi_time_max', 'pi_time_min',
+                    'pi_time_avg', 'pi_time_records'], 0)
+        result['ryu_time_period'] = PACKET_TIME_PERIOD
+        result['pi_time_period'] = PACKET_TIME_PERIOD
         db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
                           datetime.timedelta(seconds=PACKET_TIME_PERIOD)}}
         pi_time_cursor = self.db_pi_time.find(db_data).sort('timestamp', -1)
@@ -802,25 +807,13 @@ class ExternalAPI(BaseClass):
             result['ryu_time_max'] = max(ryu_time_list)
             result['ryu_time_min'] = min(ryu_time_list)
             result['ryu_time_avg'] = sum(ryu_time_list)/len(ryu_time_list)
-            result['ryu_time_period'] = PACKET_TIME_PERIOD
             result['ryu_time_records'] = len(ryu_time_list)
-        else:
-            #*** Handle Ryu not supporting event timestamp by returning 0's:
-            result['ryu_time_max'] = 0
-            result['ryu_time_min'] = 0
-            result['ryu_time_avg'] = 0
-            result['ryu_time_period'] = PACKET_TIME_PERIOD
-            result['ryu_time_records'] = 0
         if len(pi_time_list):
             result['pi_time_max'] = max(pi_time_list)
             result['pi_time_min'] = min(pi_time_list)
             result['pi_time_avg'] = sum(pi_time_list)/len(pi_time_list)
-            result['pi_time_period'] = PACKET_TIME_PERIOD
             result['pi_time_records'] = len(pi_time_list)
-            return result
-        else:
-            self.logger.warning("no current records found in pi_time")
-            return 0
+        return result
 
 def enumerate_eth_type(eth_type):
     """

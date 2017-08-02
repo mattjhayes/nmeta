@@ -13,7 +13,25 @@
 
 #*** nmeta - Network Metadata - API definition file
 
+#*** This API provides min/avg/max telemetry on processing times for Packet-In
+#*** events in Ryu and nmeta
+
 pi_time_schema = {
+        'ryu_time_min': {
+            'type': 'float'
+        },
+        'ryu_time_avg': {
+            'type': 'float'
+        },
+        'ryu_time_max': {
+            'type': 'float'
+        },
+        'ryu_time_period': {
+            'type': 'float'
+        },
+        'ryu_time_records': {
+            'type': 'float'
+        },
         'pi_time_min': {
             'type': 'float'
         },

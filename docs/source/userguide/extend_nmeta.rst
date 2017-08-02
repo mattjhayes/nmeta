@@ -182,8 +182,6 @@ controller in processing packet-in (PI) messages. It is measured over the
 length of time defined by PACKET_TIME_PERIOD, as defined in api_external.py,
 and returned in the API as the key pi_time_period.
 
-If no data found within time period then returns without key/values.
-
 It is not a native Python Eve API.
 
 The API definition file is at:
@@ -197,6 +195,28 @@ Example manual invocation of the API:
 .. code-block:: text
 
   curl http://localhost:8081/v1/infrastructure/controllers/pi_time/ | python -m json.tool
+
+Example result:
+
+.. code-block:: text
+
+    {
+        "_meta": {
+            "max_results": 25,
+            "page": 1,
+            "total": 814
+        },
+        "pi_time_avg": 0.039634871482849124,
+        "pi_time_max": 0.08309197425842285,
+        "pi_time_min": 0.017210960388183594,
+        "pi_time_period": 10,
+        "pi_time_records": 20,
+        "ryu_time_avg": 0.0019985318183898928,
+        "ryu_time_max": 0.01230311393737793,
+        "ryu_time_min": 0.0004711151123046875,
+        "ryu_time_period": 10,
+        "ryu_time_records": 20
+    }
 
 Switches API
 ============

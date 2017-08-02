@@ -412,7 +412,8 @@ class FlowTables(BaseClass):
                     return 0
             if pkt_ip4:
                 #*** Match IPv4 packet
-                match = self.match_ipv4(pkt_ip4.src, pkt_ip4.dst)
+                match = self.match_ipv4(pkt_ip4.src, pkt_ip4.dst,
+                                                                 pkt_ip4.proto)
             elif pkt_ip6:
                 #*** Match IPv6 packet
                 match = self.match_ipv6(pkt_ip6.src, pkt_ip6.dst)
@@ -477,7 +478,8 @@ class FlowTables(BaseClass):
                 return 0
         elif pkt_ip4:
             #*** Match IPv4 packet
-            drop_match = self.match_ipv4(pkt_ip4.src, pkt_ip4.dst)
+            drop_match = self.match_ipv4(pkt_ip4.src, pkt_ip4.dst,
+                                                                 pkt_ip4.proto)
         elif pkt_ip6:
             #*** Match IPv6 packet
             drop_match = self.match_ipv6(pkt_ip6.src, pkt_ip6.dst)
@@ -608,7 +610,7 @@ class FlowTables(BaseClass):
                     ip_proto=17,
                     udp_dst=udp_dst)
 
-    def match_ipv4(self, ipv4_src, ipv4_dst):
+    def match_ipv4(self, ipv4_src, ipv4_dst, ip_proto):
         """
         Match an IPv4 flow on a switch.
         Passed IPv4 parameters and return
@@ -616,7 +618,8 @@ class FlowTables(BaseClass):
         """
         return self.parser.OFPMatch(eth_type=0x0800,
                     ipv4_src=_ipv4_t2i(str(ipv4_src)),
-                    ipv4_dst=_ipv4_t2i(str(ipv4_dst)))
+                    ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
+                    ip_proto=ip_proto)
 
     def match_ipv6(self, ipv6_src, ipv6_dst):
         """

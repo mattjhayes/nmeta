@@ -221,10 +221,8 @@ Example result:
 Switches API
 ============
 
-The Switches API is a read-only summary of all switches currently
-connected to controller.
-
-It is a native Python Eve API.
+The Switches API provides information on switches connected to the
+controller.
 
 The API definition file is at:
 
@@ -232,11 +230,81 @@ The API definition file is at:
 
   ~/nmeta/nmeta/api_definitions/switches_api.py
 
+Switch Details
+--------------
+
+The Switch Details API is a read-only summary of all switches currently
+connected to controller.
+
 Example manual invocation of the API:
 
 .. code-block:: text
 
   curl http://localhost:8081/v1/infrastructure/switches/ | python -m json.tool
+
+Example result:
+
+.. code-block:: text
+
+    {
+        "_items": [
+            {
+                "_created": "00:00:00.000000",
+                "_etag": "e9cf4f29afa425bc0486cda334c56017d3d6e2ca",
+                "_id": "59854e3ee14ebffa9f4f4e7b",
+                "_updated": "00:00:00.000000",
+                "dp_desc": "None",
+                "dpid": 1,
+                "hw_desc": "Open vSwitch",
+                "ip_address": "172.16.0.5",
+                "mfr_desc": "Nicira, Inc.",
+                "port": 46074,
+                "serial_num": "None",
+                "sw_desc": "2.5.2",
+                "time_connected": "16:49:01.795000"
+            },
+            {
+                "_created": "00:00:00.000000",
+                "_etag": "e8ff778368901540349b2a9625893b1b4763b362",
+                "_id": "59854e41e14ebffa9f4f4e80",
+                "_updated": "00:00:00.000000",
+                "dp_desc": "None",
+                "dpid": 2,
+                "hw_desc": "Open vSwitch",
+                "ip_address": "172.16.0.9",
+                "mfr_desc": "Nicira, Inc.",
+                "port": 34090,
+                "serial_num": "None",
+                "sw_desc": "2.5.2",
+                "time_connected": "16:49:05.706000"
+            }
+        ],
+        "_meta": {
+            "max_results": 25,
+            "page": 1,
+            "total": 2
+        }
+    }
+
+Switch Count
+------------
+
+The Switch Count API is a read-only count of all switches currently
+connected to controller.
+
+Example manual invocation of the API:
+
+.. code-block:: text
+
+  curl http://localhost:8081/v1/infrastructure/switches/stats/connected_switches | python -m json.tool
+
+Example result:
+
+.. code-block:: text
+
+    TBD
+
+
 
 *************
 Internal APIs

@@ -129,6 +129,7 @@ class ExternalAPI(BaseClass):
         self.classifications = db_nmeta.classifications
         self.flow_rems = db_nmeta.flow_rems
         self.db_pi_time = db_nmeta.pi_time
+        self.switches_col = db_nmeta.switches_col
 
     class FlowUI(object):
         """
@@ -185,6 +186,7 @@ class ExternalAPI(BaseClass):
             'pi_time': pi_time.pi_time_settings,
             'controller_summary': controller_summary.controller_summary_settings,
             'switches_col': switches_api.switches_settings,
+            'switches_count_col': switches_api.switches_count_settings,
             'identities': identities_api.identities_settings,
             'identities_ui': identities_ui.identities_ui_settings,
             'flows': flows_api.flows_settings,
@@ -240,6 +242,10 @@ class ExternalAPI(BaseClass):
         #*** Hook for filtered flows response:
         self.app.on_fetched_resource_flows_ui += \
                                                self.response_flows_ui
+
+        #*** Hook for switch count:
+        self.app.on_fetched_resource_switches_count_col += \
+                                                self.response_switches_count
 
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
@@ -450,6 +456,12 @@ class ExternalAPI(BaseClass):
                 #*** If we've filled the bucket then return result:
                 if len(items['_items']) >= FLOW_RESULT_LIMIT:
                     return
+
+    def response_switches_count(self, items):
+        """
+        Populate the response with number of connected switches.
+        """
+        items['connected_switches'] =  self.switches_col.count()
 
     def flow_match(self, flow, flows_filterlogicselector,
                                     flows_filtertypeselector, filter_string):

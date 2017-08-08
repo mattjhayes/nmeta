@@ -78,8 +78,19 @@ nmeta.Router = Backbone.Router.extend({
             nmeta.homelView.delegateEvents(); // delegate events when the view is recycled
         }
         this.$content.html(nmeta.homelView.el);
-        // Empty unused content2:
+
+        // Empty content2:
         this.$content2.empty();
+        // Retrieve connected switch count via REST API:
+        var switch_count_model = new nmeta.SwitchCountModel();
+        var self = this;
+        switch_count_model.fetch({
+            success: function (data) {
+                // Render against id='content2':
+                self.$content2.html(new nmeta.SwitchCountView({model: data}).render().el);
+            }
+        });
+
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('home-menu');
     },
@@ -219,8 +230,10 @@ nmeta.Router = Backbone.Router.extend({
 
 });
 
+// HTML template names to load (it appends .html to load file)
+// Ensure the view name in the *_view.js file is identical
 $(document).on("ready", function () {
-    nmeta.loadTemplates(["HomeView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "FlowDetailsView", "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
+    nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "FlowDetailsView", "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
         function () {
             nmeta.router = new nmeta.Router();
             Backbone.history.start();

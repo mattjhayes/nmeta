@@ -230,8 +230,10 @@ nmeta.Router = Backbone.Router.extend({
 
 });
 
-// HTML template names to load (it appends .html to load file)
-// Ensure the view name in the *_view.js file is identical
+// HTML template names to load (it appends .html to load file from templates
+// directory)
+// Note: ensure the view name in the *_view.js file is identical i.e.:
+// "SwitchCountView" requires nmeta.SwitchCountView in switch_count_view.js
 $(document).on("ready", function () {
     nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "FlowDetailsView", "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
         function () {

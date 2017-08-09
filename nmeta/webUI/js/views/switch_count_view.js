@@ -14,9 +14,24 @@ nmeta.SwitchCountView = Backbone.View.extend({
     },
 
     render: function () {
-        // Apply SwitchCountView.html template:
+        // Empty el:
         this.$el.empty();
-        this.$el.html(this.template(this.model.attributes));
+
+        // Work out what colour for switches HTML:
+        var data = this.model.toJSON();
+        data.switchesColour = this._switchesColour(data.connected_switches);
+        
+        // Append data model (including REST response) to el:
+        this.$el.append(this.template(data));
         return this;
+    },
+
+    _switchesColour: function(connected_switches) {
+        // Return HTML label based on REST API connected_switches value:
+        if(connected_switches < 1)
+            return 'label-danger';
+        else
+            return 'label-success';
     }
+
 });

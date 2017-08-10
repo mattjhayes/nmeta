@@ -162,6 +162,7 @@ nmeta.Router = Backbone.Router.extend({
                 self.$content2.html(new nmeta.SwitchesView({model: data}).render().el);
             }
         });
+
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('kit-menu');
     },

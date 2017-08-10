@@ -64,7 +64,7 @@ nmeta.Router = Backbone.Router.extend({
         // Variables linking to HTML content ids
         this.$content = $("#content");
         this.$content2 = $("#content2");
-
+        this.$content3 = $("#content3");
     },
 
     // Display 'home' page
@@ -79,8 +79,6 @@ nmeta.Router = Backbone.Router.extend({
         }
         this.$content.html(nmeta.homelView.el);
 
-        // Empty content2:
-        this.$content2.empty();
         // Retrieve connected switch count via REST API:
         var switch_count_model = new nmeta.SwitchCountModel();
         var self = this;
@@ -90,9 +88,15 @@ nmeta.Router = Backbone.Router.extend({
                 self.$content2.html(new nmeta.SwitchCountView({model: data}).render().el);
             }
         });
-
+        // Empty unused content3 in the DOM:
+        this.$content3.empty();
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('home-menu');
+
+        // Poll for changes to the switch count:
+        //setInterval(function () {
+        //    switch_count_model.fetch();
+        //}, 5000);
     },
 
     // Display 'who' page about identities on the network:
@@ -107,8 +111,9 @@ nmeta.Router = Backbone.Router.extend({
                 self.$content.html(new nmeta.IdentitiesView({model: data}).render().el);
             }
         });
-        // Empty unused content2:
+        // Empty unused content2 and content3 in the DOM:
         this.$content2.empty();
+        this.$content3.empty();
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('who-menu');
     },
@@ -134,8 +139,9 @@ nmeta.Router = Backbone.Router.extend({
         // Publish result into DOM against id="content":
         this.$content.html(nmeta.flowsView.el);
 
-        // Empty unused id="content2" in DOM:
+        // Empty unused content2 and content3 in the DOM:
         this.$content2.empty();
+        this.$content3.empty()
 
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('what-menu');
@@ -152,14 +158,24 @@ nmeta.Router = Backbone.Router.extend({
             }
         });
 
+        // Retrieve connected switch count via REST API:
+        var switch_count_model = new nmeta.SwitchCountModel();
+        var self = this;
+        switch_count_model.fetch({
+            success: function (data) {
+                // Render against id='content2':
+                self.$content2.html(new nmeta.SwitchCountView({model: data}).render().el);
+            }
+        });
+
         // Instantiate Switches Collection:
         var switches_collection = new nmeta.SwitchesCollection();
         var self = this;
         // Retrieve switches information via REST API:
         switches_collection.fetch({
             success: function (data) {
-                // Render against id='content2':
-                self.$content2.html(new nmeta.SwitchesView({model: data}).render().el);
+                // Render against id='content3':
+                self.$content3.html(new nmeta.SwitchesView({model: data}).render().el);
             }
         });
 
@@ -175,8 +191,9 @@ nmeta.Router = Backbone.Router.extend({
             nmeta.policyView.render();
         }
         this.$content.html(nmeta.policyView.el);
-        // Empty unused content2:
+        // Empty unused content2 and content3 in the DOM:
         this.$content2.empty();
+        this.$content3.empty()
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('policy-menu');
     },
@@ -223,6 +240,9 @@ nmeta.Router = Backbone.Router.extend({
 
         // Publish result into DOM against id="content2":
         this.$content2.html(nmeta.flowModsView.el);
+
+        // Empty unused content3 in the DOM:
+        this.$content3.empty()
 
         //---------------------------------------------------------------------
         // Update top menu bar:

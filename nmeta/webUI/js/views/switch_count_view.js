@@ -2,7 +2,9 @@ nmeta.SwitchCountView = Backbone.View.extend({
 
     initialize:function () {
         var self = this;
+        this.model.startPolling();
         this.model.on("reset", this.render, this);
+        this.model.on('change', this.render, this);
     },
 
     events: {

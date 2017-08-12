@@ -88,6 +88,7 @@ nmeta.Router = Backbone.Router.extend({
                 self.$content2.html(new nmeta.SwitchCountView({model: data}).render().el);
             }
         });
+
         // Empty unused content3 in the DOM:
         this.$content3.empty();
         // Update top menu bar:

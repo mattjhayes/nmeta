@@ -92,11 +92,6 @@ nmeta.Router = Backbone.Router.extend({
         this.$content3.empty();
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('home-menu');
-
-        // Poll for changes to the switch count:
-        //setInterval(function () {
-        //    switch_count_model.fetch();
-        //}, 5000);
     },
 
     // Display 'who' page about identities on the network:

@@ -17,10 +17,11 @@ nmeta.SwitchCountView = Backbone.View.extend({
         // Empty el:
         this.$el.empty();
 
-        // Work out what colour and word for switches HTML:
+        // Work out what colour, descriptor word and hint for switches HTML:
         var data = this.model.toJSON();
         data.switchesColour = this._switchesColour(data.connected_switches);
         data.switchesWord = this._switchesWord(data.connected_switches);
+        data.switchesHint = this._switchesHint(data.connected_switches);
         
         // Append data model (including REST response) to el:
         this.$el.append(this.template(data));
@@ -41,6 +42,14 @@ nmeta.SwitchCountView = Backbone.View.extend({
             return 'switch';
         else
             return 'switches';
+    },
+
+    _switchesHint: function(connected_switches) {
+        // Return hint if not connected switches:
+        if(connected_switches < 1)
+            return 'Hint: check switch is powered on and configured to use controller';
+        else
+            return '';
     }
 
 });

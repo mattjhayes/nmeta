@@ -4,6 +4,7 @@ nmeta.SwitchCountView = Backbone.View.extend({
         var self = this;
         this.model.startPolling();
         this.model.on("reset", this.render, this);
+        // Re-render on model change (i.e. polled update):
         this.model.on('change', this.render, this);
     },
 
@@ -52,6 +53,12 @@ nmeta.SwitchCountView = Backbone.View.extend({
             return 'Hint: check switch is powered on and configured to use controller';
         else
             return '';
-    }
+    },
+
+    // Clean-up View on close:
+    onClose : function(){
+        console.log('onClose called for view=switch_count_view');
+        this.model.stopPolling();
+    },
 
 });

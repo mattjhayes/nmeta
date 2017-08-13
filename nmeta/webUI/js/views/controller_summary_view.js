@@ -3,6 +3,7 @@ nmeta.ControllerSummaryView = Backbone.View.extend({
     initialize:function () {
         var self = this;
         this.model.on("reset", this.render, this);
+        this.model.on('change', this.render, this);
     },
 
     events: {

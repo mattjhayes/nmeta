@@ -23,6 +23,17 @@ var nmeta = {
 
 };
 
+// TEST CLEAN-UP:
+Backbone.View.prototype.close = function() {
+    console.log('running Backbone.View.prototype.close');
+    if (this.onClose) {
+        console.log('... calling onClose');
+        this.onClose();
+    }
+    console.log('... calling remove');
+    this.remove();
+};
+
 nmeta.Router = Backbone.Router.extend({
 
     routes: {
@@ -35,9 +46,9 @@ nmeta.Router = Backbone.Router.extend({
         "switch/:dpid":   "switch"
     },
 
+    //=========================================================================
     // Display nav bar and set up rest of page
     initialize: function () {
-
         // Instantiate Flows Collection:
         console.log('instantiating flows_collection');
         this.flows_collection = new nmeta.FlowsCollection();
@@ -65,38 +76,49 @@ nmeta.Router = Backbone.Router.extend({
         this.$content = $("#content");
         this.$content2 = $("#content2");
         this.$content3 = $("#content3");
+
+        // Array for storing current views for later clean-up:
+        this.currentViews = [];
     },
 
+    //=========================================================================
     // Display 'home' page
     home: function () {
-        // Since the home view never changes, we instantiate it and render it only once
-        if (!nmeta.homelView) {
-            nmeta.homelView = new nmeta.HomeView();
-            nmeta.homelView.render();
-        } else {
-            console.log('reusing home view');
-            nmeta.homelView.delegateEvents(); // delegate events when the view is recycled
-        }
+        // Pane 1: Clean-up then create View:
+        this.cleanUpViews();
+        nmeta.homelView = new nmeta.HomeView();
+        this.registerView(nmeta.homelView);
+        
+        // Pane 1: Render View:
+        nmeta.homelView.render();
         this.$content.html(nmeta.homelView.el);
 
-        // Retrieve connected switch count via REST API:
-        var switch_count_model = new nmeta.SwitchCountModel();
-        var self = this;
-        switch_count_model.fetch({
-            success: function (data) {
-                // Render against id='content2':
-                self.$content2.html(new nmeta.SwitchCountView({model: data}).render().el);
-            }
-        });
+        // Pane 2: Create switch count Model
+        this.switch_count_model = new nmeta.SwitchCountModel();
 
-        // Empty unused content3 in the DOM:
+        // Pane 2: Create switch count View:
+        nmeta.switchCountView = new nmeta.SwitchCountView({model: this.switch_count_model});
+        this.registerView(nmeta.switchCountView);
+
+        // Pane 2: Fetch switch_count_model as reset event (note: invokes render):
+        console.log('app calling switch_count_model fetch({reset: true})');
+        this.switch_count_model.fetch({reset: true})
+
+        // Pane 2: Publish result into DOM against id="content2":
+        this.$content2.html(nmeta.switchCountView.el);
+
+        // Pane 3: Empty unused content3 in the DOM:
         this.$content3.empty();
+
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('home-menu');
     },
 
+    //=========================================================================
     // Display 'who' page about identities on the network:
     who: function () {
+        // Pane 1: Clean-up + TBD:
+        this.cleanUpViews();
         // Instantiate Identities Collection:
         var identities_collection = new nmeta.IdentitiesCollection();
         var self = this;
@@ -114,19 +136,25 @@ nmeta.Router = Backbone.Router.extend({
         nmeta.barsView.selectMenuItem('who-menu');
     },
 
+    //=========================================================================
     // Display 'what' page about flows on the network:
     what: function () {
+        this.cleanUpViews();
         // Instantiate flows view if not already existing:
-        if (!nmeta.flowsView) {
+        //if (!nmeta.flowsView) {
             // Instantiate flowsView:
-            console.log('app instantiating flowsView');
-            nmeta.flowsView = new nmeta.FlowsView({model: this.flows_collection,
-                                                   flowsState: this.flowsState});
-        } else {
+        //    console.log('app instantiating flowsView');
+        //    nmeta.flowsView = new nmeta.FlowsView({model: this.flows_collection,
+        //                                           flowsState: this.flowsState});
+        //} else {
             // Rebind events:
-            console.log('app rebinding flowsView events');
-            nmeta.flowsView.delegateEvents()
-        }
+        //    console.log('app rebinding flowsView events');
+        //    nmeta.flowsView.delegateEvents()
+        //}
+        
+        nmeta.flowsView = new nmeta.FlowsView({model: this.flows_collection,
+                                                 flowsState: this.flowsState});
+        this.registerView(nmeta.flowsView);
 
         // Fetch flows_collection as reset event (note: invokes render):
         console.log('app calling flows_collection fetch({reset: true})');
@@ -143,7 +171,10 @@ nmeta.Router = Backbone.Router.extend({
         nmeta.barsView.selectMenuItem('what-menu');
     },
 
+    //=========================================================================
+    // Display 'kit' page about networking equipment:
     kit: function (id) {
+        this.cleanUpViews();
         // Retrieve Controller Summary View via REST API:
         var controller_summary_model = new nmeta.ControllerSummaryModel();
         var self = this;
@@ -179,8 +210,10 @@ nmeta.Router = Backbone.Router.extend({
         nmeta.barsView.selectMenuItem('kit-menu');
     },
 
+    //=========================================================================
     // Display 'policy' page
     policy: function () {
+        this.cleanUpViews();
         if (!nmeta.policyView) {
             console.log('creating policy view');
             nmeta.policyView = new nmeta.PolicyView();
@@ -194,7 +227,10 @@ nmeta.Router = Backbone.Router.extend({
         nmeta.barsView.selectMenuItem('policy-menu');
     },
 
+    //=========================================================================
+    // Display the FlowDetails View:
     flowDetails: function (flow_hash) {
+        this.cleanUpViews();
         console.log('in router flowDetails flow_hash=' + flow_hash);
         // Instantiate flow details view if not already existing:
         if (!nmeta.flowDetailsView) {
@@ -245,14 +281,44 @@ nmeta.Router = Backbone.Router.extend({
         nmeta.barsView.selectMenuItem('what-menu');
     },
 
+    //=========================================================================
+    // Register a View as active so we can later clean it up:
+    registerView: function (view) {
+        // Holds array of current views:
+        console.log('running registerView');
+        this.currentViews.push(view)
+        console.log('...array length is now ' + this.currentViews.length);
+    },
+
+    //=========================================================================
+    // Clean up all current views:
+    cleanUpViews: function () {
+        console.log('running cleanUpViews number=' + this.currentViews.length);
+        this.currentViews.forEach(function (view){
+            if (view) {
+                console.log('...closing view');
+                view.close();
+            }
+            else {
+                console.log('...ERROR: could not find view to close');
+            }
+        });
+        this.currentViews = [];
+    },
+
 });
 
+//=============================================================================
 // HTML template names to load (it appends .html to load file from templates
 // directory)
 // Note: ensure the view name in the *_view.js file is identical i.e.:
-// "SwitchCountView" requires nmeta.SwitchCountView in switch_count_view.js
+//   "SwitchCountView" requires nmeta.SwitchCountView in switch_count_view.js
 $(document).on("ready", function () {
-    nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesView", "IdentityView", "FlowsView", "FlowView", "FlowDetailsView", "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView", "BarsView", "ControllerSummaryView", "SwitchesView", "SwitchView"],
+    nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesView",
+                "IdentityView", "FlowsView", "FlowView", "FlowDetailsView",
+                "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView",
+                "BarsView", "ControllerSummaryView", "SwitchesView",
+                "SwitchView"],
         function () {
             nmeta.router = new nmeta.Router();
             Backbone.history.start();

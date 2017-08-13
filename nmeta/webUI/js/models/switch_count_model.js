@@ -2,7 +2,7 @@
 nmeta.SwitchCountModel = Backbone.Model.extend({
     urlRoot:'/v1/infrastructure/switches/stats/connected_switches',
 
-    // Polling for changes
+    // Polling for changes:
     polling : false,
     intervalSeconds : 5,
 
@@ -29,7 +29,8 @@ nmeta.SwitchCountModel = Backbone.Model.extend({
 
     onFetch : function () {
         if( this.polling ){
-          setTimeout(this.executePolling, 1000 * this.intervalSeconds);
+            console.log('switch_count_model setting setTimeout for polling');
+            setTimeout(this.executePolling, 1000 * this.intervalSeconds);
         }
     }
 });

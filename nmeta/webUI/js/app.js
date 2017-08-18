@@ -6,12 +6,13 @@ var nmeta = {
 
     models: {},
 
+    // Loads views and templates:
     loadTemplates: function(views, callback) {
-        // Load template html files from template directory
         var deferreds = [];
         $.each(views, function(index, view) {
             console.log('loadTemplates index=' + index + ' view=' + view);
             if (nmeta[view]) {
+                // Load template html files from template directory:
                 deferreds.push($.get('templates/' + view + '.html', function(data) {
                     nmeta[view].prototype.template = _.template(data);
                 }, 'html'));
@@ -232,15 +233,37 @@ nmeta.Router = Backbone.Router.extend({
     //=========================================================================
     // Display 'policy' page
     policy: function () {
+        // Clean-up previous Views:
         this.cleanUpViews();
+
         if (!nmeta.policyView) {
             console.log('creating policy view');
             nmeta.policyView = new nmeta.PolicyView();
             nmeta.policyView.render();
         }
         this.$content.html(nmeta.policyView.el);
+
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        //################# TEMP ####################
+        //
+        // TEMP CHART TEST:
+
+        // Pane 2: Instantiate Controller Chart Model:
+        this.controller_chart_model = new nmeta.ControllerChartModel();
+
+        // Pane 2: Instantiate Controller Chart View:
+        nmeta.controllerChartView = new nmeta.ControllerChartView({model: this.controller_chart_model});
+        this.registerView(nmeta.controllerChartView);
+
+        // Pane 2: Fetch controller_chart_model as reset event (note: invokes render):
+        console.log('Fetching controller_chart_model');
+        this.controller_chart_model.fetch();
+
+        console.log('nmeta.controllerChartView.el');
+        this.$content2.html(nmeta.controllerChartView.el);
+
         // Empty unused content2 and content3 in the DOM:
-        this.$content2.empty();
+        // this.$content2.empty();
         this.$content3.empty()
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('policy-menu');
@@ -336,8 +359,8 @@ $(document).on("ready", function () {
     nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesView",
                 "IdentityView", "FlowsView", "FlowView", "FlowDetailsView",
                 "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView",
-                "BarsView", "ControllerSummaryView", "SwitchesView",
-                "SwitchView"],
+                "BarsView", "ControllerSummaryView", "ControllerChartView",
+                "SwitchesView", "SwitchView"],
         function () {
             nmeta.router = new nmeta.Router();
             Backbone.history.start();

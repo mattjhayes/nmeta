@@ -244,7 +244,7 @@ nmeta.Router = Backbone.Router.extend({
         this.$content.html(nmeta.policyView.el);
 
         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        //################# TEMP ####################
+        //############### EXPERIMENT ################
         //
         // TEMP CHART TEST:
 
@@ -262,9 +262,87 @@ nmeta.Router = Backbone.Router.extend({
         console.log('nmeta.controllerChartView.el');
         this.$content2.html(nmeta.controllerChartView.el);
 
+        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        //############### EXPERIMENT ################
+        //
+        // TEMP BACKGRID TEST:
+
+        // Define columns and cell types for Backgrid display:
+        var columns = [{
+            name: "timestamp", 
+            label: "Timestamp",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "src_location_logical",
+            label: "Src Location",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "src",
+            label: "Src",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "dst",
+            label: "Dst",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "proto",
+            label: "Proto",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "tp_src",
+            label: "TP Src",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "tp_dst",
+            label: "TP Dst",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "classification",
+            label: "Classification",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "actions",
+            label: "Actions",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "data_sent",
+            label: "Sent",
+            editable: false,
+            cell: "string"
+          }, {
+            name: "data_received",
+            label: "Received",
+            editable: false,
+            cell: "string"
+          }];
+
+        // Initialize a new Grid instance
+        var grid = new Backgrid.Grid({
+          columns: columns,
+          collection: this.flows_collection
+        });
+
+        // Render the grid and attach the root to your HTML document
+        this.$content3.append(grid.render().el);
+        //$("#example-1-result").append(grid.render().el);
+
+        // Fetch some countries from the url
+        this.flows_collection.fetch({reset: true});
+
+
+
         // Empty unused content2 and content3 in the DOM:
         // this.$content2.empty();
-        this.$content3.empty()
+        // this.$content3.empty()
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('policy-menu');
     },

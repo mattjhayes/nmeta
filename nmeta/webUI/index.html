@@ -10,7 +10,8 @@
             crossorigin="anonymous">
     <!-- Backgrid for tables CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/backgrid.js/0.3.8/backgrid.min.css" integrity="sha256-XCeOP8VH+7abDBSg+s5SdQC7BcytGH03hWBtyfHUJDM=" crossorigin="anonymous" />
-    
+    <link rel="stylesheet" href="js/libs/backgrid-paginator.css">
+    <link rel="stylesheet" href="js/libs/backgrid-filter.css">
 </head>
 
 <body>
@@ -40,8 +41,11 @@
 <!-- ChartJS for charts-->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.bundle.min.js" integrity="sha256-VNbX9NjQNRW+Bk02G/RO6WiTKuhncWI4Ey7LkSbE+5s=" crossorigin="anonymous"></script>
 
-<!-- Backgrid for tables -->
+<!-- Backgrid, Paginator and Filter for tables -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/backgrid.js/0.3.8/backgrid.min.js" integrity="sha256-Qm0i3gM+f99MFQ/GPmJX4EOD5egx5MF5VU6R0nY3+20=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.paginator/2.0.5/backbone.paginator.min.js" integrity="sha256-nqCLeI27BiuRxhJEcsKPwUpTusAzME+5qFOWntHhAvw=" crossorigin="anonymous"></script>
+<script src="js/libs/backgrid-paginator.js"></script>
+<script src="js/libs/backgrid-filter.js"></script>
 
 <!-- App -->
 <script src="js/app.js"></script>
@@ -53,6 +57,7 @@
 <script src="js/views/identities_view.js"></script>
 <script src="js/views/identity_view.js"></script>
 <script src="js/views/flows_view.js"></script>
+<script src="js/views/flows_backgrid_view.js"></script>
 <script src="js/views/flow_view.js"></script>
 <script src="js/views/flow_details_view.js"></script>
 <script src="js/views/flow_detail_view.js"></script>
@@ -68,6 +73,7 @@
 <script src="js/models/switch_count_model.js"></script>
 <script src="js/models/identities_model.js"></script>
 <script src="js/models/flows_model.js"></script>
+<script src="js/models/flows_backgrid_model.js"></script>
 <script src="js/models/flow_details_model.js"></script>
 <script src="js/models/flow_mods_model.js"></script>
 <script src="js/models/controller_summary_model.js"></script>

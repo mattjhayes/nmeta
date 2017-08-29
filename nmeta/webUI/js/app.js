@@ -267,78 +267,23 @@ nmeta.Router = Backbone.Router.extend({
         //
         // TEMP BACKGRID TEST:
 
-        // Define columns and cell types for Backgrid display:
-        var columns = [{
-            name: "timestamp", 
-            label: "Timestamp",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "src_location_logical",
-            label: "Src Location",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "src",
-            label: "Src",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "dst",
-            label: "Dst",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "proto",
-            label: "Proto",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "tp_src",
-            label: "TP Src",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "tp_dst",
-            label: "TP Dst",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "classification",
-            label: "Classification",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "actions",
-            label: "Actions",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "data_sent",
-            label: "Sent",
-            editable: false,
-            cell: "string"
-          }, {
-            name: "data_received",
-            label: "Received",
-            editable: false,
-            cell: "string"
-          }];
+        // **************************** NEW *******************************
+        // Pane 3: Instantiate Flows BackGrid Collection:
+        this.flows_pageable_collection = new nmeta.FlowsPageableCollection();
 
-        // Initialize a new Grid instance
-        var grid = new Backgrid.Grid({
-          columns: columns,
-          collection: this.flows_collection
-        });
+        // Pane 3: Create Flows BackGrid View:
+        nmeta.flowsBackgridView = new nmeta.FlowsBackGridView({model: this.flows_pageable_collection});
+        this.registerView(nmeta.flowsBackgridView);
 
-        // Render the grid and attach the root to your HTML document
-        this.$content3.append(grid.render().el);
-        //$("#example-1-result").append(grid.render().el);
+        // Pane 3: Fetch data causing a render:
+        console.log('fetching flows_pageable_collection');
+        this.flows_pageable_collection.fetch({reset: true});
 
-        // Fetch some countries from the url
-        this.flows_collection.fetch({reset: true});
+        // Pane 3: Publish result into DOM against id="content3":
+        this.$content3.html(nmeta.flowsBackgridView.el);
 
-
+// Add some space to the filter and move it to the right
+//$(filter.el).css({float: "right", margin: "20px"});
 
         // Empty unused content2 and content3 in the DOM:
         // this.$content2.empty();

@@ -282,6 +282,17 @@ nmeta.Router = Backbone.Router.extend({
         // Pane 3: Publish result into DOM against id="content3":
         this.$content3.html(nmeta.flowsBackgridView.el);
 
+        // Initialise a client-side filter to filter on the client
+        // mode pageable collection's cache:
+        this.filter = new Backgrid.Extension.ClientSideFilter({
+            collection: this.flows_pageable_collection,
+            fields: ['src_location_logical', 'src', 'dst']
+        });
+
+        // Render the filter
+        this.$content3.before(this.filter.render().el);
+
+
 // Add some space to the filter and move it to the right
 //$(filter.el).css({float: "right", margin: "20px"});
 

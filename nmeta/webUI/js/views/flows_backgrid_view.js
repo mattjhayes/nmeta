@@ -5,7 +5,19 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
             name: "timestamp", 
             label: "Timestamp",
             editable: false,
-            cell: "string"
+            // Extend UriCell to have timestamp custom link to flow_hash value:
+            cell: Backgrid.UriCell.extend({
+                render: function () {
+                    this.$el.empty();
+                    var formattedValue = this.formatter.fromRaw(this.model.get('timestamp'), this.model);
+                    this.$el.append($("<a>", {
+                        href: "#flowDetails/" + this.model.get('flow_hash'),
+                        title: 'click for flow details'
+                    }).text(formattedValue));
+                    this.delegateEvents();
+                    return this;
+                }
+            }),
           }, {
             name: "src_location_logical",
             label: "Src Location",
@@ -59,12 +71,6 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
           }];
         // Set up a grid to use the pageable collection
         this.pageableGrid = new Backgrid.Grid({
-          //columns: [{
-            // enable the select-all extension
-            //name: "",
-            //cell: "select-row",
-            //headerCell: "select-all"
-          //}].concat(columns),
           columns: columns,
           collection: this.model
         });
@@ -72,13 +78,6 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
         // Initialise the paginator
         this.paginator = new Backgrid.Extension.Paginator({
             collection: this.model
-        });
-
-        // Initialise a client-side filter to filter on the client
-        // mode pageable collection's cache:
-        this.filter = new Backgrid.Extension.ClientSideFilter({
-            collection: this.model,
-            fields: ['src_location_logical', 'src', 'dst']
         });
 
         this.model.on("reset", this.render, this);
@@ -100,9 +99,6 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
 
         // Render the paginator:
         this.$el.after(this.paginator.render().el);
-
-        // Render the filter
-        this.$el.before(this.filter.render().el);
 
         return this;
     },

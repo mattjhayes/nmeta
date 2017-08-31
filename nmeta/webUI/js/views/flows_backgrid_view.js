@@ -1,6 +1,7 @@
 nmeta.FlowsBackGridView = Backbone.View.extend({
 
     initialize:function (options) {
+        // Specify columns that will be displayed in Backgrid:
         var columns = [{
             name: "timestamp", 
             label: "Timestamp",
@@ -69,7 +70,7 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
             editable: false,
             cell: "string"
           }];
-        // Set up a grid to use the pageable collection
+        // Set up a Backgrid grid to use the pageable collection
         this.pageableGrid = new Backgrid.Grid({
           columns: columns,
           collection: this.model
@@ -80,7 +81,12 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
             collection: this.model
         });
 
-        this.model.on("reset", this.render, this);
+        // Display a loading indication whenever the Collection is fetching.
+        this.model.on("request", function() {
+            this.$el.html("Loading...");
+        }, this);
+
+        this.model.on('reset', this.render, this);
         this.model.on('change', this.render, this);
 
     },
@@ -90,9 +96,6 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
 
         // Start with empty el:
         this.$el.empty();
-
-        // Apply FlowsView.html template:
-        // this.$el.html(this.template());
 
         // Render the grid:
         this.$el.append(this.pageableGrid.render().el)

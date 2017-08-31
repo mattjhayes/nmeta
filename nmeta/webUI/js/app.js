@@ -81,6 +81,7 @@ nmeta.Router = Backbone.Router.extend({
         this.$content = $("#content");
         this.$content2 = $("#content2");
         this.$content3 = $("#content3");
+        this.$content3b = $("#content3b");
 
         // Array for storing current views for later clean-up:
         this.currentViews = [];
@@ -271,26 +272,21 @@ nmeta.Router = Backbone.Router.extend({
         // Pane 3: Instantiate Flows BackGrid Collection:
         this.flows_pageable_collection = new nmeta.FlowsPageableCollection();
 
-        // Pane 3: Create Flows BackGrid View:
+        // Pane 3: Create Flows Filter and BackGrid Views:
+        nmeta.flowsFilterView = new nmeta.FlowsFilterView({model: this.flows_pageable_collection});
+        this.registerView(nmeta.flowsFilterView);
         nmeta.flowsBackgridView = new nmeta.FlowsBackGridView({model: this.flows_pageable_collection});
         this.registerView(nmeta.flowsBackgridView);
 
+        // Pane 3: Append filter view:
+        nmeta.flowsFilterView.render();
+
         // Pane 3: Fetch data causing a render:
-        console.log('fetching flows_pageable_collection');
         this.flows_pageable_collection.fetch({reset: true});
 
         // Pane 3: Publish result into DOM against id="content3":
-        this.$content3.html(nmeta.flowsBackgridView.el);
-
-        // Initialise a client-side filter to filter on the client
-        // mode pageable collection's cache:
-        this.filter = new Backgrid.Extension.ClientSideFilter({
-            collection: this.flows_pageable_collection,
-            fields: ['src_location_logical', 'src', 'dst']
-        });
-
-        // Render the filter
-        this.$content3.before(this.filter.render().el);
+        this.$content3.html(nmeta.flowsFilterView.el);
+        this.$content3b.html(nmeta.flowsBackgridView.el);
 
 
 // Add some space to the filter and move it to the right
@@ -380,6 +376,11 @@ nmeta.Router = Backbone.Router.extend({
             }
         });
         this.currentViews = [];
+        // Empty content in the DOM:
+        this.$content.empty();
+        this.$content2.empty();
+        this.$content3.empty();
+        //this.$el.empty();
     },
 
 });
@@ -391,7 +392,7 @@ nmeta.Router = Backbone.Router.extend({
 //   "SwitchCountView" requires nmeta.SwitchCountView in switch_count_view.js
 $(document).on("ready", function () {
     nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesView",
-                "IdentityView", "FlowsView", "FlowView", "FlowDetailsView",
+                "IdentityView", "FlowsView", "FlowsFilterView", "FlowView", "FlowDetailsView",
                 "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView",
                 "BarsView", "ControllerSummaryView", "ControllerChartView",
                 "SwitchesView", "SwitchView"],

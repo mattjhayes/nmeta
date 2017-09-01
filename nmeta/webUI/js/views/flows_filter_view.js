@@ -10,6 +10,9 @@ nmeta.FlowsFilterView = Backbone.View.extend({
             // Display grey text in the filter bar to encourage use:
             placeholder: "Filter the flows"
         });
+        
+        // Event to reapply search filter after collection refresh:
+        this.model.on("sync", this.reSearch, this);
     },
 
     events: {
@@ -29,8 +32,12 @@ nmeta.FlowsFilterView = Backbone.View.extend({
 
     refreshFlows:function () {
         // Fetch flows_collection, sending as reset event:
-        console.log('FlowsFilterView refreshFlows calling fetch() as reset');
-        this.model.fetch({reset: true})
+        this.model.fetch({reset: true});
+    },
+
+    reSearch:function () {
+        // Reapply the search filter to the collection after a fetch:
+        this.filter.search();
     },
 
 });

@@ -1,4 +1,4 @@
-nmeta.FlowsFilterView = Backbone.View.extend({
+nmeta.IdentitiesFilterView = Backbone.View.extend({
 
     initialize:function (options) {
         // Initialise a client-side filter to filter on the client
@@ -6,10 +6,11 @@ nmeta.FlowsFilterView = Backbone.View.extend({
         this.filter = new Backgrid.Extension.ClientSideFilter({
             collection: this.model,
             // Names of columns that are searched for filtering:
-            fields: ['src_location_logical', 'src', 'dst', 'proto', 'tp_src',
-                        'tp_dst', 'classification', 'actions'],
+            fields: ['harvest_type', 'host_name', 'service_name', 
+                        'mac_address', 'ip_address'],
+
             // Display grey text in the filter bar to encourage use:
-            placeholder: "Filter the flows"
+            placeholder: "Filter the identities"
         });
         
         // Event to reapply search filter after collection refresh:
@@ -17,13 +18,13 @@ nmeta.FlowsFilterView = Backbone.View.extend({
     },
 
     events: {
-        // Bind refreshFlows click to function:
-        'click .refreshFlows': 'refreshFlows'
+        // Bind refreshIdentities click to function:
+        'click .refreshIdentities': 'refreshIdentities'
     },
 
     render:function () {
-        console.log('FlowsFilterView render function');
-        // Apply FlowsFilterView.html template:
+        console.log('IdentitiesFilterView render function');
+        // Apply IdentitiesFilterView.html template:
         this.$el.html(this.template());
         
         // Append rendered filter view to el id="filter":
@@ -31,8 +32,8 @@ nmeta.FlowsFilterView = Backbone.View.extend({
         return this;
     },
 
-    refreshFlows:function () {
-        // Fetch flows_collection, sending as reset event:
+    refreshIdentities:function () {
+        // Fetch identities_collection, sending as reset event:
         this.model.fetch({reset: true});
     },
 

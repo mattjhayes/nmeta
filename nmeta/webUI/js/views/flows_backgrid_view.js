@@ -76,10 +76,6 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
           collection: this.model
         });
 
-        // Initialise the paginator
-        this.paginator = new Backgrid.Extension.Paginator({
-            collection: this.model
-        });
 
         // Display a loading indication whenever the Collection is fetching.
         this.model.on("request", function() {
@@ -99,9 +95,6 @@ nmeta.FlowsBackGridView = Backbone.View.extend({
 
         // Render the grid:
         this.$el.append(this.pageableGrid.render().el)
-
-        // Render the paginator:
-        this.$el.after(this.paginator.render().el);
 
         return this;
     },

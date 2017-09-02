@@ -6,7 +6,7 @@ var nmeta = {
 
     models: {},
 
-    // Loads views and templates:
+    // Loads HTML templates and binds them to Views:
     loadTemplates: function(views, callback) {
         var deferreds = [];
         $.each(views, function(index, view) {
@@ -23,7 +23,6 @@ var nmeta = {
         console.log('deferreds=' + deferreds)
         $.when.apply(null, deferreds).done(callback);
     }
-
 };
 
 //=============================================================================
@@ -42,25 +41,18 @@ Backbone.View.prototype.close = function() {
 nmeta.Router = Backbone.Router.extend({
 
     routes: {
-        "":               "home",
-        "who":            "who",
-        "what":           "what",
-        "kit":            "kit",
-        "policy":         "policy",
-        "flowDetails/:flow_hash":    "flowDetails",
-        "switch/:dpid":   "switch"
+        "":                        "home",
+        "who":                     "who",
+        "what":                    "what",
+        "kit":                     "kit",
+        "policy":                  "policy",
+        "flowDetails/:flow_hash":  "flowDetails",
+        "switch/:dpid":            "switch"
     },
 
     //=========================================================================
     // Display nav bar and set up rest of page
     initialize: function () {
-        // Instantiate Flows Collection:
-        console.log('instantiating flows_collection');
-        this.flows_collection = new nmeta.FlowsCollection();
-
-        // Instantiate model to hold UI states for Flows View:
-        this.flowsState = new Backbone.Model();
-
         // Instantiate Flow Details Collection:
         console.log('instantiating flowDetailsCollection');
         this.flowDetailsCollection = new nmeta.FlowDetailsCollection();
@@ -78,10 +70,21 @@ nmeta.Router = Backbone.Router.extend({
             $('.dropdown').removeClass("open");
         });
         // Variables linking to HTML content ids
-        this.$content = $("#content");
-        this.$content2 = $("#content2");
-        this.$content3 = $("#content3");
+        this.$content1a = $("#content1a");
+        this.$content1b = $("#content1b");
+        this.$content1c = $("#content1c");
+        this.$content2a = $("#content2a");
+        this.$content2b = $("#content2b");
+        this.$content2c = $("#content2c");
+        this.$content3a = $("#content3a");
         this.$content3b = $("#content3b");
+        this.$content3c = $("#content3c");
+        this.$content4a = $("#content4a");
+        this.$content4b = $("#content4b");
+        this.$content4c = $("#content4c");
+        this.$content5a = $("#content5a");
+        this.$content5b = $("#content5b");
+        this.$content5c = $("#content5c");
 
         // Array for storing current views for later clean-up:
         this.currentViews = [];
@@ -90,31 +93,28 @@ nmeta.Router = Backbone.Router.extend({
     //=========================================================================
     // Display 'home' page
     home: function () {
-        // Pane 1: Clean-up then create View:
+        // Pane 1a: Clean-up then create View:
         this.cleanUpViews();
         nmeta.homelView = new nmeta.HomeView();
         this.registerView(nmeta.homelView);
         
-        // Pane 1: Render View:
+        // Pane 1a: Render View:
         nmeta.homelView.render();
-        this.$content.html(nmeta.homelView.el);
+        this.$content1a.html(nmeta.homelView.el);
 
-        // Pane 2: Instantiate switch count Model
+        // Pane 2a: Instantiate switch count Model
         this.switch_count_model = new nmeta.SwitchCountModel();
 
-        // Pane 2: Instantiate switch count View:
+        // Pane 2a: Instantiate switch count View:
         nmeta.switchCountView = new nmeta.SwitchCountView({model: this.switch_count_model});
         this.registerView(nmeta.switchCountView);
 
-        // Pane 2: Fetch switch_count_model as reset event (note: invokes render):
+        // Pane 2a: Fetch switch_count_model as reset event (note: invokes render):
         console.log('Fetching switch_count_model');
         this.switch_count_model.fetch({reset: true})
 
-        // Pane 2: Publish result into DOM against id="content2":
-        this.$content2.html(nmeta.switchCountView.el);
-
-        // Pane 3: Empty unused content3 in the DOM:
-        this.$content3.empty();
+        // Pane 2a: Publish result into DOM against id="content2a":
+        this.$content2a.html(nmeta.switchCountView.el);
 
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('home-menu');
@@ -126,25 +126,40 @@ nmeta.Router = Backbone.Router.extend({
         // Clean-up previous Views:
         this.cleanUpViews();
 
-        // Pane 1: Instantiate Identities Collection:
-        this.identities_collection = new nmeta.IdentitiesCollection();
+        // Backgrid Filter, Grid and Paginator of Flows:
 
-        // Pane 1: Create Identities View:
-        nmeta.identitiesView = new nmeta.IdentitiesView({model: this.identities_collection});
-        this.registerView(nmeta.identitiesView);
+        // Pane 1a: Instantiate Identities BackGrid Collection:
+        this.identities_pageable_collection = new nmeta.IdentitiesPageableCollection();
 
-        // Pane 1: Fetch identities_collection as reset event (note: invokes render):
-        console.log('Fetching identities_collection');
-        this.identities_collection.fetch({reset: true})
+        // Pane 1a: Create Identities Filter View:
+        nmeta.identitiesFilterView = new nmeta.IdentitiesFilterView({model: this.identities_pageable_collection});
+        this.registerView(nmeta.identitiesFilterView);
 
-        // Pane 1: Publish result into DOM against id="content":
-        this.$content.html(nmeta.identitiesView.el);
+        // Pane 2a: Create BackGrid View:
+        nmeta.identitiesBackgridView = new nmeta.IdentitiesBackGridView({model: this.identities_pageable_collection});
+        this.registerView(nmeta.identitiesBackgridView);
 
-        // Pane 2: Empty unused content2 in the DOM:
-        this.$content2.empty();
+        // Pane 1a: Render filter view:
+        nmeta.identitiesFilterView.render();
+
+        // Pane 1a & 2a: Fetch data causing a render:
+        this.identities_pageable_collection.fetch({reset: true});
+
+        // Pane 1a: Publish result into DOM against id="content1a":
+        this.$content1a.html(nmeta.identitiesFilterView.el);
         
-        // Pane 3: Empty unused content3 in the DOM:
-        this.$content3.empty();
+        // Pane 2a: Publish result into DOM against id="content2a":
+        this.$content2a.html(nmeta.identitiesBackgridView.el);
+
+        // Pane 3a: Create BackGrid Paginator View:
+        nmeta.identitiesPaginatorView = new nmeta.IdentitiesPaginatorView({model: this.identities_pageable_collection});
+        this.registerView(nmeta.identitiesPaginatorView);
+
+        // Pane 3a: Render paginator view:
+        nmeta.identitiesPaginatorView.render();
+        
+        // Pane 3a: Publish result into DOM against id="content3a":
+        this.$content3a.html(nmeta.identitiesPaginatorView.el);
 
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('who-menu');
@@ -156,24 +171,40 @@ nmeta.Router = Backbone.Router.extend({
         // Clean-up previous Views:
         this.cleanUpViews();
 
-        // Pane 1: Create Flows View:
-        nmeta.flowsView = new nmeta.FlowsView({model: this.flows_collection,
-                                                 flowsState: this.flowsState});
-        this.registerView(nmeta.flowsView);
+        // Backgrid Filter, Grid and Paginator of Flows:
 
-        // Pane 1: Fetch flows_collection (created previously in router
-        //  initialize) as reset event (note: invokes render):
-        console.log('fetching flows_collection');
-        this.flows_collection.fetch({reset: true})
+        // Pane 1a: Instantiate Flows BackGrid Collection:
+        this.flows_pageable_collection = new nmeta.FlowsPageableCollection();
 
-        // Pane 1: Publish result into DOM against id="content":
-        this.$content.html(nmeta.flowsView.el);
+        // Pane 1a: Create Flows Filter View:
+        nmeta.flowsFilterView = new nmeta.FlowsFilterView({model: this.flows_pageable_collection});
+        this.registerView(nmeta.flowsFilterView);
 
-        // Pane 2: Empty unused content2 in the DOM:
-        this.$content2.empty();
+        // Pane 2a: Create BackGrid View:
+        nmeta.flowsBackgridView = new nmeta.FlowsBackGridView({model: this.flows_pageable_collection});
+        this.registerView(nmeta.flowsBackgridView);
+
+        // Pane 1a: Render filter view:
+        nmeta.flowsFilterView.render();
+
+        // Pane 1a & 2a: Fetch data causing a render:
+        this.flows_pageable_collection.fetch({reset: true});
+
+        // Pane 1a: Publish result into DOM against id="content1a":
+        this.$content1a.html(nmeta.flowsFilterView.el);
         
-        // Pane 3: Empty unused content3 in the DOM:
-        this.$content3.empty();
+        // Pane 2a: Publish result into DOM against id="content2a":
+        this.$content2a.html(nmeta.flowsBackgridView.el);
+
+        // Pane 3a: Create BackGrid Paginator View:
+        nmeta.flowsPaginatorView = new nmeta.FlowsPaginatorView({model: this.flows_pageable_collection});
+        this.registerView(nmeta.flowsPaginatorView);
+
+        // Pane 3a: Render paginator view:
+        nmeta.flowsPaginatorView.render();
+        
+        // Pane 3a: Publish result into DOM against id="content3a":
+        this.$content3a.html(nmeta.flowsPaginatorView.el);
 
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('what-menu');
@@ -185,47 +216,47 @@ nmeta.Router = Backbone.Router.extend({
         // Clean-up previous Views:
         this.cleanUpViews();
 
-        // Pane 1: Instantiate Controller Summary Model:
+        // Pane 1a: Instantiate Controller Summary Model:
         this.controller_summary_model = new nmeta.ControllerSummaryModel();
 
-        // Pane 1: Instantiate Controller Summary View:
+        // Pane 1a: Instantiate Controller Summary View:
         nmeta.controllerSummaryView = new nmeta.ControllerSummaryView({model: this.controller_summary_model});
         this.registerView(nmeta.controllerSummaryView);
 
-        // Pane 1: Fetch controller_summary_model as reset event (note: invokes render):
+        // Pane 1a: Fetch controller_summary_model as reset event (note: invokes render):
         console.log('Fetching controller_summary_model');
         this.controller_summary_model.fetch({reset: true});
 
-        // Pane 1: Publish result into DOM against id="content":
-        this.$content.html(nmeta.controllerSummaryView.el);
+        // Pane 1a: Publish result into DOM against id="content1a":
+        this.$content1a.html(nmeta.controllerSummaryView.el);
 
-        // Pane 2: Instantiate switch count Model
+        // Pane 2a: Instantiate switch count Model
         this.switch_count_model = new nmeta.SwitchCountModel();
 
-        // Pane 2: Instantiate switch count View:
+        // Pane 2a: Instantiate switch count View:
         nmeta.switchCountView = new nmeta.SwitchCountView({model: this.switch_count_model});
         this.registerView(nmeta.switchCountView);
 
-        // Pane 2: Fetch switch_count_model as reset event (note: invokes render):
+        // Pane 2a: Fetch switch_count_model as reset event (note: invokes render):
         console.log('Fetching switch_count_model');
         this.switch_count_model.fetch({reset: true})
 
-        // Pane 2: Publish result into DOM against id="content2":
-        this.$content2.html(nmeta.switchCountView.el);
+        // Pane 2a: Publish result into DOM against id="content2a":
+        this.$content2a.html(nmeta.switchCountView.el);
 
-        // Pane 3: Instantiate Switches Collection:
+        // Pane 3a: Instantiate Switches Collection:
         this.switches_collection = new nmeta.SwitchesCollection();
 
-        // Pane 3: Create Switches View:
+        // Pane 3a: Create Switches View:
         nmeta.switchesView = new nmeta.SwitchesView({model: this.switches_collection});
         this.registerView(nmeta.switchesView);
 
-        // Pane 3: Fetch switches_collection as reset event (note: invokes render):
+        // Pane 3a: Fetch switches_collection as reset event (note: invokes render):
         console.log('Fetching switches_collection');
         this.switches_collection.fetch({reset: true})
 
-        // Pane 3: Publish result into DOM against id="content3":
-        this.$content3.html(nmeta.switchesView.el);
+        // Pane 3a: Publish result into DOM against id="content3a":
+        this.$content3a.html(nmeta.switchesView.el);
 
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('kit-menu');
@@ -242,59 +273,27 @@ nmeta.Router = Backbone.Router.extend({
             nmeta.policyView = new nmeta.PolicyView();
             nmeta.policyView.render();
         }
-        this.$content.html(nmeta.policyView.el);
+        this.$content1a.html(nmeta.policyView.el);
 
         //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
         //############### EXPERIMENT ################
         //
         // TEMP CHART TEST:
 
-        // Pane 2: Instantiate Controller Chart Model:
+        // Pane 2a: Instantiate Controller Chart Model:
         this.controller_chart_model = new nmeta.ControllerChartModel();
 
-        // Pane 2: Instantiate Controller Chart View:
+        // Pane 2a: Instantiate Controller Chart View:
         nmeta.controllerChartView = new nmeta.ControllerChartView({model: this.controller_chart_model});
         this.registerView(nmeta.controllerChartView);
 
-        // Pane 2: Fetch controller_chart_model as reset event (note: invokes render):
+        // Pane 2a: Fetch controller_chart_model as reset event (note: invokes render):
         console.log('Fetching controller_chart_model');
         this.controller_chart_model.fetch();
 
         console.log('nmeta.controllerChartView.el');
-        this.$content2.html(nmeta.controllerChartView.el);
+        this.$content2a.html(nmeta.controllerChartView.el);
 
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        //############### EXPERIMENT ################
-        //
-        // TEMP BACKGRID TEST:
-
-        // **************************** NEW *******************************
-        // Pane 3: Instantiate Flows BackGrid Collection:
-        this.flows_pageable_collection = new nmeta.FlowsPageableCollection();
-
-        // Pane 3: Create Flows Filter and BackGrid Views:
-        nmeta.flowsFilterView = new nmeta.FlowsFilterView({model: this.flows_pageable_collection});
-        this.registerView(nmeta.flowsFilterView);
-        nmeta.flowsBackgridView = new nmeta.FlowsBackGridView({model: this.flows_pageable_collection});
-        this.registerView(nmeta.flowsBackgridView);
-
-        // Pane 3: Append filter view:
-        nmeta.flowsFilterView.render();
-
-        // Pane 3: Fetch data causing a render:
-        this.flows_pageable_collection.fetch({reset: true});
-
-        // Pane 3: Publish result into DOM against id="content3":
-        this.$content3.html(nmeta.flowsFilterView.el);
-        this.$content3b.html(nmeta.flowsBackgridView.el);
-
-
-// Add some space to the filter and move it to the right
-//$(filter.el).css({float: "right", margin: "20px"});
-
-        // Empty unused content2 and content3 in the DOM:
-        // this.$content2.empty();
-        // this.$content3.empty()
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('policy-menu');
     },
@@ -304,49 +303,34 @@ nmeta.Router = Backbone.Router.extend({
     flowDetails: function (flow_hash) {
         this.cleanUpViews();
         console.log('in router flowDetails flow_hash=' + flow_hash);
-        // Instantiate flow details view if not already existing:
-        if (!nmeta.flowDetailsView) {
-            // Instantiate flowDetailsView:
-            console.log('app instantiating flowDetailsView');
-            nmeta.flowDetailsView = new nmeta.FlowDetailsView({model: this.flowDetailsCollection});
-        } else {
-            // Rebind events:
-            console.log('app rebinding flowDetailsView events');
-            nmeta.flowDetailsView.delegateEvents()
-        }
 
-        // Fetch flow_details_model as reset event (note: invokes render):
+        // Pane 1a: Instantiate flowDetailsView:
+        console.log('app instantiating flowDetailsView');
+        nmeta.flowDetailsView = new nmeta.FlowDetailsView({model: this.flowDetailsCollection});
+        this.registerView(nmeta.flowDetailsView);
+
+        // Pane 1a: Fetch flow_details_model as reset event (note: invokes render):
         console.log('app calling flowDetailsCollection fetch({reset: true})');
         var where_query = '{\"flow_hash\":\"' + flow_hash + '\"}'
         console.log('where_query=' + where_query);
         this.flowDetailsCollection.fetch({reset: true, data: $.param({ where: where_query})})
 
-        // Publish result into DOM against id="content":
-        this.$content.html(nmeta.flowDetailsView.el);
+        // Pane 1a: Publish result into DOM against id="content1a":
+        this.$content1a.html(nmeta.flowDetailsView.el);
 
-        //---------------------------------------------------------------------
-        // Instantiate flow mods view if not already existing:
-        if (!nmeta.flowModsView) {
-            // Instantiate flowModsView:
-            console.log('app instantiating flowModsView');
-            nmeta.flowModsView = new nmeta.FlowModsView({model: this.flowModsCollection});
-        } else {
-            // Rebind events:
-            console.log('app rebinding flowModsView events');
-            nmeta.flowModsView.delegateEvents()
-        }
+        // Pane 2a: Instantiate flowModsView:
+        console.log('app instantiating flowModsView');
+        nmeta.flowModsView = new nmeta.FlowModsView({model: this.flowModsCollection});
+        this.registerView(nmeta.flowModsView);
 
-        // Fetch flow_mods_model as reset event (note: invokes render):
+        // Pane 2a: Fetch flow_mods_model as reset event (note: invokes render):
         console.log('app calling flowModsCollection fetch({reset: true})');
         var where_query = '{\"flow_hash\":\"' + flow_hash + '\"}'
         console.log('where_query=' + where_query);
         this.flowModsCollection.fetch({reset: true, data: $.param({ where: where_query})})
 
-        // Publish result into DOM against id="content2":
-        this.$content2.html(nmeta.flowModsView.el);
-
-        // Empty unused content3 in the DOM:
-        this.$content3.empty()
+        // Pane 2a: Publish result into DOM against id="content2a":
+        this.$content2a.html(nmeta.flowModsView.el);
 
         //---------------------------------------------------------------------
         // Update top menu bar:
@@ -376,13 +360,7 @@ nmeta.Router = Backbone.Router.extend({
             }
         });
         this.currentViews = [];
-        // Empty content in the DOM:
-        this.$content.empty();
-        this.$content2.empty();
-        this.$content3.empty();
-        //this.$el.empty();
     },
-
 });
 
 //=============================================================================
@@ -391,8 +369,8 @@ nmeta.Router = Backbone.Router.extend({
 // Note: ensure the view name in the *_view.js file is identical i.e.:
 //   "SwitchCountView" requires nmeta.SwitchCountView in switch_count_view.js
 $(document).on("ready", function () {
-    nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesView",
-                "IdentityView", "FlowsView", "FlowsFilterView", "FlowView", "FlowDetailsView",
+    nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesFilterView",
+                "FlowsFilterView", "FlowDetailsView",
                 "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView",
                 "BarsView", "ControllerSummaryView", "ControllerChartView",
                 "SwitchesView", "SwitchView"],

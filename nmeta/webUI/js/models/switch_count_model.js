@@ -7,7 +7,6 @@ nmeta.SwitchCountModel = Backbone.Model.extend({
     intervalSeconds : 5,
 
     initialize : function(){
-        //_.bindAll(this, _.functions(this));
         _.bindAll.apply(_, [this].concat(_.functions(this)));
     },
 

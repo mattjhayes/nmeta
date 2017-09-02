@@ -1,13 +1,19 @@
 //-------- Model for an individual flow:
-nmeta.FlowModel = Backbone.Model.extend({
+nmeta.FlowPageableModel = Backbone.Model.extend({
     });
 
 //-------- Collection of Flow models:
-nmeta.FlowsCollection = Backbone.Collection.extend({
+nmeta.FlowsPageableCollection = Backbone.PageableCollection.extend({
 
-    model:nmeta.FlowModel,
+    model:nmeta.FlowPageableModel,
 
     url:'/v1/flows/ui',
+
+    state: {
+        pageSize: 15
+    },
+
+    mode: "client",
 
     parse:function (response) {
         // Uncomment this for debug of response:

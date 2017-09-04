@@ -63,7 +63,7 @@ PACKET_TIME_PERIOD = 10
 
 #*** Used for WebUI:
 FLOW_SEARCH_LIMIT = 600
-FLOW_RESULT_LIMIT = 25
+FLOW_RESULT_LIMIT = 100
 #*** FlowUI attributes to match against for different filter types
 FLOW_FILTER_ANY = ['src', 'src_hover', 'dst', 'dst_hover', 'proto',
                             'proto_hover']
@@ -301,6 +301,7 @@ class ExternalAPI(BaseClass):
         results = self.get_pi_time()
         if results:
             #*** Set values in API response:
+            items['timestamp'] = results['timestamp']
             items['ryu_time_max'] = results['ryu_time_max']
             items['ryu_time_min'] = results['ryu_time_min']
             items['ryu_time_avg'] = results['ryu_time_avg']
@@ -333,6 +334,7 @@ class ExternalAPI(BaseClass):
         results = self.get_pi_time()
         if results:
             #*** Set values in API response:
+            items['timestamp'] = results['timestamp']
             items['ryu_time_max'] = round(results['ryu_time_max'], places)
             items['ryu_time_min'] = round(results['ryu_time_min'], places)
             items['ryu_time_avg'] = round(results['ryu_time_avg'], places)
@@ -344,6 +346,7 @@ class ExternalAPI(BaseClass):
             items['pi_time_period'] = results['pi_time_period']
             items['pi_time_records'] = results['pi_time_records']
         else:
+            items['timestamp'] = 'unknown'
             items['ryu_time_max'] = 'unknown'
             items['ryu_time_min'] = 'unknown'
             items['ryu_time_avg'] = 'unknown'
@@ -796,7 +799,7 @@ class ExternalAPI(BaseClass):
         #*** Set default result values for certain keys:
         result = dict.fromkeys(['ryu_time_max', 'ryu_time_min', 'ryu_time_avg',
                     'ryu_time_records', 'pi_time_max', 'pi_time_min',
-                    'pi_time_avg', 'pi_time_records'], 0)
+                    'pi_time_avg', 'pi_time_records', 'timestamp'], 0)
         result['ryu_time_period'] = PACKET_TIME_PERIOD
         result['pi_time_period'] = PACKET_TIME_PERIOD
         db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
@@ -804,6 +807,8 @@ class ExternalAPI(BaseClass):
         pi_time_cursor = self.db_pi_time.find(db_data).sort('timestamp', -1)
         ryu_time_list = []
         pi_time_list = []
+        #*** Timestamp:
+        result['timestamp'] = datetime.datetime.now()
         #*** Accumulate database records into lists:
         for record in pi_time_cursor:
             #*** Elapsed time in Ryu:

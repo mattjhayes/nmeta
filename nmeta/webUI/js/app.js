@@ -280,16 +280,16 @@ nmeta.Router = Backbone.Router.extend({
         //
         // TEMP CHART TEST:
 
-        // Pane 2a: Instantiate Controller Chart Model:
-        this.controller_chart_model = new nmeta.ControllerChartModel();
+        // Pane 2a: Instantiate Controller Packet-In Time Chart Model:
+        this.controller_pitime_chart_model = new nmeta.ControllerPITimeChartModel();
 
         // Pane 2a: Instantiate Controller Chart View:
-        nmeta.controllerChartView = new nmeta.ControllerChartView({model: this.controller_chart_model});
+        nmeta.controllerChartView = new nmeta.ControllerChartView({model: this.controller_pitime_chart_model});
         this.registerView(nmeta.controllerChartView);
 
         // Pane 2a: Fetch controller_chart_model as reset event (note: invokes render):
-        console.log('Fetching controller_chart_model');
-        this.controller_chart_model.fetch();
+        console.log('Fetching controller_pitime_chart_collection');
+        this.controller_pitime_chart_model.fetch({reset: true});
 
         console.log('nmeta.controllerChartView.el');
         this.$content2a.html(nmeta.controllerChartView.el);

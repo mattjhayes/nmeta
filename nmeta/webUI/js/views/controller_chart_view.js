@@ -4,7 +4,14 @@ nmeta.ControllerChartView = Backbone.View.extend({
         var self = this;
         this.model.on("reset", this.render, this);
         this.model.on('change', this.render, this);
+
+        // Arrays to hold data in correct format for ChartJS:
+        this.chart_x_labels = [];
+        this.ryu_time_data = [];
+        this.nmeta_time_data = [];
         
+        // Start regular polling for new data in model:
+        this.model.startPolling();
 
     },
 
@@ -13,23 +20,19 @@ nmeta.ControllerChartView = Backbone.View.extend({
         console.log('In ControllerChartView render...');
         $(this.el).html(this.template());
 
-        // Arrays to hold data in correct format for ChartJS:
-        this.labels = ["Minimum", "Average", "Maximum"];
-        this.ryu_time_data = [];
-        this.nmeta_time_data = [];
+        // Add timestamp to labels array:
+        this.chart_x_labels.push(this.model.get("timestamp"));
 
-        // Get model response data and put into ChartJS format:
-        this.ryu_time_data.push(this.model.get("ryu_time_min"));
+        // Add values to data arrays:
         this.ryu_time_data.push(this.model.get("ryu_time_avg"));
-        this.ryu_time_data.push(this.model.get("ryu_time_max"));
-        this.nmeta_time_data.push(this.model.get("pi_time_min"));
         this.nmeta_time_data.push(this.model.get("pi_time_avg"));
-        this.nmeta_time_data.push(this.model.get("pi_time_max"));
+
+        // TBD: stop arrays growing too long...
+        
 
         // ChartJS configuration parameters:
         var data = {
-            // Use labels from model:
-            labels: this.labels,
+            labels: this.chart_x_labels,
             datasets: [
                     {
                     label: "Nmeta Time",
@@ -68,7 +71,7 @@ nmeta.ControllerChartView = Backbone.View.extend({
         var ctx = $('#myChart', this.el)[0].getContext("2d");
         
         var myLineChart = new Chart(ctx, {
-            type: 'bar',
+            type: 'line',
             data: data,
             options: options
         });

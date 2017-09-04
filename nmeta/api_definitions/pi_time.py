@@ -17,6 +17,9 @@
 #*** events in Ryu and nmeta
 
 pi_time_schema = {
+        'timestamp': {
+            'type': 'datetime'
+        },
         'ryu_time_min': {
             'type': 'float'
         },

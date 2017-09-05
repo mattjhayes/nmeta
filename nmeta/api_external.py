@@ -808,7 +808,7 @@ class ExternalAPI(BaseClass):
         ryu_time_list = []
         pi_time_list = []
         #*** Timestamp:
-        result['timestamp'] = datetime.datetime.now()
+        result['timestamp'] = datetime.datetime.now().strftime("%H:%M:%S")
         #*** Accumulate database records into lists:
         for record in pi_time_cursor:
             #*** Elapsed time in Ryu:

@@ -1,4 +1,4 @@
-//-------- Model for an individual controller Packet-In Chart:
+//-------- Model for an individual controller Packet-In Proc Time Chart:
 nmeta.ControllerPITimeChartModel = Backbone.Model.extend({
     urlRoot:'/v1/infrastructure/controllers/pi_time',
 
@@ -47,10 +47,6 @@ nmeta.ControllerPITimeChartModel = Backbone.Model.extend({
 
     // Runs after API has returned successfully:
     onFetch : function () {
-        if( this.polling ){
-          // Set another polling callback:
-          setTimeout(this.executePolling, 1000 * this.intervalSeconds);
-        }
         // Add timestamp to labels array:
         this.chart_x_labels.push(this.get("timestamp"));
         if (this.chart_x_labels.length > this.CHART_INTERVALS) {
@@ -64,6 +60,12 @@ nmeta.ControllerPITimeChartModel = Backbone.Model.extend({
         this.nmeta_time_data.push(this.get("pi_time_avg"));
         if (this.nmeta_time_data.length > this.CHART_INTERVALS) {
             this.nmeta_time_data.shift();
+        }
+        // Event to trigger render in view:
+        this.trigger('event_controller_pitime_data');
+        if( this.polling ){
+          // Set another polling callback:
+          setTimeout(this.executePolling, 1000 * this.intervalSeconds);
         }
     },
 });

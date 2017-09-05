@@ -1,10 +1,9 @@
-nmeta.ControllerChartView = Backbone.View.extend({
+nmeta.ControllerPITimeChartView = Backbone.View.extend({
 
     initialize:function () {
-        var self = this;
-        this.model.on("reset", this.render, this);
-        this.model.on('change', this.render, this);
-        
+        // Listen for custom event from model that says it's render time:
+        this.model.on('event_controller_pitime_data', this.render, this);
+
         // Start regular polling for new data in model:
         this.model.startPolling();
     },
@@ -36,7 +35,7 @@ nmeta.ControllerChartView = Backbone.View.extend({
             scaleShowGridLines : true,
             title:{
                 display:true,
-                text:"Average Packet Processing Time - Stacked"
+                text:"Average Controller Packet-In Processing Time - Stacked"
             },
             scales: {
                     xAxes: [{
@@ -46,12 +45,12 @@ nmeta.ControllerChartView = Backbone.View.extend({
                         stacked: true,
                         scaleLabel: {
                             display: true,
-                            labelString: 'Seconds'
+                            labelString: 'Processing Time (Seconds)'
                         }
                     }]
                 }
             };
-        var ctx = $('#myChart', this.el)[0].getContext("2d");
+        var ctx = $('#PITimeChart', this.el)[0].getContext("2d");
         
         var myLineChart = new Chart(ctx, {
             type: 'line',

@@ -45,6 +45,7 @@ nmeta.Router = Backbone.Router.extend({
         "who":                     "who",
         "what":                    "what",
         "kit":                     "kit",
+        "kit/controller":          "controllerDetails",
         "policy":                  "policy",
         "flowDetails/:flow_hash":  "flowDetails",
         "switch/:dpid":            "switch"
@@ -263,6 +264,43 @@ nmeta.Router = Backbone.Router.extend({
     },
 
     //=========================================================================
+    // Display 'kit' Controller Details page:
+    controllerDetails: function (id) {
+        // Clean-up previous Views:
+        this.cleanUpViews();
+
+        // Pane 1a: Instantiate Controller Packet-In Time Chart Model:
+        this.controller_pitime_chart_model = new nmeta.ControllerPITimeChartModel();
+
+        // Pane 1a: Instantiate View:
+        nmeta.controllerPITimeChartView = new nmeta.ControllerPITimeChartView({model: this.controller_pitime_chart_model});
+        this.registerView(nmeta.controllerPITimeChartView);
+
+        // Pane 1a: Fetch model as reset event (note: invokes render):
+        this.controller_pitime_chart_model.fetch({reset: true});
+
+        // Pane 1a: Publish result into DOM against id="content1a":
+        this.$content1a.html(nmeta.controllerPITimeChartView.el);
+
+        // Pane 2a: Instantiate Controller Packet-In Rate Chart Model:
+        this.controller_pirate_chart_model = new nmeta.ControllerPIRateChartModel();
+
+        // Pane 2a: Instantiate View:
+        nmeta.controllerPIRateChartView = new nmeta.ControllerPIRateChartView({model: this.controller_pirate_chart_model});
+        this.registerView(nmeta.controllerPIRateChartView);
+
+        // Pane 2a: Fetch model as reset event (note: invokes render):
+        this.controller_pirate_chart_model.fetch({reset: true});
+
+        // Pane 2a: Publish result into DOM against id="content2a":
+        this.$content2a.html(nmeta.controllerPIRateChartView.el);
+
+        // Update top menu bar:
+        nmeta.barsView.selectMenuItem('kit-menu');
+    },
+
+
+    //=========================================================================
     // Display 'policy' page
     policy: function () {
         // Clean-up previous Views:
@@ -274,25 +312,6 @@ nmeta.Router = Backbone.Router.extend({
             nmeta.policyView.render();
         }
         this.$content1a.html(nmeta.policyView.el);
-
-        //^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        //############### EXPERIMENT ################
-        //
-        // TEMP CHART TEST:
-
-        // Pane 2a: Instantiate Controller Packet-In Time Chart Model:
-        this.controller_pitime_chart_model = new nmeta.ControllerPITimeChartModel();
-
-        // Pane 2a: Instantiate Controller Chart View:
-        nmeta.controllerChartView = new nmeta.ControllerChartView({model: this.controller_pitime_chart_model});
-        this.registerView(nmeta.controllerChartView);
-
-        // Pane 2a: Fetch controller_chart_model as reset event (note: invokes render):
-        console.log('Fetching controller_pitime_chart_collection');
-        this.controller_pitime_chart_model.fetch({reset: true});
-
-        console.log('nmeta.controllerChartView.el');
-        this.$content2a.html(nmeta.controllerChartView.el);
 
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('policy-menu');
@@ -372,7 +391,8 @@ $(document).on("ready", function () {
     nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesFilterView",
                 "FlowsFilterView", "FlowDetailsView",
                 "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView",
-                "BarsView", "ControllerSummaryView", "ControllerChartView",
+                "BarsView", "ControllerSummaryView",
+                "ControllerPITimeChartView", "ControllerPIRateChartView",
                 "SwitchesView", "SwitchView"],
         function () {
             nmeta.router = new nmeta.Router();

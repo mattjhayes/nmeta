@@ -18,7 +18,7 @@ nmeta.ControllerPIRateChartView = Backbone.View.extend({
             datasets: [
                     {
                     label: "Nmeta Time",
-                    backgroundColor: "rgba(204,131,20,1)",
+                    backgroundColor: "rgba(0,153,153,1)",
                     // Use data from model:
                     data: this.model.pi_rate_data
                 }
@@ -27,26 +27,34 @@ nmeta.ControllerPIRateChartView = Backbone.View.extend({
         var options = {
             // Boolean - Whether grid lines are shown across the chart
             scaleShowGridLines : true,
+            // Turn off animated drawing of chart on every poll:
+            animation : false,
+            // Disable aspect ratio to allow setting of chart height:
+            maintainAspectRatio: false,
             title:{
                 display:true,
                 text:"Average Packet-In Event Rate"
             },
             scales: {
-                    xAxes: [{
-                        stacked: true,
-                    }],
-                    yAxes: [{
-                        stacked: true,
-                        scaleLabel: {
-                            display: true,
-                            labelString: 'Events per Second'
-                        }
-                    }]
+                xAxes: [{
+                }],
+                yAxes: [{
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Events per Second'
+                    }
+                }]
+            },
+            elements: {
+                point: {
+                    // Disable dots on chart:
+                    radius: 0
                 }
-            };
+            }
+        };
         var ctx = $('#PIRateChart', this.el)[0].getContext("2d");
         
-        var myLineChart = new Chart(ctx, {
+        var PIRateChart = new Chart(ctx, {
             type: 'line',
             data: data,
             options: options

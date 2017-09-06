@@ -269,9 +269,16 @@ class ExternalAPI(BaseClass):
         Hooked from on_fetched_resource_pi_rate
 
         Returns key/values for packet-in processing time in API response:
+        - timestamp
         - pi_rate
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        #*** Get rid of superfluous keys in response:
+        if '_items' in items:
+            del items['_items']
+        if '_meta' in items:
+            del items['_meta']
+        items['timestamp'] = datetime.datetime.now().strftime("%H:%M:%S")
         items['pi_rate'] = self.get_pi_rate()
 
     def response_pi_time(self, items):
@@ -280,6 +287,7 @@ class ExternalAPI(BaseClass):
         Hooked from on_fetched_resource_pi_time
 
         Returns key/values for packet-in processing time in API response:
+        - timestamp
         - ryu_time_max
         - ryu_time_min
         - ryu_time_avg
@@ -295,9 +303,11 @@ class ExternalAPI(BaseClass):
         key/values
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
-        #*** Get rid of superfluous _items key in response:
+        #*** Get rid of superfluous keys in response:
         if '_items' in items:
             del items['_items']
+        if '_meta' in items:
+            del items['_meta']
         results = self.get_pi_time()
         if results:
             #*** Set values in API response:

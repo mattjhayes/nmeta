@@ -174,6 +174,16 @@ Example manual invocation of the API:
 
   curl http://localhost:8081/v1/infrastructure/controllers/pi_rate/ | python -m json.tool
 
+Example result:
+
+.. code-block:: text
+
+    {
+        "pi_rate": 0.2,
+        "timestamp": "19:21:35"
+    }
+
+
 PI Time API
 ===========
 
@@ -201,21 +211,17 @@ Example result:
 .. code-block:: text
 
     {
-        "_meta": {
-            "max_results": 25,
-            "page": 1,
-            "total": 814
-        },
-        "pi_time_avg": 0.039634871482849124,
-        "pi_time_max": 0.08309197425842285,
-        "pi_time_min": 0.017210960388183594,
-        "pi_time_period": 10,
-        "pi_time_records": 20,
-        "ryu_time_avg": 0.0019985318183898928,
-        "ryu_time_max": 0.01230311393737793,
-        "ryu_time_min": 0.0004711151123046875,
-        "ryu_time_period": 10,
-        "ryu_time_records": 20
+    "pi_time_avg": 0.05947005748748779,
+    "pi_time_max": 0.06364011764526367,
+    "pi_time_min": 0.055299997329711914,
+    "pi_time_period": 10,
+    "pi_time_records": 2,
+    "ryu_time_avg": 0.0007699728012084961,
+    "ryu_time_max": 0.0008089542388916016,
+    "ryu_time_min": 0.0007309913635253906,
+    "ryu_time_period": 10,
+    "ryu_time_records": 2,
+    "timestamp": "19:50:40"
     }
 
 Switches API

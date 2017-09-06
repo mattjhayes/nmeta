@@ -33,26 +33,38 @@ nmeta.ControllerPITimeChartView = Backbone.View.extend({
         var options = {
             // Boolean - Whether grid lines are shown across the chart
             scaleShowGridLines : true,
+            // Turn off animated drawing of chart on every poll:
+            animation : false,
+            // Disable aspect ratio to allow setting of chart height:
+            maintainAspectRatio: false,
             title:{
                 display:true,
                 text:"Average Controller Packet-In Processing Time - Stacked"
             },
             scales: {
-                    xAxes: [{
-                        stacked: true,
-                    }],
-                    yAxes: [{
-                        stacked: true,
-                        scaleLabel: {
-                            display: true,
-                            labelString: 'Processing Time (Seconds)'
-                        }
-                    }]
+                xAxes: [{
+                    stacked: true,
+                }],
+                yAxes: [{
+                    stacked: true,
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Processing Time (Seconds)'
+                    }
+                }]
+            },
+            elements: {
+                point: {
+                    // Disable dots on chart:
+                    radius: 0
                 }
-            };
+            }
+        };
         var ctx = $('#PITimeChart', this.el)[0].getContext("2d");
+        // Chart height:
+        //ctx.height = 120;
         
-        var myLineChart = new Chart(ctx, {
+        var PITimeChart = new Chart(ctx, {
             type: 'line',
             data: data,
             options: options

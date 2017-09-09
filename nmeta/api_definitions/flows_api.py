@@ -14,55 +14,55 @@
 #*** nmeta - Network Metadata - API definition file
 
 flows_schema = {
-        'flow_hash': {
-            'type': 'string'
-        },
-        'timestamp': {
-            'type': 'string'
-        },
-        'dpid': {
-            'type': 'integer'
-        },
-        'in_port': {
-            'type': 'integer'
-        },
-        'length': {
-            'type': 'integer'
-        },
-        'eth_src': {
-            'type': 'string'
-        },
-        'eth_dst': {
-            'type': 'string'
-        },
-        'eth_type': {
-            'type': 'integer'
-        },
-        'ip_src': {
-            'type': 'string'
-        },
-        'ip_dst': {
-            'type': 'string'
-        },
-        'proto': {
-            'type': 'string'
-        },
-        'tp_src': {
-            'type': 'string'
-        },
-        'tp_dst': {
-            'type': 'string'
-        },
-        'tp_flags': {
-            'type': 'string'
-        },
-        'tp_seq_src': {
-            'type': 'string'
-        },
-        'tp_seq_dst': {
-            'type': 'string'
-        }
+    'flow_hash': {
+        'type': 'string'
+    },
+    'timestamp': {
+        'type': 'string'
+    },
+    'dpid': {
+        'type': 'integer'
+    },
+    'in_port': {
+        'type': 'integer'
+    },
+    'length': {
+        'type': 'integer'
+    },
+    'eth_src': {
+        'type': 'string'
+    },
+    'eth_dst': {
+        'type': 'string'
+    },
+    'eth_type': {
+        'type': 'integer'
+    },
+    'ip_src': {
+        'type': 'string'
+    },
+    'ip_dst': {
+        'type': 'string'
+    },
+    'proto': {
+        'type': 'string'
+    },
+    'tp_src': {
+        'type': 'string'
+    },
+    'tp_dst': {
+        'type': 'string'
+    },
+    'tp_flags': {
+        'type': 'string'
+    },
+    'tp_seq_src': {
+        'type': 'string'
+    },
+    'tp_seq_dst': {
+        'type': 'string'
     }
+}
 
 flows_settings = {
     'url': 'flows',

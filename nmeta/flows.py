@@ -264,7 +264,7 @@ class Flow(BaseClass):
                                 ('classification_time', pymongo.DESCENDING)],
                                 unique=False)
 
-        #*** flow_rems collection:
+        #*** flow_rems collection for recording flow removals:
         self.logger.debug("Deleting flow_rems MongoDB collection...")
         db_nmeta.flow_rems.drop()
         #*** Create the flow_rems collection, specifying capped option
@@ -540,7 +540,6 @@ class Flow(BaseClass):
             """
             dbdictresult = {}
             dbdictresult['dpid'] = self.dpid
-            dbdictresult['flow_hash'] = self.flow_hash
             dbdictresult['removal_time'] = self.removal_time
             dbdictresult['cookie'] = self.cookie
             dbdictresult['priority'] = self.priority
@@ -559,6 +558,7 @@ class Flow(BaseClass):
             dbdictresult['ip_proto'] = self.ip_proto
             dbdictresult['tp_A'] = self.tp_A
             dbdictresult['tp_B'] = self.tp_B
+            dbdictresult['flow_hash'] = self.flow_hash
             return dbdictresult
 
         def commit(self):

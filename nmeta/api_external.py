@@ -46,6 +46,7 @@ from api_definitions import controller_summary
 from api_definitions import identities_api
 from api_definitions import identities_ui
 from api_definitions import flows_api
+from api_definitions import flows_removed_api
 from api_definitions import flows_ui
 from api_definitions import flow_mods_api
 
@@ -190,6 +191,9 @@ class ExternalAPI(BaseClass):
             'identities': identities_api.identities_settings,
             'identities_ui': identities_ui.identities_ui_settings,
             'flows': flows_api.flows_settings,
+            'flows_removed': flows_removed_api.flows_removed_settings,
+            'flows_removed_stats_count': flows_removed_api.flows_removed_stats_count_settings,
+            'flows_removed_stats_bytes_by_source_IP': flows_removed_api.flows_removed_stats_bytes_by_source_IP_settings,
             'flows_ui': flows_ui.flows_ui_settings,
             'flow_mods': flow_mods_api.flow_mods_settings
         }
@@ -238,6 +242,14 @@ class ExternalAPI(BaseClass):
         #*** Hook for filtered identities response:
         self.app.on_fetched_resource_identities_ui += \
                                                self.response_identities_ui
+
+        #*** Hook for flows removed stats count response:
+        self.app.on_fetched_resource_flows_removed_stats_count += \
+                                              self.response_flows_removed_stats_count
+
+        #*** Hook for flows removed stats bytes_by_source_IP response:
+        self.app.on_fetched_resource_flows_removed_stats_bytes_by_source_IP += \
+                                              self.response_flows_removed_stats_bytes_by_source_IP
 
         #*** Hook for filtered flows response:
         self.app.on_fetched_resource_flows_ui += \
@@ -410,6 +422,46 @@ class ExternalAPI(BaseClass):
                 self.logger.debug("Storing id_hash=%s ", record['id_hash'])
                 known_hashes.append(record['id_hash'])
 
+    def response_flows_removed_stats_count(self, items):
+        """
+        Return count of removed flows collection
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_items' in items:
+            del items['_items']
+        if '_meta' in items:
+            del items['_meta']
+        items['flows_removed'] =  self.flow_rems.count()
+
+    def response_flows_removed_stats_bytes_by_source_IP(self, items):
+        """
+        Return stats based on removed flows collection:
+         - Bytes sent by src IP (identity-enriched)
+         - Bytes received by src (identity-enriched)
+         - Number of flows removed by src (identity-enriched)
+         - Bytes sent by dst (identity-enriched)
+         - Bytes received by dst (identity-enriched)
+         - Number of flows removed by dst (identity-enriched)
+         - Number of flows by classification tag (identity-enriched)
+        Hooked from on_fetched_resource_<name>
+        """
+        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+
+        # TEMP all docs:
+        #all_docs = self.flow_rems.find()
+        #items['all_docs'] = list(all_docs)
+
+        # Aggregate Experiment:
+        cursor = self.flow_rems.aggregate([
+                            { "$group": { "_id": "$ip_A", "total_bytes_sent": {
+                                "$sum": "$byte_count" } } } ])
+        #pipe = [{'$group': {'_id': 'eth_A', 'total': {'$sum': 'byte_count'}}}]
+        #cursor = self.flow_rems.aggregate(pipeline=pipe)
+        #self.logger.debug("cursor is ", str(cursor))
+        #result = 
+        #self.logger.debug("result=", result)
+        items['agg_test'] = list(cursor)
+
     def response_flows_ui(self, items):
         """
         Populate the response with flow entries that are filtered:
@@ -474,6 +526,11 @@ class ExternalAPI(BaseClass):
         """
         Populate the response with number of connected switches.
         """
+        #*** Get rid of superfluous keys in response:
+        if '_items' in items:
+            del items['_items']
+        if '_meta' in items:
+            del items['_meta']
         items['connected_switches'] =  self.switches_col.count()
 
     def flow_match(self, flow, flows_filterlogicselector,

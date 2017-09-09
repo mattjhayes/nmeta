@@ -83,6 +83,36 @@ Example manual invocation of the API:
 
   curl http://localhost:8081/v1/flows/ | python -m json.tool
 
+Example response (showing only one of multiple records):
+
+.. code-block:: text
+
+    {
+        "_items": [
+            {
+                "_created": "00:00:00.000000",
+                "_etag": "0782fc9d09f47d11302f18c5ebee5841e7199c54",
+                "_id": "59b312de01186111d8173a7b",
+                "_updated": "00:00:00.000000",
+                "dpid": 1,
+                "eth_dst": "08:00:27:c8:db:91",
+                "eth_src": "08:00:27:2a:d6:dd",
+                "eth_type": 2048,
+                "flow_hash": "f82c55560268286142a30ef127240fc1",
+                "in_port": 1,
+                "ip_dst": "10.1.0.2",
+                "ip_src": "10.1.0.1",
+                "length": 342,
+                "proto": 17,
+                "timestamp": "09:59:58.428000",
+                "tp_dst": 67,
+                "tp_flags": "",
+                "tp_seq_dst": 0,
+                "tp_seq_src": 0,
+                "tp_src": 68
+            },
+
+
 Flows UI API
 ============
 
@@ -108,6 +138,97 @@ Example manual invocation of the API:
 
   curl http://localhost:8081/v1/flows/ui/ | python -m json.tool
 
+
+Flows Removed API
+=================
+
+The Flows Removed API is a read-only summary of all removed flows recorded by
+the controller (switches send flow removal messages to the controller). It
+does not deduplicate for same flow being removed from multiple switches.
+
+The API definition file is at:
+
+.. code-block:: text
+
+  ~/nmeta/nmeta/api_definitions/flows_removed_api.py
+
+Flows Removed API
+-----------------
+
+Example manual invocation of the API:
+
+.. code-block:: text
+
+  curl http://localhost:8081/v1/flows_removed/ | python -m json.tool
+
+Example response (showing only one of multiple records):
+
+.. code-block:: text
+
+    {
+        "_items": [
+            {
+                "_created": "00:00:00.000000",
+                "_etag": "4c6fba64b571e392f578aa6804b5ad45149a1b5c",
+                "_id": "59b3213f01186111d817494c",
+                "_updated": "00:00:00.000000",
+                "byte_count": 468,
+                "cookie": 0,
+                "dpid": 1,
+                "duration_sec": 31,
+                "eth_A": "",
+                "eth_B": "",
+                "eth_type": 2048,
+                "flow_hash": "fada031e16b76ef92e68aa516123c500",
+                "hard_timeout": 0,
+                "idle_timeout": 30,
+                "ip_A": "10.1.0.1",
+                "ip_B": "10.1.0.2",
+                "ip_proto": 6,
+                "packet_count": 7,
+                "priority": 1,
+                "reason": 0,
+                "removal_time": "11:01:19.121000",
+                "table_id": 0,
+                "tp_A": 45593,
+                "tp_B": 80
+            },
+
+Flows Removed Stats Count
+-------------------------
+
+Example manual invocation of the API:
+
+.. code-block:: text
+
+  curl http://localhost:8081/v1/flows_removed/stats/count | python -m json.tool
+
+Example response:
+
+.. code-block:: text
+
+    {
+        "flows_removed": 4
+    }
+
+Flows Removed Stats Bytes by Source IP
+--------------------------------------
+
+Aggregates and sums byte_count by source IP address. Deduplicates for same
+flow hash removed from multiple switches. 
+
+Example manual invocation of the API:
+
+.. code-block:: text
+
+  curl http://localhost:8081/v1/flows_removed/stats/bytes_by_source_IP | python -m json.tool
+
+Example response (showing only one of multiple records):
+
+.. code-block:: text
+
+    TBD...
+
 Identities API
 ==============
 
@@ -127,6 +248,35 @@ Example manual invocation of the API:
 .. code-block:: text
 
   curl http://localhost:8081/v1/identities/ | python -m json.tool
+
+Example response (showing only one of multiple records):
+
+.. code-block:: text
+
+    {
+        "_items": [
+            {
+                "_created": "00:00:00.000000",
+                "_etag": "79b7626eba366805e4723ce81751c100b447d04c",
+                "_id": "59b3206801186111d817487b",
+                "_updated": "00:00:00.000000",
+                "dpid": 2,
+                "harvest_time": "10:57:43.997000",
+                "harvest_type": "ARP",
+                "host_desc": "",
+                "host_name": "",
+                "host_os": "",
+                "host_type": "",
+                "id_hash": "aafeaa6798c9ef3761f7afe51dd3cf7d",
+                "in_port": 2,
+                "ip_address": "10.1.0.1",
+                "mac_address": "08:00:27:2a:d6:dd",
+                "service_alias": "",
+                "service_name": "",
+                "user_id": "",
+                "valid_from": "10:57:43.997000",
+                "valid_to": "14:57:43.997000"
+            },
 
 Identities UI API
 =================
@@ -154,6 +304,34 @@ Example manual invocation of the API:
 
   curl http://localhost:8081/v1/identities/ui/ | python -m json.tool
 
+Example response (showing only one of multiple records):
+
+.. code-block:: text
+
+    {
+        "_items": [
+            {
+                "_id": "59b31fc301186111d81747ae",
+                "dpid": 1,
+                "harvest_time": "10:54:59.131000",
+                "harvest_type": "LLDP",
+                "host_desc": "Ubuntu 16.04.2 LTS Linux 4.4.0-93-generic #116-Ubuntu SMP Fri Aug 11 21:17:51 UTC 2017 x86_64",
+                "host_name": "sw2.example.com",
+                "host_os": "",
+                "host_type": "",
+                "id_hash": "ab044209ef247d208ca1e88c5727ba0c",
+                "in_port": 2,
+                "ip_address": "",
+                "location_logical": "internal",
+                "location_physical": "",
+                "mac_address": "08:00:27:ea:23:84",
+                "service_alias": "",
+                "service_name": "",
+                "user_id": "",
+                "valid_from": "10:54:59.131000",
+                "valid_to": "10:56:59.131000"
+            },
+
 PI Rate API
 ===========
 
@@ -174,7 +352,7 @@ Example manual invocation of the API:
 
   curl http://localhost:8081/v1/infrastructure/controllers/pi_rate/ | python -m json.tool
 
-Example result:
+Example response:
 
 .. code-block:: text
 
@@ -206,7 +384,7 @@ Example manual invocation of the API:
 
   curl http://localhost:8081/v1/infrastructure/controllers/pi_time/ | python -m json.tool
 
-Example result:
+Example response:
 
 .. code-block:: text
 
@@ -248,7 +426,7 @@ Example manual invocation of the API:
 
   curl http://localhost:8081/v1/infrastructure/switches/ | python -m json.tool
 
-Example result:
+Example response:
 
 .. code-block:: text
 
@@ -304,11 +482,14 @@ Example manual invocation of the API:
 
   curl http://localhost:8081/v1/infrastructure/switches/stats/connected_switches | python -m json.tool
 
-Example result:
+Example response:
 
 .. code-block:: text
 
-    TBD
+    {
+        "connected_switches": 2
+    }
+
 
 
 

@@ -435,15 +435,8 @@ class ExternalAPI(BaseClass):
 
     def response_flows_removed_stats_bytes_by_source_IP(self, items):
         """
-        Return stats based on removed flows collection:
-         - Bytes sent by src IP (identity-enriched)
-         - Bytes received by src (identity-enriched)
-         - Number of flows removed by src (identity-enriched)
-         - Bytes sent by dst (identity-enriched)
-         - Bytes received by dst (identity-enriched)
-         - Number of flows removed by dst (identity-enriched)
-         - Number of flows by classification tag (identity-enriched)
-        Hooked from on_fetched_resource_<name>
+        Return removed flow bytes by source IP (deduplicated for flows
+        crossing multiple switches)
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
 
@@ -451,16 +444,31 @@ class ExternalAPI(BaseClass):
         #all_docs = self.flow_rems.find()
         #items['all_docs'] = list(all_docs)
 
-        # Aggregate Experiment:
+        # Aggregate Experiment (non-dedup):
         cursor = self.flow_rems.aggregate([
                             { "$group": { "_id": "$ip_A", "total_bytes_sent": {
                                 "$sum": "$byte_count" } } } ])
-        #pipe = [{'$group': {'_id': 'eth_A', 'total': {'$sum': 'byte_count'}}}]
-        #cursor = self.flow_rems.aggregate(pipeline=pipe)
-        #self.logger.debug("cursor is ", str(cursor))
-        #result = 
-        #self.logger.debug("result=", result)
-        items['agg_test'] = list(cursor)
+        items['bytes_not_dedup'] = list(cursor)
+
+        # Aggregate Experiment (dedup):
+        cursor = self.flow_rems.aggregate([
+                        {'$group': {
+                            '_id': {
+                                'src': '$ip_A',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_sent': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.src',
+                            'total_bytes_sent': {
+                                '$sum': '$bytes_sent'
+                            }
+                        }}
+                    ])
+        items['bytes_dedup'] = list(cursor)
 
     def response_flows_ui(self, items):
         """

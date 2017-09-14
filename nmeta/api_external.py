@@ -444,6 +444,7 @@ class ExternalAPI(BaseClass):
         #all_docs = self.flow_rems.find()
         #items['all_docs'] = list(all_docs)
 
+        # TEMP:
         # Aggregate Experiment (non-dedup):
         cursor = self.flow_rems.aggregate([
                             { "$group": { "_id": "$ip_A", "total_bytes_sent": {
@@ -468,7 +469,7 @@ class ExternalAPI(BaseClass):
                             }
                         }}
                     ])
-        items['bytes_dedup'] = list(cursor)
+        items['_items'] = list(cursor)
 
     def response_flows_ui(self, items):
         """

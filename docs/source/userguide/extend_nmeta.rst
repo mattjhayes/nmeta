@@ -227,7 +227,18 @@ Example response (showing only one of multiple records):
 
 .. code-block:: text
 
-    TBD...
+    {
+        "_items": [
+            {
+                "_id": "10.1.0.1",
+                "total_bytes_sent": 468
+            },
+            {
+                "_id": "10.1.0.2",
+                "total_bytes_sent": 1202
+            }
+        ]
+    }
 
 Identities API
 ==============

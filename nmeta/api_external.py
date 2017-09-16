@@ -440,17 +440,6 @@ class ExternalAPI(BaseClass):
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
 
-        # TEMP all docs:
-        #all_docs = self.flow_rems.find()
-        #items['all_docs'] = list(all_docs)
-
-        # TEMP:
-        # Aggregate Experiment (non-dedup):
-        cursor = self.flow_rems.aggregate([
-                            { "$group": { "_id": "$ip_A", "total_bytes_sent": {
-                                "$sum": "$byte_count" } } } ])
-        items['bytes_not_dedup'] = list(cursor)
-
         # Aggregate Experiment (dedup):
         cursor = self.flow_rems.aggregate([
                         {'$group': {
@@ -470,6 +459,9 @@ class ExternalAPI(BaseClass):
                         }}
                     ])
         items['_items'] = list(cursor)
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
 
     def response_flows_ui(self, items):
         """

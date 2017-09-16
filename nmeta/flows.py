@@ -574,8 +574,7 @@ class Flow(BaseClass):
         """
         Record an idle-timeout flow removal message.
         Passed a Ryu message object for the flow removal.
-        Record entries in the flow_rems database collection with
-        a hash for each direction
+        Record entry in the flow_rems database collection
         """
         #*** Instantiate class to hold removed flow record:
         remf = self.RemovedFlow(self.logger, self.flow_rems, msg)

@@ -265,15 +265,25 @@ def test_flows_removed_stats_bytes_by_source_IP():
         json_str_rx = json_file.read()
         json_dict_rx = json.loads(json_str_rx)
 
-    #*** Set up fake datapath and synthesise messages:
-    datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
-    datapath.id = 1
-    msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
-    msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
-
+    #*** Switch 1:
+    #*** Set up fake datapaths and synthesise messages:
+    datapath1 = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath1.id = 1
+    msg_tx1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_tx)
+    msg_rx1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_rx)
     #*** Record flow removals to flow_rems database collection:
-    flow.record_removal(msg_tx)
-    flow.record_removal(msg_rx)
+    flow.record_removal(msg_tx1)
+    flow.record_removal(msg_rx1)
+
+    #*** Switch 2 (same flows to check dedup for multiple switches works):
+    #*** Set up fake datapaths and synthesise messages:
+    datapath2 = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath2.id = 2
+    msg_tx2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_tx)
+    msg_rx2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_rx)
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx2)
+    flow.record_removal(msg_rx2)
 
     #*** Call the external API:
     api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_BYTES_BY_SOURCE_IP)

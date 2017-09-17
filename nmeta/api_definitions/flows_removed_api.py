@@ -102,15 +102,32 @@ flows_removed_stats_count_settings = {
     'schema': flows_removed_stats_count_schema
 }
 
-#*** Removed flows bytes by source IP (deduplicates for multiple switches):
-flows_removed_stats_bytes_by_source_IP_schema = {
-    'TBD': {
-        'type': 'integer'
+#*** Removed flows bytes sent by source IP (dedup for multiple switches):
+flows_removed_stats_bytes_sent_schema = {
+    '_items': {
+        '_id': 'string',
+        'identity': 'string',
+        'total_bytes_sent': 'integer'
     }
 }
 
-flows_removed_stats_bytes_by_source_IP_settings = {
-    'url': 'flows_removed/stats/bytes_by_source_IP',
-    'item_title': 'Removed Flows Bytes by Source IP Address',
-    'schema': flows_removed_stats_bytes_by_source_IP_schema
+flows_removed_stats_bytes_sent_settings = {
+    'url': 'flows_removed/stats/bytes_sent',
+    'item_title': 'Removed Flows Bytes Sent by Source IP',
+    'schema': flows_removed_stats_bytes_sent_schema
+}
+
+#*** Removed flows bytes received by source IP (dedup for multiple switches):
+flows_removed_stats_bytes_received_schema = {
+    '_items': {
+        '_id': 'string',
+        'identity': 'string',
+        'total_bytes_received': 'integer'
+    }
+}
+
+flows_removed_stats_bytes_received_settings = {
+    'url': 'flows_removed/stats/bytes_received',
+    'item_title': 'Removed Flows Bytes Received by Source IP',
+    'schema': flows_removed_stats_bytes_received_schema
 }

@@ -211,19 +211,50 @@ Example response:
         "flows_removed": 4
     }
 
-Flows Removed Stats Bytes by Source IP
---------------------------------------
+Flows Removed Stats Bytes Sent
+------------------------------
 
 Aggregates and sums byte_count by source IP address. Deduplicates for same
-flow hash removed from multiple switches. 
+flow hash removed from multiple switches and reverse sorts by bytes 
 
 Example manual invocation of the API:
 
 .. code-block:: text
 
-  curl http://localhost:8081/v1/flows_removed/stats/bytes_by_source_IP | python -m json.tool
+  curl http://localhost:8081/v1/flows_removed/stats/bytes_sent | python -m json.tool
 
-Example response (showing only one of multiple records):
+Example response:
+
+.. code-block:: text
+
+    {
+        "_items": [
+            {
+                "_id": "10.1.0.2",
+                "identity": "10.1.0.2",
+                "total_bytes_sent": 3532
+            },
+            {
+                "_id": "10.1.0.1",
+                "identity": "pc1",
+                "total_bytes_sent": 1404
+            }
+        ]
+    }
+
+Flows Removed Stats Bytes Received
+----------------------------------
+
+Aggregates and sums byte_count by destination IP address. Deduplicates for same
+flow hash removed from multiple switches and reverse sorts by bytes 
+
+Example manual invocation of the API:
+
+.. code-block:: text
+
+  curl http://localhost:8081/v1/flows_removed/stats/bytes_received | python -m json.tool
+
+Example response:
 
 .. code-block:: text
 
@@ -231,14 +262,17 @@ Example response (showing only one of multiple records):
         "_items": [
             {
                 "_id": "10.1.0.1",
-                "total_bytes_sent": 468
+                "identity": "pc1",
+                "total_bytes_received": 3532
             },
             {
                 "_id": "10.1.0.2",
-                "total_bytes_sent": 1202
+                "identity": "10.1.0.2",
+                "total_bytes_received": 1404
             }
         ]
     }
+
 
 Identities API
 ==============

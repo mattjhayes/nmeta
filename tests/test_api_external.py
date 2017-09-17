@@ -73,6 +73,14 @@ URL_TEST_IDENTITIES_UI = 'http://localhost:8081/v1/identities/ui/'
 
 URL_FLOW_MODS = 'http://localhost:8081/v1/flow_mods/'
 
+URL_TEST_FLOWS_REMOVED = 'http://localhost:8081/v1/flows_removed/'
+
+URL_TEST_FLOWS_REMOVED_STATS_COUNT = 'http://localhost:8081/v1/flows_removed/stats/count'
+
+URL_TEST_FLOWS_REMOVED_STATS_BYTES_SENT = 'http://localhost:8081/v1/flows_removed/stats/bytes_sent'
+
+URL_TEST_FLOWS_REMOVED_STATS_BYTES_RECEIVED = 'http://localhost:8081/v1/flows_removed/stats/bytes_received'
+
 #*** Test DPIDs and in ports:
 DPID1 = 1
 INPORT1 = 1
@@ -82,6 +90,302 @@ INPORT2 = 2
 api = api_external.ExternalAPI(config)
 
 #======================== api_external.py Unit Tests ==========================
+
+def test_flows_removed():
+    """
+    Test the flows_removed API by ingesting flow removal messages
+    then checking that the API response correctly lists them
+    """
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+    
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate Flow class:
+    flow = flows_module.Flow(config)
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
+
+    #*** Set up fake datapath and synthesise messages:
+    datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath.id = 1
+    msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
+    msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
+
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx)
+    flow.record_removal(msg_rx)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['_items'][0]['dpid'] == 1
+    #*** Note: can't easily test 'removal_time' as is dynamic, so skipping...
+    assert api_result['_items'][0]['cookie'] == 0
+    assert api_result['_items'][0]['priority'] == 1
+    assert api_result['_items'][0]['reason'] == 0
+    assert api_result['_items'][0]['table_id'] == 1
+    assert api_result['_items'][0]['duration_sec'] == 5
+    assert api_result['_items'][0]['idle_timeout'] == 5
+    assert api_result['_items'][0]['hard_timeout'] == 0
+    assert api_result['_items'][0]['packet_count'] == 10
+    assert api_result['_items'][0]['byte_count'] == 744
+    assert api_result['_items'][0]['eth_A'] == ''
+    assert api_result['_items'][0]['eth_B'] == ''
+    assert api_result['_items'][0]['eth_type'] == 2048
+    assert api_result['_items'][0]['ip_A'] == '10.1.0.1'
+    assert api_result['_items'][0]['ip_B'] == '10.1.0.2'
+    assert api_result['_items'][0]['ip_proto'] == 6
+    assert api_result['_items'][0]['tp_A'] == 43297
+    assert api_result['_items'][0]['tp_B'] == 80
+    assert api_result['_items'][0]['flow_hash'] == '9822b2867652ee0957892482b9f004c3'
+
+    #*** Validate API Response parameters for second flow removal:
+    assert api_result['_items'][1]['dpid'] == 1
+    #*** Note: can't easily test 'removal_time' as is dynamic, so skipping...
+    assert api_result['_items'][1]['cookie'] == 0
+    assert api_result['_items'][1]['priority'] == 1
+    assert api_result['_items'][1]['reason'] == 0
+    assert api_result['_items'][1]['table_id'] == 1
+    assert api_result['_items'][1]['duration_sec'] == 5
+    assert api_result['_items'][1]['idle_timeout'] == 5
+    assert api_result['_items'][1]['hard_timeout'] == 0
+    assert api_result['_items'][1]['packet_count'] == 9
+    assert api_result['_items'][1]['byte_count'] == 6644
+    assert api_result['_items'][1]['eth_A'] == ''
+    assert api_result['_items'][1]['eth_B'] == ''
+    assert api_result['_items'][1]['eth_type'] == 2048
+    assert api_result['_items'][1]['ip_A'] == '10.1.0.2'
+    assert api_result['_items'][1]['ip_B'] == '10.1.0.1'
+    assert api_result['_items'][1]['ip_proto'] == 6
+    assert api_result['_items'][1]['tp_A'] == 80
+    assert api_result['_items'][1]['tp_B'] == 43297
+    assert api_result['_items'][1]['flow_hash'] == '9822b2867652ee0957892482b9f004c3'
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
+
+def test_flows_removed_stats_count():
+    """
+    Test the flows_removed API stats count by ingesting flow removal messages
+    then checking that the API response correctly specifies message count
+    """
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+    
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate Flow class:
+    flow = flows_module.Flow(config)
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
+
+    #*** Set up fake datapath and synthesise messages:
+    datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath.id = 1
+    msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
+    msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_COUNT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['flows_removed'] == 0
+
+    #*** Record flow removal to flow_rems database collection:
+    flow.record_removal(msg_tx)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_COUNT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['flows_removed'] == 1
+
+    #*** Record flow removal to flow_rems database collection:
+    flow.record_removal(msg_rx)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_COUNT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['flows_removed'] == 2
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
+
+def test_response_flows_removed_stats_bytes_sent():
+    """
+    Test the flows_removed API stats bytes sent by ingesting flow removal
+    messages then checking that the API response correctly specifies
+    appropriate stats for bytes sent, including identity enrichment
+    """
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+    
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate supporting classes:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
+
+    #*** Client to Server DHCP Request:
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+
+    #*** Server to Client DHCP ACK:
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
+
+    #*** Switch 1:
+    #*** Set up fake datapaths and synthesise messages:
+    datapath1 = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath1.id = 1
+    msg_tx1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_tx)
+    msg_rx1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_rx)
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx1)
+    flow.record_removal(msg_rx1)
+
+    #*** Switch 2 (same flows to check dedup for multiple switches works):
+    #*** Set up fake datapaths and synthesise messages:
+    datapath2 = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath2.id = 2
+    msg_tx2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_tx)
+    msg_rx2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_rx)
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx2)
+    flow.record_removal(msg_rx2)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_BYTES_SENT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['_items'][0]['_id'] == '10.1.0.2'
+    assert api_result['_items'][0]['total_bytes_sent'] == 6644
+    assert api_result['_items'][0]['identity'] == '10.1.0.2'
+
+    assert api_result['_items'][1]['_id'] == '10.1.0.1'
+    assert api_result['_items'][1]['total_bytes_sent'] == 744
+    assert api_result['_items'][1]['identity'] == 'pc1'
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
+
+def test_response_flows_removed_stats_bytes_received():
+    """
+    Test the flows_removed API stats bytes received by ingesting flow removal
+    messages then checking that the API response correctly specifies
+    appropriate stats for bytes received, including identity enrichment
+    """
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+    
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate supporting classes:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
+
+    #*** Client to Server DHCP Request:
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+
+    #*** Server to Client DHCP ACK:
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
+
+    #*** Switch 1:
+    #*** Set up fake datapaths and synthesise messages:
+    datapath1 = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath1.id = 1
+    msg_tx1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_tx)
+    msg_rx1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_rx)
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx1)
+    flow.record_removal(msg_rx1)
+
+    #*** Switch 2 (same flows to check dedup for multiple switches works):
+    #*** Set up fake datapaths and synthesise messages:
+    datapath2 = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath2.id = 2
+    msg_tx2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_tx)
+    msg_rx2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_rx)
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx2)
+    flow.record_removal(msg_rx2)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_BYTES_RECEIVED)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['_items'][0]['_id'] == '10.1.0.1'
+    assert api_result['_items'][0]['total_bytes_received'] == 6644
+    assert api_result['_items'][0]['identity'] == 'pc1'
+
+    assert api_result['_items'][1]['_id'] == '10.1.0.2'
+    assert api_result['_items'][1]['total_bytes_received'] == 744
+    assert api_result['_items'][1]['identity'] == '10.1.0.2'
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
+
 
 def test_response_pi_rate():
     """
@@ -298,7 +602,6 @@ def test_flow_normalise_direction():
     assert normalised_record['ip_dst'] == pkts.IP_SRC[1]
     assert normalised_record['tp_src'] == pkts.TP_DST[1]
     assert normalised_record['tp_dst'] == pkts.TP_SRC[1]
-
 
 def test_get_flow_data_xfer():
     """

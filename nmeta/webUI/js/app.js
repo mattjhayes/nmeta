@@ -48,7 +48,8 @@ nmeta.Router = Backbone.Router.extend({
         "kit/controller":          "controllerDetails",
         "policy":                  "policy",
         "flowDetails/:flow_hash":  "flowDetails",
-        "switch/:dpid":            "switch"
+        "switch/:dpid":            "switch",
+        "experimental":            "flowsRemoved"
     },
 
     //=========================================================================
@@ -299,7 +300,6 @@ nmeta.Router = Backbone.Router.extend({
         nmeta.barsView.selectMenuItem('kit-menu');
     },
 
-
     //=========================================================================
     // Display 'policy' page
     policy: function () {
@@ -357,6 +357,29 @@ nmeta.Router = Backbone.Router.extend({
     },
 
     //=========================================================================
+    // Display the FlowsRemoved View (experimental):
+    flowsRemoved: function () {
+        this.cleanUpViews();
+        console.log('in router flowsRemoved');
+
+        // Pane 1a: Instantiate Flows Removed Bytes Sent Chart Model:
+        this.flowsRemovedBytesSentChartModel = new nmeta.FlowsRemovedBytesSentChartModel();
+
+        // Pane 1a: Instantiate flowsRemovedBytesSentChartView:
+        console.log('app instantiating flowsRemovedBytesSentChartView');
+        nmeta.flowsRemovedBytesSentChartView = new nmeta.FlowsRemovedBytesSentChartView({model: this.flowsRemovedBytesSentChartModel});
+        this.registerView(nmeta.flowsRemovedBytesSentChartView);
+
+        // Pane 1a: Fetch flowsRemovedBytesSentChartModel as reset event (note: invokes render):
+        console.log('app calling flowsRemovedBytesSentChartModel fetch({reset: true})');
+        this.flowsRemovedBytesSentChartModel.fetch({reset: true})
+
+        // Pane 1a: Publish result into DOM against id="content1a":
+        this.$content1a.html(nmeta.flowsRemovedBytesSentChartView.el);
+
+    },
+
+    //=========================================================================
     // Register a View as active so we can later clean it up:
     registerView: function (view) {
         // Holds array of current views:
@@ -390,7 +413,8 @@ nmeta.Router = Backbone.Router.extend({
 $(document).on("ready", function () {
     nmeta.loadTemplates(["HomeView", "SwitchCountView", "IdentitiesFilterView",
                 "FlowsFilterView", "FlowDetailsView",
-                "FlowDetailView", "FlowModsView", "FlowModView", "PolicyView",
+                "FlowDetailView", "FlowModsView", "FlowModView", 
+                "FlowsRemovedBytesSentChartView", "PolicyView",
                 "BarsView", "ControllerSummaryView",
                 "ControllerPITimeChartView", "ControllerPIRateChartView",
                 "SwitchesView", "SwitchView"],

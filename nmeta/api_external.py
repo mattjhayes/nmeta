@@ -319,7 +319,6 @@ class ExternalAPI(BaseClass):
         If no data found within time period then returns without
         key/values
         """
-        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
         #*** Get rid of superfluous keys in response:
         if '_items' in items:
             del items['_items']

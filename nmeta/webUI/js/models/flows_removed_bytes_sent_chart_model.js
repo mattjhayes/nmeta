@@ -4,7 +4,7 @@ nmeta.FlowsRemovedBytesSentChartModel = Backbone.Model.extend({
 
     initialize : function(){
         // The number of top values to individually chart: 
-        this.TOPN = 1
+        this.TOPN = 5
         // Initiate and pre-populate arrays to hold data in correct format
         // for ChartJS:
         this.flows_removed_stats_bytes_sent_labels = [];

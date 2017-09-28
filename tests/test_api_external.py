@@ -386,7 +386,6 @@ def test_response_flows_removed_stats_bytes_received():
     #*** Stop api_external sub-process:
     api_ps.terminate()
 
-
 def test_response_pi_rate():
     """
     Test ingesting packets from an IPv4 HTTP flow, and check packet-in rate

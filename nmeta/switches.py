@@ -344,6 +344,8 @@ class FlowTables(BaseClass):
         self.drop_idle_timeout = config.get_value('drop_idle_timeout')
         self.drop_hard_timeout = config.get_value('drop_hard_timeout')
         self.drop_priority = config.get_value('drop_priority')
+        #*** Unique value counter for Flow Mod cookies:
+        self.flow_mod_cookie = 0
 
     def suppress_flow(self, msg, in_port, out_port, out_queue):
         """
@@ -368,12 +370,15 @@ class FlowTables(BaseClass):
         idle_timeout = self.suppress_idle_timeout
         hard_timeout = self.suppress_hard_timeout
         priority = self.suppress_priority
+        #*** Dict for results:
+        result = {'match_type': 'ignore', 'forward_cookie': 0,
+                 'forward_match': '', 'reverse_cookie': 0, 'reverse_match': ''}
         self.logger.debug("event=add_flow out_queue=%s", out_queue)
         #*** Install flow entry(ies) based on type of flow:
         if pkt_tcp:
             #*** Do not suppress TCP DNS:
             if pkt_tcp.src_port == 53 or pkt_tcp.dst_port == 53:
-                return 0
+                return result
             #*** Install two flow entries for TCP so that return traffic
             #*** is also suppressed:
             if pkt_ip4:
@@ -390,26 +395,31 @@ class FlowTables(BaseClass):
                 #*** Unknown protocol so warn and exit:
                 self.logger.warning("Unknown protocol, not installing flow "
                                     "suppression entries")
-                return 0
+                return result
             #*** Actions:
             forward_actions = self.actions(out_port, out_queue)
             reverse_actions = self.actions(in_port, out_queue)
             #*** Now have matches and actions. Install to switch:
-            self.add_flow(forward_match, forward_actions,
+            forward_cookie = self.add_flow(forward_match, forward_actions,
                                  priority=priority,
                                  idle_timeout=idle_timeout,
                                  hard_timeout=hard_timeout)
-            self.add_flow(reverse_match, reverse_actions,
+            reverse_cookie = self.add_flow(reverse_match, reverse_actions,
                                  priority=priority,
                                  idle_timeout=idle_timeout,
                                  hard_timeout=hard_timeout)
-            return 1
+            result['match_type'] = 'dual'
+            result['forward_cookie'] = forward_cookie
+            result['forward_match'] = forward_match
+            result['reverse_cookie'] = reverse_cookie
+            result['reverse_match'] = reverse_match
+            return result
         else:
             if pkt_udp:
                 #*** Do not suppress UDP DNS OR DHCP:
                 if (pkt_udp.src_port == 53 or pkt_udp.dst_port == 53 or
                              pkt_udp.src_port == 67 or pkt_udp.dst_port == 67):
-                    return 0
+                    return result
             if pkt_ip4:
                 #*** Match IPv4 packet
                 match = self.match_ipv4(pkt_ip4.src, pkt_ip4.dst,
@@ -419,15 +429,18 @@ class FlowTables(BaseClass):
                 match = self.match_ipv6(pkt_ip6.src, pkt_ip6.dst)
             else:
                 #*** Non-IP packet, ignore:
-                return 1
+                return result
             #*** Actions:
             actions = self.actions(out_port, out_queue)
             #*** Now have matches and actions. Install to switch:
-            self.add_flow(match, actions,
+            cookie = self.add_flow(match, actions,
                                  priority=priority,
                                  idle_timeout=idle_timeout,
                                  hard_timeout=hard_timeout)
-            return 1
+            result['match_type'] = 'single'
+            result['forward_cookie'] = cookie
+            result['forward_match'] = match
+            return result
 
     def drop_flow(self, msg):
         """
@@ -447,7 +460,9 @@ class FlowTables(BaseClass):
         idle_timeout = self.drop_idle_timeout
         hard_timeout = self.drop_hard_timeout
         priority = self.drop_priority
-        ofproto = self.datapath.ofproto
+        #*** Dict for results:
+        result = {'match_type': 'ignore', 'forward_cookie': 0,
+                 'forward_match': '', 'reverse_cookie': 0, 'reverse_match': ''}
         self.logger.debug("event=drop_flow")
         #*** Drop action is the implicit in setting no actions:
         drop_action = 0
@@ -463,7 +478,7 @@ class FlowTables(BaseClass):
                 #*** Unknown protocol so warn and exit:
                 self.logger.warning("Unknown IP protocol, not installing flow "
                                     "drop entry for TCP")
-                return 0
+                return result
         elif pkt_udp:
             if pkt_ip4:
                 drop_match = self.match_ipv4_udp(pkt_ip4.src, pkt_ip4.dst,
@@ -475,7 +490,7 @@ class FlowTables(BaseClass):
                 #*** Unknown protocol so warn and exit:
                 self.logger.warning("Unknown IP protocol, not installing flow "
                                     "drop entry for UDP")
-                return 0
+                return result
         elif pkt_ip4:
             #*** Match IPv4 packet
             drop_match = self.match_ipv4(pkt_ip4.src, pkt_ip4.dst,
@@ -489,22 +504,29 @@ class FlowTables(BaseClass):
             return 0
         #*** Now have match and action. Install to switch:
         self.logger.debug("Installing drop rule to dpid=%s", self.dpid)
-        self.add_flow(drop_match, drop_action, priority=priority,
+        cookie = self.add_flow(drop_match, drop_action, priority=priority,
                           idle_timeout=idle_timeout, hard_timeout=hard_timeout)
-        return 1
+        result['match_type'] = 'forward'
+        result['forward_cookie'] = cookie
+        result['forward_match'] = drop_match
+        return result
 
-    def add_flow(self, match, actions, priority, idle_timeout, hard_timeout):
+    def add_flow(self, match_d, actions, priority, idle_timeout, hard_timeout):
         """
         Add a flow entry to a switch
         """
+        #*** Convert match dict to an OFPMatch object:
+        match = self.parser.OFPMatch(**match_d)
         ofproto = self.datapath.ofproto
         parser = self.datapath.ofproto_parser
+        cookie = self.flow_mod_cookie
         if actions:
             inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                                                       actions)]
         else:
             inst = []
         mod = parser.OFPFlowMod(datapath=self.datapath,
+                                cookie=cookie,
                                 idle_timeout=idle_timeout,
                                 hard_timeout=hard_timeout,
                                 priority=priority,
@@ -514,6 +536,10 @@ class FlowTables(BaseClass):
         self.logger.debug("Installing Flow Entry to dpid=%s match=%s",
                                     self.dpid, match)
         self.datapath.send_msg(mod)
+        #*** Increment flow mod cookie ready for next use:
+        self.flow_mod_cookie += 1
+        #*** Return value of the cookie that we set in the switch flow table:
+        return cookie
 
     def actions(self, out_port, out_queue, no_queue=0):
         """
@@ -528,7 +554,6 @@ class FlowTables(BaseClass):
             return [self.datapath.ofproto_parser.OFPActionSetQueue(out_queue),
                     self.datapath.ofproto_parser.OFPActionOutput(out_port, 0)]
 
-
     def match_ipv4_tcp(self, ipv4_src, ipv4_dst, tcp_src, tcp_dst):
         """
         Match an IPv4 TCP flow on a switch.
@@ -536,19 +561,18 @@ class FlowTables(BaseClass):
         an OpenFlow match object for this flow
         """
         if tcp_src:
-            return self.parser.OFPMatch(eth_type=0x0800,
+            return dict(eth_type=0x0800,
                     ipv4_src=_ipv4_t2i(str(ipv4_src)),
                     ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
                     ip_proto=6,
                     tcp_src=tcp_src,
                     tcp_dst=tcp_dst)
         else:
-            return self.parser.OFPMatch(eth_type=0x0800,
+            return dict(eth_type=0x0800,
                     ipv4_src=_ipv4_t2i(str(ipv4_src)),
                     ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
                     ip_proto=6,
                     tcp_dst=tcp_dst)
-
 
     def match_ipv4_udp(self, ipv4_src, ipv4_dst, udp_src, udp_dst):
         """
@@ -557,14 +581,14 @@ class FlowTables(BaseClass):
         an OpenFlow match object for this flow
         """
         if udp_src:
-            return self.parser.OFPMatch(eth_type=0x0800,
+            return dict(eth_type=0x0800,
                     ipv4_src=_ipv4_t2i(str(ipv4_src)),
                     ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
                     ip_proto=17,
                     udp_src=udp_src,
                     udp_dst=udp_dst)
         else:
-            return self.parser.OFPMatch(eth_type=0x0800,
+            return dict(eth_type=0x0800,
                     ipv4_src=_ipv4_t2i(str(ipv4_src)),
                     ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
                     ip_proto=17,
@@ -577,14 +601,14 @@ class FlowTables(BaseClass):
         an OpenFlow match object for this flow
         """
         if tcp_src:
-            return self.parser.OFPMatch(eth_type=0x86DD,
+            return dict(eth_type=0x86DD,
                     ipv6_src=ipv6_src,
                     ipv6_dst=ipv6_dst,
                     ip_proto=6,
                     tcp_src=tcp_src,
                     tcp_dst=tcp_dst)
         else:
-            return self.parser.OFPMatch(eth_type=0x86DD,
+            return dict(eth_type=0x86DD,
                     ipv6_src=ipv6_src,
                     ipv6_dst=ipv6_dst,
                     ip_proto=6,
@@ -597,14 +621,14 @@ class FlowTables(BaseClass):
         an OpenFlow match object for this flow
         """
         if udp_src:
-            return self.parser.OFPMatch(eth_type=0x86DD,
+            return dict(eth_type=0x86DD,
                     ipv6_src=ipv6_src,
                     ipv6_dst=ipv6_dst,
                     ip_proto=17,
                     udp_src=udp_src,
                     udp_dst=udp_dst)
         else:
-            return self.parser.OFPMatch(eth_type=0x86DD,
+            return dict(eth_type=0x86DD,
                     ipv6_src=ipv6_src,
                     ipv6_dst=ipv6_dst,
                     ip_proto=17,
@@ -616,7 +640,7 @@ class FlowTables(BaseClass):
         Passed IPv4 parameters and return
         an OpenFlow match object for this flow
         """
-        return self.parser.OFPMatch(eth_type=0x0800,
+        return dict(eth_type=0x0800,
                     ipv4_src=_ipv4_t2i(str(ipv4_src)),
                     ipv4_dst=_ipv4_t2i(str(ipv4_dst)),
                     ip_proto=ip_proto)
@@ -627,7 +651,7 @@ class FlowTables(BaseClass):
         Passed IPv6 parameters and return
         an OpenFlow match object for this flow
         """
-        return self.parser.OFPMatch(eth_type=0x86DD,
+        return dict(eth_type=0x86DD,
                     ipv6_src=ipv6_src,
                     ipv6_dst=ipv6_dst)
 

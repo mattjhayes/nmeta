@@ -526,14 +526,45 @@ def test_indexing():
     assert explain2['executionStats']['totalKeysExamined'] == 1
     assert explain2['executionStats']['totalDocsExamined'] == 1
 
-def test_record_suppression():
+def test_not_suppressed():
     """
-    Test the recording of a flow suppression event
-    
-    if it is recorded in DB that already suppressed it should return 0
+    Test this query that checks to see if a flow mod to a switch
+    is not suppressed (preventing possible duplicate flow mods
     """
     #*** Instantiate Flow class:
     flow = flows_module.Flow(config)
+    #*** Create a sample result to use:
+    result = {'match_type': 'single', 'forward_cookie': 1,
+                 'forward_match': {eth_type=0x0800,
+                    ipv4_src=_ipv4_t2i(str('10.1.2.3')),
+                    ipv4_dst=_ipv4_t2i(str('10.2.3.4')),
+                    ip_proto=6}, 'reverse_cookie': 0, 'reverse_match': ''}
+
+    #*** Ingest a packet from pc1:
+    # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
+    flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
+
+    #*** Check to see if this flow is suppressed:
+    assert flow.not_suppressed(DPID1, 'forward', result) == 1
+
+    #*** Record suppressing this flow:
+    flow.record_suppression(DPID1, 'forward', result)
+    
+    #*** Check to see if this flow is suppressed now:
+    assert flow.not_suppressed(DPID1, 'forward', result) == 0
+
+def test_record_suppression():
+    """
+    Test the recording of a flow suppression event
+    """
+    #*** Instantiate Flow class:
+    flow = flows_module.Flow(config)
+    #*** Create a sample result to use:
+    result = {'match_type': 'single', 'forward_cookie': 1,
+                 'forward_match': {eth_type=0x0800,
+                    ipv4_src=_ipv4_t2i(str('10.1.2.3')),
+                    ipv4_dst=_ipv4_t2i(str('10.2.3.4')),
+                    ip_proto=6}, 'reverse_cookie': 0, 'reverse_match': ''}
 
     #*** Ingest a packet from pc1:
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]

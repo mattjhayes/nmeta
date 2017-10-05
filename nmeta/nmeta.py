@@ -214,7 +214,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
                     result = flowtables.drop_flow(msg)
                     flow.record_suppression(dpid, 'drop', result)
                 else:
-                    flow.record_suppression(dpid, 'drop', standdown=1)
+                    flow.record_suppression(dpid, 'drop', {}, standdown=1)
             telemetry.record_outcome('drop_action')
             return
 

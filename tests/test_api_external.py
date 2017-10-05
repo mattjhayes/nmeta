@@ -11,6 +11,7 @@ TBD: Everything...
 
 #*** Handle tests being in different directory branch to app code:
 import sys
+import struct
 
 sys.path.insert(0, '../nmeta')
 
@@ -857,14 +858,21 @@ def test_flow_mods():
     policy = policy_module.Policy(config)
     identities = identities_module.Identities(config, policy)
 
+    #*** Create a sample result to use:
+    ipv4_src=_ipv4_t2i(str('10.1.0.1'))
+    ipv4_dst=_ipv4_t2i(str('10.1.0.2'))
+    result = {'match_type': 'single', 'forward_cookie': 1,
+                 'forward_match': {'eth_type': 0x0800,
+                    'ipv4_src': ipv4_src, 'ipv4_dst': ipv4_dst,
+                    'ip_proto': 6}, 'reverse_cookie': 0, 'reverse_match': {}}
+
     #*** Record flow mod:
     #*** Ingest a packet from pc1:
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
-    #*** Record suppressing this flow. Should return 1 as not within
-    #*** standdown period:
-    assert flow.record_suppression(DPID1, 'forward') == 1
+    #*** Record suppressing this flow:
+    flow.record_suppression(DPID1, 'forward', result)
 
     #*** Call the external API:
     api_result = get_api_result(URL_FLOW_MODS)
@@ -876,27 +884,38 @@ def test_flow_mods():
     assert api_result['_items'][0]['dpid'] == DPID1
     assert api_result['_items'][0]['suppression_type'] == 'forward'
     assert api_result['_items'][0]['standdown'] == 0
+    assert api_result['_items'][0]['match_type'] == 'single'
+    assert api_result['_items'][0]['forward_cookie'] == 1
+    assert api_result['_items'][0]['forward_match'] == {'eth_type': 0x0800,
+                    'ipv4_src': ipv4_src, 'ipv4_dst': ipv4_dst,
+                    'ip_proto': 6}
+    assert api_result['_items'][0]['reverse_cookie'] == 0
+    assert api_result['_items'][0]['reverse_match'] == {}
     assert len(api_result['_items']) == 1
 
-    #*** Record suppressing this flow. Should return 0 as is within
-    #*** standdown period:
-    assert flow.record_suppression(DPID1, 'forward') == 0
+    #*** Record suppressing the same flow again, setting standdown:
+    flow.record_suppression(DPID1, 'forward', result, standdown=1)
 
     #*** Call the external API:
     api_result = get_api_result(URL_FLOW_MODS)
 
     logger.debug("api_result=%s", api_result)
 
-    #*** Check that API has returned expected results for new record:
+    #*** Check that API has returned expected results for new record
+    #***  (note that result items are defaulted due to standdown):
     assert api_result['_items'][1]['flow_hash'] == flow.packet.flow_hash
     assert api_result['_items'][1]['dpid'] == DPID1
-    assert api_result['_items'][0]['suppression_type'] == 'forward'
+    assert api_result['_items'][1]['suppression_type'] == 'forward'
     assert api_result['_items'][1]['standdown'] == 1
+    assert api_result['_items'][1]['match_type'] == ''
+    assert api_result['_items'][1]['forward_cookie'] == 0
+    assert api_result['_items'][1]['forward_match'] == {}
+    assert api_result['_items'][1]['reverse_cookie'] == 0
+    assert api_result['_items'][1]['reverse_match'] == {}
     assert len(api_result['_items']) == 2
 
     #*** Stop api_external sub-process:
     api_ps.terminate()
-
 
 def test_enumerate_eth_type():
     """
@@ -910,6 +929,8 @@ def test_enumerate_ip_proto():
     """
     assert api_external.enumerate_ip_proto(17) == 'UDP'
 
+#================= HELPER FUNCTIONS ===========================================
+
 def get_api_result(url):
     """
     Retrieve JSON data from API via a supplied URL
@@ -918,5 +939,14 @@ def get_api_result(url):
     r = s.get(url)
     return r.json()
 
+def _ipv4_t2i(ip_text):
+    """
+    Turns an IPv4 address in text format into an integer.
+    Borrowed from rest_router.py code
+    """
+    if ip_text == 0:
+        return ip_text
+    assert isinstance(ip_text, str)
+    return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
 
 

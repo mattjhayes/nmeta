@@ -546,28 +546,28 @@ def test_not_suppressed():
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
     #*** Check to see if this flow is suppressed:
-    assert flow.not_suppressed(DPID1, 'forward') == 1
+    assert flow.not_suppressed(DPID1, 'suppress') == 1
 
     #*** Record suppressing this flow:
-    flow.record_suppression(DPID1, 'forward', result)
+    flow.record_suppression(DPID1, 'suppress', result)
     
     #*** Check to see if this flow is suppressed now:
-    assert flow.not_suppressed(DPID1, 'forward') == 0
+    assert flow.not_suppressed(DPID1, 'suppress') == 0
 
     #*** Check to see if this flow is not suppressed for different DPID:
-    assert flow.not_suppressed(DPID2, 'forward') == 1
+    assert flow.not_suppressed(DPID2, 'suppress') == 1
 
     #*** Record suppressing this flow for DPID2:
-    flow.record_suppression(DPID2, 'forward', result)
+    flow.record_suppression(DPID2, 'suppress', result)
 
     #*** Check to see if this flow is now suppressed for DPID2:
-    assert flow.not_suppressed(DPID2, 'forward') == 0
+    assert flow.not_suppressed(DPID2, 'suppress') == 0
 
     #*** Check to see if this flow is not suppressed for different
-    #***  suppression_type:
+    #***  suppress_type:
     assert flow.not_suppressed(DPID1, 'drop') == 1
     
-    #*** Record suppressing this flow for suppression_type drop:
+    #*** Record suppressing this flow for suppress_type drop:
     flow.record_suppression(DPID1, 'drop', result)
 
     #*** Check to see if this flow is now suppressed for drop

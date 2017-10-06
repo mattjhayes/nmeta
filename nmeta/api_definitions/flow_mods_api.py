@@ -25,7 +25,7 @@ flow_mods_schema = {
         'dpid': {
             'type': 'integer'
         },
-        'suppression_type': {
+        'suppress_type': {
             'type': 'string'
         },
         'standdown': {

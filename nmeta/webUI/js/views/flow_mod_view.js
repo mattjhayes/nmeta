@@ -4,11 +4,22 @@ nmeta.FlowModView = Backbone.View.extend({
     tagName:"tr",
 
     render:function () {
-        // The clone hack here is to support parse.com which doesn't add the id to model.attributes. For all other persistence
-        // layers, you can directly pass model.attributes to the template function
-        var data = _.clone(this.model.attributes);
-        data.id = this.model.id;
-        this.$el.html(this.template(data));
+        // Manipulate the response data to suit view:
+        // Empty el:
+        this.$el.empty();
+
+        // Convert match JSONs to string so they display in HTML:
+        var data = this.model.toJSON();
+        data.forward_match = JSON.stringify(data.forward_match)
+        data.reverse_match = JSON.stringify(data.reverse_match)
+
+        // Reformat string to make multi-line friendly by replacing
+        // commas with carriage returns:
+        data.forward_match = data.forward_match.replace(/,/g, "\n");
+        data.reverse_match = data.reverse_match.replace(/,/g, "\n");
+
+        // Append data model (including REST response) to el:
+        this.$el.append(this.template(data));
         return this;
     }
 

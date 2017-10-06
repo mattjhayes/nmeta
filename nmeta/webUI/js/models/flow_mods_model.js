@@ -17,5 +17,13 @@ nmeta.FlowModsCollection = Backbone.Collection.extend({
         return response._items;
     },
 
+    // Runs after API has returned successfully:
+    //onFetch : function () {
+        // Convert match JSONs to string:
+        // var count;
+        // for(count = 0; count < response.length; count++){
+        // TBD, iterate response, using JSON.stringify()
+    //}
+
 });
 

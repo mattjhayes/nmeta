@@ -284,8 +284,10 @@ class Flow(BaseClass):
         self.flow_mods.create_index([('flow_hash', pymongo.DESCENDING),
                                 ('dpid', pymongo.DESCENDING),
                                 ('timestamp', pymongo.DESCENDING),
-                                ('suppression_type', pymongo.DESCENDING),
-                                ('standdown', pymongo.DESCENDING)],
+                                ('suppress_type', pymongo.DESCENDING),
+                                ('standdown', pymongo.DESCENDING),
+                                ('forward_cookie', pymongo.DESCENDING),
+                                ('reverse_cookie', pymongo.DESCENDING)],
                                 unique=False)
 
     class Packet(object):
@@ -902,7 +904,7 @@ class Flow(BaseClass):
         else:
             return min_s2c.total_seconds()
 
-    def not_suppressed(self, dpid, suppression_type):
+    def not_suppressed(self, dpid, suppress_type):
         """
         Check flow_mods to see if current flow context is already
         suppressed within suppression stand-down time for that switch,
@@ -918,7 +920,7 @@ class Flow(BaseClass):
                     'dpid': dpid,
                     'timestamp': {'$gte': datetime.datetime.now() - \
                                                 FLOW_SUPPRESSION_STANDDOWN},
-                    'suppression_type': suppression_type,
+                    'suppress_type': suppress_type,
                     'standdown': 0}
 
         #*** Check if already suppressed with-in stand-down time period:
@@ -944,8 +946,8 @@ class Flow(BaseClass):
             #*** Timestamp of when flow mod made:
             self.timestamp = datetime.datetime.now()
             self.dpid = dpid
-            #*** suppression_type is 'forward' or 'drop':
-            self.suppression_type = _type
+            #*** suppress_type is 'suppress' or 'drop':
+            self.suppress_type = _type
             #*** If set, flow_mod was not sent due to stand down period:
             self.standdown = standdown
             #*** Match type set by switches module (ignore|single|dual)
@@ -969,7 +971,7 @@ class Flow(BaseClass):
             dbdictresult['flow_hash'] = self.flow_hash
             dbdictresult['timestamp'] = self.timestamp
             dbdictresult['dpid'] = self.dpid
-            dbdictresult['suppression_type'] = self.suppression_type
+            dbdictresult['suppress_type'] = self.suppress_type
             dbdictresult['standdown'] = self.standdown
             dbdictresult['match_type'] = self.match_type
             dbdictresult['forward_cookie'] = self.forward_cookie
@@ -986,7 +988,7 @@ class Flow(BaseClass):
             #*** Write to database collection:
             self.flow_mods.insert_one(self.dbdict())
 
-    def record_suppression(self, dpid, suppression_type, result, standdown=0):
+    def record_suppression(self, dpid, suppress_type, result, standdown=0):
         """
         Record that the flow is being suppressed on a particular
         switch in the flow_mods database collection, so that information
@@ -994,7 +996,7 @@ class Flow(BaseClass):
         """
         #*** Instantiate a new instance of FlowMod class:
         flow_mod_record = self.FlowMod(self.flow_mods, self.packet.flow_hash,
-                                dpid, suppression_type, standdown)
+                                dpid, suppress_type, standdown)
         if not standdown:
             #*** Add values from switches module suppress or drop flow result:
             flow_mod_record.match_type = result['match_type']

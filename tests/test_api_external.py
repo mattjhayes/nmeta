@@ -872,7 +872,7 @@ def test_flow_mods():
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
     #*** Record suppressing this flow:
-    flow.record_suppression(DPID1, 'forward', result)
+    flow.record_suppression(DPID1, 'suppress', result)
 
     #*** Call the external API:
     api_result = get_api_result(URL_FLOW_MODS)
@@ -882,7 +882,7 @@ def test_flow_mods():
     #*** Check that API has returned expected results:
     assert api_result['_items'][0]['flow_hash'] == flow.packet.flow_hash
     assert api_result['_items'][0]['dpid'] == DPID1
-    assert api_result['_items'][0]['suppression_type'] == 'forward'
+    assert api_result['_items'][0]['suppress_type'] == 'suppress'
     assert api_result['_items'][0]['standdown'] == 0
     assert api_result['_items'][0]['match_type'] == 'single'
     assert api_result['_items'][0]['forward_cookie'] == 1
@@ -894,7 +894,7 @@ def test_flow_mods():
     assert len(api_result['_items']) == 1
 
     #*** Record suppressing the same flow again, setting standdown:
-    flow.record_suppression(DPID1, 'forward', result, standdown=1)
+    flow.record_suppression(DPID1, 'suppress', result, standdown=1)
 
     #*** Call the external API:
     api_result = get_api_result(URL_FLOW_MODS)
@@ -905,7 +905,7 @@ def test_flow_mods():
     #***  (note that result items are defaulted due to standdown):
     assert api_result['_items'][1]['flow_hash'] == flow.packet.flow_hash
     assert api_result['_items'][1]['dpid'] == DPID1
-    assert api_result['_items'][1]['suppression_type'] == 'forward'
+    assert api_result['_items'][1]['suppress_type'] == 'suppress'
     assert api_result['_items'][1]['standdown'] == 1
     assert api_result['_items'][1]['match_type'] == ''
     assert api_result['_items'][1]['forward_cookie'] == 0

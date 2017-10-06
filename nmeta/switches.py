@@ -345,7 +345,7 @@ class FlowTables(BaseClass):
         self.drop_hard_timeout = config.get_value('drop_hard_timeout')
         self.drop_priority = config.get_value('drop_priority')
         #*** Unique value counter for Flow Mod cookies:
-        self.flow_mod_cookie = 0
+        self.flow_mod_cookie = 1
 
     def suppress_flow(self, msg, in_port, out_port, out_queue):
         """

@@ -14,15 +14,15 @@ Custom classifiers have access to the flow and identity abstractions (see
 develop chapter)
 
 
-*************
-External APIs
-*************
+****
+APIs
+****
 
-External APIs expose nmeta performance and state data. They are used by the
+APIs expose nmeta performance and state data. They are used by the
 nmeta WebUI and can be used for other applications.
 
-Be aware that non-native Python Eve APIs have limited feature support (i.e.
-may not support filtering)
+Be aware that some non-native Python Eve APIs have limited feature support
+(i.e. may not support filtering)
 
 Controller Summary API
 ======================
@@ -63,6 +63,44 @@ Example manual invocation of the API:
 .. code-block:: text
 
   curl http://localhost:8081/v1/flow_mods/ | python -m json.tool
+
+Example response (showing only one of multiple records):
+
+.. code-block:: text
+
+    {
+        "_items": [
+
+            {
+                "_created": "00:00:00.000000",
+                "_etag": "21a20685ccf9080fbd31de81eb2802146907bf13",
+                "_id": "59d807e101186126d01fc216",
+                "_updated": "00:00:00.000000",
+                "dpid": 1,
+                "flow_hash": "c907986d4796fb669acb37efba3afc8e",
+                "forward_cookie": 1,
+                "forward_match": {
+                    "eth_type": 2048,
+                    "ip_proto": 6,
+                    "ipv4_dst": "10.1.0.1",
+                    "ipv4_src": "10.1.0.2",
+                    "tcp_dst": 36296,
+                    "tcp_src": 80
+                },
+                "match_type": "dual",
+                "reverse_cookie": 2,
+                "reverse_match": {
+                    "eth_type": 2048,
+                    "ip_proto": 6,
+                    "ipv4_dst": "10.1.0.2",
+                    "ipv4_src": "10.1.0.1",
+                    "tcp_dst": 80,
+                    "tcp_src": 36296
+                },
+                "standdown": 0,
+                "suppress_type": "suppress",
+                "timestamp": "11:46:57.940000"
+            },
 
 Flows API
 =========
@@ -173,7 +211,7 @@ Example response (showing only one of multiple records):
                 "_id": "59b3213f01186111d817494c",
                 "_updated": "00:00:00.000000",
                 "byte_count": 468,
-                "cookie": 0,
+                "cookie": 5,
                 "dpid": 1,
                 "duration_sec": 31,
                 "eth_A": "",

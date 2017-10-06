@@ -167,30 +167,30 @@ class NMeta(app_manager.RyuApp, BaseClass):
         in_port = msg.match['in_port']
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
+        flow = self.flow
+        ident = self.ident
 
         #*** Read packet into flow object for classifiers to work with:
-        self.flow.ingest_packet(dpid, in_port, msg.data,
-                                                       datetime.datetime.now())
+        flow.ingest_packet(dpid, in_port, msg.data, datetime.datetime.now())
 
-        #*** Harvest identity metadata:
-        self.ident.harvest(msg.data, self.flow.packet)
+        #*** Harvest any identity metadata:
+        ident.harvest(msg.data, self.flow.packet)
 
         #*** Traffic Classification if not already classified.
         #*** Check traffic classification policy to see if packet matches
         #*** against policy and if it does update flow.classified.*:
-        if not self.flow.classification.classified:
-            self.policy.check_policy(self.flow, self.ident)
-            self.logger.debug("classification=%s",
-                                             self.flow.classification.dbdict())
+        if not flow.classification.classified:
+            self.policy.check_policy(flow, ident)
+            self.logger.debug("clasfn=%s", flow.classification.dbdict())
             #*** Write classification result to classifications collection:
-            self.flow.classification.commit()
+            flow.classification.commit()
 
         #*** Call Forwarding module to determine output port:
         out_port = self.forwarding.basic_switch(event, in_port)
         if out_port == in_port:
             #*** Sending out same port prohibited by IEEE 802.1D-2004 7.7.1c:
             self.logger.warning("Dropping packet flow_hash=%s as out_port="
-                                    "in_port=%s", self.flow.flow_hash, in_port)
+                                    "in_port=%s", flow.flow_hash, in_port)
             telemetry.record_outcome('drop_same_port')
             return
         #*** Don't forward reserved MACs, as per IEEE 802.1D-2004 table 7-10:
@@ -199,7 +199,7 @@ class NMeta(app_manager.RyuApp, BaseClass):
             telemetry.record_outcome('drop_reserved_mac')
             return
 
-        actions = self.flow.classification.actions
+        actions = flow.classification.actions
         #*** Set QoS queue based on any QoS actions:
         if 'qos_treatment' in actions:
             out_queue = self.policy.qos(actions['qos_treatment'])
@@ -208,10 +208,13 @@ class NMeta(app_manager.RyuApp, BaseClass):
             out_queue = 0
         #*** Check for drop action:
         if 'drop' in actions:
-            self.logger.debug("Action drop flow_hash=%s", self.flow.flow_hash)
+            self.logger.debug("Action drop flow_hash=%s", flow.flow_hash)
             if actions['drop'] == 'at_controller_and_switch':
-                if self.flow.record_suppression(dpid, 'drop'):
-                    flowtables.drop_flow(msg)
+                if flow.not_suppressed(dpid, 'drop'):
+                    result = flowtables.drop_flow(msg)
+                    flow.record_suppression(dpid, 'drop', result)
+                else:
+                    flow.record_suppression(dpid, 'drop', {}, standdown=1)
             telemetry.record_outcome('drop_action')
             return
 
@@ -219,12 +222,16 @@ class NMeta(app_manager.RyuApp, BaseClass):
             #*** Do some add flow magic, but only if not a flooded packet and
             #*** has been classified.
             #*** Prefer to do fine-grained match where possible:
-            if self.flow.classification.classified:
-                if self.flow.record_suppression(dpid, 'forward'):
-                    flowtables.suppress_flow(msg, in_port, out_port, out_queue)
+            if flow.classification.classified:
+                if flow.not_suppressed(dpid, 'suppress'):
+                    result = flowtables.suppress_flow(msg, in_port, out_port,
+                                                                     out_queue)
+                    flow.record_suppression(dpid, 'suppress', result=result)
+                else:
+                    flow.record_suppression(dpid, 'suppress', {}, standdown=1)
             else:
                 self.logger.debug("Flow entry for flow_hash=%s not added as "
-                                     "not classified yet", self.flow.flow_hash)
+                                     "not classified yet", flow.flow_hash)
             #*** Send Packet Out:
             switch.packet_out(msg.data, in_port, out_port, out_queue)
             telemetry.record_outcome('packet_out')
@@ -331,7 +338,7 @@ class PITelemetry(object):
             ryu_delta = self.pi_start_time - self.event.timestamp
         else:
             ryu_delta = 0
-        #*** Calculate and log packet-in processing time: 
+        #*** Calculate and log packet-in processing time:
         pi_delta = time.time() - self.pi_start_time
         #*** Write results to database collection:
         self.pi_time_col.insert({'ryu_delta': ryu_delta,

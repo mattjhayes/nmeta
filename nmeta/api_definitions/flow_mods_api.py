@@ -25,12 +25,27 @@ flow_mods_schema = {
         'dpid': {
             'type': 'integer'
         },
-        'suppression_type': {
+        'suppress_type': {
             'type': 'string'
         },
         'standdown': {
             'type': 'integer'
-        }
+        },
+        'match_type': {
+            'type': 'string'
+        },
+        'forward_cookie': {
+            'type': 'integer'
+        },
+        'forward_match': {
+            'type': 'dict'
+        },
+        'reverse_cookie': {
+            'type': 'integer'
+        },
+        'reverse_match': {
+            'type': 'dict'
+        },
     }
 
 flow_mods_settings = {

@@ -408,6 +408,12 @@ class FlowTables(BaseClass):
                                  priority=priority,
                                  idle_timeout=idle_timeout,
                                  hard_timeout=hard_timeout)
+            if pkt_ip4:
+                #*** Convert IPv4 addrs back to dotted decimal for storing:
+                forward_match['ipv4_src'] = pkt_ip4.src
+                forward_match['ipv4_dst'] = pkt_ip4.dst
+                reverse_match['ipv4_src'] = pkt_ip4.dst
+                reverse_match['ipv4_dst'] = pkt_ip4.src
             result['match_type'] = 'dual'
             result['forward_cookie'] = forward_cookie
             result['forward_match'] = forward_match
@@ -437,6 +443,10 @@ class FlowTables(BaseClass):
                                  priority=priority,
                                  idle_timeout=idle_timeout,
                                  hard_timeout=hard_timeout)
+            if pkt_ip4:
+                #*** Convert IPv4 addrs back to dotted decimal for storing:
+                match['ipv4_src'] = pkt_ip4.src
+                match['ipv4_dst'] = pkt_ip4.dst
             result['match_type'] = 'single'
             result['forward_cookie'] = cookie
             result['forward_match'] = match
@@ -508,6 +518,10 @@ class FlowTables(BaseClass):
                           idle_timeout=idle_timeout, hard_timeout=hard_timeout)
         result['match_type'] = 'forward'
         result['forward_cookie'] = cookie
+        if pkt_ip4:
+            #*** Convert IPv4 addrs back to dotted decimal for storing:
+            drop_match['ipv4_src'] = pkt_ip4.src
+            drop_match['ipv4_dst'] = pkt_ip4.dst
         result['forward_match'] = drop_match
         return result
 

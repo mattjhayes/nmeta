@@ -32,15 +32,15 @@ into the state of the flow.
 #*** For packet methods:
 import socket
 
+#*** For timestamps:
+import datetime
+
 #*** Import dpkt for packet parsing:
 import dpkt
 
 #*** mongodb Database Import:
 import pymongo
 from pymongo import MongoClient
-
-#*** For timestamps:
-import datetime
 
 #*** For logging configuration:
 from baseclass import BaseClass
@@ -213,7 +213,7 @@ class Flow(BaseClass):
         #*** Get parameters from config:
         mongo_addr = config.get_value("mongo_addr")
         mongo_port = config.get_value("mongo_port")
-        mongo_dbname = self.config.get_value("mongo_dbname")
+        mongo_dbname = config.get_value("mongo_dbname")
         #*** Max bytes of the capped collections:
         packet_ins_max_bytes = config.get_value("packet_ins_max_bytes")
         classifications_max_bytes = \
@@ -225,6 +225,9 @@ class Flow(BaseClass):
                                 (seconds=config.get_value("flow_time_limit"))
         self.classification_time_limit = datetime.timedelta \
                         (seconds=config.get_value("classification_time_limit"))
+
+        #*** Flow mod cookie value offset indicates flow session direction:
+        self.offset = config.get_value("flow_mod_cookie_reverse_offset")
 
         #*** Start mongodb:
         self.logger.info("Connecting to MongoDB database...")
@@ -271,7 +274,11 @@ class Flow(BaseClass):
         #*** with max size in bytes, so MongoDB handles data retention:
         self.flow_rems = db_nmeta.create_collection('flow_rems',
                                    capped=True, size=flow_rems_max_bytes)
-        #*** Note: don't index flow_rems collection as we don't read it
+        #*** Index flow_rems to improve look-up performance:
+        self.flow_rems.create_index([('direction', pymongo.DESCENDING),
+                                ('ip_A', pymongo.DESCENDING),
+                                ('ip_B', pymongo.DESCENDING)],
+                                unique=False)
 
         #*** flow_mods collection:
         self.logger.debug("Deleting flow_mods MongoDB collection...")
@@ -285,9 +292,7 @@ class Flow(BaseClass):
                                 ('dpid', pymongo.DESCENDING),
                                 ('timestamp', pymongo.DESCENDING),
                                 ('suppress_type', pymongo.DESCENDING),
-                                ('standdown', pymongo.DESCENDING),
-                                ('forward_cookie', pymongo.DESCENDING),
-                                ('reverse_cookie', pymongo.DESCENDING)],
+                                ('standdown', pymongo.DESCENDING)],
                                 unique=False)
 
     class Packet(object):
@@ -474,12 +479,13 @@ class Flow(BaseClass):
         This is a flow that a switch has informed us it has
         removed from its flow table because of an idle timeout
         """
-        def __init__(self, logger, flow_rems, msg):
+        def __init__(self, logger, flow_rems, msg, offset):
             """
             Initialise the class with logger and flow_rems db
             collection. Initialise removed flow parameters to values
             in the message
             """
+            self.offset = offset
             match = msg.match
             self.logger = logger
             self.flow_rems = flow_rems
@@ -533,6 +539,11 @@ class Flow(BaseClass):
                 self.flow_hash = nethash.hash_flow((self.eth_A, self.eth_B,
                                           self.dpid, self.removal_time,
                                           self.ip_proto))
+            #*** Session direction (forward|reverse). Defaults to forward:
+            if self.cookie < self.offset:
+                self.direction = 'forward'
+            else:
+                self.direction = 'reverse'
 
         def dbdict(self):
             """
@@ -561,6 +572,7 @@ class Flow(BaseClass):
             dbdictresult['tp_A'] = self.tp_A
             dbdictresult['tp_B'] = self.tp_B
             dbdictresult['flow_hash'] = self.flow_hash
+            dbdictresult['direction'] = self.direction
             return dbdictresult
 
         def commit(self):
@@ -579,7 +591,7 @@ class Flow(BaseClass):
         Record entry in the flow_rems database collection
         """
         #*** Instantiate class to hold removed flow record:
-        remf = self.RemovedFlow(self.logger, self.flow_rems, msg)
+        remf = self.RemovedFlow(self.logger, self.flow_rems, msg, self.offset)
         #*** Decide what to record based on the match:
         match = msg.match
         if 'ip_proto' in match:
@@ -596,20 +608,8 @@ class Flow(BaseClass):
                 remf.commit()
                 return 1
         else:
-            self.logger.info("match has eth_type=%s", match['eth_type'])
-            if match['eth_type'] == 2048:
-                #*** IPv4:
-                self.logger.debug("Removed flow was IPv4 unknown protocol")
-                # TBD
-
-            elif match['eth_type'] == 34525:
-                #*** IPv6:
-                self.logger.debug("Removed flow was IPv6 unknown protocol")
-                # TBD
-
-            else:
-                self.logger.warning("Removed flow was unhandled eth_type")
-                return 0
+            self.logger.warning("Removed flow was unhandled eth_type")
+            return 0
 
     def ingest_packet(self, dpid, in_port, packet, timestamp):
         """
@@ -952,7 +952,7 @@ class Flow(BaseClass):
             self.standdown = standdown
             #*** Match type set by switches module (ignore|single|dual)
             #***  ignore means no mod, dual had forward and reverse mods:
-            self.match_type = ""
+            self.match_type = ''
             #*** Cookie for forward flow mod:
             self.forward_cookie = 0
             #*** Match dict set by switches module for forward flow:
@@ -961,6 +961,8 @@ class Flow(BaseClass):
             self.reverse_cookie = 0
             #*** Match dict set by switches module for reverse flow:
             self.reverse_match = {}
+            #*** Client IP to help ascertain session direction (0 if unknown):
+            self.client_ip = ''
 
         def dbdict(self):
             """
@@ -978,6 +980,7 @@ class Flow(BaseClass):
             dbdictresult['forward_match'] = self.forward_match
             dbdictresult['reverse_cookie'] = self.reverse_cookie
             dbdictresult['reverse_match'] = self.reverse_match
+            dbdictresult['client_ip'] = self.client_ip
             return dbdictresult
 
         def commit(self):
@@ -1004,6 +1007,7 @@ class Flow(BaseClass):
             flow_mod_record.forward_match = result['forward_match']
             flow_mod_record.reverse_cookie = result['reverse_cookie']
             flow_mod_record.reverse_match = result['reverse_match']
+            flow_mod_record.client_ip = result['client_ip']
 
         self.logger.debug("Recording suppression of flow=%s on "
                                 "dpid=%s", self.packet.flow_hash, dpid)

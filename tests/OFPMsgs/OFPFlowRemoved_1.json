@@ -1,7 +1,7 @@
 {
    "OFPFlowRemoved": {
       "byte_count": 744,
-      "cookie": 0,
+      "cookie": 23,
       "duration_nsec": 0,
       "duration_sec": 5,
       "hard_timeout": 0,

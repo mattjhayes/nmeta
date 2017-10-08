@@ -193,6 +193,10 @@ class ExternalAPI(BaseClass):
             'flows': flows_api.flows_settings,
             'flows_removed': flows_removed_api.flows_removed_settings,
             'flows_removed_stats_count': flows_removed_api.flows_removed_stats_count_settings,
+            'flows_removed_src_bytes_sent': flows_removed_api.flows_removed_src_bytes_sent_settings,
+            'flows_removed_src_bytes_received': flows_removed_api.flows_removed_src_bytes_received_settings,
+            'flows_removed_dst_bytes_sent': flows_removed_api.flows_removed_dst_bytes_sent_settings,
+            'flows_removed_dst_bytes_received': flows_removed_api.flows_removed_dst_bytes_received_settings,
             'flows_removed_stats_bytes_sent': flows_removed_api.flows_removed_stats_bytes_sent_settings,
             'flows_removed_stats_bytes_received': flows_removed_api.flows_removed_stats_bytes_received_settings,
             'flows_ui': flows_ui.flows_ui_settings,
@@ -246,8 +250,27 @@ class ExternalAPI(BaseClass):
 
         #*** Hook for flows removed stats count response:
         self.app.on_fetched_resource_flows_removed_stats_count += \
-                                              self.response_flows_removed_stats_count
+                                        self.response_flows_removed_stats_count
 
+        # NEW:
+        #*** Hook for flows removed src bytes sent response:
+        self.app.on_fetched_resource_flows_removed_src_bytes_sent += \
+                                     self.response_flows_removed_src_bytes_sent
+
+        #*** Hook for flows removed src bytes received response:
+        self.app.on_fetched_resource_flows_removed_src_bytes_received += \
+                                 self.response_flows_removed_src_bytes_received
+
+        #*** Hook for flows removed dst bytes sent response:
+        self.app.on_fetched_resource_flows_removed_dst_bytes_sent += \
+                                     self.response_flows_removed_dst_bytes_sent
+
+        #*** Hook for flows removed dst bytes received response:
+        self.app.on_fetched_resource_flows_removed_dst_bytes_received += \
+                                 self.response_flows_removed_dst_bytes_received
+
+
+        # LEGACY:
         #*** Hook for flows removed stats bytes sent response:
         self.app.on_fetched_resource_flows_removed_stats_bytes_sent += \
                                               self.response_flows_removed_stats_bytes_sent
@@ -255,6 +278,8 @@ class ExternalAPI(BaseClass):
         #*** Hook for flows removed stats bytes received response:
         self.app.on_fetched_resource_flows_removed_stats_bytes_received += \
                                               self.response_flows_removed_stats_bytes_received
+
+
 
         #*** Hook for filtered flows response:
         self.app.on_fetched_resource_flows_ui += \
@@ -437,6 +462,9 @@ class ExternalAPI(BaseClass):
             del items['_meta']
         items['flows_removed'] =  self.flow_rems.count()
 
+
+
+    # LEGACY:
     def response_flows_removed_stats_bytes_sent(self, items):
         """
         Return removed flow bytes sent by source IP (deduplicated for flows
@@ -484,6 +512,171 @@ class ExternalAPI(BaseClass):
         #*** MongoDB aggregate counting bytes received by IP, deduplicated on
         #***  first occurrence of byte_count per flow_hash, and reverse sorted:
         cursor = self.flow_rems.aggregate([
+                        {'$group': {
+                            '_id': {
+                                'dst': '$ip_B',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_received': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.dst',
+                            'total_bytes_received': {
+                                '$sum': '$bytes_received'
+                            }
+                        }},
+                        {'$sort' : {
+                            'total_bytes_received' : -1 
+                        }}
+                    ])
+        #*** Add aggregate into _items for response:
+        items['_items'] = list(cursor)
+        #*** Enrich with identity metadata:
+        for item in items['_items']:
+            item['identity'] = self.get_id(item['_id'])
+
+
+
+    # NEW
+    def response_flows_removed_src_bytes_sent(self, items):
+        """
+        Returns removed flow bytes sent by session source IP (deduplicated
+        for flows crossing multiple switches), enriched with identity metadata.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
+        #*** MongoDB aggregate counting bytes forward by src IP, dedup
+        #***  first occurrence of byte_count per flow_hash and reverse sorted:
+        cursor = self.flow_rems.aggregate([
+                        {'$match': {
+                            'direction': 'forward'
+                            }
+                        },
+                        {'$group': {
+                            '_id': {
+                                'src': '$ip_A',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_sent': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.src',
+                            'total_bytes_sent': {
+                                '$sum': '$bytes_sent'
+                            }
+                        }},
+                        {'$sort' : {
+                            'total_bytes_sent' : -1 
+                        }}
+                    ])
+        #*** Add aggregate into _items for response:
+        items['_items'] = list(cursor)
+        #*** Enrich with identity metadata:
+        for item in items['_items']:
+            item['identity'] = self.get_id(item['_id'])
+
+    def response_flows_removed_src_bytes_received(self, items):
+        """
+        Returns removed flow bytes received by session source IP (deduplicated
+        for flows crossing multiple switches), enriched with identity metadata.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
+        #*** MongoDB aggregate counting bytes reverse by dst IP,
+        #***  dedup first occurrence of byte_count per flow_hash and reverse
+        #***  sorted:
+        cursor = self.flow_rems.aggregate([
+                        {'$match': {
+                            'direction': 'reverse'
+                            }
+                        },
+                        {'$group': {
+                            '_id': {
+                                'dst': '$ip_B',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_received': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.dst',
+                            'total_bytes_received': {
+                                '$sum': '$bytes_received'
+                            }
+                        }},
+                        {'$sort' : {
+                            'total_bytes_received' : -1 
+                        }}
+                    ])
+        #*** Add aggregate into _items for response:
+        items['_items'] = list(cursor)
+        #*** Enrich with identity metadata:
+        for item in items['_items']:
+            item['identity'] = self.get_id(item['_id'])
+
+    def response_flows_removed_dst_bytes_sent(self, items):
+        """
+        Returns removed flow bytes sent by session destination IP (deduplicated
+        for flows crossing multiple switches), enriched with identity metadata.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
+        #*** MongoDB aggregate counting bytes reverse by src IP, dedup
+        #***  first occurrence of byte_count per flow_hash and reverse sorted:
+        cursor = self.flow_rems.aggregate([
+                        {'$match': {
+                            'direction': 'reverse'
+                            }
+                        },
+                        {'$group': {
+                            '_id': {
+                                'src': '$ip_A',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_sent': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.src',
+                            'total_bytes_sent': {
+                                '$sum': '$bytes_sent'
+                            }
+                        }},
+                        {'$sort' : {
+                            'total_bytes_sent' : -1 
+                        }}
+                    ])
+        #*** Add aggregate into _items for response:
+        items['_items'] = list(cursor)
+        #*** Enrich with identity metadata:
+        for item in items['_items']:
+            item['identity'] = self.get_id(item['_id'])
+
+    def response_flows_removed_dst_bytes_received(self, items):
+        """
+        Returns removed flow bytes received by session destination IP (dedup
+        for flows crossing multiple switches), enriched with identity metadata.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
+        #*** MongoDB aggregate counting bytes forward by dst IP,
+        #***  dedup first occurrence of byte_count per flow_hash and reverse
+        #***  sorted:
+        cursor = self.flow_rems.aggregate([
+                        {'$match': {
+                            'direction': 'forward'
+                            }
+                        },
                         {'$group': {
                             '_id': {
                                 'dst': '$ip_B',

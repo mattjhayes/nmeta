@@ -135,7 +135,7 @@ def test_flows_removed():
     #*** Validate API Response parameters:
     assert api_result['_items'][0]['dpid'] == 1
     #*** Note: can't easily test 'removal_time' as is dynamic, so skipping...
-    assert api_result['_items'][0]['cookie'] == 0
+    assert api_result['_items'][0]['cookie'] == 23
     assert api_result['_items'][0]['priority'] == 1
     assert api_result['_items'][0]['reason'] == 0
     assert api_result['_items'][0]['table_id'] == 1
@@ -153,11 +153,12 @@ def test_flows_removed():
     assert api_result['_items'][0]['tp_A'] == 43297
     assert api_result['_items'][0]['tp_B'] == 80
     assert api_result['_items'][0]['flow_hash'] == '9822b2867652ee0957892482b9f004c3'
+    assert api_result['_items'][0]['direction'] == 'forward'
 
     #*** Validate API Response parameters for second flow removal:
     assert api_result['_items'][1]['dpid'] == 1
     #*** Note: can't easily test 'removal_time' as is dynamic, so skipping...
-    assert api_result['_items'][1]['cookie'] == 0
+    assert api_result['_items'][1]['cookie'] == 1000000023
     assert api_result['_items'][1]['priority'] == 1
     assert api_result['_items'][1]['reason'] == 0
     assert api_result['_items'][1]['table_id'] == 1
@@ -175,6 +176,7 @@ def test_flows_removed():
     assert api_result['_items'][1]['tp_A'] == 80
     assert api_result['_items'][1]['tp_B'] == 43297
     assert api_result['_items'][1]['flow_hash'] == '9822b2867652ee0957892482b9f004c3'
+    assert api_result['_items'][1]['direction'] == 'reverse'
 
     #*** Stop api_external sub-process:
     api_ps.terminate()
@@ -859,12 +861,13 @@ def test_flow_mods():
     identities = identities_module.Identities(config, policy)
 
     #*** Create a sample result to use:
-    ipv4_src=_ipv4_t2i(str('10.1.0.1'))
-    ipv4_dst=_ipv4_t2i(str('10.1.0.2'))
+    ipv4_src='10.1.0.1'
+    ipv4_dst='10.1.0.2'
     result = {'match_type': 'single', 'forward_cookie': 1,
                  'forward_match': {'eth_type': 0x0800,
                     'ipv4_src': ipv4_src, 'ipv4_dst': ipv4_dst,
-                    'ip_proto': 6}, 'reverse_cookie': 0, 'reverse_match': {}}
+                    'ip_proto': 6}, 'reverse_cookie': 0, 'reverse_match': {},
+                    'client_ip': ipv4_src}
 
     #*** Record flow mod:
     #*** Ingest a packet from pc1:
@@ -891,6 +894,7 @@ def test_flow_mods():
                     'ip_proto': 6}
     assert api_result['_items'][0]['reverse_cookie'] == 0
     assert api_result['_items'][0]['reverse_match'] == {}
+    assert api_result['_items'][0]['client_ip'] == ipv4_src
     assert len(api_result['_items']) == 1
 
     #*** Record suppressing the same flow again, setting standdown:

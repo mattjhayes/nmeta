@@ -129,26 +129,36 @@ Example response (showing only one of multiple records):
         "_items": [
             {
                 "_created": "00:00:00.000000",
-                "_etag": "0782fc9d09f47d11302f18c5ebee5841e7199c54",
-                "_id": "59b312de01186111d8173a7b",
+                "_etag": "6fbc72e6d279932c763db5852312ccd4b4f6d4cc",
+                "_id": "59d81f3a0118612dd314c8b0",
                 "_updated": "00:00:00.000000",
-                "dpid": 1,
-                "eth_dst": "08:00:27:c8:db:91",
-                "eth_src": "08:00:27:2a:d6:dd",
-                "eth_type": 2048,
-                "flow_hash": "f82c55560268286142a30ef127240fc1",
-                "in_port": 1,
-                "ip_dst": "10.1.0.2",
-                "ip_src": "10.1.0.1",
-                "length": 342,
-                "proto": 17,
-                "timestamp": "09:59:58.428000",
-                "tp_dst": 67,
-                "tp_flags": "",
-                "tp_seq_dst": 0,
-                "tp_seq_src": 0,
-                "tp_src": 68
-            },
+                "client_ip": "10.1.0.1",
+                "dpid": 2,
+                "flow_hash": "3c1a773547e36469500f64ad0b34efb2",
+                "forward_cookie": 1,
+                "forward_match": {
+                    "eth_type": 2048,
+                    "ip_proto": 6,
+                    "ipv4_dst": "10.1.0.2",
+                    "ipv4_src": "10.1.0.1",
+                    "tcp_dst": 80,
+                    "tcp_src": 36299
+                },
+                "match_type": "dual",
+                "reverse_cookie": 2,
+                "reverse_match": {
+                    "eth_type": 2048,
+                    "ip_proto": 6,
+                    "ipv4_dst": "10.1.0.1",
+                    "ipv4_src": "10.1.0.2",
+                    "tcp_dst": 36299,
+                    "tcp_src": 80
+                },
+                "standdown": 0,
+                "suppress_type": "suppress",
+                "timestamp": "13:26:34.546000"
+            }
+
 
 
 Flows UI API

@@ -46,6 +46,9 @@ flow_mods_schema = {
         'reverse_match': {
             'type': 'dict'
         },
+        'client_ip': {
+            'type': 'string'
+        }
     }
 
 flow_mods_settings = {

@@ -77,6 +77,9 @@ drop_hard_timeout: 0
 #*** Priority for drop flow entries:
 drop_priority: 2
 #
+#*** Flow mod cookie value offset indicates flow session direction:
+flow_mod_cookie_reverse_offset: 1000000000
+#
 #========== Mongodb Database ==========================
 mongo_addr: localhost
 mongo_port: 27017

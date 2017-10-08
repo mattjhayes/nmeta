@@ -372,6 +372,8 @@ def test_record_removal():
     assert result_tx['packet_count'] == 10
     assert result_tx['flow_hash'] == nethash.hash_flow(('10.1.0.1',
                                                      '10.1.0.2', 43297, 80, 6))
+    assert result_tx['cookie'] == 23
+    assert result_tx['direction'] == 'forward'
 
     #*** Return leg of flow:
     db_data_tx = {'ip_B': '10.1.0.1', 'tp_A': 80}
@@ -384,6 +386,8 @@ def test_record_removal():
     assert result_tx['packet_count'] == 9
     assert result_tx['flow_hash'] == nethash.hash_flow(('10.1.0.2',
                                                      '10.1.0.1', 80, 43297, 6))
+    assert result_tx['cookie'] == 1000000023
+    assert result_tx['direction'] == 'reverse'
 
 def test_classification_identity():
     """
@@ -534,12 +538,13 @@ def test_not_suppressed():
     #*** Instantiate Flow class:
     flow = flows_module.Flow(config)
     #*** Create a sample result to use:
-    ipv4_src=_ipv4_t2i(str('10.1.0.1'))
-    ipv4_dst=_ipv4_t2i(str('10.1.0.2'))
+    ipv4_src='10.1.0.1'
+    ipv4_dst='10.1.0.2'
     result = {'match_type': 'single', 'forward_cookie': 1,
                  'forward_match': {'eth_type': 0x0800,
                     'ipv4_src': ipv4_src, 'ipv4_dst': ipv4_dst,
-                    'ip_proto': 6}, 'reverse_cookie': 0, 'reverse_match': {}}
+                    'ip_proto': 6}, 'reverse_cookie': 0, 'reverse_match': {},
+                    'client_ip': ipv4_src}
 
     #*** Ingest a packet from pc1:
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
@@ -580,12 +585,13 @@ def test_record_suppression():
     #*** Instantiate Flow class:
     flow = flows_module.Flow(config)
     #*** Create a sample result to use:
-    ipv4_src=_ipv4_t2i(str('10.1.0.1'))
-    ipv4_dst=_ipv4_t2i(str('10.1.0.2'))
+    ipv4_src='10.1.0.1'
+    ipv4_dst='10.1.0.2'
     result = {'match_type': 'single', 'forward_cookie': 1,
                  'forward_match': {'eth_type': 0x0800,
                     'ipv4_src': ipv4_src, 'ipv4_dst': ipv4_dst,
-                    'ip_proto': 6}, 'reverse_cookie': 0, 'reverse_match': {}}
+                    'ip_proto': 6}, 'reverse_cookie': 0, 'reverse_match': {},
+                    'client_ip': ipv4_src}
 
     #*** Ingest a packet from pc1:
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]

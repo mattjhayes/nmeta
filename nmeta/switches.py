@@ -23,6 +23,9 @@ It provides classes that abstract the details of OpenFlow switches
 import sys
 import struct
 
+#*** For timestamps:
+import datetime
+
 #*** Ryu Imports:
 from ryu.lib import addrconv
 from ryu.ofproto import ofproto_v1_3
@@ -30,9 +33,6 @@ from ryu.lib.packet import packet
 from ryu.lib.packet import ipv4, ipv6
 from ryu.lib.packet import tcp
 from ryu.lib.packet import udp
-
-#*** For timestamps:
-import datetime
 
 #*** For logging configuration:
 from baseclass import BaseClass
@@ -70,7 +70,7 @@ class Switches(BaseClass):
         #*** Get parameters from config:
         mongo_addr = config.get_value("mongo_addr")
         mongo_port = config.get_value("mongo_port")
-        mongo_dbname = self.config.get_value("mongo_dbname")
+        mongo_dbname = config.get_value("mongo_dbname")
 
         #*** Start mongodb:
         self.logger.info("Connecting to MongoDB database...")
@@ -91,7 +91,7 @@ class Switches(BaseClass):
 
         #*** Get max bytes of new flow packets to send to controller from
         #*** config file:
-        self.miss_send_len = self.config.get_value("miss_send_len")
+        self.miss_send_len = config.get_value("miss_send_len")
         if self.miss_send_len < 1500:
             self.logger.info("Be aware that setting "
                              "miss_send_len to less than a full size packet "
@@ -99,7 +99,10 @@ class Switches(BaseClass):
                              "Configured value is %s bytes",
                              self.miss_send_len)
         #*** Tell switch how to handle fragments (see OpenFlow spec):
-        self.ofpc_frag = self.config.get_value("ofpc_frag")
+        self.ofpc_frag = config.get_value("ofpc_frag")
+
+        #*** Flow mod cookie value offset indicates flow session direction:
+        self.offset = config.get_value("flow_mod_cookie_reverse_offset")
 
         #*** Dictionary of the instances of the Switch class,
         #***  key is the switch DPID which is assumed to be unique:
@@ -111,7 +114,7 @@ class Switches(BaseClass):
         """
         dpid = datapath.id
         self.logger.info("Adding switch dpid=%s", dpid)
-        switch = Switch(self.config, datapath)
+        switch = Switch(self.config, datapath, self.offset)
         switch.dpid = dpid
         (ip_address, port) = datapath.address
         #*** Record class instance into dictionary to make it accessible:
@@ -202,7 +205,7 @@ class Switch(BaseClass):
     This class provides an abstraction for an OpenFlow
     Switch
     """
-    def __init__(self, config, datapath):
+    def __init__(self, config, datapath, offset):
         #*** Required for BaseClass:
         self.config = config
         #*** Set up Logging with inherited base class method:
@@ -223,7 +226,7 @@ class Switch(BaseClass):
         self.serial_num = ""
         self.dp_desc = ""
         #*** Instantiate a class that represents flow tables:
-        self.flowtables = FlowTables(config, datapath)
+        self.flowtables = FlowTables(config, datapath, offset)
 
     def dbdict(self):
         """
@@ -328,7 +331,7 @@ class FlowTables(BaseClass):
     This class provides an abstraction for the flow tables on
     an OpenFlow Switch
     """
-    def __init__(self, config, datapath):
+    def __init__(self, config, datapath, offset):
         #*** Required for BaseClass:
         self.config = config
         #*** Set up Logging with inherited base class method:
@@ -336,6 +339,7 @@ class FlowTables(BaseClass):
                                        "switches_logging_level_c")
         self.config = config
         self.datapath = datapath
+        self.offset = offset
         self.dpid = datapath.id
         self.parser = datapath.ofproto_parser
         self.suppress_idle_timeout = config.get_value('suppress_idle_timeout')
@@ -344,8 +348,9 @@ class FlowTables(BaseClass):
         self.drop_idle_timeout = config.get_value('drop_idle_timeout')
         self.drop_hard_timeout = config.get_value('drop_hard_timeout')
         self.drop_priority = config.get_value('drop_priority')
-        #*** Unique value counter for Flow Mod cookies:
-        self.flow_mod_cookie = 1
+        #*** Unique value counters for Flow Mod cookies:
+        self.flow_mod_cookie_forward = 1
+        self.flow_mod_cookie_reverse = offset
 
     def suppress_flow(self, msg, in_port, out_port, out_queue):
         """
@@ -372,7 +377,8 @@ class FlowTables(BaseClass):
         priority = self.suppress_priority
         #*** Dict for results:
         result = {'match_type': 'ignore', 'forward_cookie': 0,
-                 'forward_match': '', 'reverse_cookie': 0, 'reverse_match': ''}
+                 'forward_match': '', 'reverse_cookie': 0, 'reverse_match': '',
+                 'client_ip': ''}
         self.logger.debug("event=add_flow out_queue=%s", out_queue)
         #*** Install flow entry(ies) based on type of flow:
         if pkt_tcp:
@@ -399,15 +405,20 @@ class FlowTables(BaseClass):
             #*** Actions:
             forward_actions = self.actions(out_port, out_queue)
             reverse_actions = self.actions(in_port, out_queue)
+            #*** Cookies:
+            forward_cookie = self.flow_mod_cookie_forward
+            reverse_cookie = self.flow_mod_cookie_reverse
             #*** Now have matches and actions. Install to switch:
-            forward_cookie = self.add_flow(forward_match, forward_actions,
+            self.add_flow(forward_match, forward_actions,
                                  priority=priority,
                                  idle_timeout=idle_timeout,
-                                 hard_timeout=hard_timeout)
-            reverse_cookie = self.add_flow(reverse_match, reverse_actions,
+                                 hard_timeout=hard_timeout,
+                                 cookie=forward_cookie)
+            self.add_flow(reverse_match, reverse_actions,
                                  priority=priority,
                                  idle_timeout=idle_timeout,
-                                 hard_timeout=hard_timeout)
+                                 hard_timeout=hard_timeout,
+                                 cookie=reverse_cookie)
             if pkt_ip4:
                 #*** Convert IPv4 addrs back to dotted decimal for storing:
                 forward_match['ipv4_src'] = pkt_ip4.src
@@ -419,6 +430,14 @@ class FlowTables(BaseClass):
             result['forward_match'] = forward_match
             result['reverse_cookie'] = reverse_cookie
             result['reverse_match'] = reverse_match
+            result['client_ip'] = pkt_ip4.src
+            #*** Increment flow mod cookies ready for next use:
+            if self.flow_mod_cookie_forward < self.offset:
+                self.flow_mod_cookie_forward += 1
+            else:
+                self.logger.info("flow_mod_cookie_forward rolled")
+                self.flow_mod_cookie_forward = 1
+            self.flow_mod_cookie_reverse += 1
             return result
         else:
             if pkt_udp:
@@ -438,11 +457,14 @@ class FlowTables(BaseClass):
                 return result
             #*** Actions:
             actions = self.actions(out_port, out_queue)
+            #*** Cookie:
+            cookie = self.flow_mod_cookie_forward
             #*** Now have matches and actions. Install to switch:
-            cookie = self.add_flow(match, actions,
+            self.add_flow(match, actions,
                                  priority=priority,
                                  idle_timeout=idle_timeout,
-                                 hard_timeout=hard_timeout)
+                                 hard_timeout=hard_timeout,
+                                 cookie=cookie)
             if pkt_ip4:
                 #*** Convert IPv4 addrs back to dotted decimal for storing:
                 match['ipv4_src'] = pkt_ip4.src
@@ -450,6 +472,9 @@ class FlowTables(BaseClass):
             result['match_type'] = 'single'
             result['forward_cookie'] = cookie
             result['forward_match'] = match
+            result['client_ip'] = pkt_ip4.src
+            #*** Increment flow mod cookie ready for next use:
+            self.flow_mod_cookie_forward += 1
             return result
 
     def drop_flow(self, msg):
@@ -472,7 +497,8 @@ class FlowTables(BaseClass):
         priority = self.drop_priority
         #*** Dict for results:
         result = {'match_type': 'ignore', 'forward_cookie': 0,
-                 'forward_match': '', 'reverse_cookie': 0, 'reverse_match': ''}
+                 'forward_match': '', 'reverse_cookie': 0, 'reverse_match': '',
+                 'client_ip': ''}
         self.logger.debug("event=drop_flow")
         #*** Drop action is the implicit in setting no actions:
         drop_action = 0
@@ -512,20 +538,27 @@ class FlowTables(BaseClass):
             #*** Non-IP packet, ignore:
             self.logger.warning("Drop not installed as non-IP")
             return 0
+        #*** Cookie:
+        cookie = self.flow_mod_cookie_forward
         #*** Now have match and action. Install to switch:
         self.logger.debug("Installing drop rule to dpid=%s", self.dpid)
-        cookie = self.add_flow(drop_match, drop_action, priority=priority,
-                          idle_timeout=idle_timeout, hard_timeout=hard_timeout)
-        result['match_type'] = 'forward'
+        self.add_flow(drop_match, drop_action, priority=priority,
+                          idle_timeout=idle_timeout, hard_timeout=hard_timeout,
+                          cookie=cookie)
+        result['match_type'] = 'single'
         result['forward_cookie'] = cookie
         if pkt_ip4:
             #*** Convert IPv4 addrs back to dotted decimal for storing:
             drop_match['ipv4_src'] = pkt_ip4.src
             drop_match['ipv4_dst'] = pkt_ip4.dst
+            result['client_ip'] = pkt_ip4.src
         result['forward_match'] = drop_match
+        #*** Increment flow mod cookie ready for next use:
+        self.flow_mod_cookie_forward += 1
         return result
 
-    def add_flow(self, match_d, actions, priority, idle_timeout, hard_timeout):
+    def add_flow(self, match_d, actions, priority, idle_timeout, hard_timeout,
+                    cookie):
         """
         Add a flow entry to a switch
         """
@@ -533,7 +566,6 @@ class FlowTables(BaseClass):
         match = self.parser.OFPMatch(**match_d)
         ofproto = self.datapath.ofproto
         parser = self.datapath.ofproto_parser
-        cookie = self.flow_mod_cookie
         if actions:
             inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                                                       actions)]
@@ -550,10 +582,6 @@ class FlowTables(BaseClass):
         self.logger.debug("Installing Flow Entry to dpid=%s match=%s",
                                     self.dpid, match)
         self.datapath.send_msg(mod)
-        #*** Increment flow mod cookie ready for next use:
-        self.flow_mod_cookie += 1
-        #*** Return value of the cookie that we set in the switch flow table:
-        return cookie
 
     def actions(self, out_port, out_queue, no_queue=0):
         """

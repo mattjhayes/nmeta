@@ -1,0 +1,63 @@
+{
+   "OFPFlowRemoved": {
+      "byte_count": 12345,
+      "cookie": 24,
+      "duration_nsec": 0,
+      "duration_sec": 5,
+      "hard_timeout": 0,
+      "idle_timeout": 5,
+      "match": {
+         "OFPMatch": {
+            "oxm_fields": [
+               {
+                  "OXMTlv": {
+                     "field": "eth_type",
+                     "mask": null,
+                     "value": 2048
+                  }
+               },
+               {
+                  "OXMTlv": {
+                     "field": "ipv4_src",
+                     "mask": null,
+                     "value": "10.1.0.2"
+                  }
+               },
+               {
+                  "OXMTlv": {
+                     "field": "ipv4_dst",
+                     "mask": null,
+                     "value": "10.1.0.1"
+                  }
+               },
+               {
+                  "OXMTlv": {
+                     "field": "ip_proto",
+                     "mask": null,
+                     "value": 6
+                  }
+               },
+               {
+                  "OXMTlv": {
+                     "field": "tcp_src",
+                     "mask": null,
+                     "value": 12345
+                  }
+               },
+               {
+                  "OXMTlv": {
+                     "field": "tcp_dst",
+                     "mask": null,
+                     "value": 443
+                  }
+               }
+            ],
+            "type": 1
+            }
+      },
+      "packet_count": 200,
+      "priority": 1,
+      "reason": 0,
+      "table_id": 1
+   }
+}

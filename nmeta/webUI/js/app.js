@@ -393,6 +393,37 @@ nmeta.Router = Backbone.Router.extend({
         // Pane 1b: Publish result into DOM against id="content1b":
         this.$content1b.html(nmeta.flowsRemovedBytesSrcReceivedChartView.el);
 
+        //---------------------------------------------------------------------
+        // Pane 2a: Instantiate Flows Removed Bytes Dst Sent Chart Model:
+        this.flowsRemovedBytesDstSentChartModel = new nmeta.FlowsRemovedBytesDstSentChartModel();
+
+        // Pane 2a: Instantiate flowsRemovedBytesDstSentChartView:
+        console.log('app instantiating flowsRemovedBytesDstSentChartView');
+        nmeta.flowsRemovedBytesDstSentChartView = new nmeta.FlowsRemovedBytesDstSentChartView({model: this.flowsRemovedBytesDstSentChartModel});
+        this.registerView(nmeta.flowsRemovedBytesDstSentChartView);
+
+        // Pane 2a: Fetch flowsRemovedBytesDstSentChartModel as reset event (note: invokes render):
+        console.log('app calling flowsRemovedBytesDstSentChartModel fetch({reset: true})');
+        this.flowsRemovedBytesDstSentChartModel.fetch({reset: true})
+
+        // Pane 2a: Publish result into DOM against id="content2a":
+        this.$content2a.html(nmeta.flowsRemovedBytesDstSentChartView.el);
+
+        //---------------------------------------------------------------------
+        // Pane 2b: Instantiate Flows Removed Bytes Dst Received Chart Model:
+        this.flowsRemovedBytesDstReceivedChartModel = new nmeta.FlowsRemovedBytesDstReceivedChartModel();
+
+        // Pane 2b: Instantiate flowsRemovedBytesDstReceivedChartView:
+        console.log('app instantiating flowsRemovedBytesDstReceivedChartView');
+        nmeta.flowsRemovedBytesDstReceivedChartView = new nmeta.FlowsRemovedBytesDstReceivedChartView({model: this.flowsRemovedBytesDstReceivedChartModel});
+        this.registerView(nmeta.flowsRemovedBytesDstReceivedChartView);
+
+        // Pane 2b: Fetch flowsRemovedBytesDstReceivedChartModel as reset event (note: invokes render):
+        console.log('app calling flowsRemovedBytesDstReceivedChartModel fetch({reset: true})');
+        this.flowsRemovedBytesDstReceivedChartModel.fetch({reset: true})
+
+        // Pane 2b: Publish result into DOM against id="content2b":
+        this.$content2b.html(nmeta.flowsRemovedBytesDstReceivedChartView.el);
     },
 
     //=========================================================================

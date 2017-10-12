@@ -28,6 +28,8 @@ nmeta.FlowsRemovedBytesSrcReceivedChartView = Backbone.View.extend({
                 display:true,
                 text:"Top Flows Removed by Source Bytes Received"
             },
+            responsive: true,
+            maintainAspectRatio: false
         };
         var ctx = $('#FlowsRemovedBytesSrcReceivedChart', this.el)[0].getContext("2d");
         

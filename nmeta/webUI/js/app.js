@@ -362,68 +362,71 @@ nmeta.Router = Backbone.Router.extend({
         this.cleanUpViews();
         console.log('in router flowsRemoved');
 
-        // Pane 1a: Instantiate Flows Removed Bytes Src Sent Chart Model:
-        this.flowsRemovedBytesSrcSentChartModel = new nmeta.FlowsRemovedBytesSrcSentChartModel();
-
-        // Pane 1a: Instantiate flowsRemovedBytesSrcSentChartView:
-        console.log('app instantiating flowsRemovedBytesSrcSentChartView');
-        nmeta.flowsRemovedBytesSrcSentChartView = new nmeta.FlowsRemovedBytesSrcSentChartView({model: this.flowsRemovedBytesSrcSentChartModel});
-        this.registerView(nmeta.flowsRemovedBytesSrcSentChartView);
-
-        // Pane 1a: Fetch flowsRemovedBytesSrcSentChartModel as reset event (note: invokes render):
-        console.log('app calling flowsRemovedBytesSrcSentChartModel fetch({reset: true})');
-        this.flowsRemovedBytesSrcSentChartModel.fetch({reset: true})
-
-        // Pane 1a: Publish result into DOM against id="content1a":
-        this.$content1a.html(nmeta.flowsRemovedBytesSrcSentChartView.el);
-
         //---------------------------------------------------------------------
-        // Pane 1b: Instantiate Flows Removed Bytes Src Received Chart Model:
-        this.flowsRemovedBytesSrcReceivedChartModel = new nmeta.FlowsRemovedBytesSrcReceivedChartModel();
-
-        // Pane 1b: Instantiate flowsRemovedBytesSrcReceivedChartView:
-        console.log('app instantiating flowsRemovedBytesSrcReceivedChartView');
-        nmeta.flowsRemovedBytesSrcReceivedChartView = new nmeta.FlowsRemovedBytesSrcReceivedChartView({model: this.flowsRemovedBytesSrcReceivedChartModel});
-        this.registerView(nmeta.flowsRemovedBytesSrcReceivedChartView);
-
-        // Pane 1b: Fetch flowsRemovedBytesSrcReceivedChartModel as reset event (note: invokes render):
-        console.log('app calling flowsRemovedBytesSrcReceivedChartModel fetch({reset: true})');
-        this.flowsRemovedBytesSrcReceivedChartModel.fetch({reset: true})
-
-        // Pane 1b: Publish result into DOM against id="content1b":
-        this.$content1b.html(nmeta.flowsRemovedBytesSrcReceivedChartView.el);
-
-        //---------------------------------------------------------------------
-        // Pane 2a: Instantiate Flows Removed Bytes Dst Sent Chart Model:
+        // Pane 1a: Instantiate Flows Removed Bytes Dst Sent Chart Model:
         this.flowsRemovedBytesDstSentChartModel = new nmeta.FlowsRemovedBytesDstSentChartModel();
 
-        // Pane 2a: Instantiate flowsRemovedBytesDstSentChartView:
+        // Pane 1a: Instantiate flowsRemovedBytesDstSentChartView:
         console.log('app instantiating flowsRemovedBytesDstSentChartView');
         nmeta.flowsRemovedBytesDstSentChartView = new nmeta.FlowsRemovedBytesDstSentChartView({model: this.flowsRemovedBytesDstSentChartModel});
         this.registerView(nmeta.flowsRemovedBytesDstSentChartView);
 
-        // Pane 2a: Fetch flowsRemovedBytesDstSentChartModel as reset event (note: invokes render):
+        // Pane 1a: Fetch flowsRemovedBytesDstSentChartModel as reset event (note: invokes render):
         console.log('app calling flowsRemovedBytesDstSentChartModel fetch({reset: true})');
         this.flowsRemovedBytesDstSentChartModel.fetch({reset: true})
 
-        // Pane 2a: Publish result into DOM against id="content2a":
-        this.$content2a.html(nmeta.flowsRemovedBytesDstSentChartView.el);
+        // Pane 1a: Publish result into DOM against id="content1a":
+        this.$content1a.html(nmeta.flowsRemovedBytesDstSentChartView.el);
 
         //---------------------------------------------------------------------
-        // Pane 2b: Instantiate Flows Removed Bytes Dst Received Chart Model:
+        // Pane 1b: Instantiate Flows Removed Bytes Dst Received Chart Model:
         this.flowsRemovedBytesDstReceivedChartModel = new nmeta.FlowsRemovedBytesDstReceivedChartModel();
 
-        // Pane 2b: Instantiate flowsRemovedBytesDstReceivedChartView:
+        // Pane 1b: Instantiate flowsRemovedBytesDstReceivedChartView:
         console.log('app instantiating flowsRemovedBytesDstReceivedChartView');
         nmeta.flowsRemovedBytesDstReceivedChartView = new nmeta.FlowsRemovedBytesDstReceivedChartView({model: this.flowsRemovedBytesDstReceivedChartModel});
         this.registerView(nmeta.flowsRemovedBytesDstReceivedChartView);
 
-        // Pane 2b: Fetch flowsRemovedBytesDstReceivedChartModel as reset event (note: invokes render):
+        // Pane 1b: Fetch flowsRemovedBytesDstReceivedChartModel as reset event (note: invokes render):
         console.log('app calling flowsRemovedBytesDstReceivedChartModel fetch({reset: true})');
         this.flowsRemovedBytesDstReceivedChartModel.fetch({reset: true})
 
+        // Pane 1b: Publish result into DOM against id="content1b":
+        this.$content1b.html(nmeta.flowsRemovedBytesDstReceivedChartView.el);
+
+        //---------------------------------------------------------------------
+
+        // Pane 2a: Instantiate Flows Removed Bytes Src Sent Chart Model:
+        this.flowsRemovedBytesSrcSentChartModel = new nmeta.FlowsRemovedBytesSrcSentChartModel();
+
+        // Pane 2a: Instantiate flowsRemovedBytesSrcSentChartView:
+        console.log('app instantiating flowsRemovedBytesSrcSentChartView');
+        nmeta.flowsRemovedBytesSrcSentChartView = new nmeta.FlowsRemovedBytesSrcSentChartView({model: this.flowsRemovedBytesSrcSentChartModel});
+        this.registerView(nmeta.flowsRemovedBytesSrcSentChartView);
+
+        // Pane 2a: Fetch flowsRemovedBytesSrcSentChartModel as reset event (note: invokes render):
+        console.log('app calling flowsRemovedBytesSrcSentChartModel fetch({reset: true})');
+        this.flowsRemovedBytesSrcSentChartModel.fetch({reset: true})
+
+        // Pane 2a: Publish result into DOM against id="content2a":
+        this.$content2a.html(nmeta.flowsRemovedBytesSrcSentChartView.el);
+
+        //---------------------------------------------------------------------
+        // Pane 2b: Instantiate Flows Removed Bytes Src Received Chart Model:
+        this.flowsRemovedBytesSrcReceivedChartModel = new nmeta.FlowsRemovedBytesSrcReceivedChartModel();
+
+        // Pane 2b: Instantiate flowsRemovedBytesSrcReceivedChartView:
+        console.log('app instantiating flowsRemovedBytesSrcReceivedChartView');
+        nmeta.flowsRemovedBytesSrcReceivedChartView = new nmeta.FlowsRemovedBytesSrcReceivedChartView({model: this.flowsRemovedBytesSrcReceivedChartModel});
+        this.registerView(nmeta.flowsRemovedBytesSrcReceivedChartView);
+
+        // Pane 2b: Fetch flowsRemovedBytesSrcReceivedChartModel as reset event (note: invokes render):
+        console.log('app calling flowsRemovedBytesSrcReceivedChartModel fetch({reset: true})');
+        this.flowsRemovedBytesSrcReceivedChartModel.fetch({reset: true})
+
         // Pane 2b: Publish result into DOM against id="content2b":
-        this.$content2b.html(nmeta.flowsRemovedBytesDstReceivedChartView.el);
+        this.$content2b.html(nmeta.flowsRemovedBytesSrcReceivedChartView.el);
+
     },
 
     //=========================================================================

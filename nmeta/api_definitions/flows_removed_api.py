@@ -164,36 +164,3 @@ flows_removed_dst_bytes_received_settings = {
     'item_title': 'Removed Flows Bytes Received by Source IP',
     'schema': flows_removed_dst_bytes_received_schema
 }
-
-
-# LEGACY:
-
-#*** Removed flows bytes sent by source IP (dedup for multiple switches):
-flows_removed_stats_bytes_sent_schema = {
-    '_items': {
-        '_id': 'string',
-        'identity': 'string',
-        'total_bytes_sent': 'integer'
-    }
-}
-
-flows_removed_stats_bytes_sent_settings = {
-    'url': 'flows_removed/stats/bytes_sent',
-    'item_title': 'Removed Flows Bytes Sent by Source IP',
-    'schema': flows_removed_stats_bytes_sent_schema
-}
-
-#*** Removed flows bytes received by source IP (dedup for multiple switches):
-flows_removed_stats_bytes_received_schema = {
-    '_items': {
-        '_id': 'string',
-        'identity': 'string',
-        'total_bytes_received': 'integer'
-    }
-}
-
-flows_removed_stats_bytes_received_settings = {
-    'url': 'flows_removed/stats/bytes_received',
-    'item_title': 'Removed Flows Bytes Received by Source IP',
-    'schema': flows_removed_stats_bytes_received_schema
-}

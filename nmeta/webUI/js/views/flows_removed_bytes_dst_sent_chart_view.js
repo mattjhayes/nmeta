@@ -1,4 +1,4 @@
-nmeta.FlowsRemovedBytesSentChartView = Backbone.View.extend({
+nmeta.FlowsRemovedBytesDstSentChartView = Backbone.View.extend({
 
     initialize:function () {
         this.model.on("sync", this.render, this);
@@ -12,12 +12,12 @@ nmeta.FlowsRemovedBytesSentChartView = Backbone.View.extend({
 
         // ChartJS configuration parameters:
         var data = {
-            labels: this.model.flows_removed_stats_bytes_sent_labels,
+            labels: this.model.flows_removed_bytes_dst_sent_labels,
             datasets: [
                     {
-                    label: "Flows Removed Bytes Sent",
+                    label: "Flows Removed Bytes Sent by Destination",
                     // Use data from model:
-                    data: this.model.flows_removed_stats_bytes_sent_data,
+                    data: this.model.flows_removed_bytes_dst_sent_data,
                     // Fill colours to use in chart:
                     backgroundColor: this.default_colors
                 }
@@ -26,12 +26,14 @@ nmeta.FlowsRemovedBytesSentChartView = Backbone.View.extend({
         var options = {
             title:{
                 display:true,
-                text:"Top Flows Removed by Bytes Sent"
+                text:"Top Flows Removed by Destination Bytes Sent"
             },
+            responsive: true,
+            maintainAspectRatio: false
         };
-        var ctx = $('#FlowsRemovedBytesSentChart', this.el)[0].getContext("2d");
+        var ctx = $('#FlowsRemovedBytesDstSentChart', this.el)[0].getContext("2d");
         
-        var FlowsRemovedBytesSentChart = new Chart(ctx, {
+        var FlowsRemovedBytesDstSentChart = new Chart(ctx, {
             type: 'doughnut',
             data: data,
             options: options

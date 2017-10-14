@@ -49,7 +49,7 @@ nmeta.Router = Backbone.Router.extend({
         "policy":                  "policy",
         "flowDetails/:flow_hash":  "flowDetails",
         "switch/:dpid":            "switch",
-        "experimental":            "flowsRemoved"
+        "top-talkers":             "flowsRemoved"
     },
 
     //=========================================================================
@@ -270,31 +270,31 @@ nmeta.Router = Backbone.Router.extend({
         // Clean-up previous Views:
         this.cleanUpViews();
 
-        // Pane 1a: Instantiate Controller Packet-In Time Chart Model:
+        // Pane 4a: Instantiate Controller Packet-In Time Chart Model:
         this.controller_pitime_chart_model = new nmeta.ControllerPITimeChartModel();
 
-        // Pane 1a: Instantiate View:
+        // Pane 4a: Instantiate View:
         nmeta.controllerPITimeChartView = new nmeta.ControllerPITimeChartView({model: this.controller_pitime_chart_model});
         this.registerView(nmeta.controllerPITimeChartView);
 
-        // Pane 1a: Fetch model as reset event (note: invokes render):
+        // Pane 4a: Fetch model as reset event (note: invokes render):
         this.controller_pitime_chart_model.fetch({reset: true});
 
-        // Pane 1a: Publish result into DOM against id="content1a":
-        this.$content1a.html(nmeta.controllerPITimeChartView.el);
+        // Pane 4a: Publish result into DOM against id="content4a":
+        this.$content4a.html(nmeta.controllerPITimeChartView.el);
 
-        // Pane 2a: Instantiate Controller Packet-In Rate Chart Model:
+        // Pane 5a: Instantiate Controller Packet-In Rate Chart Model:
         this.controller_pirate_chart_model = new nmeta.ControllerPIRateChartModel();
 
-        // Pane 2a: Instantiate View:
+        // Pane 5a: Instantiate View:
         nmeta.controllerPIRateChartView = new nmeta.ControllerPIRateChartView({model: this.controller_pirate_chart_model});
         this.registerView(nmeta.controllerPIRateChartView);
 
-        // Pane 2a: Fetch model as reset event (note: invokes render):
+        // Pane 5a: Fetch model as reset event (note: invokes render):
         this.controller_pirate_chart_model.fetch({reset: true});
 
-        // Pane 2a: Publish result into DOM against id="content2a":
-        this.$content2a.html(nmeta.controllerPIRateChartView.el);
+        // Pane 5a: Publish result into DOM against id="content5a":
+        this.$content5a.html(nmeta.controllerPIRateChartView.el);
 
         // Update top menu bar:
         nmeta.barsView.selectMenuItem('kit-menu');

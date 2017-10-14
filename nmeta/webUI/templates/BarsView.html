@@ -16,8 +16,22 @@
       <ul class="nav navbar-nav">
         <li class="home-menu active"><a href="#">home</a></li>
         <li class="who-menu"><a href="#who">who</a></li>
-        <li class="what-menu"><a href="#what">what</a></li>
-        <li class="kit-menu"><a href="#kit">kit</a></li>
+        <li class="dropdown">
+          <a href="#what" class="dropdown-toggle" data-toggle="dropdown" 
+                 role="button" aria-haspopup="true" aria-expanded="false">what<span class="caret"></span></a>
+          <ul class="dropdown-menu">
+            <li><a href="#what">Flows</a></li>
+            <li><a href="#top-talkers">Top Talkers</a></li>
+          </ul>
+        </li>
+        <li class="dropdown">
+          <a href="#kit" class="dropdown-toggle" data-toggle="dropdown" 
+                 role="button" aria-haspopup="true" aria-expanded="false">kit<span class="caret"></span></a>
+          <ul class="dropdown-menu">
+            <li><a href="#kit">Kit Summary</a></li>
+            <li><a href="#kit/controller">Controller Perf</a></li>
+          </ul>
+        </li>
         <li class="policy-menu"><a href="#policy">policy</a></li>
       </ul>
     </div><!-- /.navbar-collapse -->

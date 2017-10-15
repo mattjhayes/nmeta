@@ -11,6 +11,12 @@ To use the web UI, start nmeta (alias nm), start the nmeta external API
 
 `<http://localhost:8081/webUI/index.html>`_
 
+The home page looks like this:
+
+.. image:: images/webui-home.png
+
+The number of connected switches updates dynamically.
+
 The architecture of the WebUI and REST interface are shown in
 the diagram below:
 

@@ -77,6 +77,9 @@ drop_hard_timeout: 0
 #*** Priority for drop flow entries:
 drop_priority: 2
 #
+#*** Flow mod cookie value offset indicates flow session direction:
+flow_mod_cookie_reverse_offset: 1000000000
+#
 #========== Mongodb Database ==========================
 mongo_addr: localhost
 mongo_port: 27017
@@ -114,6 +117,8 @@ external_api_version: v1
 external_api_host: 0.0.0.0
 #*** Decision API TCP port:
 external_api_port: 8081
+#*** Disable HATEOAS:
+external_api_hateoas: False
 #*** Extra Eve Debug (use values True or False).
 #***  Be aware that this causes whole program to restart:
 external_api_debug: False

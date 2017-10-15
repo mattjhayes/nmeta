@@ -275,4 +275,96 @@ Here's the YAML:
 Quality of Service (QoS) Recipe
 *******************************
 
-TBD
+This recipe uses QoS to constrain bandwidth of YouTube video traffic, purely
+as an example of how to do QoS.
+
+Traffic is identified with a classification list, then marked with a
+QoS treatment action (constrained_bw).
+
+The *qos_treatment* section maps *constrained_bw* to QoS queue number 1.
+
+QoS queues need to be separately configured on switches. Failure to have a
+queue defined on the switch (other than 0) may result in traffic being dropped.
+
+Main Policy:
+============
+
+Use this main_policy.yaml file in the user config directory:
+
+.. code-block:: text
+
+  ~/nmeta/nmeta/config/user/
+
+Here's the YAML:
+
+.. code-block:: YAML
+
+    ---
+    #*** Main Policy for nmeta - Example QoS Recipe.
+    #*** Written in YAML
+    #
+    # Example QoS constraint of YouTube Video traffic
+    #
+    tc_rules:
+        # Traffic Classification Rulesets and Rules
+        tc_ruleset_1:
+            - comment: Constrained Bandwidth Traffic
+              match_type: any
+              conditions_list:
+                  - match_type: any
+                    classifiers_list:
+                        - identity_service_dns_re: '.*\.youtube\*'
+                        - identity_service_dns_re: '.*\.googlevideo\.com'
+              actions:
+                set_desc: "Constrained YouTube Bandwidth Traffic"
+                qos_treatment: constrained_bw
+    #
+    qos_treatment:
+        # Control Quality of Service (QoS) treatment mapping of
+        #  names to output queue numbers:
+        default_priority: 0
+        constrained_bw: 1
+        high_priority: 2
+        low_priority: 3
+    #
+    port_sets:
+        # Port Sets control what data plane ports policies and
+        #  features are applied on. Names must be unique.
+        port_set_list:
+            - name: port_set_location_internal
+              port_list:
+                  - name: VirtualSwitch1-internal
+                    DPID: 1
+                    ports: 1-3,5,66
+                    vlan_id: 0
+
+                  - name: VirtualSwitch2-internal
+                    DPID: 255
+                    ports: 3,5
+                    vlan_id: 0
+
+            - name: port_set_location_external
+              port_list:
+                  - name: VirtualSwitch1-external
+                    DPID: 1
+                    ports: 6
+                    vlan_id: 0
+
+                  - name: VirtualSwitch2-external
+                    DPID: 255
+                    ports: 1-2,4
+                    vlan_id: 0
+    #
+    locations:
+        # Locations are logical groupings of ports. Takes first match.
+        locations_list:
+            - name: internal
+              port_set_list:
+                - port_set: port_set_location_internal
+
+            - name: external
+              port_set_list:
+                - port_set: port_set_location_external
+
+        default_match: external
+

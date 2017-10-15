@@ -14,6 +14,9 @@
 #*** nmeta - Network Metadata - API definition file
 
 pi_rate_schema = {
+        'timestamp': {
+            'type': 'datetime'
+        },
         'pi_rate': {
             'type': 'float'
         }

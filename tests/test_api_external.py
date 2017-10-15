@@ -11,6 +11,7 @@ TBD: Everything...
 
 #*** Handle tests being in different directory branch to app code:
 import sys
+import struct
 
 sys.path.insert(0, '../nmeta')
 
@@ -73,6 +74,19 @@ URL_TEST_IDENTITIES_UI = 'http://localhost:8081/v1/identities/ui/'
 
 URL_FLOW_MODS = 'http://localhost:8081/v1/flow_mods/'
 
+URL_TEST_FLOWS_REMOVED = 'http://localhost:8081/v1/flows_removed/'
+
+URL_TEST_FLOWS_REMOVED_STATS_COUNT = 'http://localhost:8081/v1/flows_removed/stats/count'
+
+URL_TEST_FLOWS_REMOVED_SRC_BYTES_SENT = 'http://localhost:8081/v1/flows_removed/stats/src_bytes_sent'
+
+URL_TEST_FLOWS_REMOVED_SRC_BYTES_RECEIVED = 'http://localhost:8081/v1/flows_removed/stats/src_bytes_received'
+
+URL_TEST_FLOWS_REMOVED_DST_BYTES_SENT = 'http://localhost:8081/v1/flows_removed/stats/dst_bytes_sent'
+
+URL_TEST_FLOWS_REMOVED_DST_BYTES_RECEIVED = 'http://localhost:8081/v1/flows_removed/stats/dst_bytes_received'
+
+
 #*** Test DPIDs and in ports:
 DPID1 = 1
 INPORT1 = 1
@@ -82,6 +96,298 @@ INPORT2 = 2
 api = api_external.ExternalAPI(config)
 
 #======================== api_external.py Unit Tests ==========================
+
+def test_flows_removed():
+    """
+    Test the flows_removed API by ingesting flow removal messages
+    then checking that the API response correctly lists them
+    """
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+    
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate Flow class:
+    flow = flows_module.Flow(config)
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
+
+    #*** Set up fake datapath and synthesise messages:
+    datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath.id = 1
+    msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
+    msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
+
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx)
+    flow.record_removal(msg_rx)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['_items'][0]['dpid'] == 1
+    #*** Note: can't easily test 'removal_time' as is dynamic, so skipping...
+    assert api_result['_items'][0]['cookie'] == 23
+    assert api_result['_items'][0]['priority'] == 1
+    assert api_result['_items'][0]['reason'] == 0
+    assert api_result['_items'][0]['table_id'] == 1
+    assert api_result['_items'][0]['duration_sec'] == 5
+    assert api_result['_items'][0]['idle_timeout'] == 5
+    assert api_result['_items'][0]['hard_timeout'] == 0
+    assert api_result['_items'][0]['packet_count'] == 10
+    assert api_result['_items'][0]['byte_count'] == 744
+    assert api_result['_items'][0]['eth_A'] == ''
+    assert api_result['_items'][0]['eth_B'] == ''
+    assert api_result['_items'][0]['eth_type'] == 2048
+    assert api_result['_items'][0]['ip_A'] == '10.1.0.1'
+    assert api_result['_items'][0]['ip_B'] == '10.1.0.2'
+    assert api_result['_items'][0]['ip_proto'] == 6
+    assert api_result['_items'][0]['tp_A'] == 43297
+    assert api_result['_items'][0]['tp_B'] == 80
+    assert api_result['_items'][0]['flow_hash'] == '9822b2867652ee0957892482b9f004c3'
+    assert api_result['_items'][0]['direction'] == 'forward'
+
+    #*** Validate API Response parameters for second flow removal:
+    assert api_result['_items'][1]['dpid'] == 1
+    #*** Note: can't easily test 'removal_time' as is dynamic, so skipping...
+    assert api_result['_items'][1]['cookie'] == 1000000023
+    assert api_result['_items'][1]['priority'] == 1
+    assert api_result['_items'][1]['reason'] == 0
+    assert api_result['_items'][1]['table_id'] == 1
+    assert api_result['_items'][1]['duration_sec'] == 5
+    assert api_result['_items'][1]['idle_timeout'] == 5
+    assert api_result['_items'][1]['hard_timeout'] == 0
+    assert api_result['_items'][1]['packet_count'] == 9
+    assert api_result['_items'][1]['byte_count'] == 6644
+    assert api_result['_items'][1]['eth_A'] == ''
+    assert api_result['_items'][1]['eth_B'] == ''
+    assert api_result['_items'][1]['eth_type'] == 2048
+    assert api_result['_items'][1]['ip_A'] == '10.1.0.2'
+    assert api_result['_items'][1]['ip_B'] == '10.1.0.1'
+    assert api_result['_items'][1]['ip_proto'] == 6
+    assert api_result['_items'][1]['tp_A'] == 80
+    assert api_result['_items'][1]['tp_B'] == 43297
+    assert api_result['_items'][1]['flow_hash'] == '9822b2867652ee0957892482b9f004c3'
+    assert api_result['_items'][1]['direction'] == 'reverse'
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
+
+def test_flows_removed_stats_count():
+    """
+    Test the flows_removed API stats count by ingesting flow removal messages
+    then checking that the API response correctly specifies message count
+    """
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+    
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate Flow class:
+    flow = flows_module.Flow(config)
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx = json_file.read()
+        json_dict_tx = json.loads(json_str_tx)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx = json_file.read()
+        json_dict_rx = json.loads(json_str_rx)
+
+    #*** Set up fake datapath and synthesise messages:
+    datapath = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath.id = 1
+    msg_tx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_tx)
+    msg_rx = ofproto_parser.ofp_msg_from_jsondict(datapath, json_dict_rx)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_COUNT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['flows_removed'] == 0
+
+    #*** Record flow removal to flow_rems database collection:
+    flow.record_removal(msg_tx)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_COUNT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['flows_removed'] == 1
+
+    #*** Record flow removal to flow_rems database collection:
+    flow.record_removal(msg_rx)
+
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_STATS_COUNT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['flows_removed'] == 2
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
+
+def test_response_flows_removed_FLOWDIR_bytes_TXRX():
+    """
+    Test the flows_removed API various flavours of src/dst bytes
+    sent/received by ingesting flow removal messages then checking
+    that the API response correctly specifies appropriate
+    stats for bytes sent, including identity enrichment
+    """
+    #*** Start api_external as separate process:
+    logger.info("Starting api_external")
+    api_ps = multiprocessing.Process(
+                        target=api.run,
+                        args=())
+    api_ps.start()
+    
+    #*** Supports OpenFlow version 1.3:
+    OFP_VERSION = ofproto_v1_3.OFP_VERSION
+
+    #*** Instantiate supporting classes:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
+
+    #*** Client to Server DHCP Request:
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+
+    #*** Server to Client DHCP ACK:
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+
+    #*** Load JSON representations of flow removed messages:
+    with open('OFPMsgs/OFPFlowRemoved_1.json', 'r') as json_file:
+        json_str_tx_1 = json_file.read()
+        json_dict_tx_1 = json.loads(json_str_tx_1)
+    with open('OFPMsgs/OFPFlowRemoved_2.json', 'r') as json_file:
+        json_str_rx_1 = json_file.read()
+        json_dict_rx_1 = json.loads(json_str_rx_1)
+    with open('OFPMsgs/OFPFlowRemoved_3.json', 'r') as json_file:
+        json_str_tx_2 = json_file.read()
+        json_dict_tx_2 = json.loads(json_str_tx_2)
+    with open('OFPMsgs/OFPFlowRemoved_4.json', 'r') as json_file:
+        json_str_rx_2 = json_file.read()
+        json_dict_rx_2 = json.loads(json_str_rx_2)
+    with open('OFPMsgs/OFPFlowRemoved_5.json', 'r') as json_file:
+        json_str_tx_3 = json_file.read()
+        json_dict_tx_3 = json.loads(json_str_tx_3)
+    with open('OFPMsgs/OFPFlowRemoved_6.json', 'r') as json_file:
+        json_str_rx_3 = json_file.read()
+        json_dict_rx_3 = json.loads(json_str_rx_3)
+
+    #*** Switch 1:
+    #*** Set up fake datapaths and synthesise messages:
+    datapath1 = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath1.id = 1
+    msg_tx_1_sw1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_tx_1)
+    msg_rx_1_sw1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_rx_1)
+    msg_tx_2_sw1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_tx_2)
+    msg_rx_2_sw1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_rx_2)
+    msg_tx_3_sw1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_tx_3)
+    msg_rx_3_sw1 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_rx_3)
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx_1_sw1)
+    flow.record_removal(msg_rx_1_sw1)
+    flow.record_removal(msg_tx_2_sw1)
+    flow.record_removal(msg_rx_2_sw1)
+    flow.record_removal(msg_tx_3_sw1)
+    flow.record_removal(msg_rx_3_sw1)
+
+    #*** Switch 2 (same flows to check dedup for multiple switches works):
+    #*** Set up fake datapaths and synthesise messages:
+    datapath2 = ofproto_protocol.ProtocolDesc(version=OFP_VERSION)
+    datapath2.id = 2
+    msg_tx_1_sw2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_tx_1)
+    msg_rx_1_sw2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_rx_1)
+    msg_tx_2_sw2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_tx_2)
+    msg_rx_2_sw2 = ofproto_parser.ofp_msg_from_jsondict(datapath2, json_dict_rx_2)
+    msg_tx_3_sw2 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_tx_3)
+    msg_rx_3_sw2 = ofproto_parser.ofp_msg_from_jsondict(datapath1, json_dict_rx_3)
+    #*** Record flow removals to flow_rems database collection:
+    flow.record_removal(msg_tx_1_sw2)
+    flow.record_removal(msg_rx_1_sw2)
+    flow.record_removal(msg_tx_2_sw2)
+    flow.record_removal(msg_rx_2_sw2)
+    flow.record_removal(msg_tx_3_sw2)
+    flow.record_removal(msg_rx_3_sw2)
+
+    #*** Test flows_removed_src_bytes_sent API:
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_SRC_BYTES_SENT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['_items'][0]['_id'] == '10.1.0.2'
+    assert api_result['_items'][0]['total_bytes_sent'] == 12345
+    assert api_result['_items'][0]['identity'] == '10.1.0.2'
+    assert api_result['_items'][1]['_id'] == '10.1.0.1'
+    assert api_result['_items'][1]['total_bytes_sent'] == 5533
+    assert api_result['_items'][1]['identity'] == 'pc1'
+
+    #*** Test flows_removed_src_bytes_received API:
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_SRC_BYTES_RECEIVED)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['_items'][0]['_id'] == '10.1.0.1'
+    assert api_result['_items'][0]['total_bytes_received'] == 8628
+    assert api_result['_items'][0]['identity'] == 'pc1'
+    assert api_result['_items'][1]['_id'] == '10.1.0.2'
+    assert api_result['_items'][1]['total_bytes_received'] == 543
+    assert api_result['_items'][1]['identity'] == '10.1.0.2'
+
+    #*** Test flows_removed_dst_bytes_sent API:
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_DST_BYTES_SENT)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['_items'][0]['_id'] == '10.1.0.2'
+    assert api_result['_items'][0]['total_bytes_sent'] == 8628
+    assert api_result['_items'][0]['identity'] == '10.1.0.2'
+    assert api_result['_items'][1]['_id'] == '10.1.0.1'
+    assert api_result['_items'][1]['total_bytes_sent'] == 543
+    assert api_result['_items'][1]['identity'] == 'pc1'
+
+    #*** Test flows_removed_src_bytes_received API:
+    #*** Call the external API:
+    api_result = get_api_result(URL_TEST_FLOWS_REMOVED_DST_BYTES_RECEIVED)
+    logger.debug("api_result=%s", api_result)
+
+    #*** Validate API Response parameters:
+    assert api_result['_items'][0]['_id'] == '10.1.0.1'
+    assert api_result['_items'][0]['total_bytes_received'] == 12345
+    assert api_result['_items'][0]['identity'] == 'pc1'
+    assert api_result['_items'][1]['_id'] == '10.1.0.2'
+    assert api_result['_items'][1]['total_bytes_received'] == 5533
+    assert api_result['_items'][1]['identity'] == '10.1.0.2'
+
+    #*** Stop api_external sub-process:
+    api_ps.terminate()
 
 def test_response_pi_rate():
     """
@@ -298,7 +604,6 @@ def test_flow_normalise_direction():
     assert normalised_record['ip_dst'] == pkts.IP_SRC[1]
     assert normalised_record['tp_src'] == pkts.TP_DST[1]
     assert normalised_record['tp_dst'] == pkts.TP_SRC[1]
-
 
 def test_get_flow_data_xfer():
     """
@@ -555,14 +860,22 @@ def test_flow_mods():
     policy = policy_module.Policy(config)
     identities = identities_module.Identities(config, policy)
 
+    #*** Create a sample result to use:
+    ipv4_src='10.1.0.1'
+    ipv4_dst='10.1.0.2'
+    result = {'match_type': 'single', 'forward_cookie': 1,
+                 'forward_match': {'eth_type': 0x0800,
+                    'ipv4_src': ipv4_src, 'ipv4_dst': ipv4_dst,
+                    'ip_proto': 6}, 'reverse_cookie': 0, 'reverse_match': {},
+                    'client_ip': ipv4_src}
+
     #*** Record flow mod:
     #*** Ingest a packet from pc1:
     # 10.1.0.1 10.1.0.2 TCP 74 43297 > http [SYN]
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[0], datetime.datetime.now())
 
-    #*** Record suppressing this flow. Should return 1 as not within
-    #*** standdown period:
-    assert flow.record_suppression(DPID1, 'forward') == 1
+    #*** Record suppressing this flow:
+    flow.record_suppression(DPID1, 'suppress', result)
 
     #*** Call the external API:
     api_result = get_api_result(URL_FLOW_MODS)
@@ -572,29 +885,41 @@ def test_flow_mods():
     #*** Check that API has returned expected results:
     assert api_result['_items'][0]['flow_hash'] == flow.packet.flow_hash
     assert api_result['_items'][0]['dpid'] == DPID1
-    assert api_result['_items'][0]['suppression_type'] == 'forward'
+    assert api_result['_items'][0]['suppress_type'] == 'suppress'
     assert api_result['_items'][0]['standdown'] == 0
+    assert api_result['_items'][0]['match_type'] == 'single'
+    assert api_result['_items'][0]['forward_cookie'] == 1
+    assert api_result['_items'][0]['forward_match'] == {'eth_type': 0x0800,
+                    'ipv4_src': ipv4_src, 'ipv4_dst': ipv4_dst,
+                    'ip_proto': 6}
+    assert api_result['_items'][0]['reverse_cookie'] == 0
+    assert api_result['_items'][0]['reverse_match'] == {}
+    assert api_result['_items'][0]['client_ip'] == ipv4_src
     assert len(api_result['_items']) == 1
 
-    #*** Record suppressing this flow. Should return 0 as is within
-    #*** standdown period:
-    assert flow.record_suppression(DPID1, 'forward') == 0
+    #*** Record suppressing the same flow again, setting standdown:
+    flow.record_suppression(DPID1, 'suppress', result, standdown=1)
 
     #*** Call the external API:
     api_result = get_api_result(URL_FLOW_MODS)
 
     logger.debug("api_result=%s", api_result)
 
-    #*** Check that API has returned expected results for new record:
+    #*** Check that API has returned expected results for new record
+    #***  (note that result items are defaulted due to standdown):
     assert api_result['_items'][1]['flow_hash'] == flow.packet.flow_hash
     assert api_result['_items'][1]['dpid'] == DPID1
-    assert api_result['_items'][0]['suppression_type'] == 'forward'
+    assert api_result['_items'][1]['suppress_type'] == 'suppress'
     assert api_result['_items'][1]['standdown'] == 1
+    assert api_result['_items'][1]['match_type'] == ''
+    assert api_result['_items'][1]['forward_cookie'] == 0
+    assert api_result['_items'][1]['forward_match'] == {}
+    assert api_result['_items'][1]['reverse_cookie'] == 0
+    assert api_result['_items'][1]['reverse_match'] == {}
     assert len(api_result['_items']) == 2
 
     #*** Stop api_external sub-process:
     api_ps.terminate()
-
 
 def test_enumerate_eth_type():
     """
@@ -608,6 +933,8 @@ def test_enumerate_ip_proto():
     """
     assert api_external.enumerate_ip_proto(17) == 'UDP'
 
+#================= HELPER FUNCTIONS ===========================================
+
 def get_api_result(url):
     """
     Retrieve JSON data from API via a supplied URL
@@ -616,5 +943,14 @@ def get_api_result(url):
     r = s.get(url)
     return r.json()
 
+def _ipv4_t2i(ip_text):
+    """
+    Turns an IPv4 address in text format into an integer.
+    Borrowed from rest_router.py code
+    """
+    if ip_text == 0:
+        return ip_text
+    assert isinstance(ip_text, str)
+    return struct.unpack('!I', addrconv.ipv4.text_to_bin(ip_text))[0]
 
 

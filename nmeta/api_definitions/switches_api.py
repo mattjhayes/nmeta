@@ -49,3 +49,15 @@ switches_settings = {
     'schema': switches_schema
 }
 
+#*** A count of the number of connected switches:
+switches_count_schema = {
+        'connected_switches': {
+            'type': 'integer'
+        }
+    }
+
+switches_count_settings = {
+    'url': 'infrastructure/switches/stats/connected_switches',
+    'item_title': 'Count of Connected OpenFlow Switches',
+    'schema': switches_count_schema
+}

@@ -46,6 +46,7 @@ from api_definitions import controller_summary
 from api_definitions import identities_api
 from api_definitions import identities_ui
 from api_definitions import flows_api
+from api_definitions import flows_removed_api
 from api_definitions import flows_ui
 from api_definitions import flow_mods_api
 
@@ -63,7 +64,7 @@ PACKET_TIME_PERIOD = 10
 
 #*** Used for WebUI:
 FLOW_SEARCH_LIMIT = 600
-FLOW_RESULT_LIMIT = 25
+FLOW_RESULT_LIMIT = 100
 #*** FlowUI attributes to match against for different filter types
 FLOW_FILTER_ANY = ['src', 'src_hover', 'dst', 'dst_hover', 'proto',
                             'proto_hover']
@@ -129,6 +130,7 @@ class ExternalAPI(BaseClass):
         self.classifications = db_nmeta.classifications
         self.flow_rems = db_nmeta.flow_rems
         self.db_pi_time = db_nmeta.pi_time
+        self.switches_col = db_nmeta.switches_col
 
     class FlowUI(object):
         """
@@ -185,16 +187,23 @@ class ExternalAPI(BaseClass):
             'pi_time': pi_time.pi_time_settings,
             'controller_summary': controller_summary.controller_summary_settings,
             'switches_col': switches_api.switches_settings,
+            'switches_count_col': switches_api.switches_count_settings,
             'identities': identities_api.identities_settings,
             'identities_ui': identities_ui.identities_ui_settings,
             'flows': flows_api.flows_settings,
+            'flows_removed': flows_removed_api.flows_removed_settings,
+            'flows_removed_stats_count': flows_removed_api.flows_removed_stats_count_settings,
+            'flows_removed_src_bytes_sent': flows_removed_api.flows_removed_src_bytes_sent_settings,
+            'flows_removed_src_bytes_received': flows_removed_api.flows_removed_src_bytes_received_settings,
+            'flows_removed_dst_bytes_sent': flows_removed_api.flows_removed_dst_bytes_sent_settings,
+            'flows_removed_dst_bytes_received': flows_removed_api.flows_removed_dst_bytes_received_settings,
             'flows_ui': flows_ui.flows_ui_settings,
             'flow_mods': flow_mods_api.flow_mods_settings
         }
 
         #*** Set up a settings dictionary for starting Eve app:datasource
         eve_settings = {}
-        eve_settings['HATEOAS'] = True
+        eve_settings['HATEOAS'] = self.config.get_value('external_api_hateoas')
         eve_settings['MONGO_HOST'] =  \
                 self.config.get_value('mongo_addr')
         eve_settings['MONGO_PORT'] =  \
@@ -237,9 +246,33 @@ class ExternalAPI(BaseClass):
         self.app.on_fetched_resource_identities_ui += \
                                                self.response_identities_ui
 
+        #*** Hook for flows removed stats count response:
+        self.app.on_fetched_resource_flows_removed_stats_count += \
+                                        self.response_flows_removed_stats_count
+
+        #*** Hook for flows removed src bytes sent response:
+        self.app.on_fetched_resource_flows_removed_src_bytes_sent += \
+                                     self.response_flows_removed_src_bytes_sent
+
+        #*** Hook for flows removed src bytes received response:
+        self.app.on_fetched_resource_flows_removed_src_bytes_received += \
+                                 self.response_flows_removed_src_bytes_received
+
+        #*** Hook for flows removed dst bytes sent response:
+        self.app.on_fetched_resource_flows_removed_dst_bytes_sent += \
+                                     self.response_flows_removed_dst_bytes_sent
+
+        #*** Hook for flows removed dst bytes received response:
+        self.app.on_fetched_resource_flows_removed_dst_bytes_received += \
+                                 self.response_flows_removed_dst_bytes_received
+
         #*** Hook for filtered flows response:
         self.app.on_fetched_resource_flows_ui += \
                                                self.response_flows_ui
+
+        #*** Hook for switch count:
+        self.app.on_fetched_resource_switches_count_col += \
+                                                self.response_switches_count
 
         #*** Get necessary parameters from config:
         eve_port = self.config.get_value('external_api_port')
@@ -263,9 +296,16 @@ class ExternalAPI(BaseClass):
         Hooked from on_fetched_resource_pi_rate
 
         Returns key/values for packet-in processing time in API response:
+        - timestamp
         - pi_rate
         """
         self.logger.debug("Hooked on_fetched_resource items=%s ", items)
+        #*** Get rid of superfluous keys in response:
+        if '_items' in items:
+            del items['_items']
+        if '_meta' in items:
+            del items['_meta']
+        items['timestamp'] = datetime.datetime.now().strftime("%H:%M:%S")
         items['pi_rate'] = self.get_pi_rate()
 
     def response_pi_time(self, items):
@@ -274,6 +314,12 @@ class ExternalAPI(BaseClass):
         Hooked from on_fetched_resource_pi_time
 
         Returns key/values for packet-in processing time in API response:
+        - timestamp
+        - ryu_time_max
+        - ryu_time_min
+        - ryu_time_avg
+        - ryu_time_period
+        - ryu_time_records
         - pi_time_max
         - pi_time_min
         - pi_time_avg
@@ -283,13 +329,20 @@ class ExternalAPI(BaseClass):
         If no data found within time period then returns without
         key/values
         """
-        self.logger.debug("Hooked on_fetched_resource items=%s ", items)
-        #*** Get rid of superfluous _items key in response:
+        #*** Get rid of superfluous keys in response:
         if '_items' in items:
             del items['_items']
+        if '_meta' in items:
+            del items['_meta']
         results = self.get_pi_time()
         if results:
             #*** Set values in API response:
+            items['timestamp'] = results['timestamp']
+            items['ryu_time_max'] = results['ryu_time_max']
+            items['ryu_time_min'] = results['ryu_time_min']
+            items['ryu_time_avg'] = results['ryu_time_avg']
+            items['ryu_time_period'] = results['ryu_time_period']
+            items['ryu_time_records'] = results['ryu_time_records']
             items['pi_time_max'] = results['pi_time_max']
             items['pi_time_min'] = results['pi_time_min']
             items['pi_time_avg'] = results['pi_time_avg']
@@ -317,12 +370,24 @@ class ExternalAPI(BaseClass):
         results = self.get_pi_time()
         if results:
             #*** Set values in API response:
+            items['timestamp'] = results['timestamp']
+            items['ryu_time_max'] = round(results['ryu_time_max'], places)
+            items['ryu_time_min'] = round(results['ryu_time_min'], places)
+            items['ryu_time_avg'] = round(results['ryu_time_avg'], places)
+            items['ryu_time_period'] = results['ryu_time_period']
+            items['ryu_time_records'] = results['ryu_time_records']
             items['pi_time_max'] = round(results['pi_time_max'], places)
             items['pi_time_min'] = round(results['pi_time_min'], places)
             items['pi_time_avg'] = round(results['pi_time_avg'], places)
             items['pi_time_period'] = results['pi_time_period']
             items['pi_time_records'] = results['pi_time_records']
         else:
+            items['timestamp'] = 'unknown'
+            items['ryu_time_max'] = 'unknown'
+            items['ryu_time_min'] = 'unknown'
+            items['ryu_time_avg'] = 'unknown'
+            items['ryu_time_period'] = 'unknown'
+            items['ryu_time_records'] = 'unknown'
             items['pi_time_max'] = 'unknown'
             items['pi_time_min'] = 'unknown'
             items['pi_time_avg'] = 'unknown'
@@ -370,6 +435,179 @@ class ExternalAPI(BaseClass):
                 #*** Add hash so we don't do it again:
                 self.logger.debug("Storing id_hash=%s ", record['id_hash'])
                 known_hashes.append(record['id_hash'])
+
+    def response_flows_removed_stats_count(self, items):
+        """
+        Return count of removed flows collection
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_items' in items:
+            del items['_items']
+        if '_meta' in items:
+            del items['_meta']
+        items['flows_removed'] =  self.flow_rems.count()
+
+    def response_flows_removed_src_bytes_sent(self, items):
+        """
+        Returns removed flow bytes sent by session source IP (deduplicated
+        for flows crossing multiple switches), enriched with identity metadata.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
+        #*** MongoDB aggregate counting bytes forward by src IP, dedup
+        #***  first occurrence of byte_count per flow_hash and reverse sorted:
+        cursor = self.flow_rems.aggregate([
+                        {'$match': {
+                            'direction': 'forward'
+                            }
+                        },
+                        {'$group': {
+                            '_id': {
+                                'src': '$ip_A',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_sent': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.src',
+                            'total_bytes_sent': {
+                                '$sum': '$bytes_sent'
+                            }
+                        }},
+                        {'$sort' : {
+                            'total_bytes_sent' : -1 
+                        }}
+                    ])
+        #*** Add aggregate into _items for response:
+        items['_items'] = list(cursor)
+        #*** Enrich with identity metadata:
+        for item in items['_items']:
+            item['identity'] = self.get_id(item['_id'])
+
+    def response_flows_removed_src_bytes_received(self, items):
+        """
+        Returns removed flow bytes received by session source IP (deduplicated
+        for flows crossing multiple switches), enriched with identity metadata.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
+        #*** MongoDB aggregate counting bytes reverse by dst IP,
+        #***  dedup first occurrence of byte_count per flow_hash and reverse
+        #***  sorted:
+        cursor = self.flow_rems.aggregate([
+                        {'$match': {
+                            'direction': 'reverse'
+                            }
+                        },
+                        {'$group': {
+                            '_id': {
+                                'dst': '$ip_B',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_received': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.dst',
+                            'total_bytes_received': {
+                                '$sum': '$bytes_received'
+                            }
+                        }},
+                        {'$sort' : {
+                            'total_bytes_received' : -1 
+                        }}
+                    ])
+        #*** Add aggregate into _items for response:
+        items['_items'] = list(cursor)
+        #*** Enrich with identity metadata:
+        for item in items['_items']:
+            item['identity'] = self.get_id(item['_id'])
+
+    def response_flows_removed_dst_bytes_sent(self, items):
+        """
+        Returns removed flow bytes sent by session destination IP (deduplicated
+        for flows crossing multiple switches), enriched with identity metadata.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
+        #*** MongoDB aggregate counting bytes reverse by src IP, dedup
+        #***  first occurrence of byte_count per flow_hash and reverse sorted:
+        cursor = self.flow_rems.aggregate([
+                        {'$match': {
+                            'direction': 'reverse'
+                            }
+                        },
+                        {'$group': {
+                            '_id': {
+                                'src': '$ip_A',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_sent': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.src',
+                            'total_bytes_sent': {
+                                '$sum': '$bytes_sent'
+                            }
+                        }},
+                        {'$sort' : {
+                            'total_bytes_sent' : -1 
+                        }}
+                    ])
+        #*** Add aggregate into _items for response:
+        items['_items'] = list(cursor)
+        #*** Enrich with identity metadata:
+        for item in items['_items']:
+            item['identity'] = self.get_id(item['_id'])
+
+    def response_flows_removed_dst_bytes_received(self, items):
+        """
+        Returns removed flow bytes received by session destination IP (dedup
+        for flows crossing multiple switches), enriched with identity metadata.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_meta' in items:
+            del items['_meta']
+        #*** MongoDB aggregate counting bytes forward by dst IP,
+        #***  dedup first occurrence of byte_count per flow_hash and reverse
+        #***  sorted:
+        cursor = self.flow_rems.aggregate([
+                        {'$match': {
+                            'direction': 'forward'
+                            }
+                        },
+                        {'$group': {
+                            '_id': {
+                                'dst': '$ip_B',
+                                'flow_hash': '$flow_hash'
+                            },
+                            'bytes_received': {
+                                '$first': '$byte_count'
+                            }
+                        }},
+                        {'$group': {
+                            '_id': '$_id.dst',
+                            'total_bytes_received': {
+                                '$sum': '$bytes_received'
+                            }
+                        }},
+                        {'$sort' : {
+                            'total_bytes_received' : -1 
+                        }}
+                    ])
+        #*** Add aggregate into _items for response:
+        items['_items'] = list(cursor)
+        #*** Enrich with identity metadata:
+        for item in items['_items']:
+            item['identity'] = self.get_id(item['_id'])
 
     def response_flows_ui(self, items):
         """
@@ -430,6 +668,17 @@ class ExternalAPI(BaseClass):
                 #*** If we've filled the bucket then return result:
                 if len(items['_items']) >= FLOW_RESULT_LIMIT:
                     return
+
+    def response_switches_count(self, items):
+        """
+        Populate the response with number of connected switches.
+        """
+        #*** Get rid of superfluous keys in response:
+        if '_items' in items:
+            del items['_items']
+        if '_meta' in items:
+            del items['_meta']
+        items['connected_switches'] =  self.switches_col.count()
 
     def flow_match(self, flow, flows_filterlogicselector,
                                     flows_filtertypeselector, filter_string):
@@ -759,27 +1008,43 @@ class ExternalAPI(BaseClass):
     def get_pi_time(self):
         """
         Calculate packet processing time statistics by querying
-        packet_ins database collection.
+        the pi_time database collection.
         """
-        result = {}
+        #*** Set default result values for certain keys:
+        result = dict.fromkeys(['ryu_time_max', 'ryu_time_min', 'ryu_time_avg',
+                    'ryu_time_records', 'pi_time_max', 'pi_time_min',
+                    'pi_time_avg', 'pi_time_records', 'timestamp'], 0)
+        result['ryu_time_period'] = PACKET_TIME_PERIOD
+        result['pi_time_period'] = PACKET_TIME_PERIOD
         db_data = {'timestamp': {'$gte': datetime.datetime.now() - \
                           datetime.timedelta(seconds=PACKET_TIME_PERIOD)}}
         pi_time_cursor = self.db_pi_time.find(db_data).sort('timestamp', -1)
+        ryu_time_list = []
         pi_time_list = []
+        #*** Timestamp:
+        result['timestamp'] = datetime.datetime.now().strftime("%H:%M:%S")
+        #*** Accumulate database records into lists:
         for record in pi_time_cursor:
+            #*** Elapsed time in Ryu:
+            ryu_delta = record['ryu_delta']
+            self.logger.debug("ryu_delta=%s", ryu_delta)
+            ryu_time_list.append(ryu_delta)
+            #*** Elapsed time in nmeta:
             pi_delta = record['pi_delta']
             self.logger.debug("pi_delta=%s", pi_delta)
             pi_time_list.append(pi_delta)
+        #*** Calculate min/avg/max values from lists:
+        if len(ryu_time_list):
+            result['ryu_time_max'] = max(ryu_time_list)
+            result['ryu_time_min'] = min(ryu_time_list)
+            result['ryu_time_avg'] = sum(ryu_time_list)/len(ryu_time_list)
+            result['ryu_time_records'] = len(ryu_time_list)
         if len(pi_time_list):
             result['pi_time_max'] = max(pi_time_list)
             result['pi_time_min'] = min(pi_time_list)
             result['pi_time_avg'] = sum(pi_time_list)/len(pi_time_list)
-            result['pi_time_period'] = PACKET_TIME_PERIOD
             result['pi_time_records'] = len(pi_time_list)
-            return result
-        else:
-            self.logger.warning("no current records found in pi_time")
-            return 0
+        return result
 
 def enumerate_eth_type(eth_type):
     """

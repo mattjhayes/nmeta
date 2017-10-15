@@ -527,18 +527,171 @@ Instructions were based on these tutorials:
 `Building and Configuring Open vSwitch on OpenWrt for Cloud Networking byPravin R. <http://www.zymr.com/building-and-configuring-open-vswitch-on-openwrt-for-cloud-networking/>`_
 `Turning TP-LINK WR1043NDv2.1 router into OpenFlow-enabled switch by Lucas Burson <http://blog.ljdelight.com/turning-tp-link-wr1043ndv2-1-router-into-openflow-enabled-switch/>`_
 
+-------------------------------------------------------------------------------
 
 ************
 Virtual Labs
 ************
 
-VirtualBox
-==========
+Mininet with Vagrant
+====================
 
-TBD
+UNDER CONSTRUCTION
 
-Mininet
-=======
 
-Get in touch if you want to contribute instructions on building a lab with
-Mininet.
+In this lab we use `Vagrant <https://www.vagrantup.com/>`_ to 
+automate the start up and build of multiple `VirtualBox <https://www.virtualbox.org/>`_ 
+Ubuntu guests.
+
+These instructions assume you're running Windows, but should be easily
+adapted to other operating systems as most of the work happens within the
+virtual environment.
+
+Install VirtualBox
+------------------
+
+Download and install VirtualBox from `<https://www.virtualbox.org/wiki/Downloads>`_
+
+Install Vagrant
+---------------
+
+Download and install Vagrant from `<https://www.vagrantup.com/>`_
+
+Download a box
+--------------
+
+We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
+16.04 in this lab. Download this box on your host machine with:
+
+.. code-block:: text
+
+  vagrant box add bento/ubuntu-16.04
+
+Choose *virtualbox* option from menu
+
+Clone Vagrant Repo
+---------------------
+
+Clone the Vagrant repo from `<https://github.com/mattjhayes/Vagrant>`_ onto
+your host machine.
+
+Start the Guest
+---------------
+
+In a command prompt, from base of cloned repo, navigate to
+the *SDN_Labs\Mininet_Ryu_nmeta* directory:
+
+.. code-block:: text
+
+  cd SDN_Labs\Mininet_Ryu_nmeta
+
+Start the guest by running this on the host machine command prompt:
+
+.. code-block:: text
+
+  vagrant up
+
+When the guest is up, connect to it with SSH on localhost:2222
+
+username/password are both *vagrant*
+
+run nmeta (from alias):
+
+.. code-block:: text
+
+  nm
+
+Start a second SSH session and run the nmeta api:
+
+.. code-block:: text
+
+  nma
+
+In a third SSH session run Mininet:
+
+.. code-block:: text
+
+  mnt
+
+TBD - UNDER CONSTRUCTION
+
+-------------------------------------------------------------------------------
+
+VirtualBox with Vagrant
+=======================
+
+UNDER CONSTRUCTION
+
+In this lab we use `Vagrant <https://www.vagrantup.com/>`_ to 
+automate the start up and build of multiple `VirtualBox <https://www.virtualbox.org/>`_ 
+Ubuntu guests.
+
+These instructions assume you're running Windows, but should be easily
+adapted to other operating systems as most of the work happens within the
+virtual environment.
+
+Install VirtualBox
+------------------
+
+Download and install VirtualBox from `<https://www.virtualbox.org/wiki/Downloads>`_
+
+Install Vagrant
+---------------
+
+Download and install Vagrant from `<https://www.vagrantup.com/>`_
+
+Download a box
+--------------
+
+We will use the `bento <https://app.vagrantup.com/bento>`_ box of Ubuntu
+16.04 in this lab. Download this box on your host machine with:
+
+.. code-block:: text
+
+  vagrant box add bento/ubuntu-16.04
+
+Choose *virtualbox* option from menu
+
+Clone Vagrant Repo
+---------------------
+
+Clone the Vagrant repo from `<https://github.com/mattjhayes/Vagrant>`_ onto
+your host machine.
+
+Start the Guest
+---------------
+
+In a command prompt, from base of cloned repo, navigate to
+the *SDN_Labs\Ryu_nmeta_SystemTestLab* directory:
+
+.. code-block:: text
+
+  cd SDN_Labs\Ryu_nmeta_SystemTestLab
+
+Start the guest by running this on the host machine command prompt:
+
+.. code-block:: text
+
+  vagrant up
+
+When the guests are up, connect to the controller with SSH on localhost:2203
+(first guests is port 2222 then ports 2200 and upwards for other guests)
+
+username/password are both *vagrant*
+
+run nmeta (from alias):
+
+.. code-block:: text
+
+  nm
+
+Start a second SSH session and run the nmeta api:
+
+.. code-block:: text
+
+  nma
+
+TBD - UNDER CONSTRUCTION
+
+
+

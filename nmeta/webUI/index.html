@@ -4,10 +4,14 @@
     <meta charset="utf-8">
     <title>nmeta</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Bootstrap -->
+    <!-- Bootstrap CSS-->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
             integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u"
             crossorigin="anonymous">
+    <!-- Backgrid for tables CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/backgrid.js/0.3.8/backgrid.min.css" integrity="sha256-XCeOP8VH+7abDBSg+s5SdQC7BcytGH03hWBtyfHUJDM=" crossorigin="anonymous" />
+    <link rel="stylesheet" href="js/libs/backgrid-paginator.css">
+    <link rel="stylesheet" href="js/libs/backgrid-filter.css">
 </head>
 
 <body>
@@ -34,31 +38,56 @@
             integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
             crossorigin="anonymous"></script>
 
+<!-- ChartJS for charts-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.6.0/Chart.bundle.min.js" integrity="sha256-VNbX9NjQNRW+Bk02G/RO6WiTKuhncWI4Ey7LkSbE+5s=" crossorigin="anonymous"></script>
+
+<!-- Backgrid, Paginator and Filter for tables -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/backgrid.js/0.3.8/backgrid.min.js" integrity="sha256-Qm0i3gM+f99MFQ/GPmJX4EOD5egx5MF5VU6R0nY3+20=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.paginator/2.0.5/backbone.paginator.min.js" integrity="sha256-nqCLeI27BiuRxhJEcsKPwUpTusAzME+5qFOWntHhAvw=" crossorigin="anonymous"></script>
+<script src="js/libs/backgrid-paginator.js"></script>
+<script src="js/libs/backgrid-filter.js"></script>
+
 <!-- App -->
 <script src="js/app.js"></script>
 
 <!-- Backbone Views -->
 <script src="js/views/bars_view.js"></script>
 <script src="js/views/home_view.js"></script>
-<script src="js/views/identities_view.js"></script>
-<script src="js/views/identity_view.js"></script>
-<script src="js/views/flows_view.js"></script>
-<script src="js/views/flow_view.js"></script>
+<script src="js/views/switch_count_view.js"></script>
+<script src="js/views/identities_backgrid_view.js"></script>
+<script src="js/views/identities_filter_view.js"></script>
+<script src="js/views/identities_paginator_view.js"></script>
+<script src="js/views/flows_backgrid_view.js"></script>
+<script src="js/views/flows_filter_view.js"></script>
+<script src="js/views/flows_paginator_view.js"></script>
 <script src="js/views/flow_details_view.js"></script>
 <script src="js/views/flow_detail_view.js"></script>
 <script src="js/views/flow_mods_view.js"></script>
 <script src="js/views/flow_mod_view.js"></script>
+<script src="js/views/flows_removed_bytes_src_sent_chart_view.js"></script>
+<script src="js/views/flows_removed_bytes_src_received_chart_view.js"></script>
+<script src="js/views/flows_removed_bytes_dst_sent_chart_view.js"></script>
+<script src="js/views/flows_removed_bytes_dst_received_chart_view.js"></script>
 <script src="js/views/controller_summary_view.js"></script>
+<script src="js/views/controller_pitime_chart_view.js"></script>
+<script src="js/views/controller_pirate_chart_view.js"></script>
 <script src="js/views/switch_view.js"></script>
 <script src="js/views/switches_view.js"></script>
 <script src="js/views/policy_view.js"></script>
 
 <!-- Backbone Models -->
-<script src="js/models/identities_model.js"></script>
-<script src="js/models/flows_model.js"></script>
+<script src="js/models/switch_count_model.js"></script>
+<script src="js/models/identities_backgrid_model.js"></script>
+<script src="js/models/flows_backgrid_model.js"></script>
 <script src="js/models/flow_details_model.js"></script>
 <script src="js/models/flow_mods_model.js"></script>
+<script src="js/models/flows_removed_bytes_src_sent_chart_model.js"></script>
+<script src="js/models/flows_removed_bytes_src_received_chart_model.js"></script>
+<script src="js/models/flows_removed_bytes_dst_sent_chart_model.js"></script>
+<script src="js/models/flows_removed_bytes_dst_received_chart_model.js"></script>
 <script src="js/models/controller_summary_model.js"></script>
+<script src="js/models/controller_pitime_chart_model.js"></script>
+<script src="js/models/controller_pirate_chart_model.js"></script>
 <script src="js/models/switches_model.js"></script>
 </body>
 </html>

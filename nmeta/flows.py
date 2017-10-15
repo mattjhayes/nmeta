@@ -32,15 +32,15 @@ into the state of the flow.
 #*** For packet methods:
 import socket
 
+#*** For timestamps:
+import datetime
+
 #*** Import dpkt for packet parsing:
 import dpkt
 
 #*** mongodb Database Import:
 import pymongo
 from pymongo import MongoClient
-
-#*** For timestamps:
-import datetime
 
 #*** For logging configuration:
 from baseclass import BaseClass
@@ -213,7 +213,7 @@ class Flow(BaseClass):
         #*** Get parameters from config:
         mongo_addr = config.get_value("mongo_addr")
         mongo_port = config.get_value("mongo_port")
-        mongo_dbname = self.config.get_value("mongo_dbname")
+        mongo_dbname = config.get_value("mongo_dbname")
         #*** Max bytes of the capped collections:
         packet_ins_max_bytes = config.get_value("packet_ins_max_bytes")
         classifications_max_bytes = \
@@ -225,6 +225,9 @@ class Flow(BaseClass):
                                 (seconds=config.get_value("flow_time_limit"))
         self.classification_time_limit = datetime.timedelta \
                         (seconds=config.get_value("classification_time_limit"))
+
+        #*** Flow mod cookie value offset indicates flow session direction:
+        self.offset = config.get_value("flow_mod_cookie_reverse_offset")
 
         #*** Start mongodb:
         self.logger.info("Connecting to MongoDB database...")
@@ -264,14 +267,18 @@ class Flow(BaseClass):
                                 ('classification_time', pymongo.DESCENDING)],
                                 unique=False)
 
-        #*** flow_rems collection:
+        #*** flow_rems collection for recording flow removals:
         self.logger.debug("Deleting flow_rems MongoDB collection...")
         db_nmeta.flow_rems.drop()
         #*** Create the flow_rems collection, specifying capped option
         #*** with max size in bytes, so MongoDB handles data retention:
         self.flow_rems = db_nmeta.create_collection('flow_rems',
                                    capped=True, size=flow_rems_max_bytes)
-        #*** Note: don't index flow_rems collection as we don't read it
+        #*** Index flow_rems to improve look-up performance:
+        self.flow_rems.create_index([('direction', pymongo.DESCENDING),
+                                ('ip_A', pymongo.DESCENDING),
+                                ('ip_B', pymongo.DESCENDING)],
+                                unique=False)
 
         #*** flow_mods collection:
         self.logger.debug("Deleting flow_mods MongoDB collection...")
@@ -284,7 +291,7 @@ class Flow(BaseClass):
         self.flow_mods.create_index([('flow_hash', pymongo.DESCENDING),
                                 ('dpid', pymongo.DESCENDING),
                                 ('timestamp', pymongo.DESCENDING),
-                                ('suppression_type', pymongo.DESCENDING),
+                                ('suppress_type', pymongo.DESCENDING),
                                 ('standdown', pymongo.DESCENDING)],
                                 unique=False)
 
@@ -472,12 +479,13 @@ class Flow(BaseClass):
         This is a flow that a switch has informed us it has
         removed from its flow table because of an idle timeout
         """
-        def __init__(self, logger, flow_rems, msg):
+        def __init__(self, logger, flow_rems, msg, offset):
             """
             Initialise the class with logger and flow_rems db
             collection. Initialise removed flow parameters to values
             in the message
             """
+            self.offset = offset
             match = msg.match
             self.logger = logger
             self.flow_rems = flow_rems
@@ -531,6 +539,11 @@ class Flow(BaseClass):
                 self.flow_hash = nethash.hash_flow((self.eth_A, self.eth_B,
                                           self.dpid, self.removal_time,
                                           self.ip_proto))
+            #*** Session direction (forward|reverse). Defaults to forward:
+            if self.cookie < self.offset:
+                self.direction = 'forward'
+            else:
+                self.direction = 'reverse'
 
         def dbdict(self):
             """
@@ -540,7 +553,6 @@ class Flow(BaseClass):
             """
             dbdictresult = {}
             dbdictresult['dpid'] = self.dpid
-            dbdictresult['flow_hash'] = self.flow_hash
             dbdictresult['removal_time'] = self.removal_time
             dbdictresult['cookie'] = self.cookie
             dbdictresult['priority'] = self.priority
@@ -559,6 +571,8 @@ class Flow(BaseClass):
             dbdictresult['ip_proto'] = self.ip_proto
             dbdictresult['tp_A'] = self.tp_A
             dbdictresult['tp_B'] = self.tp_B
+            dbdictresult['flow_hash'] = self.flow_hash
+            dbdictresult['direction'] = self.direction
             return dbdictresult
 
         def commit(self):
@@ -574,11 +588,10 @@ class Flow(BaseClass):
         """
         Record an idle-timeout flow removal message.
         Passed a Ryu message object for the flow removal.
-        Record entries in the flow_rems database collection with
-        a hash for each direction
+        Record entry in the flow_rems database collection
         """
         #*** Instantiate class to hold removed flow record:
-        remf = self.RemovedFlow(self.logger, self.flow_rems, msg)
+        remf = self.RemovedFlow(self.logger, self.flow_rems, msg, self.offset)
         #*** Decide what to record based on the match:
         match = msg.match
         if 'ip_proto' in match:
@@ -595,20 +608,8 @@ class Flow(BaseClass):
                 remf.commit()
                 return 1
         else:
-            self.logger.info("match has eth_type=%s", match['eth_type'])
-            if match['eth_type'] == 2048:
-                #*** IPv4:
-                self.logger.debug("Removed flow was IPv4 unknown protocol")
-                # TBD
-
-            elif match['eth_type'] == 34525:
-                #*** IPv6:
-                self.logger.debug("Removed flow was IPv6 unknown protocol")
-                # TBD
-
-            else:
-                self.logger.warning("Removed flow was unhandled eth_type")
-                return 0
+            self.logger.warning("Removed flow was unhandled eth_type")
+            return 0
 
     def ingest_packet(self, dpid, in_port, packet, timestamp):
         """
@@ -903,24 +904,14 @@ class Flow(BaseClass):
         else:
             return min_s2c.total_seconds()
 
-    def record_suppression(self, dpid, suppression_type):
+    def not_suppressed(self, dpid, suppress_type):
         """
-        Record that the flow is being suppressed on a particular
-        switch in the flow_mods database collection, so that information
-        is available to API consumers, such as the WebUI
-
-        suppression_type is a string that is one of:
-          - 'forward': forwards all packets in this flow
-          - 'drop': drops all packets in this flow
-
-        First check flow_mods to see if flow is already suppressed,
-        within suppression stand-down time for that switch,
-        and if it is recorded in DB that not resuppressed and return 0
+        Check flow_mods to see if current flow context is already
+        suppressed within suppression stand-down time for that switch,
+        and if it is then return False, otherwise True
 
         The stand-down time is to reduce risk of overloading switch
-        with duplicate suppression events
-
-        Otherwise, record in flow_mods and return 1
+        with duplicate suppression events.
 
         Called from nmeta.py
         """
@@ -929,30 +920,98 @@ class Flow(BaseClass):
                     'dpid': dpid,
                     'timestamp': {'$gte': datetime.datetime.now() - \
                                                 FLOW_SUPPRESSION_STANDDOWN},
-                    'suppression_type': suppression_type,
+                    'suppress_type': suppress_type,
                     'standdown': 0}
-
-        flow_mod_record = {'flow_hash': self.packet.flow_hash,
-                            'timestamp': datetime.datetime.now(),
-                            'dpid': dpid,
-                            'suppression_type': suppression_type,
-                            'standdown': 0}
 
         #*** Check if already suppressed with-in stand-down time period:
         if self.flow_mods.find_one(db_data):
             #*** There has been a suppression for this flow_hash within
-            #*** Stand down period so just record stand down and return 0
+            #*** Stand down period
             self.logger.debug("flow=%s already recorded as suppressed on "
                                 "dpid=%s", self.packet.flow_hash, dpid)
-            flow_mod_record['standdown'] = 1
-            self.flow_mods.insert_one(flow_mod_record)
-            return 0
+            return False
         else:
-            #*** Record and return 1
-            self.logger.debug("Recording suppression of flow=%s on "
+            return True
+
+    class FlowMod(object):
+        """
+        An object that represents an individual Flow Modification,
+        used for recording the circumstances into the
+        flow_mods MongoDB collection
+        """
+        def __init__(self, flow_mods, flow_hash, dpid, _type, standdown):
+            #*** Initialise variables:
+            self.flow_mods = flow_mods
+            self.flow_hash = flow_hash
+            #*** Timestamp of when flow mod made:
+            self.timestamp = datetime.datetime.now()
+            self.dpid = dpid
+            #*** suppress_type is 'suppress' or 'drop':
+            self.suppress_type = _type
+            #*** If set, flow_mod was not sent due to stand down period:
+            self.standdown = standdown
+            #*** Match type set by switches module (ignore|single|dual)
+            #***  ignore means no mod, dual had forward and reverse mods:
+            self.match_type = ''
+            #*** Cookie for forward flow mod:
+            self.forward_cookie = 0
+            #*** Match dict set by switches module for forward flow:
+            self.forward_match = {}
+            #*** Cookie for reverse flow mod:
+            self.reverse_cookie = 0
+            #*** Match dict set by switches module for reverse flow:
+            self.reverse_match = {}
+            #*** Client IP to help ascertain session direction (0 if unknown):
+            self.client_ip = ''
+
+        def dbdict(self):
+            """
+            Return a dictionary object of specific FlowMod
+            parameters for storing in the database
+            """
+            dbdictresult = {}
+            dbdictresult['flow_hash'] = self.flow_hash
+            dbdictresult['timestamp'] = self.timestamp
+            dbdictresult['dpid'] = self.dpid
+            dbdictresult['suppress_type'] = self.suppress_type
+            dbdictresult['standdown'] = self.standdown
+            dbdictresult['match_type'] = self.match_type
+            dbdictresult['forward_cookie'] = self.forward_cookie
+            dbdictresult['forward_match'] = self.forward_match
+            dbdictresult['reverse_cookie'] = self.reverse_cookie
+            dbdictresult['reverse_match'] = self.reverse_match
+            dbdictresult['client_ip'] = self.client_ip
+            return dbdictresult
+
+        def commit(self):
+            """
+            Record removed mod into MongoDB
+            flow_mods collection.
+            """
+            #*** Write to database collection:
+            self.flow_mods.insert_one(self.dbdict())
+
+    def record_suppression(self, dpid, suppress_type, result, standdown=0):
+        """
+        Record that the flow is being suppressed on a particular
+        switch in the flow_mods database collection, so that information
+        is available to API consumers, such as the WebUI
+        """
+        #*** Instantiate a new instance of FlowMod class:
+        flow_mod_record = self.FlowMod(self.flow_mods, self.packet.flow_hash,
+                                dpid, suppress_type, standdown)
+        if not standdown:
+            #*** Add values from switches module suppress or drop flow result:
+            flow_mod_record.match_type = result['match_type']
+            flow_mod_record.forward_cookie = result['forward_cookie']
+            flow_mod_record.forward_match = result['forward_match']
+            flow_mod_record.reverse_cookie = result['reverse_cookie']
+            flow_mod_record.reverse_match = result['reverse_match']
+            flow_mod_record.client_ip = result['client_ip']
+
+        self.logger.debug("Recording suppression of flow=%s on "
                                 "dpid=%s", self.packet.flow_hash, dpid)
-            self.flow_mods.insert_one(flow_mod_record)
-            return 1
+        flow_mod_record.commit()
 
 #================== PRIVATE FUNCTIONS ==================
 

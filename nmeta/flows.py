@@ -244,11 +244,10 @@ class Flow(BaseClass):
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=packet_ins_max_bytes)
 
+        #*** Create indexes on packet_ins collection to improve searching:
         self.packet_ins.create_index([('flow_hash', pymongo.DESCENDING),
-                                        ('timestamp', pymongo.ASCENDING)
-                                        ],
+                                      ('timestamp', pymongo.ASCENDING)],
                                         unique=False)
-
         self.packet_ins.create_index([('timestamp', pymongo.DESCENDING)],
                                         unique=False)
 
@@ -712,17 +711,27 @@ class Flow(BaseClass):
     def packet_count(self, test=0):
         """
         Return the number of packets in the flow (counting packets in
-        both directions). This method should deduplicate for where the
-        same packet is received from multiple switches, but is TBD...
+        both directions). This method deduplicates for where the
+        same packet is received from multiple switches, by filtering to
+        the DPID from which the first packet-in for the flow was received
+        (could be wrong in obscure corner cases).
 
         Works by retrieving packets from packet_ins database with
         current packet flow_hash and within flow reuse time limit.
 
         Setting test=1 returns database query execution statistics
         """
+        time_limit = datetime.datetime.now() - self.flow_time_limit
+        #*** Get DPID of first switch to report flow:
         db_data = {'flow_hash': self.packet.flow_hash,
-              'timestamp': {'$gte': datetime.datetime.now() - \
-                                                self.flow_time_limit}}
+                        'timestamp': {'$gte': time_limit}}
+        packets = self.packet_ins.find(db_data).sort('timestamp', 1).limit(1)
+        first_dpid = list(packets)[0]['dpid']
+        
+        #*** Main search:
+        db_data = {'flow_hash': self.packet.flow_hash,
+              'timestamp': {'$gte': time_limit},
+              'dpid': first_dpid}
         if not test:
             packet_cursor = self.packet_ins.find(db_data).sort('timestamp', -1)
         else:

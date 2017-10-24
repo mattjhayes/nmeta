@@ -125,6 +125,10 @@ def test_flow_ipv4_http():
     flow.ingest_packet(DPID1, INPORT1, pkts.RAW[6], datetime.datetime.now())
     pkt_test(flow, pkts, 7, 7)
 
+    #*** Test Flow 1 Packet 7 (Client ACK) - different DPID:
+    flow.ingest_packet(DPID2, INPORT1, pkts.RAW[6], datetime.datetime.now())
+    pkt_test(flow, pkts, 7, 7)
+
 def test_flow_ipv4_http2():
     """
     Test ingesting packets from an IPv4 HTTP flow, with a packet
@@ -533,7 +537,7 @@ def test_indexing():
 def test_not_suppressed():
     """
     Test this query that checks to see if a flow mod to a switch
-    is not suppressed (preventing possible duplicate flow mods
+    is not suppressed (preventing possible duplicate flow mods)
     """
     #*** Instantiate Flow class:
     flow = flows_module.Flow(config)

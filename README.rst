@@ -1,7 +1,7 @@
 .. image:: docs/source/images/nmeta.png
 
-meta - Network Metadata
-=======================
+nmeta - Network Metadata
+========================
 
 The nmeta project is a research platform for traffic classification on
 Software Defined Networking (SDN).

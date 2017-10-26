@@ -70,12 +70,13 @@ class Classifier(object):
             classifier_result.continue_to_inspect = False
             classifier_result.actions['qos_treatment'] = 'default_priority'
             #*** Assemble flow metrics and return as classification tag:
-            result = str(flow.packet_count())
+            result = 'ML' + separator
             result += separator + str(flow.packet.length)
             result += separator + str(flow.packet.proto)
             result += separator + str(flow.max_packet_size())
             result += separator + str(flow.max_interpacket_interval())
             result += separator + str(flow.min_interpacket_interval())
+            result += separator + str(flow.packet_count())
             classifier_result.classification_tag = result
         else:
             self.logger.debug("Continuing to inspect flow_hash=%s packets=%s",

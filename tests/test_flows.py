@@ -618,17 +618,17 @@ def test_origin():
     #*** Instantiate a flow object:
     flow = flows_module.Flow(config)
 
-    #*** First packet:
+    #*** First packet, this should lock as the source IP and DPID:
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
     assert flow.origin()[0] == pkts2.IP_SRC[0]
     assert flow.origin()[1] == DPID1
 
-    #*** Same packet, different DPID:
+    #*** Same packet, different DPID, should be ignored:
     flow.ingest_packet(DPID2, INPORT1, pkts2.RAW[0], datetime.datetime.now())
     assert flow.origin()[0] == pkts2.IP_SRC[0]
     assert flow.origin()[1] == DPID1
 
-    #*** Another packet:
+    #*** Another packet, should be ignored:
     flow.ingest_packet(DPID2, INPORT1, pkts2.RAW[1], datetime.datetime.now())
     assert flow.origin()[0] == pkts2.IP_SRC[0]
     assert flow.origin()[1] == DPID1
@@ -645,21 +645,113 @@ def test_max_interpacket_interval():
     #*** Create some packet times to use, based of current time as otherwise
     #*** will break db search time limits:
     base_time = datetime.datetime.now()
-    #*** 10 ms gap
-    time_pkt2 = base_time + datetime.timedelta(milliseconds=10)
-    #*** 20 ms gap
-    time_pkt3 = base_time + datetime.timedelta(milliseconds=30)
-    #*** 50 ms gap
-    time_pkt4 = base_time + datetime.timedelta(milliseconds=80)
+    time_2 = base_time + datetime.timedelta(milliseconds=10)
+    time_3 = base_time + datetime.timedelta(milliseconds=30)
+    time_4 = base_time + datetime.timedelta(milliseconds=80)
+    time_5 = base_time + datetime.timedelta(milliseconds=90)
+    time_6 = base_time + datetime.timedelta(milliseconds=190)
     
     #*** Ingest packets, note 3rd packet is duplicate from diff DPID to ignore:
+    #*** Forward direction:
     flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], base_time)
-    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[1], time_pkt2)
-    flow.ingest_packet(DPID2, INPORT1, pkts2.RAW[1], time_pkt3)
-    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], time_pkt4)
+    #*** Reverse direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[1], time_2)
+    flow.ingest_packet(DPID2, INPORT1, pkts2.RAW[1], time_3)
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], time_4)
 
+    #*** Largest interpacket interval is in forward direction between base_time
+    #*** and time_4
     assert flow.max_interpacket_interval() == 0.080
 
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], time_5)
+    #*** Reverse direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[4], time_6)
+    #*** Largest interpacket interval is in reverse direction between time_2
+    #*** (time_3 excluded as different DPID) and time_6
+    assert flow.max_interpacket_interval() == 0.180
+    
+def test_min_interpacket_interval():
+    """
+    Test min_interpacket_interval method
+    
+    Remember, assessed per direction in flow
+    """
+    #*** Instantiate a flow object:
+    flow = flows_module.Flow(config)
+    
+    #*** Create some packet times to use, based of current time as otherwise
+    #*** will break db search time limits:
+    base_time = datetime.datetime.now()
+    time_2 = base_time + datetime.timedelta(milliseconds=10)
+    time_3 = base_time + datetime.timedelta(milliseconds=30)
+    time_4 = base_time + datetime.timedelta(milliseconds=80)
+    time_5 = base_time + datetime.timedelta(milliseconds=90)
+    time_6 = base_time + datetime.timedelta(milliseconds=190)
+    
+    #*** Ingest packets, note 3rd packet is duplicate from diff DPID to ignore:
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], base_time)
+    #*** Reverse direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[1], time_2)
+    flow.ingest_packet(DPID2, INPORT1, pkts2.RAW[1], time_3)
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], time_4)
+
+    #*** Smallest interpacket interval is in forward direction between
+    #***  base_time and time_4
+    assert flow.min_interpacket_interval() == 0.080
+
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], time_5)
+    #*** Reverse direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[4], time_6)
+    #*** Smallest interpacket interval is in forward direction between time_4
+    #***  and time_5
+    assert flow.min_interpacket_interval() == 0.010
+
+def test_packet_directions():
+    """
+    Test packet_directions method
+    """
+    #*** Instantiate a flow object:
+    flow = flows_module.Flow(config)
+
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
+    #*** Reverse direction (ignore second one as diff DPID):
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[1], datetime.datetime.now())
+    flow.ingest_packet(DPID2, INPORT1, pkts2.RAW[1], datetime.datetime.now())
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], datetime.datetime.now())
+    #*** Reverse direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[4], datetime.datetime.now())
+    
+    #*** Check packet directions:
+    assert flow.packet_directions() == [1, 0, 1, 1, 0]
+
+def test_packet_sizes():
+    """
+    Test packet_sizes method
+    """
+    #*** Instantiate a flow object:
+    flow = flows_module.Flow(config)
+
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], datetime.datetime.now())
+    #*** Reverse direction (ignore second one as diff DPID):
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[1], datetime.datetime.now())
+    flow.ingest_packet(DPID2, INPORT1, pkts2.RAW[1], datetime.datetime.now())
+    #*** Forward direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], datetime.datetime.now())
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], datetime.datetime.now())
+    #*** Reverse direction:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[4], datetime.datetime.now())
+    
+    #*** Check packet sizes:
+    assert flow.packet_sizes() == [74, 74, 66, 321, 66]
 
 #================= HELPER FUNCTIONS ===========================================
 

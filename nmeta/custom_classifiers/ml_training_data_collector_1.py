@@ -60,9 +60,6 @@ class Classifier(object):
         
         #*** Get number of packets in flow so far:
         packets = flow.packet_count()
-        
-        # TEMP:
-        self.logger.debug("$$$$ MAX PACKET SIZE=%s", flow.max_packet_size())
 
         if packets == packet_theshold:
             #*** Turn off continue_to_inspect to suppress flow:
@@ -70,13 +67,15 @@ class Classifier(object):
             classifier_result.continue_to_inspect = False
             classifier_result.actions['qos_treatment'] = 'default_priority'
             #*** Assemble flow metrics and return as classification tag:
-            result = 'ML' + separator
+            result = 'ML'
             result += separator + str(flow.packet.length)
             result += separator + str(flow.packet.proto)
             result += separator + str(flow.max_packet_size())
             result += separator + str(flow.max_interpacket_interval())
             result += separator + str(flow.min_interpacket_interval())
             result += separator + str(flow.packet_count())
+            result += separator + str(flow.packet_directions())
+            result += separator + str(flow.packet_sizes())
             classifier_result.classification_tag = result
         else:
             self.logger.debug("Continuing to inspect flow_hash=%s packets=%s",

@@ -749,6 +749,58 @@ class Flow(BaseClass):
         else:
             return 's2c'
 
+    def packet_directions(self, test=0):
+        """
+        Return the set of packet directions of all packets
+        recorded in the current flow, deduplicated for multiple switches.
+        Returns a list of directions per packet where 1 = forward
+        and 0 = reverse direction and oldest is the
+        left most position and newest on the right
+        """
+        result = []
+        time_limit = datetime.datetime.now() - self.flow_time_limit
+        #*** Get Client IP and DPID of first switch to report flow:
+        (flow_client, first_dpid) = self.origin()
+        #*** Main search:
+        db_data = {'flow_hash': self.packet.flow_hash,
+              'timestamp': {'$gte': time_limit},
+              'dpid': first_dpid}
+        if not test:
+            packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
+        else:
+            return self.packet_ins.find(db_data).sort('timestamp', 1).explain()
+        #*** Iterate the packet cursor:
+        for packet in packet_cursor:
+            if packet['ip_src'] == flow_client:
+                result.append(1)
+            else:
+                result.append(0)
+        return result
+
+    def packet_sizes(self, test=0):
+        """
+        Return the set of packet sizes of all packets
+        recorded in the current flow, deduplicated for multiple switches.
+        Returns a list of sizes per packet where the oldest is the
+        left most position and newest on the right
+        """
+        result = []
+        time_limit = datetime.datetime.now() - self.flow_time_limit
+        #*** Get Client IP and DPID of first switch to report flow:
+        (flow_client, first_dpid) = self.origin()
+        #*** Main search:
+        db_data = {'flow_hash': self.packet.flow_hash,
+              'timestamp': {'$gte': time_limit},
+              'dpid': first_dpid}
+        if not test:
+            packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
+        else:
+            return self.packet_ins.find(db_data).sort('timestamp', 1).explain()
+        #*** Iterate the packet cursor:
+        for packet in packet_cursor:
+            result.append(packet['length'])
+        return result
+
     def client(self):
         """
         Returns the IP that is the originator of the flow (if known,

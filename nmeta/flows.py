@@ -158,43 +158,40 @@ class Flow(BaseClass):
         flow.packet.tcp_cwr()
           True if TCP CWR flag is set in the current packet
 
+        flow.packet_direction()
+          c2s (client to server) or s2c direction of current packet
+
         **Variables for the whole flow**:
 
         flow.packet_count()
           Unique packets registered for the flow
 
         flow.client()
-          The IP that is the originator of the flow (if known,
-          otherwise 0)
+          The IP that is the originator of the flow
 
         flow.server()
-          The IP that is the destination of the flow (if known,
-          otherwise 0)
+          The IP that is the destination of the flow
 
-        flow.packet_direction()
-          c2s (client to server) or s2c directionality based on first observed
-          packet direction in the flow. Source of first packet in flow is
-          assumed to be the client
+        flow.packet_directions()
+          List of packet directions for the flow
+
+        flow.packet_sizes()
+          List of packet sizes (lengths, in bytes) for the flow
 
         flow.max_packet_size()
-          Size of largest packet in the flow
+          Size of largest packet in the flow in bytes
 
         flow.max_interpacket_interval()
-          TBD
+          Maximum directional time difference between packets
 
         flow.min_interpacket_interval()
-          TBD
-
-        **Variables for the whole flow relating to classification**:
-
-        classification.TBD
+          Minimum directional time difference between packets
 
     The Flow class also includes the record_removal method
     that records a flow removal message from a switch to database
 
     Challenges (not handled - yet):
-     - duplicate packets due to retransmissions or multiple switches
-       in path
+     - duplicate packets due to retransmissions
      - IP fragments
      - Flow reuse - TCP source port reused
     """
@@ -726,7 +723,7 @@ class Flow(BaseClass):
         time_limit = datetime.datetime.now() - self.flow_time_limit
         #*** Get DPID of first switch to report flow:
         first_dpid = self.origin()[1]
-        
+
         #*** Main search:
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': time_limit},
@@ -786,8 +783,8 @@ class Flow(BaseClass):
         """
         result = []
         time_limit = datetime.datetime.now() - self.flow_time_limit
-        #*** Get Client IP and DPID of first switch to report flow:
-        (flow_client, first_dpid) = self.origin()
+        #*** Get DPID of first switch to report flow:
+        first_dpid = self.origin()[1]
         #*** Main search:
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': time_limit},

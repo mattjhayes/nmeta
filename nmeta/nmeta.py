@@ -170,8 +170,14 @@ class NMeta(app_manager.RyuApp, BaseClass):
         flow = self.flow
         ident = self.ident
 
+        #*** Use packet-in timestamp from Ryu if available (v4.17 and higher):
+        if 'timestamp' in vars(event):
+            pi_timestamp = datetime.datetime.fromtimestamp(event.timestamp)
+        else:
+            pi_timestamp = datetime.datetime.now()
+
         #*** Read packet into flow object for classifiers to work with:
-        flow.ingest_packet(dpid, in_port, msg.data, datetime.datetime.now())
+        flow.ingest_packet(dpid, in_port, msg.data, pi_timestamp)
 
         #*** Harvest any identity metadata:
         ident.harvest(msg.data, self.flow.packet)

@@ -83,7 +83,7 @@ classifications
 identities
 ----------
 
-.. image:: images/data_struct_identities.png
+.. image:: images/identities.png
 
 flow_mods
 ---------
@@ -94,6 +94,12 @@ flow_rems
 ---------
 
 .. image:: images/flow_rems.png
+
+dhcp_v4
+-------
+
+.. image:: images/dhcp_v4.png
+
 
 *******
 Logging

@@ -14,6 +14,7 @@ To use the web UI, start nmeta (alias nm), start the nmeta external API
 The home page looks like this:
 
 .. image:: images/webui-home.png
+    :align: center
 
 The number of connected switches updates dynamically.
 

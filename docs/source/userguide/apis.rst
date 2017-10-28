@@ -2,7 +2,7 @@
 APIs
 ####
 
-API Types:
+Nmeta uses Python Eve to expose various RESTful API types:
 
 * :ref:`flow-apis`
 * :ref:`identity-apis`

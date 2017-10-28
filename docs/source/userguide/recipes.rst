@@ -9,9 +9,10 @@ actions implicitly allow if there is no drop action.
 
 Recipes:
 
-:ref:`parental-control-recipe`
-:ref:`lan-traffic-clean-up-recipe`
-:ref:`qos-recipe`
+* :ref:`parental-control-recipe`
+* :ref:`lan-traffic-clean-up-recipe`
+* :ref:`qos-recipe`
+* :ref:`ml-training-collector`
 
 .. _parental-control-recipe:
 
@@ -380,3 +381,17 @@ Here's the YAML:
 
         default_match: external
 
+
+.. _ml-training-collector:
+
+**************************
+ML Training Data Collector
+**************************
+
+This recipe can be used to build traffic classification training data
+for supervised machine learning (ML). It uses a custom classifier to
+write flow characteristics into the classification tag. This data can
+then be retrieved via the classifications API and annotated against the
+ground truth of what type of flow it was.
+
+TBD...

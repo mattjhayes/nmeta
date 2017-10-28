@@ -22,6 +22,7 @@ Contents:
    userguide/configure
    userguide/build_a_lab
    userguide/webui
+   userguide/apis
    userguide/extend_nmeta
    userguide/develop
    modules

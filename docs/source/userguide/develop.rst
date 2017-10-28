@@ -61,10 +61,8 @@ Database Collections
 Nmeta uses capped MongoDB database collections to obviate the need
 to maintain size by pruning old entries.
 
-Packet-Ins
+packet-ins
 ----------
-
-MongoDB Collection: packet_ins
 
 .. image:: images/data_struct_packet_ins.png
 
@@ -75,23 +73,33 @@ The pi_time database collection stores data on how long nmeta took
 to process individual packet-in events, and what type of outcome nmeta
 decided upon for the packet.
 
-MongoDB Collection: data_struct_pi_time
-
 .. image:: images/data_struct_pi_time.png
 
-Classifications
+classifications
 ---------------
-
-MongoDB Collection: classifications
 
 .. image:: images/data_struct_classifications.png
 
-Identity Metadata
------------------
+identities
+----------
 
-MongoDB Collection: identities
+.. image:: images/identities.png
 
-.. image:: images/data_struct_identities.png
+flow_mods
+---------
+
+.. image:: images/flow_mods.png
+
+flow_rems
+---------
+
+.. image:: images/flow_rems.png
+
+dhcp_v4
+-------
+
+.. image:: images/dhcp_v4.png
+
 
 *******
 Logging

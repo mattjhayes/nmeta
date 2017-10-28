@@ -125,16 +125,32 @@ Tests should all pass:
 Run nmeta
 ==========
 
-Test nmeta runs:
+Run nmeta in a terminal window:
 
 .. code-block:: text
 
   ryu-manager ~/nmeta/nmeta/nmeta.py
 
+Run the external API (necessary for WebUI) in a separate terminal window:
+
+.. code-block:: text
+
+  ~/nmeta/nmeta/api_external.py
+
+Test WebUI
+==========
+
+In a browser on the same machine that nmeta is installed on, navigate to:
+
+`<http://localhost:8081/webUI/index.html>`_
+
 
 ******************
 Configure Switches
 ******************
+
+Next, we need OpenFlow switches configured to Ryu/nmeta as their controller and
+app. 
 
 Configure OpenFlow
 ==================

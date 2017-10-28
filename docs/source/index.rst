@@ -9,7 +9,7 @@ nmeta
 =====
 
 The nmeta project is a research platform for traffic classification on
-Software Defined Networking (SDN). `Read More <introduction.html>`_
+Software Defined Networking (SDN). `Read More <userguide/introduction.html>`_
 
 Contents:
 
@@ -17,11 +17,12 @@ Contents:
    :maxdepth: 3
 
    userguide/introduction
+   userguide/recipes
    userguide/install
    userguide/configure
-   userguide/recipes
    userguide/build_a_lab
    userguide/webui
+   userguide/apis
    userguide/extend_nmeta
    userguide/develop
    modules

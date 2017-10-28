@@ -7,6 +7,14 @@ These recipes are to provide ideas on how nmeta can be used through examples.
 Note that policies have an **implicit allow** at the end of the policy. Also,
 actions implicitly allow if there is no drop action.
 
+Recipes:
+
+* :ref:`parental-control-recipe`
+* :ref:`lan-traffic-clean-up-recipe`
+* :ref:`qos-recipe`
+* :ref:`ml-training-collector`
+
+.. _parental-control-recipe:
 
 ***********************
 Parental Control Recipe
@@ -33,8 +41,8 @@ In this recipe we enforce the following parental controls on Alice and Bob:
 - Alice's Chromebook and Bob's iPhone are only allowed to access the Internet
   between 7am and 9pm
 
-Main Policy:
-============
+Main Policy
+===========
 
 Use this main_policy.yaml file in the user config directory:
 
@@ -175,6 +183,8 @@ Here's the YAML:
         default_match: unknown
 
 
+.. _lan-traffic-clean-up-recipe:
+
 ********************
 LAN Traffic Clean-up
 ********************
@@ -190,8 +200,8 @@ It does the following:
 - Implicit allow of all other traffic, as well of harvesting of
   conversation and identity metadata
 
-Main Policy:
-============
+Main Policy
+===========
 
 Use this main_policy.yaml file in the user config directory:
 
@@ -271,6 +281,9 @@ Here's the YAML:
 
         default_match: unknown
 
+
+.. _qos-recipe:
+
 *******************************
 Quality of Service (QoS) Recipe
 *******************************
@@ -286,8 +299,8 @@ The *qos_treatment* section maps *constrained_bw* to QoS queue number 1.
 QoS queues need to be separately configured on switches. Failure to have a
 queue defined on the switch (other than 0) may result in traffic being dropped.
 
-Main Policy:
-============
+Main Policy
+===========
 
 Use this main_policy.yaml file in the user config directory:
 
@@ -368,3 +381,132 @@ Here's the YAML:
 
         default_match: external
 
+
+.. _ml-training-collector:
+
+**************************
+ML Training Data Collector
+**************************
+
+This recipe can be used to build traffic classification training data
+for supervised machine learning (ML). It uses a custom classifier to
+write flow characteristics into the classification tag. This data can
+then be retrieved via the classifications API and annotated against the
+ground truth of what type of flow it was.
+
+Main Policy
+===========
+
+Use this main_policy.yaml file in the user config directory:
+
+.. code-block:: text
+
+  ~/nmeta/nmeta/config/user/
+
+Here's the YAML:
+
+.. code-block:: YAML
+
+    ---
+    #*** Main Policy for nmeta - Machine Learning (ML) Data Collector
+    #*** Written in YAML
+    #
+    tc_rules:
+        # Traffic Classification Rulesets and Rules
+        tc_ruleset_1:
+            - comment: Machine Learning Data Collector
+              match_type: any
+              conditions_list:
+                  - match_type: any
+                    classifiers_list:
+                        - custom: ml_training_data_collector_1
+              actions:
+                set_desc: classifier_return
+                qos_treatment: classifier_return
+    #
+    qos_treatment:
+        # Control Quality of Service (QoS) treatment mapping of
+        #  names to output queue numbers:
+        default_priority: 0
+        constrained_bw: 1
+        high_priority: 2
+        low_priority: 3
+    #
+    port_sets:
+        # Port Sets control what data plane ports policies and
+        #  features are applied on. Names must be unique.
+        port_set_list:
+            - name: port_set_location_internal
+              port_list:
+                  - name: VirtualSwitch1-internal
+                    DPID: 1
+                    ports: 1-3,5,66
+                    vlan_id: 0
+
+                  - name: VirtualSwitch2-internal
+                    DPID: 255
+                    ports: 3,5
+                    vlan_id: 0
+
+            - name: port_set_location_external
+              port_list:
+                  - name: VirtualSwitch1-external
+                    DPID: 1
+                    ports: 6
+                    vlan_id: 0
+
+                  - name: VirtualSwitch2-external
+                    DPID: 255
+                    ports: 1-2,4
+                    vlan_id: 0
+    #
+    locations:
+        # Locations are logical groupings of ports. Takes first match.
+        locations_list:
+            - name: internal
+              port_set_list:
+                - port_set: port_set_location_internal
+
+            - name: external
+              port_set_list:
+                - port_set: port_set_location_external
+
+        default_match: external
+
+
+Classification data can be retrieved with cURL with this command:
+
+.. code-block:: text
+
+  curl -g http://localhost:8081/v1/classifications?where={%22classified%22:true} | python -m json.tool
+
+Example result:
+
+.. code-block:: text
+
+    {
+        "_items": [
+            {
+                "_created": "00:00:00.000000",
+                "_etag": "bd0da01a8db1ece3e2f23ecd577bb0474568e268",
+                "_id": "59f43d3301186133ec5a8d0f",
+                "_updated": "00:00:00.000000",
+                "actions": {
+                    "qos_treatment": "default_priority",
+                    "set_desc": "classifier_return"
+                },
+                "classification_tag": "ML,10.1.0.2,10.1.0.1,6,80,35044,162,2.152,0.111,5,[1, 0, 1, 1, 0],[74, 74, 66, 84, 66]",
+                "classification_time": "21:17:55.823000",
+                "classified": true,
+                "flow_hash": "8ac72c304d7c7a61349ba99e0c21541e"
+            }
+        ],
+        "_meta": {
+            "max_results": 25,
+            "page": 1,
+            "total": 1
+        }
+    }
+
+Note the classification_tag that contains the flow characteristics. See the
+custom classifier code for field descriptions.

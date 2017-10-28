@@ -49,6 +49,7 @@ from api_definitions import flows_api
 from api_definitions import flows_removed_api
 from api_definitions import flows_ui
 from api_definitions import flow_mods_api
+from api_definitions import classifications_api
 
 #*** For timestamps:
 import datetime
@@ -198,7 +199,8 @@ class ExternalAPI(BaseClass):
             'flows_removed_dst_bytes_sent': flows_removed_api.flows_removed_dst_bytes_sent_settings,
             'flows_removed_dst_bytes_received': flows_removed_api.flows_removed_dst_bytes_received_settings,
             'flows_ui': flows_ui.flows_ui_settings,
-            'flow_mods': flow_mods_api.flow_mods_settings
+            'flow_mods': flow_mods_api.flow_mods_settings,
+            'classifications': classifications_api.classifications_settings
         }
 
         #*** Set up a settings dictionary for starting Eve app:datasource
@@ -445,7 +447,7 @@ class ExternalAPI(BaseClass):
             del items['_items']
         if '_meta' in items:
             del items['_meta']
-        items['flows_removed'] =  self.flow_rems.count()
+        items['flows_removed'] = self.flow_rems.count()
 
     def response_flows_removed_src_bytes_sent(self, items):
         """
@@ -678,7 +680,7 @@ class ExternalAPI(BaseClass):
             del items['_items']
         if '_meta' in items:
             del items['_meta']
-        items['connected_switches'] =  self.switches_col.count()
+        items['connected_switches'] = self.switches_col.count()
 
     def flow_match(self, flow, flows_filterlogicselector,
                                     flows_filtertypeselector, filter_string):

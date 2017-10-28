@@ -17,9 +17,9 @@ Contents:
    :maxdepth: 3
 
    userguide/introduction
+   userguide/recipes
    userguide/install
    userguide/configure
-   userguide/recipes
    userguide/build_a_lab
    userguide/webui
    userguide/extend_nmeta

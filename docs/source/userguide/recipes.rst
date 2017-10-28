@@ -7,6 +7,13 @@ These recipes are to provide ideas on how nmeta can be used through examples.
 Note that policies have an **implicit allow** at the end of the policy. Also,
 actions implicitly allow if there is no drop action.
 
+Recipes:
+
+:ref:`parental-control-recipe`
+:ref:`lan-traffic-clean-up-recipe`
+:ref:`qos-recipe`
+
+.. _parental-control-recipe:
 
 ***********************
 Parental Control Recipe
@@ -175,6 +182,8 @@ Here's the YAML:
         default_match: unknown
 
 
+.. _lan-traffic-clean-up-recipe:
+
 ********************
 LAN Traffic Clean-up
 ********************
@@ -270,6 +279,9 @@ Here's the YAML:
                 - port_set: port_set_location_external
 
         default_match: unknown
+
+
+.. _qos-recipe:
 
 *******************************
 Quality of Service (QoS) Recipe

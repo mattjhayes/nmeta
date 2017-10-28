@@ -158,43 +158,40 @@ class Flow(BaseClass):
         flow.packet.tcp_cwr()
           True if TCP CWR flag is set in the current packet
 
+        flow.packet_direction()
+          c2s (client to server) or s2c direction of current packet
+
         **Variables for the whole flow**:
 
         flow.packet_count()
           Unique packets registered for the flow
 
         flow.client()
-          The IP that is the originator of the flow (if known,
-          otherwise 0)
+          The IP that is the originator of the flow
 
         flow.server()
-          The IP that is the destination of the flow (if known,
-          otherwise 0)
+          The IP that is the destination of the flow
 
-        flow.packet_direction()
-          c2s (client to server) or s2c directionality based on first observed
-          packet direction in the flow. Source of first packet in flow is
-          assumed to be the client
+        flow.packet_directions()
+          List of packet directions for the flow
+
+        flow.packet_sizes()
+          List of packet sizes (lengths, in bytes) for the flow
 
         flow.max_packet_size()
-          Size of largest packet in the flow
+          Size of largest packet in the flow in bytes
 
         flow.max_interpacket_interval()
-          TBD
+          Maximum directional time difference between packets
 
         flow.min_interpacket_interval()
-          TBD
-
-        **Variables for the whole flow relating to classification**:
-
-        classification.TBD
+          Minimum directional time difference between packets
 
     The Flow class also includes the record_removal method
     that records a flow removal message from a switch to database
 
     Challenges (not handled - yet):
-     - duplicate packets due to retransmissions or multiple switches
-       in path
+     - duplicate packets due to retransmissions
      - IP fragments
      - Flow reuse - TCP source port reused
     """
@@ -244,11 +241,12 @@ class Flow(BaseClass):
         self.packet_ins = db_nmeta.create_collection('packet_ins', capped=True,
                                             size=packet_ins_max_bytes)
 
+        #*** Create indexes on packet_ins collection to improve searching:
         self.packet_ins.create_index([('flow_hash', pymongo.DESCENDING),
-                                        ('timestamp', pymongo.ASCENDING)
-                                        ],
+                                      ('timestamp', pymongo.ASCENDING),
+                                      ('dpid', pymongo.ASCENDING)],
                                         unique=False)
-
+        #*** Second index required for queries without flow_hash as prefix:
         self.packet_ins.create_index([('timestamp', pymongo.DESCENDING)],
                                         unique=False)
 
@@ -712,17 +710,24 @@ class Flow(BaseClass):
     def packet_count(self, test=0):
         """
         Return the number of packets in the flow (counting packets in
-        both directions). This method should deduplicate for where the
-        same packet is received from multiple switches, but is TBD...
+        both directions). This method deduplicates for where the
+        same packet is received from multiple switches, by filtering to
+        the DPID from which the first packet-in for the flow was received
+        (could be wrong in obscure corner cases).
 
         Works by retrieving packets from packet_ins database with
         current packet flow_hash and within flow reuse time limit.
 
         Setting test=1 returns database query execution statistics
         """
+        time_limit = datetime.datetime.now() - self.flow_time_limit
+        #*** Get DPID of first switch to report flow:
+        first_dpid = self.origin()[1]
+
+        #*** Main search:
         db_data = {'flow_hash': self.packet.flow_hash,
-              'timestamp': {'$gte': datetime.datetime.now() - \
-                                                self.flow_time_limit}}
+              'timestamp': {'$gte': time_limit},
+              'dpid': first_dpid}
         if not test:
             packet_cursor = self.packet_ins.find(db_data).sort('timestamp', -1)
         else:
@@ -741,13 +746,65 @@ class Flow(BaseClass):
         else:
             return 's2c'
 
+    def packet_directions(self, test=0):
+        """
+        Return the set of packet directions of all packets
+        recorded in the current flow, deduplicated for multiple switches.
+        Returns a list of directions per packet where 1 = forward
+        and 0 = reverse direction and oldest is the
+        left most position and newest on the right
+        """
+        result = []
+        time_limit = datetime.datetime.now() - self.flow_time_limit
+        #*** Get Client IP and DPID of first switch to report flow:
+        (flow_client, first_dpid) = self.origin()
+        #*** Main search:
+        db_data = {'flow_hash': self.packet.flow_hash,
+              'timestamp': {'$gte': time_limit},
+              'dpid': first_dpid}
+        if not test:
+            packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
+        else:
+            return self.packet_ins.find(db_data).sort('timestamp', 1).explain()
+        #*** Iterate the packet cursor:
+        for packet in packet_cursor:
+            if packet['ip_src'] == flow_client:
+                result.append(1)
+            else:
+                result.append(0)
+        return result
+
+    def packet_sizes(self, test=0):
+        """
+        Return the set of packet sizes of all packets
+        recorded in the current flow, deduplicated for multiple switches.
+        Returns a list of sizes per packet where the oldest is the
+        left most position and newest on the right
+        """
+        result = []
+        time_limit = datetime.datetime.now() - self.flow_time_limit
+        #*** Get DPID of first switch to report flow:
+        first_dpid = self.origin()[1]
+        #*** Main search:
+        db_data = {'flow_hash': self.packet.flow_hash,
+              'timestamp': {'$gte': time_limit},
+              'dpid': first_dpid}
+        if not test:
+            packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
+        else:
+            return self.packet_ins.find(db_data).sort('timestamp', 1).explain()
+        #*** Iterate the packet cursor:
+        for packet in packet_cursor:
+            result.append(packet['length'])
+        return result
+
     def client(self):
         """
-        The IP that is the originator of the flow (if known,
+        Returns the IP that is the originator of the flow (if known,
         otherwise 0)
 
         Finds first packet seen for the flow_hash within the time limit
-        and returns the source IP
+        and returns a the source IP
         """
         db_data = {'flow_hash': self.packet.flow_hash,
               'timestamp': {'$gte': datetime.datetime.now() - \
@@ -758,6 +815,25 @@ class Flow(BaseClass):
         else:
             self.logger.warning("no packets found")
             return 0
+
+    def origin(self):
+        """
+        Returns the IP and DPID that is the originator of the flow (if known,
+        otherwise 0)
+
+        Finds first packet seen for the flow_hash within the time limit
+        and returns a tuple of the source IP and the dpid
+        """
+        db_data = {'flow_hash': self.packet.flow_hash,
+              'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.flow_time_limit}}
+        packets = self.packet_ins.find(db_data).sort('timestamp', 1).limit(1)
+        if packets.count():
+            packet = list(packets)[0]
+            return (packet['ip_src'], packet['dpid'])
+        else:
+            self.logger.warning("no packets found")
+            return (0, 0)
 
     def server(self):
         """
@@ -811,12 +887,13 @@ class Flow(BaseClass):
         count_s2c = 0
         prev_c2s_ts = 0
         prev_s2c_ts = 0
-        #*** Do this once, as is DB call:
-        flow_client = self.client()
+        #*** Get Client IP and DPID of first switch to report flow:
+        (flow_client, first_dpid) = self.origin()
         #*** Database lookup for whole flow:
         db_data = {'flow_hash': self.packet.flow_hash,
-              'timestamp': {'$gte': datetime.datetime.now() - \
-                                                self.flow_time_limit}}
+                'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.flow_time_limit},
+                'dpid': first_dpid}
         packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
         #*** Iterate forward through packets in flow:
         if packet_cursor.count():
@@ -865,12 +942,13 @@ class Flow(BaseClass):
         count_s2c = 0
         prev_c2s_ts = 0
         prev_s2c_ts = 0
-        #*** Do this once, as is DB call:
-        flow_client = self.client()
+        #*** Get Client IP and DPID of first switch to report flow:
+        (flow_client, first_dpid) = self.origin()
         #*** Database lookup for whole flow:
         db_data = {'flow_hash': self.packet.flow_hash,
-              'timestamp': {'$gte': datetime.datetime.now() - \
-                                                self.flow_time_limit}}
+                'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.flow_time_limit},
+                'dpid': first_dpid}
         packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
         #*** Iterate forward through packets in flow:
         if packet_cursor.count():

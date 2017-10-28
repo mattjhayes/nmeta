@@ -308,22 +308,22 @@ Example response (showing only one of multiple records):
 
 .. code-block:: text
 
-{
-    "_items": [
-        {
-            "_created": "00:00:00.000000",
-            "_etag": "2edf91b82d854695895ee44cffbcd5886209d12b",
-            "_id": "59f4e7f2011861131aea939a",
-            "_updated": "00:00:00.000000",
-            "actions": {
-                "qos_treatment": "constrained_bw",
-                "set_desc": "Constrained Bandwidth Traffic"
+    {
+        "_items": [
+            {
+                "_created": "00:00:00.000000",
+                "_etag": "2edf91b82d854695895ee44cffbcd5886209d12b",
+                "_id": "59f4e7f2011861131aea939a",
+                "_updated": "00:00:00.000000",
+                "actions": {
+                    "qos_treatment": "constrained_bw",
+                    "set_desc": "Constrained Bandwidth Traffic"
+                },
+                "classification_tag": "Constrained Bandwidth Traffic",
+                "classification_time": "09:26:26.131000",
+                "classified": true,
+                "flow_hash": "7af8ea9080506199633414caba6259e6"
             },
-            "classification_tag": "Constrained Bandwidth Traffic",
-            "classification_time": "09:26:26.131000",
-            "classified": true,
-            "flow_hash": "7af8ea9080506199633414caba6259e6"
-        },
 
 
 .. _identity-apis:

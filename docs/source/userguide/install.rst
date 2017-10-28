@@ -125,7 +125,7 @@ Tests should all pass:
 Run nmeta
 ==========
 
-Test nmeta runs:
+Run nmeta in a terminal window:
 
 .. code-block:: text
 

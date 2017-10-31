@@ -28,24 +28,24 @@ import struct
 #*** For packet methods:
 import socket
 
-#*** Import dpkt for packet parsing:
-import dpkt
-
-#*** mongodb Database Import:
-import pymongo
-from pymongo import MongoClient
-
 #*** For timestamps:
 import datetime
-
-#*** For logging configuration:
-from baseclass import BaseClass
 
 #*** For Regular Expression searches:
 import re
 
 #*** For hashing of identities:
 import hashlib
+
+#*** For logging configuration:
+from baseclass import BaseClass
+
+#*** Import dpkt for packet parsing:
+import dpkt
+
+#*** mongodb Database Import:
+import pymongo
+from pymongo import MongoClient
 
 #*** How long in seconds to cache ARP responses for (in seconds):
 ARP_CACHE_TIME = 14400
@@ -606,7 +606,7 @@ class Identities(BaseClass):
           regex=True        Treat service_name as a regular expression
           harvest_type=     Specify what type of harvest (i.e. DNS_A)
           ip_address=       Look for specific IP address
-        Returns boolean
+        Returns an identity record or 0 if no match
 
         Setting test=1 returns database query execution statistics
         """
@@ -634,6 +634,71 @@ class Identities(BaseClass):
             return result0
         else:
             self.logger.debug("service_name=%s not found", service_name)
+            return 0
+
+    def get_identity_by_ip(self, ip_addr, test=0):
+        """
+        Passed an IP address. Look this up in the identities
+        db collection. Return the most recent identity record for this
+        IP address or 0 if no match.
+
+        Checks to see if service name is an alias for a CNAME and if it
+        is moves the service name to service alias and returns the CNAME
+        as the service name. Caution: returns the first CNAME and there
+        could be a many to one mapping... Also, does not recurse.
+
+        Setting test=1 returns database
+        query execution statistics
+        """
+        db_data = {'ip_address': ip_addr}
+        #*** Filter by documents that are still within 'best before' time:
+        db_data['valid_to'] = {'$gte': datetime.datetime.now()}
+        #*** Run db search:
+        if not test:
+            result = self.identities.find(db_data).sort('valid_from', -1). \
+                                                                       limit(1)
+        else:
+            return self.identities.find(db_data).sort('valid_from', -1). \
+                                                             limit(1).explain()
+        if result.count():
+            result0 = list(result)[0]
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
+            if result0['harvest_type'] == 'DNS_A':
+                #*** Look up service name to see if it is used as alias:
+                cname = self.get_dns_cname(result0['service_name'])
+                if cname:
+                    result0['service_alias'] = result0['service_name']
+                    result0['service_name'] = cname
+            return result0
+        else:
+            self.logger.debug("identity for ip_addr=%s not found", ip_addr)
+            return 0
+
+    def get_dns_cname(self, service_name, test=0):
+        """
+        Passed a DNS CNAME. Look this up in the identities
+        db collection. Return the most recent CNAME
+        for this A Record or 0 if no match.
+
+        Setting test=1 returns database
+        query execution statistics
+        """
+        db_data = {'service_alias': service_name}
+        #*** Filter by documents that are still within 'best before' time:
+        db_data['valid_to'] = {'$gte': datetime.datetime.now()}
+        #*** Run db search:
+        if not test:
+            result = self.identities.find(db_data).sort('valid_from', -1). \
+                                                                       limit(1)
+        else:
+            return self.identities.find(db_data).sort('valid_from', -1). \
+                                                             limit(1).explain()
+        if result.count():
+            result0 = list(result)[0]
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
+            return result0['service_name']
+        else:
+            self.logger.debug("service name for cname=%s not found", cname)
             return 0
 
     def _hash_identity(self, ident):

@@ -263,6 +263,15 @@ def test_get_location_by_mac():
     """
     Test the get_location_by_mac method
     """
+    #*** Location internal:
+    DPID_INTERNAL = 1
+    PORT_INTERNAL = 1
+    #*** Location external:
+    DPID_EXTERNAL = 1
+    PORT_EXTERNAL = 6
+    #*** Location unknown:
+    DPID_UNKNOWN = 255
+    PORT_UNKNOWN = 6
     #*** Instantiate flow, policy and identities objects:
     flow = flows_module.Flow(config)
     policy = policy_module.Policy(config,
@@ -270,9 +279,25 @@ def test_get_location_by_mac():
                             pol_dir_user="config/tests/foo",
                             pol_filename="main_policy_regression_static.yaml")
     identities = identities_module.Identities(config, policy)
-    
-    # TBD
-    assert 1 == 0
+
+    #*** Note: Location harvested for ARPs
+    #*** DPID=1 INPORT=1 should be location internal:
+    flow.ingest_packet(DPID_INTERNAL, PORT_INTERNAL, pkts_arp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[1], flow.packet)
+    result_location = identities.get_location_by_mac(pkts_arp.ETH_SRC[1])
+    assert result_location == 'internal'
+
+    #*** DPID=1 INPORT=6 should be location external:
+    flow.ingest_packet(DPID_EXTERNAL, PORT_EXTERNAL, pkts_arp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[1], flow.packet)
+    result_location = identities.get_location_by_mac(pkts_arp.ETH_SRC[1])
+    assert result_location == 'external'
+
+    #*** DPID=255 INPORT=6 should be location unknown:
+    flow.ingest_packet(DPID_UNKNOWN, PORT_UNKNOWN, pkts_arp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[1], flow.packet)
+    result_location = identities.get_location_by_mac(pkts_arp.ETH_SRC[1])
+    assert result_location == 'unknown'
 
 def test_indexing():
     """
@@ -365,8 +390,8 @@ def test_indexing():
     #*** Check how query ran:
     assert explain['executionStats']['executionSuccess'] == True
     assert explain['executionStats']['nReturned'] == 1
-    assert explain['executionStats']['totalKeysExamined'] == 2
-    assert explain['executionStats']['totalDocsExamined'] == 2
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
 
     #*** Check get_host_by_ip query execution statistics:
     #*** Retrieve an explain of identities get_host_by_ip database query:
@@ -376,8 +401,21 @@ def test_indexing():
     #*** Check how query ran:
     assert explain['executionStats']['executionSuccess'] == True
     assert explain['executionStats']['nReturned'] == 1
-    assert explain['executionStats']['totalKeysExamined'] == 3
-    assert explain['executionStats']['totalDocsExamined'] == 3
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
+
+    #*** Check get_location_by_mac query execution statistics:
+    #*** Retrieve an explain of identities get_location_by_mac database query:
+    explain = identities.get_location_by_mac(pkts_arp.ETH_SRC[1], test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 1
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
+
+
 
 #================= HELPER FUNCTIONS ===========================================
 

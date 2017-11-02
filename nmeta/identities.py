@@ -51,6 +51,8 @@ from pymongo import MongoClient
 ARP_CACHE_TIME = 14400
 #*** DHCP lease time to use if none present (in seconds):
 DHCP_DEFAULT_LEASE_TIME = 3600
+#*** How many records to search through for a MAC address:
+MAC_SEARCH_LIMIT = 2000
 
 class Identities(BaseClass):
     """
@@ -136,7 +138,13 @@ class Identities(BaseClass):
                                         unique=False)
         #*** Index to improve MAC address look-up performance:
         self.identities.create_index([('mac_address', pymongo.ASCENDING),
-                             ('valid_from', pymongo.DESCENDING)], unique=False)
+                                        ('valid_from', pymongo.DESCENDING)],
+                                        unique=False, name='BY_MAC')
+        #*** Index to improve Host by IP address look-up performance:
+        self.identities.create_index([('ip_address', pymongo.ASCENDING),
+                                        ('valid_from', pymongo.DESCENDING)
+                                        ],
+                                        unique=False, name='BY_IP')
         #*** Index to improve Node (host_name) look-up performance:
         self.identities.create_index([('host_name', pymongo.ASCENDING),
                              ('valid_from', pymongo.DESCENDING)], unique=False)
@@ -698,21 +706,26 @@ class Identities(BaseClass):
             self.logger.debug("identity for ip_addr=%s not found", ip_addr)
             return 0
 
-    def get_location_by_mac(self, mac_addr):
+    def get_location_by_mac(self, mac_addr, test=0):
         """
         Passed a MAC address. Look this up in the identities db collection
-        and return a source logical location if present,
-        otherwise an empty string
+        and return a source logical location string if present,
+        otherwise return 0. Setting test=1 returns database query
+        execution statistics
         """
         db_data = {'mac_address': mac_addr}
+        self.logger.debug("mac_address=%s", mac_addr)
         #*** Run db search:
-        cursor = self.identities.find(db_data).limit(HOST_LIMIT) \
-                                                         .sort('timestamp', -1)
+        if not test:
+            cursor = self.identities.find(db_data).limit(MAC_SEARCH_LIMIT) \
+                                                        .sort('valid_from', -1)
+        else:
+            return self.identities.find(db_data).limit(MAC_SEARCH_LIMIT) \
+                                              .sort('valid_from', -1).explain()
         for record in cursor:
-            self.logger.debug("record is %s", record)
             if record['location_logical'] != "":
                 return str(record['location_logical'])
-        return ""
+        return 0
 
     def get_dns_cname(self, service_name, test=0):
         """

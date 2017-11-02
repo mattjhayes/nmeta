@@ -68,7 +68,9 @@ class Classifier(object):
             classifier_result.actions['qos_treatment'] = 'default_priority'
             #*** Assemble flow metrics and return as classification tag:
             result = 'ML'
-            result += separator + str(ident.get_service_by_ip(flow.packet.ip_dst))
+            identity_record = ident.get_service_by_ip(flow.packet.ip_dst)
+            service_name = identity_record['service_name']
+            result += separator + str(service_name)
             result += separator + str(flow.packet.ip_src)
             result += separator + str(flow.packet.ip_dst)
             result += separator + str(flow.packet.proto)

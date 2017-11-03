@@ -68,14 +68,20 @@ class Classifier(object):
             classifier_result.actions['qos_treatment'] = 'default_priority'
             #*** Assemble flow metrics and return as classification tag:
             result = 'ML'
+            #*** Identity of destination to help with ground truth marking:
             identity_record = ident.get_service_by_ip(flow.packet.ip_dst)
-            service_name = identity_record['service_name']
+            if identity_record:
+                service_name = identity_record['service_name']
+            else:
+                service_name = ""
             result += separator + str(service_name)
+            #*** Packet header information:
             result += separator + str(flow.packet.ip_src)
             result += separator + str(flow.packet.ip_dst)
             result += separator + str(flow.packet.proto)
             result += separator + str(flow.packet.tp_src)
             result += separator + str(flow.packet.tp_dst)
+            #*** Flow features:
             result += separator + str(flow.max_packet_size())
             result += separator + str(flow.max_interpacket_interval())
             result += separator + str(flow.min_interpacket_interval())

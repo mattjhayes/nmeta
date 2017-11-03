@@ -54,14 +54,14 @@ class Classifier(object):
         #*** Threshold number of packets in flow to return
         #*** metrics on (ignores flows with fewer or more packets):
         packet_theshold = 5
-        
+
         #*** Used to separate terms in classification tag:
         separator = ','
-        
+
         #*** Get number of packets in flow so far:
         packets = flow.packet_count()
 
-        if packets >= packet_theshold:
+        if packets == packet_theshold:
             #*** Turn off continue_to_inspect to suppress flow:
             classifier_result.match = True
             classifier_result.continue_to_inspect = False
@@ -83,10 +83,13 @@ class Classifier(object):
             result += separator + str(flow.packet_directions())
             result += separator + str(flow.packet_sizes())
             classifier_result.classification_tag = result
+        elif packets > packet_theshold:
+            #*** Turn off continue_to_inspect to suppress flow:
+            classifier_result.match = True
+            classifier_result.continue_to_inspect = False
         else:
             self.logger.debug("Continuing to inspect flow_hash=%s packets=%s",
                                                        flow.flow_hash, packets)
             #*** Don't suppress flow so we get sent more packets:
             classifier_result.match = True
             classifier_result.continue_to_inspect = True
-            

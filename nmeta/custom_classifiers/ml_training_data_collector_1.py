@@ -69,6 +69,7 @@ class Classifier(object):
             #*** Assemble flow metrics and return as classification tag:
             result = 'ML'
             #*** Identity of destination to help with ground truth marking:
+            self.logger.info('looking up service_name for ip=%s', flow.packet.ip_dst)
             identity_record = ident.get_service_by_ip(flow.packet.ip_dst)
             if isinstance(identity_record, int):
                 self.logger.info('could not find identity for ip=%s', 

@@ -27,6 +27,9 @@ from __future__ import division
 
 import os
 
+#*** For timestamps:
+import datetime
+
 #*** Import Eve for REST API Framework:
 from eve import Eve
 
@@ -53,9 +56,6 @@ from api_definitions import flows_removed_api
 from api_definitions import flows_ui
 from api_definitions import flow_mods_api
 from api_definitions import classifications_api
-
-#*** For timestamps:
-import datetime
 
 #*** To get request parameters:
 from flask import request
@@ -487,7 +487,7 @@ class ExternalAPI(BaseClass):
                             }
                         }},
                         {'$sort' : {
-                            'total_bytes_sent' : -1 
+                            'total_bytes_sent' : -1
                         }}
                     ])
         #*** Add aggregate into _items for response:
@@ -528,7 +528,7 @@ class ExternalAPI(BaseClass):
                             }
                         }},
                         {'$sort' : {
-                            'total_bytes_received' : -1 
+                            'total_bytes_received' : -1
                         }}
                     ])
         #*** Add aggregate into _items for response:
@@ -568,7 +568,7 @@ class ExternalAPI(BaseClass):
                             }
                         }},
                         {'$sort' : {
-                            'total_bytes_sent' : -1 
+                            'total_bytes_sent' : -1
                         }}
                     ])
         #*** Add aggregate into _items for response:
@@ -609,7 +609,7 @@ class ExternalAPI(BaseClass):
                             }
                         }},
                         {'$sort' : {
-                            'total_bytes_received' : -1 
+                            'total_bytes_received' : -1
                         }}
                     ])
         #*** Add aggregate into _items for response:
@@ -744,7 +744,8 @@ class ExternalAPI(BaseClass):
         flow.timestamp = record['timestamp']
         flow.flow_hash = record['flow_hash']
         #*** Augment with source logical location:
-        flow.src_location_logical = self.get_location_by_mac(record['eth_src'])
+        flow.src_location_logical = \
+                              self.ident.get_location_by_mac(record['eth_src'])
         #*** Mangle src/dest and their hovers dependent on type:
         if record['eth_type'] == 2048:
             #*** It's IPv4, see if we can augment with identity:
@@ -938,22 +939,6 @@ class ExternalAPI(BaseClass):
             self.logger.debug("A record for DNS CNAME=%s not found",
                                                                   service_name)
             return ""
-
-    def get_location_by_mac(self, mac_addr):
-        """
-        Passed a MAC address. Look this up in the identities db collection
-        and return a source logical location if present,
-        otherwise an empty string
-        """
-        db_data = {'mac_address': mac_addr}
-        #*** Run db search:
-        cursor = self.identities.find(db_data).limit(HOST_LIMIT) \
-                                                         .sort('timestamp', -1)
-        for record in cursor:
-            self.logger.debug("record is %s", record)
-            if record['location_logical'] != "":
-                return str(record['location_logical'])
-        return ""
 
     def get_pi_rate(self, test=0):
         """

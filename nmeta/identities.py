@@ -714,7 +714,6 @@ class Identities(BaseClass):
         execution statistics
         """
         db_data = {'mac_address': mac_addr}
-        self.logger.debug("mac_address=%s", mac_addr)
         #*** Run db search:
         if not test:
             cursor = self.identities.find(db_data).limit(MAC_SEARCH_LIMIT) \
@@ -729,7 +728,7 @@ class Identities(BaseClass):
 
     def get_dns_cname(self, service_name, test=0):
         """
-        Passed a DNS CNAME. Look this up in the identities
+        Passed a DNS A Record name. Look this up in the identities
         db collection. Return the most recent CNAME
         for this A Record or 0 if no match.
 
@@ -751,7 +750,7 @@ class Identities(BaseClass):
             self.logger.debug("found result=%s len=%s", result0, len(result0))
             return result0['service_name']
         else:
-            self.logger.debug("service name for cname=%s not found", cname)
+            self.logger.debug("No CNAME found, service_name=%s", service_name)
             return 0
 
     def _hash_identity(self, ident):

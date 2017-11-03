@@ -70,10 +70,13 @@ class Classifier(object):
             result = 'ML'
             #*** Identity of destination to help with ground truth marking:
             identity_record = ident.get_service_by_ip(flow.packet.ip_dst)
-            if identity_record == 0:
+            if isinstance(identity_record, int):
+                self.logger.info('could not find identity for ip=%s', 
+                                                flow.packet.ip_dst)
                 service_name = ""
             else:
                 service_name = identity_record['service_name']
+                self.logger.info('service_name=%s', service_name)
             result += separator + str(service_name)
             #*** Packet header information:
             result += separator + str(flow.packet.ip_src)

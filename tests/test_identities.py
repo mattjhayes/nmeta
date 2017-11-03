@@ -131,7 +131,6 @@ def test_harvest_DHCP():
     assert result_identity['mac_address'] == pkts_dhcp.ETH_SRC[2]
     assert result_identity['ip_address'] == '10.1.0.1'
 
-
 def test_harvest_LLDP():
     """
     Test harvesting identity metadata from LLDP packets
@@ -197,28 +196,56 @@ def test_harvest_DNS():
     assert result_identity['service_name'] == pkts_dns.DNS_CNAME[1]
     assert result_identity['ip_address'] == pkts_dns.DNS_IP[1]
 
-def test_get_identity_by_ip():
+def test_get_service_by_ip():
     """
-    Test get_identity_by_ip method
-    
-    Ensure it can resolve both service names and host names
+    Test get_service_by_ip method
     """
     #*** Instantiate flow, policy and identities objects:
     flow = flows_module.Flow(config)
     policy = policy_module.Policy(config)
     identities = identities_module.Identities(config, policy)
 
+    #*** DHCP shouldn't match, as gives host, not service:
+    #*** Client to Server DHCP Request:
+    flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[2], flow.packet)
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    identities.harvest(pkts_dhcp.RAW[3], flow.packet)
+    #*** Call get_identity_by_ip with the IP in the DHCP offer:
+    result_identity = identities.get_service_by_ip(pkts_dhcp.IP_DST[3])
+    assert result_identity == 0
+
+    #*** Now, do DNS, which should provide service metadata:
     #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
     flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
     # Payload: 121 208.67.220.123 10.0.2.15 DNS Standard query response 0x24e8
     #  A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
     identities.harvest(pkts_dns.RAW[1], flow.packet)
     #*** Call get_identity_by_ip with the IP in the DNS query (179.60.193.36):
-    result_identity = identities.get_identity_by_ip(pkts_dns.DNS_IP[1])
+    result_identity = identities.get_service_by_ip(pkts_dns.DNS_IP[1])
     assert result_identity['service_name'] == pkts_dns.DNS_NAME[1]
     assert result_identity['service_alias'] == pkts_dns.DNS_CNAME[1]
 
-    #*** Now, use DHCP to test host name capability:
+def test_get_host_by_ip():
+    """
+    Test get_host_by_ip method
+    """
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config)
+    identities = identities_module.Identities(config, policy)
+
+    #*** DNS shouldn't match, as gives service, not host:
+    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    # Payload: 121 208.67.220.123 10.0.2.15 DNS Standard query response 0x24e8
+    #  A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+    #*** Call get_identity_by_ip with the IP in the DNS query (179.60.193.36):
+    result_identity = identities.get_host_by_ip(pkts_dns.DNS_IP[1])
+    assert result_identity == 0
+
+    #*** Now, do DHCP, which should provide host metadata:
     #*** Client to Server DHCP Request:
     flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
     identities.harvest(pkts_dhcp.RAW[2], flow.packet)
@@ -228,9 +255,49 @@ def test_get_identity_by_ip():
     flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], ingest_time)
     identities.harvest(pkts_dhcp.RAW[3], flow.packet)
     #*** Call get_identity_by_ip with the IP in the DHCP offer:
-    result_identity = identities.get_identity_by_ip(pkts_dhcp.IP_DST[3])
+    result_identity = identities.get_host_by_ip(pkts_dhcp.IP_DST[3])
     assert result_identity['mac_address'] == pkts_dhcp.ETH_SRC[2]
     assert result_identity['host_name'] == 'pc1'
+
+def test_get_location_by_mac():
+    """
+    Test the get_location_by_mac method
+    """
+    #*** Location internal:
+    DPID_INTERNAL = 1
+    PORT_INTERNAL = 1
+    #*** Location external:
+    DPID_EXTERNAL = 1
+    PORT_EXTERNAL = 6
+    #*** Location unknown:
+    DPID_UNKNOWN = 255
+    PORT_UNKNOWN = 6
+    #*** Instantiate flow, policy and identities objects:
+    flow = flows_module.Flow(config)
+    policy = policy_module.Policy(config,
+                            pol_dir_default="config/tests/regression",
+                            pol_dir_user="config/tests/foo",
+                            pol_filename="main_policy_regression_static.yaml")
+    identities = identities_module.Identities(config, policy)
+
+    #*** Note: Location harvested for ARPs
+    #*** DPID=1 INPORT=1 should be location internal:
+    flow.ingest_packet(DPID_INTERNAL, PORT_INTERNAL, pkts_arp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[1], flow.packet)
+    result_location = identities.get_location_by_mac(pkts_arp.ETH_SRC[1])
+    assert result_location == 'internal'
+
+    #*** DPID=1 INPORT=6 should be location external:
+    flow.ingest_packet(DPID_EXTERNAL, PORT_EXTERNAL, pkts_arp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[1], flow.packet)
+    result_location = identities.get_location_by_mac(pkts_arp.ETH_SRC[1])
+    assert result_location == 'external'
+
+    #*** DPID=255 INPORT=6 should be location unknown:
+    flow.ingest_packet(DPID_UNKNOWN, PORT_UNKNOWN, pkts_arp.RAW[1], datetime.datetime.now())
+    identities.harvest(pkts_arp.RAW[1], flow.packet)
+    result_location = identities.get_location_by_mac(pkts_arp.ETH_SRC[1])
+    assert result_location == 'unknown'
 
 def test_indexing():
     """
@@ -314,6 +381,41 @@ def test_indexing():
     assert explain['executionStats']['nReturned'] == 1
     assert explain['executionStats']['totalKeysExamined'] == 1
     assert explain['executionStats']['totalDocsExamined'] == 1
+
+    #*** Check get_service_by_ip query execution statistics:
+    #*** Retrieve an explain of identities get_service_by_ip database query:
+    explain = identities.get_service_by_ip(pkts_dns.DNS_IP[1], test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 1
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
+
+    #*** Check get_host_by_ip query execution statistics:
+    #*** Retrieve an explain of identities get_host_by_ip database query:
+    explain = identities.get_host_by_ip(pkts_dhcp.IP_DST[3], test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 1
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
+
+    #*** Check get_location_by_mac query execution statistics:
+    #*** Retrieve an explain of identities get_location_by_mac database query:
+    explain = identities.get_location_by_mac(pkts_arp.ETH_SRC[1], test=1)
+    #*** Check an index is used:
+    assert explain['queryPlanner']['winningPlan']['inputStage']['stage'] == 'FETCH'
+    #*** Check how query ran:
+    assert explain['executionStats']['executionSuccess'] == True
+    assert explain['executionStats']['nReturned'] == 1
+    assert explain['executionStats']['totalKeysExamined'] == 1
+    assert explain['executionStats']['totalDocsExamined'] == 1
+
+
 
 #================= HELPER FUNCTIONS ===========================================
 

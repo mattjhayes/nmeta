@@ -27,6 +27,9 @@ from __future__ import division
 
 import os
 
+#*** For timestamps:
+import datetime
+
 #*** Import Eve for REST API Framework:
 from eve import Eve
 
@@ -38,6 +41,9 @@ from pymongo import MongoClient
 
 #*** nmeta imports
 import config
+import policy
+import identities
+
 #*** import from api_definitions subdirectory:
 from api_definitions import switches_api
 from api_definitions import pi_rate
@@ -50,9 +56,6 @@ from api_definitions import flows_removed_api
 from api_definitions import flows_ui
 from api_definitions import flow_mods_api
 from api_definitions import classifications_api
-
-#*** For timestamps:
-import datetime
 
 #*** To get request parameters:
 from flask import request
@@ -132,6 +135,10 @@ class ExternalAPI(BaseClass):
         self.flow_rems = db_nmeta.flow_rems
         self.db_pi_time = db_nmeta.pi_time
         self.switches_col = db_nmeta.switches_col
+
+        #*** Instantiate other nmeta modules to use their methods:
+        self.policy = policy.Policy(self.config)
+        self.ident = identities.Identities(self.config, self.policy)
 
     class FlowUI(object):
         """
@@ -480,7 +487,7 @@ class ExternalAPI(BaseClass):
                             }
                         }},
                         {'$sort' : {
-                            'total_bytes_sent' : -1 
+                            'total_bytes_sent' : -1
                         }}
                     ])
         #*** Add aggregate into _items for response:
@@ -521,7 +528,7 @@ class ExternalAPI(BaseClass):
                             }
                         }},
                         {'$sort' : {
-                            'total_bytes_received' : -1 
+                            'total_bytes_received' : -1
                         }}
                     ])
         #*** Add aggregate into _items for response:
@@ -561,7 +568,7 @@ class ExternalAPI(BaseClass):
                             }
                         }},
                         {'$sort' : {
-                            'total_bytes_sent' : -1 
+                            'total_bytes_sent' : -1
                         }}
                     ])
         #*** Add aggregate into _items for response:
@@ -602,7 +609,7 @@ class ExternalAPI(BaseClass):
                             }
                         }},
                         {'$sort' : {
-                            'total_bytes_received' : -1 
+                            'total_bytes_received' : -1
                         }}
                     ])
         #*** Add aggregate into _items for response:
@@ -737,7 +744,8 @@ class ExternalAPI(BaseClass):
         flow.timestamp = record['timestamp']
         flow.flow_hash = record['flow_hash']
         #*** Augment with source logical location:
-        flow.src_location_logical = self.get_location_by_mac(record['eth_src'])
+        flow.src_location_logical = \
+                              self.ident.get_location_by_mac(record['eth_src'])
         #*** Mangle src/dest and their hovers dependent on type:
         if record['eth_type'] == 2048:
             #*** It's IPv4, see if we can augment with identity:
@@ -902,14 +910,14 @@ class ExternalAPI(BaseClass):
         metadata and return a string that contains either the original
         IP address or an identity string
         """
-        host = self.get_host_by_ip(ip_addr)
-        service = self.get_service_by_ip(ip_addr)
+        host = self.ident.get_host_by_ip(ip_addr)
+        service = self.ident.get_service_by_ip(ip_addr)
         if host and service:
-            return host + ", " + service
+            return host['host_name'] + ", " + service['service_name']
         elif host:
-            return host
+            return host['host_name']
         elif service:
-            return service
+            return service['service_name']
         else:
             return ip_addr
 
@@ -931,64 +939,6 @@ class ExternalAPI(BaseClass):
             self.logger.debug("A record for DNS CNAME=%s not found",
                                                                   service_name)
             return ""
-
-    def get_host_by_ip(self, ip_addr):
-        """
-        Passed an IP address. Look this up in the identities db collection
-        and return a host name if present, otherwise an empty string
-        """
-        db_data = {'ip_address': ip_addr}
-        #*** Run db search:
-        cursor = self.identities.find(db_data).limit(HOST_LIMIT) \
-                                                          .sort('$natural', -1)
-        for record in cursor:
-            self.logger.debug("record is %s", record)
-            if record['host_name'] != "":
-                return str(record['host_name'])
-        return ""
-
-    def get_location_by_mac(self, mac_addr):
-        """
-        Passed a MAC address. Look this up in the identities db collection
-        and return a source logical location if present,
-        otherwise an empty string
-        """
-        db_data = {'mac_address': mac_addr}
-        #*** Run db search:
-        cursor = self.identities.find(db_data).limit(HOST_LIMIT) \
-                                                         .sort('timestamp', -1)
-        for record in cursor:
-            self.logger.debug("record is %s", record)
-            if record['location_logical'] != "":
-                return str(record['location_logical'])
-        return ""
-
-    def get_service_by_ip(self, ip_addr, alias=1):
-        """
-        Passed an IP address. Look this up in the identities db collection
-        and return a service name if present, otherwise an empty string.
-
-        If alias is set, do additional lookup on success to see if service
-        name is an alias for another name, and if so return that.
-        """
-        db_data = {'ip_address': ip_addr, "service_name": {'$ne':""}}
-        db_result = self.identities.find(db_data).sort('$natural', -1).limit(1)
-        if db_result.count():
-            service_result = list(db_result)[0]
-            service = service_result['service_name']
-            self.logger.debug("service name is %s", service)
-        else:
-            #*** Didn't find anything, return empty string:
-            return ""
-        if alias:
-            #*** Look up service name as alias:
-            db_data = {"service_alias": service}
-            db_result = self.identities.find(db_data).sort('$natural', -1). \
-                                                                       limit(1)
-            if db_result.count():
-                service_result = list(db_result)[0]
-                service = service_result['service_name']
-        return service
 
     def get_pi_rate(self, test=0):
         """

@@ -674,68 +674,38 @@ def test_get_dns_ip():
     result_ip = api.get_dns_ip(pkts_dns.DNS_CNAME[1])
     assert result_ip == pkts_dns.DNS_IP[1]
 
-def test_get_host_by_ip():
+def test_get_id():
     """
-    Test get_host_by_ip
+    Test the get_id method
     """
     #*** Instantiate flow, policy and identities objects:
     flow = flows_module.Flow(config)
     policy = policy_module.Policy(config)
     identities = identities_module.Identities(config, policy)
 
-    #*** Ingest ARP reply for MAC of pc1 so can ref later:
-    flow.ingest_packet(DPID1, INPORT1, pkts_arp.RAW[3], datetime.datetime.now())
-    identities.harvest(pkts_arp.RAW[3], flow.packet)
+    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
+    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
+    # Payload: 121 208.67.220.123 10.0.2.15 DNS Standard query response 0x24e8
+    #  A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
+    identities.harvest(pkts_dns.RAW[1], flow.packet)
+    #*** Call get_identity_by_ip with the IP in the DNS query (179.60.193.36):
+    result = api.get_id(pkts_dns.DNS_IP[1])
+    assert result == pkts_dns.DNS_NAME[1]
 
-    #*** Ingest LLDP from pc1
-    flow.ingest_packet(DPID1, INPORT1, pkts_lldp.RAW[0], datetime.datetime.now())
-    identities.harvest(pkts_lldp.RAW[0], flow.packet)
-
-    #*** Call the get_host_by_ip:
-    get_host_by_ip_result = api.get_host_by_ip('10.1.0.1')
-
-    logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
-
-    assert get_host_by_ip_result == 'pc1.example.com'
-
-    #*** Test DHCP to host by IP
-
+    #*** Now, do DHCP, which should provide host metadata:
     #*** Client to Server DHCP Request:
     flow.ingest_packet(DPID1, INPORT1, pkts_dhcp.RAW[2], datetime.datetime.now())
     identities.harvest(pkts_dhcp.RAW[2], flow.packet)
-
     #*** Server to Client DHCP ACK:
-    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], datetime.datetime.now())
+    #*** Set ingest time so we can check validity based on lease
+    ingest_time = datetime.datetime.now()
+    flow.ingest_packet(DPID1, INPORT2, pkts_dhcp.RAW[3], ingest_time)
     identities.harvest(pkts_dhcp.RAW[3], flow.packet)
-
-    #*** Call the get_host_by_ip:
-    get_host_by_ip_result = api.get_host_by_ip('10.1.0.1')
-
-    logger.debug("get_host_by_ip_result=%s", get_host_by_ip_result)
-
-    assert get_host_by_ip_result == 'pc1'
-
-def test_get_service_by_ip():
-    """
-    Test ability of get_service_by_ip to resolve
-    IPs to service names
-    """
-    #*** Instantiate flow, policy and identities objects:
-    flow = flows_module.Flow(config)
-    policy = policy_module.Policy(config)
-    identities = identities_module.Identities(config, policy)
-
-    tc_ident = tc_identity.IdentityInspect(config)
-    #*** DNS packet 1 (NAME to CNAME, then second answer with IP for CNAME):
-    # A www.facebook.com CNAME star-mini.c10r.facebook.com A 179.60.193.36
-    flow.ingest_packet(DPID1, INPORT1, pkts_dns.RAW[1], datetime.datetime.now())
-    identities.harvest(pkts_dns.RAW[1], flow.packet)
-
-    #*** Call the get_service_by_ip:
-    get_service_by_ip_result = api.get_service_by_ip('179.60.193.36')
-    logger.debug("get_service_by_ip_result=%s", get_service_by_ip_result)
-
-    assert get_service_by_ip_result == 'www.facebook.com'
+    #*** Call get_identity_by_ip with the IP in the DHCP offer:
+    result = api.get_id(pkts_dhcp.IP_DST[3])
+    assert result == 'pc1'
+    
+    # TBD: test case where has host_name and service_name...
 
 def test_get_classification():
     """

@@ -51,6 +51,8 @@ from pymongo import MongoClient
 ARP_CACHE_TIME = 14400
 #*** DHCP lease time to use if none present (in seconds):
 DHCP_DEFAULT_LEASE_TIME = 3600
+#*** How many records to search through for a MAC address:
+MAC_SEARCH_LIMIT = 2000
 
 class Identities(BaseClass):
     """
@@ -127,22 +129,25 @@ class Identities(BaseClass):
         self.identities = db_nmeta.create_collection('identities', capped=True,
                                             size=identities_max_bytes)
 
-        #*** Index to improve look-up performance:
+        #*** Create multiple indexes to improve look-up performance:
         self.identities.create_index([('valid_from', pymongo.DESCENDING),
                                         ('valid_to', pymongo.DESCENDING),
                                         ('ip_address', pymongo.ASCENDING),
                                         ('harvest_type', pymongo.ASCENDING)
                                         ],
                                         unique=False)
-
         #*** Index to improve MAC address look-up performance:
         self.identities.create_index([('mac_address', pymongo.ASCENDING),
-                             ('valid_from', pymongo.DESCENDING)], unique=False)
-
+                                        ('valid_from', pymongo.DESCENDING)],
+                                        unique=False, name='BY_MAC')
+        #*** Index to improve Host by IP address look-up performance:
+        self.identities.create_index([('ip_address', pymongo.ASCENDING),
+                                        ('valid_from', pymongo.DESCENDING)
+                                        ],
+                                        unique=False, name='BY_IP')
         #*** Index to improve Node (host_name) look-up performance:
         self.identities.create_index([('host_name', pymongo.ASCENDING),
                              ('valid_from', pymongo.DESCENDING)], unique=False)
-
         #*** Index to improve Service look-up performance:
         self.identities.create_index([('service_name', pymongo.ASCENDING),
                              ('valid_from', pymongo.DESCENDING)], unique=False)
@@ -636,11 +641,11 @@ class Identities(BaseClass):
             self.logger.debug("service_name=%s not found", service_name)
             return 0
 
-    def get_identity_by_ip(self, ip_addr, test=0):
+    def get_service_by_ip(self, ip_addr, test=0):
         """
         Passed an IP address. Look this up in the identities
-        db collection. Return the most recent identity record for this
-        IP address or 0 if no match.
+        db collection. Returns the most recent identities record for this
+        IP address that has the a service_name, or 0 if no match.
 
         Checks to see if service name is an alias for a CNAME and if it
         is moves the service name to service alias and returns the CNAME
@@ -650,7 +655,7 @@ class Identities(BaseClass):
         Setting test=1 returns database
         query execution statistics
         """
-        db_data = {'ip_address': ip_addr}
+        db_data = {'ip_address': ip_addr, 'service_name': {'$ne' : ""}}
         #*** Filter by documents that are still within 'best before' time:
         db_data['valid_to'] = {'$gte': datetime.datetime.now()}
         #*** Run db search:
@@ -674,9 +679,56 @@ class Identities(BaseClass):
             self.logger.debug("identity for ip_addr=%s not found", ip_addr)
             return 0
 
+    def get_host_by_ip(self, ip_addr, test=0):
+        """
+        Passed an IP address. Look this up in the identities
+        db collection. Returns the most recent identities record for this
+        IP address that has a host_name, or 0 if no match.
+
+        Setting test=1 returns database
+        query execution statistics
+        """
+        db_data = {'ip_address': ip_addr, 'host_name': {'$ne' : ""}}
+        #*** Filter by documents that are still within 'best before' time:
+        db_data['valid_to'] = {'$gte': datetime.datetime.now()}
+        #*** Run db search:
+        if not test:
+            result = self.identities.find(db_data).sort('valid_from', -1). \
+                                                                       limit(1)
+        else:
+            return self.identities.find(db_data).sort('valid_from', -1). \
+                                                             limit(1).explain()
+        if result.count():
+            result0 = list(result)[0]
+            self.logger.debug("found result=%s len=%s", result0, len(result0))
+            return result0
+        else:
+            self.logger.debug("identity for ip_addr=%s not found", ip_addr)
+            return 0
+
+    def get_location_by_mac(self, mac_addr, test=0):
+        """
+        Passed a MAC address. Look this up in the identities db collection
+        and return a source logical location string if present,
+        otherwise return 0. Setting test=1 returns database query
+        execution statistics
+        """
+        db_data = {'mac_address': mac_addr}
+        #*** Run db search:
+        if not test:
+            cursor = self.identities.find(db_data).limit(MAC_SEARCH_LIMIT) \
+                                                        .sort('valid_from', -1)
+        else:
+            return self.identities.find(db_data).limit(MAC_SEARCH_LIMIT) \
+                                              .sort('valid_from', -1).explain()
+        for record in cursor:
+            if record['location_logical'] != "":
+                return str(record['location_logical'])
+        return 0
+
     def get_dns_cname(self, service_name, test=0):
         """
-        Passed a DNS CNAME. Look this up in the identities
+        Passed a DNS A Record name. Look this up in the identities
         db collection. Return the most recent CNAME
         for this A Record or 0 if no match.
 
@@ -698,7 +750,7 @@ class Identities(BaseClass):
             self.logger.debug("found result=%s len=%s", result0, len(result0))
             return result0['service_name']
         else:
-            self.logger.debug("service name for cname=%s not found", cname)
+            self.logger.debug("No CNAME found, service_name=%s", service_name)
             return 0
 
     def _hash_identity(self, ident):

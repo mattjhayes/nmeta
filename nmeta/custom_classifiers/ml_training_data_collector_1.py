@@ -61,13 +61,16 @@ class Classifier(object):
         #*** Get number of packets in flow so far:
         packets = flow.packet_count()
 
-        if packets == packet_theshold:
+        if packets >= packet_theshold:
             #*** Turn off continue_to_inspect to suppress flow:
             classifier_result.match = True
             classifier_result.continue_to_inspect = False
             classifier_result.actions['qos_treatment'] = 'default_priority'
             #*** Assemble flow metrics and return as classification tag:
             result = 'ML'
+            identity_record = ident.get_service_by_ip(flow.packet.ip_dst)
+            service_name = identity_record['service_name']
+            result += separator + str(service_name)
             result += separator + str(flow.packet.ip_src)
             result += separator + str(flow.packet.ip_dst)
             result += separator + str(flow.packet.proto)

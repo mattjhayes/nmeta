@@ -88,9 +88,11 @@ class Identities(BaseClass):
     See function docstrings for more information
     """
 
-    def __init__(self, config, policy):
+    def __init__(self, config, policy, secondary=0):
         """
         Initialise an instance of the Identities class
+        Set secondary=1 if not instantiating from nmeta to
+        prevent dropping of databases
         """
         self.policy = policy
         #*** Required for BaseClass:
@@ -120,54 +122,55 @@ class Identities(BaseClass):
         #*** Connect to MongoDB nmeta database:
         db_nmeta = mongo_client[mongo_dbname]
 
-        #*** Delete (drop) previous identities collection if it exists:
-        self.logger.debug("Deleting previous identities MongoDB collection...")
-        db_nmeta.identities.drop()
-
-        #*** Create the identities collection, specifying capped option
-        #*** with max size in bytes, so MongoDB handles data retention:
-        self.identities = db_nmeta.create_collection('identities', capped=True,
-                                            size=identities_max_bytes)
-
-        #*** Create multiple indexes to improve look-up performance:
-        self.identities.create_index([('valid_from', pymongo.DESCENDING),
+        #*** Only do database drop and configure if instantiated from nmeta:
+        if not secondary:
+            #*** Delete (drop) previous identities collection if it exists:
+            self.logger.debug("Deleting identities MongoDB collection...")
+            db_nmeta.identities.drop()
+            #*** Create the identities collection, specifying capped option
+            #*** with max size in bytes, so MongoDB handles data retention:
+            self.identities = db_nmeta.create_collection('identities',
+                                        capped=True, size=identities_max_bytes)
+            #*** Create multiple indexes to improve look-up performance:
+            self.identities.create_index([('valid_from', pymongo.DESCENDING),
                                         ('valid_to', pymongo.DESCENDING),
                                         ('ip_address', pymongo.ASCENDING),
                                         ('harvest_type', pymongo.ASCENDING)
                                         ],
                                         unique=False)
-        #*** Index to improve MAC address look-up performance:
-        self.identities.create_index([('mac_address', pymongo.ASCENDING),
+            #*** Index to improve MAC address look-up performance:
+            self.identities.create_index([('mac_address', pymongo.ASCENDING),
                                         ('valid_from', pymongo.DESCENDING)],
                                         unique=False, name='BY_MAC')
-        #*** Index to improve Host by IP address look-up performance:
-        self.identities.create_index([('ip_address', pymongo.ASCENDING),
+            #*** Index to improve Host by IP address look-up performance:
+            self.identities.create_index([('ip_address', pymongo.ASCENDING),
                                         ('valid_from', pymongo.DESCENDING)
                                         ],
                                         unique=False, name='BY_IP')
-        #*** Index to improve Node (host_name) look-up performance:
-        self.identities.create_index([('host_name', pymongo.ASCENDING),
+            #*** Index to improve Node (host_name) look-up performance:
+            self.identities.create_index([('host_name', pymongo.ASCENDING),
                              ('valid_from', pymongo.DESCENDING)], unique=False)
-        #*** Index to improve Service look-up performance:
-        self.identities.create_index([('service_name', pymongo.ASCENDING),
+            #*** Index to improve Service look-up performance:
+            self.identities.create_index([('service_name', pymongo.ASCENDING),
                              ('valid_from', pymongo.DESCENDING)], unique=False)
-
-        #*** Delete (drop) previous dhcp_messages collection if it exists:
-        self.logger.debug("Deleting previous dhcp_messages MongoDB "
-                                                               "collection...")
-        db_nmeta.dhcp_messages.drop()
-
-        #*** Create the dhcp_messages collection, specifying capped option
-        #*** with max size in bytes, so MongoDB handles data retention:
-        self.dhcp_messages = db_nmeta.create_collection('dhcp_messages',
+            #*** Delete (drop) previous dhcp_messages collection if it exists:
+            self.logger.debug("Deleting dhcp_messages MongoDB collection...")
+            db_nmeta.dhcp_messages.drop()
+            #*** Create the dhcp_messages collection, specifying capped option
+            #*** with max size in bytes, so MongoDB handles data retention:
+            self.dhcp_messages = db_nmeta.create_collection('dhcp_messages',
                                      capped=True, size=dhcp_messages_max_bytes)
-
-        #*** Index dhcp_messages to improve look-up performance:
-        self.dhcp_messages.create_index([('ingest_time', pymongo.DESCENDING),
+            #*** Index dhcp_messages to improve look-up performance:
+            self.dhcp_messages.create_index([
+                                        ('ingest_time', pymongo.DESCENDING),
                                         ('transaction_id', pymongo.ASCENDING),
                                         ('message_type', pymongo.ASCENDING)
                                         ],
                                         unique=False)
+        else:
+            #*** Connect to the database collections:
+            self.identities = db_nmeta['identities']
+            self.dhcp_messages = db_nmeta['dhcp_messages']
 
     class Identity(object):
         """

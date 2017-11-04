@@ -138,7 +138,8 @@ class ExternalAPI(BaseClass):
 
         #*** Instantiate other nmeta modules to use their methods:
         self.policy = policy.Policy(self.config)
-        self.ident = identities.Identities(self.config, self.policy)
+        self.ident = identities.Identities(self.config, self.policy,
+                                                                   secondary=1)
 
     class FlowUI(object):
         """

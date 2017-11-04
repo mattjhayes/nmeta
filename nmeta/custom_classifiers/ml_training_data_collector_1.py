@@ -86,8 +86,9 @@ class Classifier(object):
             result += separator + str(flow.max_interpacket_interval())
             result += separator + str(flow.min_interpacket_interval())
             result += separator + str(flow.packet_count())
-            result += separator + str(flow.packet_directions())
-            result += separator + str(flow.packet_sizes())
+            #*** Turn list results into CSV:
+            result += separator +','.join(map(str, flow.packet_directions()))
+            result += separator +','.join(map(str, flow.packet_sizes()))
             classifier_result.classification_tag = result
         elif packets > packet_theshold:
             #*** Turn off continue_to_inspect to suppress flow:

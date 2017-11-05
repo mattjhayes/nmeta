@@ -29,6 +29,9 @@ that flow with information from the current packet.
 There are various methods (see class docstring) that provide views
 into the state of the flow.
 """
+#*** Python 3 style division results as floating point:
+from __future__ import division
+
 #*** For packet methods:
 import socket
 
@@ -186,6 +189,9 @@ class Flow(BaseClass):
 
         flow.min_interpacket_interval()
           Minimum directional time difference between packets
+        
+        flow.interpacket_interval_ratios()
+          Time ratios between packets based on pkt1-2 interval
 
     The Flow class also includes the record_removal method
     that records a flow removal message from a switch to database
@@ -981,6 +987,40 @@ class Flow(BaseClass):
             return min_c2s.total_seconds()
         else:
             return min_s2c.total_seconds()
+
+    def interpacket_interval_ratios(self):
+        """
+        Return a list of flow interpacket time intervals expressed
+        as ratios of the first interpacket interval. For n packet,
+        will return n-2 time ratios (packet 1 to 2 is not returned as
+        will always be 1, since used as the ratio base)
+        """
+        epoch = datetime.datetime.utcfromtimestamp(0)
+        #*** Database lookup for whole flow:
+        db_data = {'flow_hash': self.packet.flow_hash,
+                'timestamp': {'$gte': datetime.datetime.now() - \
+                                                self.flow_time_limit}}
+        packet_cursor = self.packet_ins.find(db_data).sort('timestamp', 1)
+        results = []
+        prev_time = 0
+        #*** Iterate forward through packets in flow:
+        if packet_cursor.count():
+            for pkt_num, pkt in enumerate(packet_cursor):
+                if pkt_num == 1:
+                    #*** Get interval used as baseline for ratios:
+                    pkt_current = (pkt['timestamp'] - epoch).total_seconds()
+                    ratio_base = pkt_current - prev_time
+                    prev_time = pkt_current
+                elif pkt_num > 1:
+                    pkt_current = (pkt['timestamp'] - epoch).total_seconds()
+                    interval = pkt_current - prev_time
+                    results.append(interval / ratio_base)
+                    prev_time = pkt_current
+                else:
+                    prev_time = (pkt['timestamp'] - epoch).total_seconds()
+        else:
+            return 0
+        return results
 
     def not_suppressed(self, dpid, suppress_type):
         """

@@ -53,7 +53,7 @@ class Classifier(object):
         """
         #*** Threshold number of packets in flow to return
         #*** metrics on (ignores flows with fewer or more packets):
-        packet_theshold = 5
+        packet_theshold = 10
 
         #*** Used to separate terms in classification tag:
         separator = ','
@@ -89,6 +89,7 @@ class Classifier(object):
             #*** Turn list results into CSV:
             result += separator +','.join(map(str, flow.packet_directions()))
             result += separator +','.join(map(str, flow.packet_sizes()))
+            result += separator +','.join(map(str, flow.interpacket_interval_ratios()))
             classifier_result.classification_tag = result
         elif packets > packet_theshold:
             #*** Turn off continue_to_inspect to suppress flow:

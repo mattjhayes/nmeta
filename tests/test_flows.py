@@ -753,6 +753,36 @@ def test_packet_sizes():
     #*** Check packet sizes:
     assert flow.packet_sizes() == [74, 74, 66, 321, 66]
 
+def test_interpacket_interval_ratios():
+    """
+    Test interpacket_interval_ratios method
+    """
+    #*** Instantiate a flow object:
+    flow = flows_module.Flow(config)
+    
+    base_time = datetime.datetime.now()
+    time_2 = base_time + datetime.timedelta(milliseconds=10)
+    time_3 = base_time + datetime.timedelta(milliseconds=30)
+    time_4 = base_time + datetime.timedelta(milliseconds=80)
+    time_5 = base_time + datetime.timedelta(milliseconds=90)
+    time_6 = base_time + datetime.timedelta(milliseconds=190)
+
+    #*** Ingest packets in flow, specifically setting timestamps:
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[0], base_time)
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[1], time_2)
+    flow.ingest_packet(DPID2, INPORT1, pkts2.RAW[1], time_3)
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[2], time_4)
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[3], time_5)
+    flow.ingest_packet(DPID1, INPORT1, pkts2.RAW[4], time_6)
+    
+    #*** Check interpacket time ratios (can't be 100% precise as uses floats):
+    results = flow.interpacket_interval_ratios()
+    assert 1.99 < results[0] < 2.01
+    assert 4.99 < results[1] < 5.01
+    assert 0.99 < results[2] < 1.01
+    assert 9.99 < results[3] < 10.01
+
+
 #================= HELPER FUNCTIONS ===========================================
 
 def pkt_test(flow, pkts, pkt_num, flow_packet_count):
